@@ -126,6 +126,7 @@ class ReadResourceRequest(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
@@ -152,6 +153,8 @@ class ReadResourceRequest(google.protobuf.message.Message):
     """the version of the provider to use when servicing this request."""
     acceptSecrets: builtins.bool
     """when true operations should return secrets as strongly typed."""
+    accept_integers: builtins.bool
+    """when true operations should return integers as strongly typed."""
     @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """a list of output properties that should also be treated as secret, in addition to ones we detect."""
@@ -179,6 +182,7 @@ class ReadResourceRequest(google.protobuf.message.Message):
         provider: builtins.str = ...,
         version: builtins.str = ...,
         acceptSecrets: builtins.bool = ...,
+        accept_integers: builtins.bool = ...,
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         acceptResources: builtins.bool = ...,
         pluginDownloadURL: builtins.str = ...,
@@ -187,7 +191,7 @@ class ReadResourceRequest(google.protobuf.message.Message):
         packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accept_integers", b"accept_integers", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ReadResourceRequest = ReadResourceRequest
 
@@ -325,6 +329,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     VERSION_FIELD_NUMBER: builtins.int
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     ALIASURNS_FIELD_NUMBER: builtins.int
     IMPORTID_FIELD_NUMBER: builtins.int
@@ -375,6 +380,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of property selectors to ignore during updates."""
     acceptSecrets: builtins.bool
     """when true operations should return secrets as strongly typed."""
+    accept_integers: builtins.bool
+    """when true operations should return integers as strongly typed."""
     @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """a list of output properties that should also be treated as secret, in addition to ones we detect."""
@@ -447,6 +454,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
         acceptSecrets: builtins.bool = ...,
+        accept_integers: builtins.bool = ...,
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         aliasURNs: collections.abc.Iterable[builtins.str] | None = ...,
         importId: builtins.str = ...,
@@ -469,7 +477,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accept_integers", b"accept_integers", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -605,6 +613,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
@@ -620,6 +629,8 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     """the version of the provider to use when servicing this request."""
     acceptResources: builtins.bool
     """when true operations should return resource references as strongly typed."""
+    accept_integers: builtins.bool
+    """when true operations should return integers as strongly typed."""
     pluginDownloadURL: builtins.str
     """an optional reference to the provider url to use for this invoke."""
     @property
@@ -638,13 +649,14 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         provider: builtins.str = ...,
         version: builtins.str = ...,
         acceptResources: builtins.bool = ...,
+        accept_integers: builtins.bool = ...,
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "accept_integers", b"accept_integers", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 
@@ -712,6 +724,7 @@ class ResourceCallRequest(google.protobuf.message.Message):
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     @property
@@ -734,6 +747,8 @@ class ResourceCallRequest(google.protobuf.message.Message):
         """the optional source position of the user code that initiated the call."""
     packageRef: builtins.str
     """a reference from RegisterProviderRequest."""
+    accept_integers: builtins.bool
+    """when true operations should return integers as strongly typed."""
     def __init__(
         self,
         *,
@@ -746,9 +761,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         packageRef: builtins.str = ...,
+        accept_integers: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accept_integers", b"accept_integers", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceCallRequest = ResourceCallRequest
 

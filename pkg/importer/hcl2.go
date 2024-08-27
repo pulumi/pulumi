@@ -540,6 +540,22 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 			}
 		}
 
+	case value.IsInteger():
+		// basic case
+		if schemaType == schema.NumberType || schemaType == schema.IntType {
+			return true
+		}
+
+		// for unions: check that at least of one of the element types is also a number
+		// collapsing unions of unions as necessary recursively
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
 	case value.IsArray():
 		// basic case: check that each element in the array is structurally typed as the element type of the schenma array
 		switch arg := schemaType.(type) {

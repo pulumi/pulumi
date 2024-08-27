@@ -2577,6 +2577,8 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 			return "bool"
 		case schema.IntType:
 			return "int"
+		case schema.BigIntegerType:
+			return "int"
 		case schema.NumberType:
 			return "float"
 		case schema.StringType:

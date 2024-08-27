@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 	"strings"
@@ -65,6 +66,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 			KeepResources:    true,
 			KeepUnknowns:     req.GetDryRun(),
 			KeepOutputValues: true,
+			Integers:         plugin.MarshalOptionKeep,
 		},
 	)
 	if err != nil {
@@ -163,7 +165,12 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
+		plugin.MarshalOptions{
+			KeepSecrets:   true,
+			KeepUnknowns:  keepUnknowns,
+			KeepResources: pulumiCtx.state.keepResources,
+			Integers:      pulumiCtx.state.acceptIntegers,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -367,19 +374,33 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				dest.Set(result)
 				return nil
 			case reflect.Int:
-				if !v.IsNumber() {
+				var i *big.Int
+				if v.IsNumber() {
+					i = big.NewInt(int64(v.NumberValue()))
+				} else if v.IsInteger() {
+					i = v.IntegerValue()
+				} else {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
+
 				result := reflect.New(inputType).Elem()
-				result.SetInt(int64(v.NumberValue()))
+				result.SetInt(i.Int64())
 				dest.Set(result)
 				return nil
 			case reflect.Float64:
-				if !v.IsNumber() {
+				var f float64
+				if v.IsNumber() {
+					f = v.NumberValue()
+				} else if v.IsInteger() {
+					bf := new(big.Float)
+					bf.SetInt(v.IntegerValue())
+					f, _ = bf.Float64()
+				} else {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
+
 				result := reflect.New(inputType).Elem()
-				result.SetFloat(v.NumberValue())
+				result.SetFloat(f)
 				dest.Set(result)
 				return nil
 			case reflect.String:
@@ -432,6 +453,18 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				return err
 			}
 			dest.Set(reflect.ValueOf(archive))
+			return nil
+		}
+
+		if v.IsInteger() {
+			if !bigIntType.AssignableTo(dest.Type()) {
+				return fmt.Errorf("expected a %s, got an integer", dest.Type())
+			}
+			integer, _, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return err
+			}
+			dest.Set(reflect.ValueOf(integer))
 			return nil
 		}
 
@@ -776,6 +809,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 			KeepResources:    true,
 			KeepUnknowns:     req.GetDryRun(),
 			KeepOutputValues: true,
+			Integers:         plugin.MarshalOptionKeep,
 		},
 	)
 	if err != nil {
@@ -820,7 +854,12 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
+		plugin.MarshalOptions{
+			KeepSecrets:   true,
+			KeepUnknowns:  keepUnknowns,
+			KeepResources: pulumiCtx.state.keepResources,
+			Integers:      pulumiCtx.state.acceptIntegers,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}

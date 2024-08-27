@@ -17,6 +17,7 @@ package pulumi
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strings"
 	"sync"
@@ -305,6 +306,8 @@ func marshalInputImpl(v interface{},
 
 		// Look for some well known types.
 		switch v := v.(type) {
+		case *bigInt:
+			return resource.NewIntegerProperty(v.Int), deps, nil
 		case *asset:
 			if v.invalid {
 				return resource.PropertyValue{}, nil, errors.New("invalid asset")
@@ -381,10 +384,16 @@ func marshalInputImpl(v interface{},
 		switch rv.Type().Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(rv.Bool()), deps, nil
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 			return resource.NewNumberProperty(float64(rv.Int())), deps, nil
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
 			return resource.NewNumberProperty(float64(rv.Uint())), deps, nil
+		case reflect.Int64:
+			return resource.NewIntegerProperty(big.NewInt(rv.Int())), deps, nil
+		case reflect.Uint64:
+			bi := new(big.Int)
+			bi.SetUint64(rv.Uint())
+			return resource.NewIntegerProperty(bi), deps, nil
 		case reflect.Float32, reflect.Float64:
 			return resource.NewNumberProperty(rv.Float()), deps, nil
 		case reflect.Ptr, reflect.Interface:
@@ -591,6 +600,8 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 			return nil, false, err
 		}
 		return resource, false, nil
+	case v.IsInteger():
+		return OfBigInt(v.IntegerValue()), false, nil
 	default:
 		return v.V, false, nil
 	}
@@ -614,6 +625,8 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			return Bool(v.BoolValue()), nil
 		case v.IsNumber():
 			return Float64(v.NumberValue()), nil
+		case v.IsInteger():
+			return OfBigInt(v.IntegerValue()), nil
 		case v.IsString():
 			return String(v.StringValue()), nil
 		case v.IsArray():
@@ -817,6 +830,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return false, err
 		}
 		return v.OutputValue().Secret, nil
+	case v.IsInteger():
+		if !bigIntType.AssignableTo(dest.Type()) {
+			return false, fmt.Errorf("expected a %s, got an integer", dest.Type())
+		}
+		dest.Set(reflect.ValueOf(OfBigInt(v.IntegerValue())))
+		return false, nil
 	}
 
 	// Unmarshal based on the desired type.
@@ -829,22 +848,34 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.SetBool(v.BoolValue())
 		return false, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetInt(int64(v.NumberValue()))
+		} else if v.IsInteger() {
+			dest.SetInt(v.IntegerValue().Int64())
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetInt(int64(v.NumberValue()))
 		return false, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetUint(uint64(v.NumberValue()))
+		} else if v.IsInteger() {
+			dest.SetUint(uint64(v.IntegerValue().Int64()))
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetUint(uint64(v.NumberValue()))
 		return false, nil
 	case reflect.Float32, reflect.Float64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetFloat(v.NumberValue())
+		} else if v.IsInteger() {
+			bf := new(big.Float)
+			bf.SetInt(v.IntegerValue())
+			f, _ := bf.Float64()
+			dest.SetFloat(f)
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetFloat(v.NumberValue())
 		return false, nil
 	case reflect.String:
 		switch {
@@ -911,6 +942,17 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		// Tolerate invalid asset or archive values.
 		typ := dest.Type()
 		switch typ {
+		case bigIntType:
+			if v.IsNumber() {
+				bf := big.NewFloat(v.NumberValue())
+				bi, _ := bf.Int(nil)
+				dest.Set(reflect.ValueOf(OfBigInt(bi)))
+				return false, nil
+			} else if v.IsInteger() {
+				dest.Set(reflect.ValueOf(OfBigInt(v.IntegerValue())))
+				return false, nil
+			}
+			return false, fmt.Errorf("expected an integer value, got a %s", v.TypeString())
 		case assetType:
 			_, secret, err := unmarshalPropertyValue(ctx, v)
 			if err != nil {

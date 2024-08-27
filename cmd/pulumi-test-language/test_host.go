@@ -42,7 +42,8 @@ type testHost struct {
 	runtimeName string
 	providers   map[string]plugin.Provider
 
-	connections map[plugin.Provider]io.Closer
+	rejectIntegers bool
+	connections    map[plugin.Provider]io.Closer
 }
 
 var _ plugin.Host = (*testHost)(nil)
@@ -86,7 +87,7 @@ func (h *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin
 		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
-	grpcProvider, closer, err := wrapProviderWithGrpc(provider)
+	grpcProvider, closer, err := wrapProviderWithGrpc(provider, h.rejectIntegers)
 	if err != nil {
 		return nil, err
 	}
@@ -175,12 +176,13 @@ func (w *grpcWrapper) Close() error {
 	return nil
 }
 
-func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
+func wrapProviderWithGrpc(provider plugin.Provider, rejectIntegers bool) (plugin.Provider, io.Closer, error) {
 	wrapper := &grpcWrapper{stop: make(chan bool)}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: wrapper.stop,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			// The server behaves as normal, not rejecting integers. We disable integers on the client (e.g. engine side)
+			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider, false))
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
@@ -200,6 +202,6 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(
-		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false, rejectIntegers)
 	return wrapped, wrapper, nil
 }

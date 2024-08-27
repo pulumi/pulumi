@@ -102,6 +102,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err
@@ -117,6 +118,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
 			KeepSecrets:   true,
 			KeepResources: true,
+			Integers:      plugin.MarshalOptionKeep,
 		})
 		if err != nil {
 			return nil, err
@@ -137,6 +139,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: in.GetAcceptResources(),
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err
@@ -165,6 +168,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	stateIn, err := plugin.UnmarshalProperties(in.GetProperties(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err
@@ -194,6 +198,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err
@@ -217,6 +222,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	inputs, err := plugin.UnmarshalProperties(in.GetObject(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err
@@ -246,6 +252,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		Integers:      plugin.MarshalOptionKeep,
 	})
 	if err != nil {
 		return nil, err

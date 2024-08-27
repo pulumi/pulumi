@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 
@@ -29,21 +30,49 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+type MarshalOption int
+
+const (
+	// Replace is a constant that can be used to indicate that a property type should be replaced by some simpler value.
+	// e.g. resource references are replaced by their URN.
+	MarshalOptionReplace MarshalOption = iota
+	// Keep is a constant that can be used to indicate that a property type should be kept.
+	MarshalOptionKeep
+	// Reject is a constant that can be used to indicate that a property type should be rejected. This is often used in
+	// tests.
+	MarshalOptionReject
+)
+
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	Label                 string // an optional label for debugging.
-	SkipNulls             bool   // true to skip nulls altogether in the resulting map.
-	KeepUnknowns          bool   // true if we are keeping unknown values (otherwise we skip them).
-	RejectUnknowns        bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
-	ElideAssetContents    bool   // true if we are eliding the contents of assets.
-	ComputeAssetHashes    bool   // true if we are computing missing asset hashes on the fly.
-	KeepSecrets           bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
-	RejectAssets          bool   // true if we should return errors on Asset and Archive values.
-	KeepResources         bool   // true if we are keeping resoures (otherwise we return raw urn).
-	SkipInternalKeys      bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
-	KeepOutputValues      bool   // true if we are keeping output values.
-	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
-	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
+	// an optional label for debugging.
+	Label string
+	// true to skip nulls altogether in the resulting map.
+	SkipNulls bool
+	// true if we are keeping unknown values (otherwise we skip them).
+	KeepUnknowns bool
+	// true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
+	RejectUnknowns bool
+	// true if we are eliding the contents of assets.
+	ElideAssetContents bool
+	// true if we are computing missing asset hashes on the fly.
+	ComputeAssetHashes bool
+	// true if we are keeping secrets (otherwise we replace them with their underlying value).
+	KeepSecrets bool
+	// true if we should return errors on Asset and Archive values.
+	RejectAssets bool
+	// true if we are keeping resoures (otherwise we return raw urn).
+	KeepResources bool
+	// true to skip internal property keys (keys that start with "__") in the resulting map.
+	SkipInternalKeys bool
+	// true if we are keeping output values.
+	KeepOutputValues bool
+	// true if secrets and unknowns should be upgraded to output values.
+	UpgradeToOutputValues bool
+	// the optional working directory to use when serializing assets & archives.
+	WorkingDirectory string
+	// if we're keeping integers, converting them to floats, or rejecting them.
+	Integers MarshalOption
 }
 
 const (
@@ -228,6 +257,40 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
 		}
 		return MarshalPropertyValue(key, resource.NewObjectProperty(m), opts)
+	} else if v.IsInteger() {
+		if opts.Integers == MarshalOptionReject {
+			return nil, fmt.Errorf("unexpected integer property value for %q", key)
+		}
+
+		bi := v.IntegerValue()
+		bf := new(big.Float).SetInt(bi)
+		f, acc := bf.Float64()
+		if opts.Integers == MarshalOptionReplace {
+			accurate := ""
+			if acc != big.Exact {
+				accurate = "(inaccurately)"
+			}
+			logging.V(5).Infof("marshalling resource value as float %s as opts.Integers is replace", accurate)
+			return &structpb.Value{
+				Kind: &structpb.Value_NumberValue{
+					NumberValue: f,
+				},
+			}, nil
+		}
+		// If we can safely store the integer in a float64 do so, else cast to string
+		var value resource.PropertyValue
+		if acc == big.Exact {
+			value = resource.NewNumberProperty(f)
+		} else {
+			value = resource.NewStringProperty(bi.String())
+		}
+
+		integer := resource.NewObjectProperty(resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.IntegerValueSig),
+			"value":         value,
+		})
+		return MarshalPropertyValue(key, integer, opts)
+
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s] for %q: %v (type=%v)",
@@ -252,6 +315,10 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 		return MarshalString(UnknownArchiveValue, opts)
 	} else if elem.IsObject() {
 		return MarshalString(UnknownObjectValue, opts)
+	} else if elem.IsInteger() {
+		// Just reusing UnknownNumberValue here as everything ends up marshaled as UnknownStringValue across
+		// the languages anyway.
+		return MarshalString(UnknownNumberValue, opts)
 	}
 
 	// If for some reason we end up with a recursive computed/output, just keep digging.
@@ -530,6 +597,37 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				Dependencies: dependencies,
 			})
 			return &output, nil
+		case resource.IntegerValueSig:
+			if opts.Integers == MarshalOptionReject {
+				return nil, fmt.Errorf("unexpected integer property value for %q", key)
+			}
+
+			valueProp, ok := obj["value"]
+			if !ok {
+				return nil, fmt.Errorf("malformed integer value for %q: missing value", key)
+			}
+			bi := new(big.Int)
+			if valueProp.IsString() {
+				_, ok := bi.SetString(valueProp.StringValue(), 10)
+				if !ok {
+					return nil, fmt.Errorf("malformed integer value for %q: %s", key, valueProp.StringValue())
+				}
+			} else if valueProp.IsNumber() {
+				bf := big.NewFloat(valueProp.NumberValue())
+				bf.Int(bi)
+			} else {
+				return nil, fmt.Errorf("malformed integer value for %q: value not a string", key)
+			}
+			if opts.Integers == MarshalOptionKeep {
+				integer := resource.NewIntegerProperty(bi)
+				return &integer, nil
+			}
+
+			bf := new(big.Float)
+			bf.SetInt(bi)
+			f, _ := bf.Float64()
+			number := resource.NewNumberProperty(f)
+			return &number, nil
 		default:
 			return nil, fmt.Errorf("unrecognized signature '%v' in property map for %q", sig, key)
 		}

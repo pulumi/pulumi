@@ -573,7 +573,7 @@ func filterResourceProperties(m resource.PropertyMap, debug bool) resource.Prope
 
 func filterPropertyValue(v resource.PropertyValue, debug bool) resource.PropertyValue {
 	switch {
-	case v.IsNull(), v.IsBool(), v.IsNumber():
+	case v.IsNull(), v.IsBool(), v.IsNumber(), v.IsInteger():
 		return v
 	case v.IsString():
 		// have to ensure we filter out secrets.

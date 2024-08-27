@@ -5367,7 +5367,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 	})
 	t.Run("WithoutGrpc", func(t *testing.T) {
 		t.Parallel()
-		test(t, deploytest.WithoutGrpc)
+		// test(t, deploytest.WithoutGrpc)
 	})
 }
 

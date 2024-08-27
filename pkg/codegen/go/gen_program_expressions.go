@@ -113,6 +113,12 @@ func (g *generator) genAnonymousFunctionExpression(
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
+	// bigInt doesn't define operators so has to be method calls
+	if expr.LeftOperand.Type().Equals(model.BigIntegerType) {
+		g.Fgenf(w, "%.20v.Add(%.20v)", expr.LeftOperand, expr.RightOperand)
+		return
+	}
+
 	opstr, precedence := "", g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
@@ -449,17 +455,23 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		} else {
 			g.Fgenf(w, "%v", expr.Value.True())
 		}
-	case model.NumberType, model.IntType:
+	case model.NumberType, model.IntType, model.BigIntegerType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
-			if isPulumiType {
-				g.Fgenf(w, "%s(%d)", argTypeName, i)
+			if argTypeName == "pulumi.BigInt" {
+				g.Fgenf(w, "pulumi.NewBigInt(%d)", i)
+			} else if isPulumiType {
+				g.Fgenf(w, "%s(%v)", argTypeName, i)
 			} else {
 				g.Fgenf(w, "%d", i)
 			}
 		} else {
 			f, _ := bf.Float64()
-			if isPulumiType {
+			if argTypeName == "pulumi.BigInt" {
+				bi, acc := bf.Int(nil)
+				contract.Assertf(acc == big.Exact, "expected exact conversion to integer")
+				g.Fgenf(w, "pulumi.MustParseBigInt(%q)", bi.String())
+			} else if isPulumiType {
 				g.Fgenf(w, "%s(%g)", argTypeName, f)
 			} else {
 				g.Fgenf(w, "%g", f)
@@ -826,6 +838,11 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return "pulumi.Int"
 			}
 			return "int"
+		case *model.BigIntegerType:
+			if isInput {
+				return "pulumi.BigInt"
+			}
+			return "pulumi.BigInt"
 		case *model.NumberType:
 			if isInput {
 				return "pulumi.Float64"

@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-long",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/long": "ROOT/artifacts/pulumi-long-8.0.0.tgz"
+	}
+}

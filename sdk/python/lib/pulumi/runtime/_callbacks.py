@@ -139,7 +139,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     options=request.options,
                 )
 
-            result_props = await serialize_properties(result.props, {})
+            result_props = await serialize_properties(
+                result.props, {}, keep_integer_values=True
+            )
 
             result_opts = (
                 await self._transformation_resource_options(result.opts)
@@ -207,7 +209,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     options=request.options,
                 )
 
-            result_args = await serialize_properties(result.args, {})
+            result_args = await serialize_properties(
+                result.args, {}, keep_integer_values=True
+            )
 
             result_opts = (
                 await self._transformation_invoke_options(result.opts)

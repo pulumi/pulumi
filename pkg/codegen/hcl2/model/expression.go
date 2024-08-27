@@ -387,8 +387,15 @@ func (x *BinaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		diagnostics = append(diagnostics, rightDiags...)
 	}
 
+	// If either operand is a bigInt lift the whole expression to bigInt
+	big := false
+	if x.LeftOperand.Type().AssignableFrom(BigIntegerType) ||
+		x.RightOperand.Type().AssignableFrom(BigIntegerType) {
+		big = true
+	}
+
 	// Compute the signature for the operator and typecheck the arguments.
-	signature := getOperationSignature(x.Operation)
+	signature := getOperationSignature(x.Operation, big)
 	contract.Assertf(len(signature.Parameters) == 2,
 		"expected binary operator signature to have two parameters, got %v", len(signature.Parameters))
 
@@ -1367,23 +1374,33 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the literal value expression.
 func (x *LiteralValueExpression) Type() Type {
 	if x.exprType == nil {
-		typ := ctyTypeToType(x.Value.Type(), false)
-		x.exprType = NewConstType(typ, x.Value)
+		_ = x.Typecheck(false)
 	}
 	return x.exprType
 }
 
-func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+func (x *LiteralValueExpression) Typecheck(_ bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
 	typ := NoneType
 	if !x.Value.IsNull() {
-		typ = ctyTypeToType(x.Value.Type(), false)
+		typ = ctyTypeToType(x.Value.Type(), false, false)
 	}
 
 	switch {
-	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
-		// OK
+	case typ == NumberType || typ == IntType:
+		// If it's an int, we might want to represent it as a big int if it's too big for a float
+		f := x.Value.AsBigFloat()
+		if _, acc := f.Int(nil); acc == big.Exact {
+			// This is an integer 'i', but it might roundtrip through float and if it does we should leave it as number.
+			// But otherwise say this is a BigInteger type to maintain precision.
+			if _, acc := f.Float64(); acc != big.Exact {
+				typ = BigIntegerType
+			}
+		}
+		// Not an int, must be a float.
+		typ = NewConstType(typ, x.Value)
+	case typ == NoneType || typ == StringType || typ == BoolType:
 		typ = NewConstType(typ, x.Value)
 	default:
 		var rng hcl.Range
@@ -2565,7 +2582,7 @@ func (x *UnaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	}
 
 	// Compute the signature for the operator and typecheck the arguments.
-	signature := getOperationSignature(x.Operation)
+	signature := getOperationSignature(x.Operation, false)
 	contract.Assertf(len(signature.Parameters) == 1,
 		"expected unary operator signature to have 1 parameter, got %d", len(signature.Parameters))
 

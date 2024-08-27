@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
 
@@ -488,6 +489,23 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return secret, nil
 	}
 
+	if prop.IsInteger() {
+		integer := prop.IntegerValue()
+
+		// If it fits in a float64, serialize it as a number.
+		bf := new(big.Float).SetInt(integer)
+		f, acc := bf.Float64()
+		serialized := map[string]interface{}{
+			resource.SigKey: resource.IntegerValueSig,
+		}
+		if acc == big.Exact {
+			serialized["value"] = f
+		} else {
+			serialized["value"] = integer.String()
+		}
+		return serialized, nil
+	}
+
 	// All others are returned as-is.
 	return prop.V, nil
 }
@@ -712,6 +730,32 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+				case resource.IntegerValueSig:
+					value, ok := objmap["value"]
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed integer: missing value")
+					}
+
+					valueStr, ok := value.(string)
+					if ok {
+						integer := new(big.Int)
+						_, ok = integer.SetString(valueStr, 10)
+						if !ok {
+							return resource.PropertyValue{}, fmt.Errorf("malformed integer: %s", valueStr)
+						}
+
+						return resource.NewIntegerProperty(integer), nil
+					}
+					// If the value is not a string, it should be a number
+					valueNum, ok := value.(float64)
+					if ok {
+						float := big.NewFloat(valueNum)
+						integer, _ := float.Int(nil)
+						return resource.NewIntegerProperty(integer), nil
+					}
+
+					return resource.PropertyValue{}, errors.New("malformed integer: value not a string")
+
 				default:
 					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}

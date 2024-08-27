@@ -202,7 +202,7 @@
                         "type": {
                             "description": "The primitive type, if any",
                             "type": "string",
-                            "enum": ["boolean", "integer", "number", "string"]
+                            "enum": ["boolean", "integer", "number", "string", "bigInteger"]
                         },
                         "additionalProperties": false,
                         "items": false,

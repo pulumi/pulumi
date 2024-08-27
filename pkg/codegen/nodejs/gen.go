@@ -340,6 +340,8 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 			return tstypes.Identifier("boolean")
 		case schema.IntType, schema.NumberType:
 			return tstypes.Identifier("number")
+		case schema.BigIntegerType:
+			return tstypes.Identifier("bigint")
 		case schema.StringType:
 			if constValue != nil {
 				return tstypes.Identifier(fmt.Sprintf("%q", constValue.(string)))

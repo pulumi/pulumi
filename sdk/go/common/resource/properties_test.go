@@ -15,6 +15,8 @@
 package resource
 
 import (
+	"math"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -37,6 +39,7 @@ func TestMappable(t *testing.T) {
 			"e.^": []interface{}{"bbb"},
 		},
 		"f": []interface{}{},
+		"g": big.NewInt(math.MaxInt64),
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))
@@ -60,6 +63,7 @@ func TestMapReplValues(t *testing.T) {
 			"e.n": float64(676.767),
 			"e.^": []interface{}{"bbb"},
 		},
+		"f": big.NewInt(math.MaxInt64),
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))
@@ -77,6 +81,7 @@ func TestMapReplValues(t *testing.T) {
 			"e.n": float64(676.767),
 			"e.^": []interface{}{"bbb"},
 		},
+		"f": big.NewInt(math.MaxInt64),
 	}
 	ma2p := NewPropertyMapFromMap(ma2)
 	assert.Equal(t, len(ma2), len(ma2p))
@@ -96,6 +101,7 @@ func TestMapReplValues(t *testing.T) {
 			"e.n": float64(676.767),
 			"e.^": []interface{}{"bbb"},
 		},
+		"g": big.NewInt(math.MaxInt64),
 	}
 	ma3p := NewPropertyMapFromMap(ma3)
 	assert.Equal(t, len(ma3), len(ma3p))
@@ -157,7 +163,8 @@ func TestCopy(t *testing.T) {
 
 	src := NewPropertyMapFromMap(map[string]interface{}{
 		"a": "str",
-		"b": 42,
+		"b": 42.5,
+		"c": 42,
 	})
 	dst := src.Copy()
 	assert.NotNil(t, dst)
@@ -167,7 +174,7 @@ func TestCopy(t *testing.T) {
 	src["a"] = NewNullProperty()
 	assert.Equal(t, NewProperty("str"), dst["a"])
 	src["c"] = NewProperty(99.99)
-	assert.Equal(t, 2, len(dst))
+	assert.Equal(t, 3, len(dst))
 }
 
 func TestSecretUnknown(t *testing.T) {

@@ -189,7 +189,11 @@ def _invoke(
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, {})
+        inputs = await rpc.serialize_properties(
+            props,
+            {},
+            keep_integer_values=True,
+        )
         version = opts.version or ""
         plugin_download_url = opts.plugin_download_url or ""
         accept_resources = not (
@@ -319,7 +323,10 @@ def call(
             property_dependencies_resources: Dict[str, List["Resource"]] = {}
             # We keep output values when serializing inputs for call.
             inputs = await rpc.serialize_properties(
-                props, property_dependencies_resources, keep_output_values=True
+                props,
+                property_dependencies_resources,
+                keep_output_values=True,
+                keep_integer_values=True,
             )
 
             property_dependencies = {}

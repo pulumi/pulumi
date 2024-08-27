@@ -592,6 +592,48 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) BigInt { return *new(BigInt) }).(BigIntOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []BigInt { return *new([]BigInt) }).(BigIntArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]BigInt { return *new(map[string]BigInt) }).(BigIntMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]BigInt { return *new(map[string][]BigInt) }).(BigIntArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]BigInt { return *new([]map[string]BigInt) }).(BigIntMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]BigInt { return *new(map[string]map[string]BigInt) }).(BigIntMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BigIntArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]BigInt { return *new([][]BigInt) }).(BigIntArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 	}
 	// Test some chained applies.
 	{
@@ -2217,6 +2259,146 @@ func TestToOutputURNArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigInt(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(NewBigInt(999))
+	_, ok := out.(BigIntInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntArray{NewBigInt(999)})
+	_, ok := out.(BigIntArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntMap{"baz": NewBigInt(999)})
+	_, ok := out.(BigIntMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntArrayMap{"baz": BigIntArray{NewBigInt(999)}})
+	_, ok := out.(BigIntArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntMapArray{BigIntMap{"baz": NewBigInt(999)}})
+	_, ok := out.(BigIntMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntMapMap{"baz": BigIntMap{"baz": NewBigInt(999)}})
+	_, ok := out.(BigIntMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBigIntArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BigIntArrayArray{BigIntArray{NewBigInt(999)}})
+	_, ok := out.(BigIntArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BigIntArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4506,6 +4688,216 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToBigIntOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntInput(NewBigInt(999))
+
+	out := in.ToBigIntOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntArrayInput(BigIntArray{NewBigInt(999)})
+
+	out := in.ToBigIntArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntMapInput(BigIntMap{"baz": NewBigInt(999)})
+
+	out := in.ToBigIntMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntArrayMapInput(BigIntArrayMap{"baz": BigIntArray{NewBigInt(999)}})
+
+	out := in.ToBigIntArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntMapArrayInput(BigIntMapArray{BigIntMap{"baz": NewBigInt(999)}})
+
+	out := in.ToBigIntMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntMapMapInput(BigIntMapMap{"baz": BigIntMap{"baz": NewBigInt(999)}})
+
+	out := in.ToBigIntMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBigIntArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BigIntArrayArrayInput(BigIntArrayArray{BigIntArray{NewBigInt(999)}})
+
+	out := in.ToBigIntArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBigIntArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBigIntArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
 	t.Parallel()
@@ -6131,6 +6523,162 @@ func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]URN)[0], iv)
 }
 
+func TestBigIntArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntArray{NewBigInt(999)}).ToBigIntArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([]BigInt)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArray([]BigInt{NewBigInt(999)}).ToBigIntArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]BigInt)[0], iv)
+}
+
+func TestTopLevelToBigIntArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArrayOutput([]BigIntOutput{ToOutput(NewBigInt(999)).(BigIntOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]BigInt)[0], iv)
+}
+
+func TestBigIntMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntMapArray{BigIntMap{"baz": NewBigInt(999)}}).ToBigIntMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]BigInt)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMapArray([]map[string]BigInt{{"baz": NewBigInt(999)}}).ToBigIntMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]BigInt)[0], iv)
+}
+
+func TestTopLevelToBigIntMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMapArrayOutput([]BigIntMapOutput{ToOutput(BigIntMap{"baz": NewBigInt(999)}).(BigIntMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]BigInt)[0], iv)
+}
+
+func TestBigIntArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntArrayArray{BigIntArray{NewBigInt(999)}}).ToBigIntArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([][]BigInt)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArrayArray([][]BigInt{{NewBigInt(999)}}).ToBigIntArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]BigInt)[0], iv)
+}
+
+func TestTopLevelToBigIntArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArrayArrayOutput([]BigIntArrayOutput{ToOutput(BigIntArray{NewBigInt(999)}).(BigIntArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]BigInt)[0], iv)
+}
+
 // Test map indexers.
 
 func TestArchiveMapIndex(t *testing.T) {
@@ -7649,6 +8197,162 @@ func TestTopLevelToURNMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
 
+func TestBigIntMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntMap{"baz": NewBigInt(999)}).ToBigIntMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]BigInt)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMap(map[string]BigInt{"baz": NewBigInt(999)}).ToBigIntMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]BigInt)["baz"], iv)
+}
+
+func TestTopLevelToBigIntMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMapOutput(map[string]BigIntOutput{"baz": ToOutput(NewBigInt(999)).(BigIntOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]BigInt)["baz"], iv)
+}
+
+func TestBigIntArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntArrayMap{"baz": BigIntArray{NewBigInt(999)}}).ToBigIntArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]BigInt)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArrayMap(map[string][]BigInt{"baz": {NewBigInt(999)}}).ToBigIntArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]BigInt)["baz"], iv)
+}
+
+func TestTopLevelToBigIntArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntArrayMapOutput(map[string]BigIntArrayOutput{"baz": ToOutput(BigIntArray{NewBigInt(999)}).(BigIntArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]BigInt)["baz"], iv)
+}
+
+func TestBigIntMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BigIntMapMap{"baz": BigIntMap{"baz": NewBigInt(999)}}).ToBigIntMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]BigInt)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBigIntMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMapMap(map[string]map[string]BigInt{"baz": {"baz": NewBigInt(999)}}).ToBigIntMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]BigInt)["baz"], iv)
+}
+
+func TestTopLevelToBigIntMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBigIntMapMapOutput(map[string]BigIntMapOutput{"baz": ToOutput(BigIntMap{"baz": NewBigInt(999)}).(BigIntMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]BigInt)["baz"], iv)
+}
+
 // Test AnyOutput `To*Output` functions
 
 func TestAnyOutputAsArchiveOutput(t *testing.T) {
@@ -8931,6 +9635,125 @@ func TestAnyOutputAsURNArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(URNArrayArray{URNArray{URN("foo")}})
 	out := anyout.AsURNArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(NewBigInt(999))
+	out := anyout.AsBigIntOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntArray{NewBigInt(999)})
+	out := anyout.AsBigIntArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntMap{"baz": NewBigInt(999)})
+	out := anyout.AsBigIntMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntArrayMap{"baz": BigIntArray{NewBigInt(999)}})
+	out := anyout.AsBigIntArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntMapArray{BigIntMap{"baz": NewBigInt(999)}})
+	out := anyout.AsBigIntMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntMapMap{"baz": BigIntMap{"baz": NewBigInt(999)}})
+	out := anyout.AsBigIntMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBigIntArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BigIntArrayArray{BigIntArray{NewBigInt(999)}})
+	out := anyout.AsBigIntArrayArrayOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)

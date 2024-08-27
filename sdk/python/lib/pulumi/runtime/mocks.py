@@ -178,7 +178,9 @@ class MockMonitor:
             if registered_resource is None:
                 raise Exception(f"unknown resource {args['urn']}")
             ret_proto = _sync_await(
-                rpc.serialize_properties(registered_resource._asdict(), {})
+                rpc.serialize_properties(
+                    registered_resource._asdict(), {}, keep_integer_values=True
+                )
             )
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
@@ -195,7 +197,9 @@ class MockMonitor:
                 for failure in tup[1]
             ]
 
-        ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
+        ret_proto = _sync_await(
+            rpc.serialize_properties(ret, {}, keep_integer_values=True)
+        )
 
         fields = {"failures": failures, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
@@ -215,7 +219,9 @@ class MockMonitor:
         )
         id_, state = self.mocks.new_resource(resource_args)
 
-        props_proto = _sync_await(rpc.serialize_properties(state, {}))
+        props_proto = _sync_await(
+            rpc.serialize_properties(state, {}, keep_integer_values=True)
+        )
 
         urn = self.make_urn(request.parent, request.type, request.name)
 
@@ -244,7 +250,9 @@ class MockMonitor:
         )
         id_, state = self.mocks.new_resource(resource_args)
 
-        obj_proto = _sync_await(rpc.serialize_properties(state, {}))
+        obj_proto = _sync_await(
+            rpc.serialize_properties(state, {}, keep_integer_values=True)
+        )
 
         self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
 

@@ -820,6 +820,7 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
     version: jspb.Message.getFieldWithDefault(msg, 8, ""),
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
+    acceptIntegers: jspb.Message.getBooleanFieldWithDefault(msg, 17, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
@@ -898,6 +899,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 9:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsecrets(value);
+      break;
+    case 17:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptIntegers(value);
       break;
     case 10:
       var value = /** @type {string} */ (reader.readString());
@@ -1016,6 +1021,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       9,
+      f
+    );
+  }
+  f = message.getAcceptIntegers();
+  if (f) {
+    writer.writeBool(
+      17,
       f
     );
   }
@@ -1259,6 +1271,24 @@ proto.pulumirpc.ReadResourceRequest.prototype.getAcceptsecrets = function() {
  */
 proto.pulumirpc.ReadResourceRequest.prototype.setAcceptsecrets = function(value) {
   return jspb.Message.setProto3BooleanField(this, 9, value);
+};
+
+
+/**
+ * optional bool accept_integers = 17;
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getAcceptIntegers = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 17, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setAcceptIntegers = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 17, value);
 };
 
 
@@ -1645,6 +1675,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     version: jspb.Message.getFieldWithDefault(msg, 11, ""),
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 13, false),
+    acceptIntegers: jspb.Message.getBooleanFieldWithDefault(msg, 34, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
     aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
     importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
@@ -1757,6 +1788,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 13:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsecrets(value);
+      break;
+    case 34:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptIntegers(value);
       break;
     case 14:
       var value = /** @type {string} */ (reader.readString());
@@ -1961,6 +1996,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f) {
     writer.writeBool(
       13,
+      f
+    );
+  }
+  f = message.getAcceptIntegers();
+  if (f) {
+    writer.writeBool(
+      34,
       f
     );
   }
@@ -2743,6 +2785,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptsecrets = function() 
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptsecrets = function(value) {
   return jspb.Message.setProto3BooleanField(this, 13, value);
+};
+
+
+/**
+ * optional bool accept_integers = 34;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptIntegers = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 34, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptIntegers = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 34, value);
 };
 
 
@@ -3983,6 +4043,7 @@ proto.pulumirpc.ResourceInvokeRequest.toObject = function(includeInstance, msg) 
     provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+    acceptIntegers: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
     pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
@@ -4043,6 +4104,10 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptresources(value);
+      break;
+    case 10:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptIntegers(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -4125,6 +4190,13 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f) {
     writer.writeBool(
       5,
+      f
+    );
+  }
+  f = message.getAcceptIntegers();
+  if (f) {
+    writer.writeBool(
+      10,
       f
     );
   }
@@ -4267,6 +4339,24 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptresources = function(va
 
 
 /**
+ * optional bool accept_integers = 10;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptIntegers = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 10, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptIntegers = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 10, value);
+};
+
+
+/**
  * optional string pluginDownloadURL = 6;
  * @return {string}
  */
@@ -4401,7 +4491,8 @@ proto.pulumirpc.ResourceCallRequest.toObject = function(includeInstance, msg) {
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
     pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    packageref: jspb.Message.getFieldWithDefault(msg, 17, "")
+    packageref: jspb.Message.getFieldWithDefault(msg, 17, ""),
+    acceptIntegers: jspb.Message.getBooleanFieldWithDefault(msg, 18, false)
   };
 
   if (includeInstance) {
@@ -4479,6 +4570,10 @@ proto.pulumirpc.ResourceCallRequest.deserializeBinaryFromReader = function(msg, 
     case 17:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
+      break;
+    case 18:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptIntegers(value);
       break;
     default:
       reader.skipField();
@@ -4565,6 +4660,13 @@ proto.pulumirpc.ResourceCallRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       17,
+      f
+    );
+  }
+  f = message.getAcceptIntegers();
+  if (f) {
+    writer.writeBool(
+      18,
       f
     );
   }
@@ -4932,6 +5034,24 @@ proto.pulumirpc.ResourceCallRequest.prototype.getPackageref = function() {
  */
 proto.pulumirpc.ResourceCallRequest.prototype.setPackageref = function(value) {
   return jspb.Message.setProto3StringField(this, 17, value);
+};
+
+
+/**
+ * optional bool accept_integers = 18;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.getAcceptIntegers = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 18, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.setAcceptIntegers = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 18, value);
 };
 
 

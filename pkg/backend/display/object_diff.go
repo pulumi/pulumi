@@ -807,7 +807,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 }
 
 func isPrimitive(value resource.PropertyValue) bool {
-	return value.IsNull() || value.IsString() || value.IsNumber() ||
+	return value.IsNull() || value.IsString() || value.IsNumber() || value.IsInteger() ||
 		value.IsBool() || value.IsComputed() || value.IsOutput() || value.IsSecret()
 }
 
@@ -817,11 +817,13 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		p.writeVerbatim("<null>")
 	} else if v.IsBool() {
 		p.write("%t", v.BoolValue())
+	} else if v.IsInteger() {
+		p.write("%d", v.IntegerValue())
 	} else if v.IsNumber() {
-		// All pulumi numbers are IEEE doubles really (even in languages where we codegen integers the wire
-		// protocol only supports doubles). But by default Go will print them in scientific notation for large
-		// enough values which is suboptimal for our purposes when the value is still an integer. (i.e.
-		// non-fractional). See https://github.com/pulumi/pulumi/issues/13016 for context.
+		// All pulumi numbers are IEEE doubles (integers are a separate property value type). But by default
+		// Go will print them in scientific notation for large enough values which is suboptimal for our
+		// purposes when the value is still an integer. (i.e. non-fractional). See
+		// https://github.com/pulumi/pulumi/issues/13016 for context.
 		number := v.NumberValue()
 		if math.Trunc(number) == number {
 			p.write("%.f", number)

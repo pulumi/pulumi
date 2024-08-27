@@ -33,17 +33,21 @@ class Callback(google.protobuf.message.Message):
 
     TARGET_FIELD_NUMBER: builtins.int
     TOKEN_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     target: builtins.str
     """the gRPC target of the callback service."""
     token: builtins.str
     """the service specific unique token for this callback."""
+    accept_integers: builtins.bool
+    """when true the callback accepts strongly typed integer values."""
     def __init__(
         self,
         *,
         target: builtins.str = ...,
         token: builtins.str = ...,
+        accept_integers: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["target", b"target", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accept_integers", b"accept_integers", "target", b"target", "token", b"token"]) -> None: ...
 
 global___Callback = Callback
 

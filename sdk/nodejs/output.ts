@@ -878,7 +878,7 @@ export type Unwrap<T> =
           ? UnwrapSimple<U2>
           : UnwrapSimple<T>;
 
-type primitive = Function | string | number | boolean | undefined | null;
+type primitive = bigint | Function | string | number | boolean | undefined | null;
 
 /**
  * Handles encountering basic types when unwrapping.

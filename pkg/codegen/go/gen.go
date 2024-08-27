@@ -446,6 +446,8 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 			return "pulumi.BoolInput"
 		case schema.IntType:
 			return "pulumi.IntInput"
+		case schema.BigIntegerType:
+			return "pulumi.BigIntInput"
 		case schema.NumberType:
 			return "pulumi.Float64Input"
 		case schema.StringType:
@@ -611,6 +613,8 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 			return "pulumi.Bool"
 		case schema.IntType:
 			return "pulumi.Int"
+		case schema.BigIntegerType:
+			return "pulumi.BigInt"
 		case schema.NumberType:
 			return "pulumi.Float64"
 		case schema.StringType:
@@ -705,6 +709,8 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 			return "bool"
 		case schema.IntType:
 			return "int"
+		case schema.BigIntegerType:
+			return "pulumi.BigInt"
 		case schema.NumberType:
 			return "float64"
 		case schema.StringType:
@@ -917,6 +923,8 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		return pkg.outputTypeImpl(t.ElementType)
 	default:
 		switch t {
+		case schema.BigIntegerType:
+			return "pulumi.BigIntOutput"
 		case schema.BoolType:
 			return "pulumi.BoolOutput"
 		case schema.IntType:

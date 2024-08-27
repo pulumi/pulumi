@@ -33,13 +33,19 @@ import (
 type providerServer struct {
 	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
 
-	provider      Provider
-	keepSecrets   bool
-	keepResources bool
+	provider       Provider
+	keepSecrets    bool
+	keepResources  bool
+	acceptIntegers MarshalOption
 }
 
-func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+func NewProviderServer(provider Provider, rejectIntegers bool) pulumirpc.ResourceProviderServer {
+	acceptIntegers := MarshalOptionReplace
+	if rejectIntegers {
+		acceptIntegers = MarshalOptionReject
+	}
+
+	return &providerServer{provider: provider, acceptIntegers: acceptIntegers}
 }
 
 func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
@@ -48,6 +54,7 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
+		Integers:         p.acceptIntegers,
 		KeepOutputValues: keepOutputValues,
 	}
 }
@@ -58,6 +65,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   p.keepSecrets,
 		KeepResources: p.keepResources,
+		Integers:      p.acceptIntegers,
 	}
 }
 
@@ -317,8 +325,15 @@ func (p *providerServer) Configure(ctx context.Context,
 
 	p.keepSecrets = req.GetAcceptSecrets()
 	p.keepResources = req.GetAcceptResources()
+	if p.acceptIntegers == MarshalOptionReplace && req.GetAcceptIntegers() {
+		p.acceptIntegers = MarshalOptionKeep
+	}
 	return &pulumirpc.ConfigureResponse{
-		AcceptSecrets: true, SupportsPreview: true, AcceptResources: true, AcceptOutputs: true,
+		AcceptSecrets:   true,
+		SupportsPreview: true,
+		AcceptResources: true,
+		AcceptOutputs:   true,
+		AcceptIntegers:  p.acceptIntegers != MarshalOptionReject,
 	}, nil
 }
 

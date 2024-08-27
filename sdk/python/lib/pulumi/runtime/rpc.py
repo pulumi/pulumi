@@ -102,6 +102,12 @@ _special_output_value_sig is a randomly assigned hash used to identify outputs i
 See sdk/go/common/resource/properties.go.
 """
 
+_special_integer_sig = "7eb310220ed6211bd6f147f2a75bfbb6"
+"""
+_special_integer_sig is a randomly assigned hash used to identify integers in maps.
+See sdk/go/common/resource/properties.go.
+"""
+
 _INT_OR_FLOAT = six.integer_types + (float,)
 
 # This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
@@ -175,6 +181,7 @@ async def serialize_properties(
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
+    keep_integer_values: Optional[bool] = None,
 ) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
@@ -221,6 +228,7 @@ async def serialize_properties(
             input_transformer,
             get_type(k),
             keep_output_values,
+            keep_integer_values,
         )
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -341,6 +349,7 @@ async def serialize_property(
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
+    keep_integer_values: Optional[bool] = None,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -377,6 +386,7 @@ async def serialize_property(
                     input_transformer,
                     element_type,
                     keep_output_values,
+                    keep_integer_values,
                 )
             )
 
@@ -402,6 +412,7 @@ async def serialize_property(
                     resource_obj,
                     input_transformer,
                     keep_output_values=False,
+                    keep_integer_values=False,
                 ),
             }
             if is_custom:
@@ -412,6 +423,7 @@ async def serialize_property(
                     resource_obj,
                     input_transformer,
                     keep_output_values=False,
+                    keep_integer_values=False,
                 )
             return res
 
@@ -423,6 +435,7 @@ async def serialize_property(
             resource_obj,
             input_transformer,
             keep_output_values=False,
+            keep_integer_values=False,
         )
 
     if known_types.is_asset(value):
@@ -440,6 +453,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         elif hasattr(value, "text"):
             str_asset = cast("StringAsset", value)
@@ -450,6 +464,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         elif hasattr(value, "uri"):
             remote_asset = cast("RemoteAsset", value)
@@ -460,6 +475,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         else:
             raise AssertionError(f"unknown asset type: {value!r}")
@@ -481,6 +497,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         elif hasattr(value, "path"):
             file_archive = cast("FileArchive", value)
@@ -491,6 +508,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         elif hasattr(value, "uri"):
             remote_archive = cast("RemoteArchive", value)
@@ -501,6 +519,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                keep_integer_values=False,
             )
         else:
             raise AssertionError(f"unknown archive type: {value!r}")
@@ -524,6 +543,7 @@ async def serialize_property(
             input_transformer,
             typ,
             keep_output_values,
+            keep_integer_values,
         )
 
     if known_types.is_output(value):
@@ -546,6 +566,7 @@ async def serialize_property(
             input_transformer,
             typ,
             keep_output_values=False,
+            keep_integer_values=keep_integer_values,
         )
         deps.extend(promise_deps)
         value_resources.update(promise_deps)
@@ -560,6 +581,7 @@ async def serialize_property(
                     resource_obj,
                     input_transformer,
                     keep_output_values=False,
+                    keep_integer_values=keep_integer_values,
                 )
             promise_deps.extend(set(urn_deps))
             value_resources.update(urn_deps)
@@ -600,6 +622,7 @@ async def serialize_property(
                 input_transformer,
                 types.get(k),
                 keep_output_values,
+                keep_integer_values,
             )
             for k, v in value.items()
         }
@@ -657,9 +680,23 @@ async def serialize_property(
                 input_transformer,
                 get_type(transformed_key),
                 keep_output_values,
+                keep_integer_values,
             )
 
         return obj
+
+    # For large integers send them as big integer values
+    if (
+        isinstance(value, int)
+        and int(float(value)) != value
+        and settings._sync_monitor_supports_integers()
+        and keep_integer_values
+    ):
+        # If it fits in a float prefer that
+        if int(float(value)) == value:
+            return {_special_sig_key: _special_integer_sig, "value": float(value)}
+
+        return {_special_sig_key: _special_integer_sig, "value": str(value)}
 
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
@@ -733,6 +770,15 @@ def deserialize_properties(
             return deserialize_resource(props_struct, keep_unknowns)
         if props_struct[_special_sig_key] == _special_output_value_sig:
             return deserialize_output_value(props_struct)
+        if props_struct[_special_sig_key] == _special_integer_sig:
+            v = props_struct["value"]
+            if isinstance(v, str):
+                return int(v)
+            if isinstance(v, float):
+                return int(v)
+            raise AssertionError(
+                "Invalid integer encountered when unmarshalling resource property"
+            )
         raise AssertionError(
             "Unrecognized signature when unmarshalling resource property"
         )

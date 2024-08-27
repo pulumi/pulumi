@@ -152,6 +152,7 @@ export function resetOptions(
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
+    store.supportsIntegers = false;
     store.callbacks = undefined;
 }
 
@@ -248,6 +249,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
         store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
         store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
+        store.supportsIntegers = await monitorSupportsFeature(monitorRef, "integers");
     }
 }
 

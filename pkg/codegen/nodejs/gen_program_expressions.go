@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"strings"
 	"unicode"
@@ -362,6 +363,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if isOutput {
 			to = output.ElementType
 		}
+		// BigInts need converting explicitly.
+		if to.Equals(model.BigIntegerType) && !model.BigIntegerType.AssignableFrom(from.Type()) {
+			g.Fgenf(w, "BigInt(%v)", from)
+			return
+		}
+
 		switch to := to.(type) {
 		case *model.EnumType:
 			if enum, err := enumName(to); err == nil {
@@ -586,10 +593,25 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
 		g.Fgen(w, "undefined")
+	case model.BigIntegerType:
+		bf := expr.Value.AsBigFloat()
+		i, acc := bf.Int(nil)
+		contract.Assertf(acc == big.Exact, "expected exact conversion to integer")
+		g.Fgenf(w, "BigInt(%q)", i.String())
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
-		if i, acc := bf.Int64(); acc == big.Exact {
-			g.Fgenf(w, "%d", i)
+		if i, acc := bf.Int(nil); acc == big.Exact {
+			if i.Cmp(big.NewInt(math.MinInt32)) >= 0 && i.Cmp(big.NewInt(math.MaxInt32)) <= 0 {
+				g.Fgenf(w, "%s", i.String())
+			} else {
+				// We want to prefer the floating point representation if it is precise
+				f := float64(i.Int64())
+				if int64(f) == i.Int64() {
+					g.Fgenf(w, "%g", bf)
+				} else {
+					g.Fgenf(w, "BigInt(%q)", i.String())
+				}
+			}
 		} else {
 			f, _ := bf.Float64()
 			g.Fgenf(w, "%g", f)

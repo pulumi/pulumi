@@ -16,6 +16,7 @@ package resource
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 	"strings"
@@ -228,7 +229,7 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 //
 //nolint:lll
 type PropertyValueType interface {
-	bool | float64 | string | *asset.Asset | *archive.Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
+	bool | *big.Int | float64 | string | *asset.Asset | *archive.Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
 }
 
 // NewProperty creates a new PropertyValue.
@@ -248,6 +249,7 @@ func NewComputedProperty(v Computed) PropertyValue                   { return Pr
 func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
 func NewSecretProperty(v *Secret) PropertyValue                      { return PropertyValue{v} }
 func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
+func NewIntegerProperty(v *big.Int) PropertyValue                    { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewProperty(Computed{Element: v})
@@ -319,9 +321,13 @@ func NewPropertyValueRepl(v interface{},
 	case uint32:
 		return NewProperty(float64(t))
 	case int64:
-		return NewProperty(float64(t))
+		return NewProperty(big.NewInt(t))
 	case uint64:
-		return NewProperty(float64(t))
+		b := new(big.Int)
+		b.SetUint64(t)
+		return NewProperty(b)
+	case *big.Int:
+		return NewProperty(t)
 	case float32:
 		return NewProperty(float64(t))
 	case float64:
@@ -473,6 +479,9 @@ func (v PropertyValue) SecretValue() *Secret { return v.V.(*Secret) }
 // ResourceReferenceValue fetches the underlying resource reference value (panicking if it isn't a resource reference).
 func (v PropertyValue) ResourceReferenceValue() ResourceReference { return v.V.(ResourceReference) }
 
+// IntegerValue fetches the underlying integer value (panicking if it isn't a integer).
+func (v PropertyValue) IntegerValue() *big.Int { return v.V.(*big.Int) }
+
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
@@ -544,6 +553,12 @@ func (v PropertyValue) IsResourceReference() bool {
 	return is
 }
 
+// IsInteger returns true if the underlying value is an integer.
+func (v PropertyValue) IsInteger() bool {
+	_, is := v.V.(*big.Int)
+	return is
+}
+
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -576,6 +591,8 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsResourceReference() {
 		ref := v.ResourceReferenceValue()
 		return fmt.Sprintf("resourceReference(%q, %q, %q)", ref.URN, ref.ID, ref.PackageVersion)
+	} else if v.IsInteger() {
+		return "integer"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -622,6 +639,8 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.SecretValue()
 	} else if v.IsResourceReference() {
 		return v.ResourceReferenceValue()
+	} else if v.IsInteger() {
+		return v.IntegerValue()
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
@@ -670,6 +689,10 @@ const ResourceReferenceSig = sig.ResourceReference
 
 // OutputValueSig is the unique output value signature.
 const OutputValueSig = sig.OutputValue
+
+// IntegerValueSig is the unique integer value signature. Integer values are serialized as floats if precise, otherwise
+// as strings.
+const IntegerValueSig = "7eb310220ed6211bd6f147f2a75bfbb6"
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

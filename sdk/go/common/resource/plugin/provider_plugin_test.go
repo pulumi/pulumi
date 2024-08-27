@@ -426,7 +426,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+			p := NewProviderWithClient(
+				newTestContext(t), "pkgA", client, false /* disablePreview */, false /* disableIntegers */)
 
 			// We have to configure before we can use Delete.
 			_, err := p.Configure(context.Background(), ConfigureRequest{})
@@ -653,7 +654,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */, false /* disableIntegers */)
 
 			// Must configure before we can use Construct.
 			_, err := p.Configure(context.Background(), ConfigureRequest{})
@@ -702,7 +703,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */, false /* disableIntegers */)
 
 	props := resource.PropertyMap{
 		"foo": resource.NewSecretProperty(&resource.Secret{
@@ -828,7 +829,8 @@ func TestKubernetesDiffError(t *testing.T) {
 	}
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
-	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
+	az := NewProviderWithClient(
+		newTestContext(t), "azure", client, false /* disablePreview */, false /* disableIntegers */)
 	_, err := az.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
 		resource.PropertyMap{},
@@ -840,7 +842,8 @@ func TestKubernetesDiffError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
-	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
+	k8s := NewProviderWithClient(
+		newTestContext(t), "kubernetes", client, false /* disablePreview */, false /* disableIntegers */)
 	diff, err := k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
 		resource.PropertyMap{},

@@ -272,7 +272,7 @@ def is_primitive(attr: Any) -> bool:
     if attr is None:
         return True
 
-    if isinstance(attr, str):
+    if isinstance(attr, (str, int, float)):
         return True
 
     # dictionaries, lists and dictionary-like things are not primitive.

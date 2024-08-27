@@ -558,6 +558,7 @@ export function registerResource(
             req.setVersion(opts.version || "");
             req.setAcceptsecrets(true);
             req.setAcceptresources(!utils.disableResourceReferences);
+            req.setAcceptIntegers(true);
             req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
             if (resop.monitorSupportsStructuredAliases) {
                 const aliasesList = await mapAliasesForRequest(resop.aliases, resop.parentURN);
@@ -1141,11 +1142,11 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
             // Additionally, the output properties might have come from other resources, so we must await those too.
             const urn = await res.urn.promise();
             const resolved = await serializeProperties(opLabel, { outputs });
-            const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
             log.debug(
                 `RegisterResourceOutputs RPC prepared: urn=${urn}` +
-                    (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``),
+                    (excessiveDebugOutput ? `, outputs=${JSON.stringify(resolved.outputs)}` : ``),
             );
+            const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
 
             // Fetch the monitor and make an RPC request.
             const monitor = getMonitor();

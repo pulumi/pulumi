@@ -61,16 +61,17 @@ type contextState struct {
 	callbacksLock sync.Mutex
 	callbacks     *callbackServer
 
-	keepResources            bool       // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues         bool       // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith      bool       // true if deletedWith supported by pulumi
-	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
-	supportsTransforms       bool       // true if remote transforms are supported by pulumi
-	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
-	rpcs                     int        // the number of outstanding RPC requests.
-	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
-	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
-	rpcError                 error      // the first error (if any) encountered during an RPC.
+	keepResources            bool                 // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues         bool                 // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith      bool                 // true if deletedWith supported by pulumi
+	supportsAliasSpecs       bool                 // true if full alias specification is supported by pulumi
+	supportsTransforms       bool                 // true if remote transforms are supported by pulumi
+	supportsInvokeTransforms bool                 // true if remote invoke transforms are supported by pulumi
+	acceptIntegers           plugin.MarshalOption // keep if the engine supports integer values natively
+	rpcs                     int                  // the number of outstanding RPC requests.
+	rpcsDone                 *sync.Cond           // an event signaling completion of RPCs.
+	rpcsLock                 sync.Mutex           // a lock protecting the RPC count and event.
+	rpcError                 error                // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 }
@@ -168,6 +169,15 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsIntegers, err := supportsFeature("integers")
+	if err != nil {
+		return nil, err
+	}
+	acceptIntegers := plugin.MarshalOptionReplace
+	if supportsIntegers {
+		acceptIntegers = plugin.MarshalOptionKeep
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -181,6 +191,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsAliasSpecs:       supportsAliasSpecs,
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
+		acceptIntegers:           acceptIntegers,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -319,6 +330,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			Integers:         plugin.MarshalOptionKeep,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling transform protobuf properties: %w", err)
@@ -428,6 +440,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					KeepUnknowns:  true,
 					KeepSecrets:   true,
 					KeepResources: ctx.state.keepResources,
+					Integers:      ctx.state.acceptIntegers,
 				},
 			)
 			if err != nil {
@@ -549,6 +562,7 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			Integers:         plugin.MarshalOptionKeep,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling transform protobuf properties: %w", err)
@@ -603,6 +617,7 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 					KeepUnknowns:  true,
 					KeepSecrets:   true,
 					KeepResources: ctx.state.keepResources,
+					Integers:      ctx.state.acceptIntegers,
 				},
 			)
 			if err != nil {
@@ -716,6 +731,7 @@ func (ctx *Context) InvokePackage(
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: ctx.state.keepResources,
+			Integers:      ctx.state.acceptIntegers,
 		},
 	)
 	if err != nil {
@@ -756,6 +772,7 @@ func (ctx *Context) InvokePackage(
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
+			Integers:      plugin.MarshalOptionKeep,
 		},
 	)
 	if err != nil {
@@ -862,6 +879,7 @@ func (ctx *Context) CallPackage(
 				KeepSecrets:      true,
 				KeepResources:    ctx.state.keepResources,
 				KeepOutputValues: ctx.state.keepOutputValues,
+				Integers:         ctx.state.acceptIntegers,
 			})
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
@@ -910,6 +928,7 @@ func (ctx *Context) CallPackage(
 					KeepUnknowns:  true,
 					KeepSecrets:   true,
 					KeepResources: true,
+					Integers:      plugin.MarshalOptionKeep,
 				})
 			}
 			if err != nil {
@@ -1140,6 +1159,7 @@ func (ctx *Context) readPackageResource(
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
+			AcceptIntegers:          true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 			PackageRef:              packageRef,
@@ -1170,6 +1190,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: ctx.state.keepResources,
+			Integers:      ctx.state.acceptIntegers,
 		},
 	)
 	if err != nil {
@@ -1382,6 +1403,7 @@ func (ctx *Context) registerResource(
 				Aliases:                 aliases,
 				AcceptSecrets:           true,
 				AcceptResources:         !disableResourceReferences,
+				AcceptIntegers:          true,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
 				PluginDownloadURL:       inputs.pluginDownloadURL,
@@ -1760,6 +1782,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 				KeepUnknowns:  true,
 				KeepSecrets:   true,
 				KeepResources: true,
+				Integers:      plugin.MarshalOptionKeep,
 			},
 		)
 	}
@@ -2046,6 +2069,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
 			KeepOutputValues: remote && ctx.state.keepOutputValues,
+			Integers:         ctx.state.acceptIntegers,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
@@ -2289,6 +2313,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 				KeepUnknowns:  true,
 				KeepSecrets:   true,
 				KeepResources: ctx.state.keepResources,
+				Integers:      ctx.state.acceptIntegers,
 			})
 		if err != nil {
 			return

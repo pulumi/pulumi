@@ -82,7 +82,7 @@ func (t *EnumType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Forma
 	types := make([]pretty.Formatter, len(t.Elements))
 	for i, c := range t.Elements {
 		types[i] = pretty.FromStringer(
-			NewConstType(ctyTypeToType(c.Type(), false), c).Pretty(),
+			NewConstType(ctyTypeToType(c.Type(), false, false), c).Pretty(),
 		)
 	}
 	seenFormatters[t] = &pretty.Wrap{
