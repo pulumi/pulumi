@@ -25,12 +25,21 @@ service Loader {
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 }
 
+// Parameterization specifies the name, version, and value for a parameterized package.
+message Parameterization {
+    string name = 1; // the parameterized package name.
+    string version = 2; // the parameterized package version.
+    bytes value = 3; // the parameter value for the parameterized package.
+}
+
 // GetSchemaRequest allows the engine to return a schema for a given package and version.
 message GetSchemaRequest {
     // the package name for the schema being requested.
     string package = 1;
     // the version for the schema being requested, must be a valid semver or empty.
     string version = 2;
+    // the parameterization for the schema being requested, can be empty.
+    Parameterization parameterization = 3;
 }
 
 // GetSchemaResponse returns the schema data for the requested package.

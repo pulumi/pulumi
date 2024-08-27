@@ -28,6 +28,32 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
+class Parameterization(google.protobuf.message.Message):
+    """Parameterization specifies the name, version, and value for a parameterized package."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """the parameterized package name."""
+    version: builtins.str
+    """the parameterized package version."""
+    value: builtins.bytes
+    """the parameter value for the parameterized package."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        value: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+global___Parameterization = Parameterization
+
+@typing_extensions.final
 class GetSchemaRequest(google.protobuf.message.Message):
     """GetSchemaRequest allows the engine to return a schema for a given package and version."""
 
@@ -35,17 +61,23 @@ class GetSchemaRequest(google.protobuf.message.Message):
 
     PACKAGE_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
     package: builtins.str
     """the package name for the schema being requested."""
     version: builtins.str
     """the version for the schema being requested, must be a valid semver or empty."""
+    @property
+    def parameterization(self) -> global___Parameterization:
+        """the parameterization for the schema being requested, can be empty."""
     def __init__(
         self,
         *,
         package: builtins.str = ...,
         version: builtins.str = ...,
+        parameterization: global___Parameterization | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
 
 global___GetSchemaRequest = GetSchemaRequest
 
