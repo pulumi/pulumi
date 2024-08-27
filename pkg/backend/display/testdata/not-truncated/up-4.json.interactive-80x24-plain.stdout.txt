@@ -1,0 +1,22 @@
+View in Browser (Ctrl+O): link
+
+<%hide-cursor%>     Type                             Name                    Status      Info<%clear-to-end%>
+     pulumi:pulumi:Stack              eks-dev                             1 mes<%clear-to-end%>
+ ~   ├─ aws:ec2:SecurityGroup         eks-sg                  updated     [diff<%clear-to-end%>
+     ├─ aws:eks:Cluster               eks-cluster                         <%clear-to-end%>
+     ├─ aws:iam:Role                  eks-role                            <%clear-to-end%>
+     ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy              <%clear-to-end%>
+     └─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy              <%clear-to-end%>
+<%clear-to-end%>
+Diagnostics:
+  pulumi:pulumi:Stack (eks-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Resources:
+    ~ 1 updated
+    5 unchanged
+
+Duration: 2s
+
+<%show-cursor%>

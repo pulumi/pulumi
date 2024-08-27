@@ -43,12 +43,14 @@ func defaultOpts() Options {
 		ShowReplacementSteps:  true,
 		ShowSameResources:     true,
 		ShowReads:             true,
+		DeterministicOutput:   true,
 		SuppressLinkToCopilot: true,
+		RenderOnDirty:         true,
 	}
 }
 
 func testProgressEvents(
-	t *testing.T,
+	t testing.TB,
 	path string,
 	accept bool,
 	suffix string,
@@ -78,7 +80,6 @@ func testProgressEvents(
 	opts.Stdout = &stdout
 	opts.Stderr = &stderr
 	opts.term = terminal.NewMockTerminal(&stdout, width, height, raw)
-	opts.DeterministicOutput = true
 
 	go ShowProgressEvents(
 		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
@@ -88,6 +89,11 @@ func testProgressEvents(
 		eventChannel <- e
 	}
 	<-doneChannel
+
+	if _, ok := t.(*testing.B); ok {
+		// Benchmark mode: don't check the output.
+		return
+	}
 
 	if !accept {
 		assert.Equal(t, string(expectedStdout), stdout.String())
@@ -144,6 +150,16 @@ func TestProgressEvents(t *testing.T) {
 						opts.IsInteractive = true
 						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
 					})
+
+					t.Run("plain", func(t *testing.T) {
+						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
+						opts := defaultOpts()
+						opts.Color = colors.Never
+						opts.RenderOnDirty = false
+						opts.ShowResourceChanges = true
+						opts.IsInteractive = true
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
+					})
 				})
 			}
 		})
@@ -153,6 +169,72 @@ func TestProgressEvents(t *testing.T) {
 
 			opts := defaultOpts()
 			testProgressEvents(t, path, accept, ".non-interactive", opts, 80, 24, false)
+		})
+	}
+}
+
+func BenchmarkProgressEvents(t *testing.B) {
+	t.Setenv("TERM", "vt102")
+	t.ReportAllocs()
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	dimensions := []struct{ width, height int }{
+		{width: 80, height: 24},
+		{width: 100, height: 80},
+		{width: 200, height: 80},
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+
+		t.Run(entry.Name()+"interactive", func(t *testing.B) {
+			for _, dim := range dimensions {
+				width, height := dim.width, dim.height
+				t.Run(fmt.Sprintf("%vx%v", width, height), func(t *testing.B) {
+					t.Run("raw", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
+							opts := defaultOpts()
+							opts.IsInteractive = true
+							testProgressEvents(t, path, false, suffix, opts, width, height, true)
+						}
+					})
+
+					t.Run("cooked", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
+							opts := defaultOpts()
+							opts.IsInteractive = true
+							testProgressEvents(t, path, false, suffix, opts, width, height, false)
+						}
+					})
+
+					t.Run("plain", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
+							opts := defaultOpts()
+							opts.Color = colors.Never
+							opts.RenderOnDirty = false
+							opts.ShowResourceChanges = true
+							opts.IsInteractive = true
+							testProgressEvents(t, path, false, suffix, opts, width, height, true)
+						}
+					})
+				})
+			}
+		})
+
+		t.Run(entry.Name()+"non-interactive", func(t *testing.B) {
+			for i := 0; i < t.N; i++ {
+				opts := defaultOpts()
+				testProgressEvents(t, path, false, ".non-interactive", opts, 80, 24, false)
+			}
 		})
 	}
 }

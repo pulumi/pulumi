@@ -1,0 +1,17 @@
+View in Browser (Ctrl+O): link
+
+<%hide-cursor%>     Type                               Name      Status                  Info<%clear-to-end%>
+     pulumi:pulumi:Stack                test-dev                          1 message<%clear-to-end%>
+ --  ├─ pulumi-python:dynamic:Resource  test-r    deleted original        <%clear-to-end%>
+ ~   └─ pulumi-python:dynamic:Resource  test-x    **updating failed**     <%clear-to-end%>
+<%clear-to-end%>
+Diagnostics:
+  pulumi:pulumi:Stack (test-dev):
+    Configuration:
+
+Resources:
+    1 unchanged
+
+Duration: 8s
+
+<%show-cursor%>

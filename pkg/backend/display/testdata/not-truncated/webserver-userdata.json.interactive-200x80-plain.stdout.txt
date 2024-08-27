@@ -1,0 +1,23 @@
+View in Browser (Ctrl+O): link
+
+<%hide-cursor%>     Type                      Name                  Status       Info<%clear-to-end%>
+     pulumi:pulumi:Stack       aws-ts-webserver-dev               1 message<%clear-to-end%>
+ +-  ├─ aws:ec2:Instance       web-server-www        replaced     [diff: ~userData]<%clear-to-end%>
+     └─ aws:ec2:SecurityGroup  web-secgrp                         <%clear-to-end%>
+<%clear-to-end%>
+Diagnostics:
+  pulumi:pulumi:Stack (aws-ts-webserver-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Outputs:
+  ~ publicHostName: "ec2-34-211-56-110.us-west-2.compute.amazonaws.com" => undefined
+  ~ publicIp      : "34.211.56.110" => undefined
+
+Resources:
+    +-1 replaced
+    2 unchanged
+
+Duration: 12s
+
+<%show-cursor%>

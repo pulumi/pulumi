@@ -61,7 +61,8 @@ type Options struct {
 
 	// testing-only options
 	term                terminal.Terminal
-	DeterministicOutput bool
+	DeterministicOutput bool // true to disable timing-based rendering
+	RenderOnDirty       bool // true to always render frames when marked dirty
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {

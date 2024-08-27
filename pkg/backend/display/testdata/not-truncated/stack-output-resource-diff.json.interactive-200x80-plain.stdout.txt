@@ -1,0 +1,29 @@
+View in Browser (Ctrl+O): link
+
+<%hide-cursor%>     Type                   Name                          Status     Info<%clear-to-end%>
+     pulumi:pulumi:Stack    pulumi-stack-output-diff-dev             1 message<%clear-to-end%>
+     ├─ some:demo:Taxi      taxi                                     <%clear-to-end%>
+     └─ some:demo:Vehicles  vehicles                                 <%clear-to-end%>
+<%clear-to-end%>
+Diagnostics:
+  pulumi:pulumi:Stack (pulumi-stack-output-diff-dev):
+    Configuration:
+
+Outputs:
+  ~ vehicles: {
+      + @isPulumiResource: true
+      ~ taxi             : {
+          + @isPulumiResource: true
+            color            : "yellow"
+            size             : "big"
+            urn              : "urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi"
+        }
+        urn              : "urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles"
+    }
+
+Resources:
+    3 unchanged
+
+Duration: 0s
+
+<%show-cursor%>
