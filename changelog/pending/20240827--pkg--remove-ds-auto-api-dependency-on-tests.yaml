@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: pkg
-  description: Remove dependency on automation api on deployment settings tests
+  description: Remove dependency on automation api in deployment settings tests
