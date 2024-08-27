@@ -138,7 +138,9 @@ func (eng *hostServer) StartDebugger(ctx context.Context,
 		Config: req.Config.AsMap(),
 	}
 	// log a status message
-	eng.host.LogStatus(diag.Info, resource.URN(""), fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
+	eng.host.LogStatus(
+		diag.Info, resource.URN(""),
+		fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
 
 	err := eng.host.StartDebugging(info)
 	if err != nil {

@@ -232,7 +232,7 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
-func (eng *hostEngine) StartDebugger(ctx context.Context,
+func (e *hostEngine) StartDebugger(ctx context.Context,
 	req *pulumirpc.StartDebuggerRequest,
 ) (*emptypb.Empty, error) {
 	return nil, errors.New("unsupported")
