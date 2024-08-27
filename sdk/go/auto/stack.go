@@ -1573,7 +1573,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 				if pErr, ok := r.(error); ok {
 					err = fmt.Errorf("go inline source runtime error, an unhandled error occurred: %w", pErr)
 				} else {
-					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
+					err = fmt.Errorf("go inline source runtime error, an unhandled panic occurred: %v", r)
 				}
 			}
 		}()
