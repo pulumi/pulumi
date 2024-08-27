@@ -622,14 +622,13 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				display.println("")
 			}
 		}
-
 	}
 
 	if wroteDiagnosticHeader {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
-			colors.Underline + colors.Blue + display.permalink + "?askCopilot=Why%20did%20this%20fail%3F" + colors.Reset)
+			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 	}
 
 	return hasError
