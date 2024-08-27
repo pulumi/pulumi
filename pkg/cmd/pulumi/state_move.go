@@ -294,6 +294,7 @@ func (cmd *stateMoveCmd) Run(
 		destResMap[res.URN] = res
 	}
 
+	rewriteMap := make(map[string]string)
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
@@ -305,13 +306,21 @@ func (cmd *stateMoveCmd) Run(
 			}
 			r.Parent = rootStack.URN
 		}
-		err = rewriteURNs(r, dest)
+		err = rewriteURNs(r, dest, nil)
 		if err != nil {
 			return err
 		}
 
 		if destRes, ok := destResMap[r.URN]; ok {
+			// If the provider ID matches, we can assume that the provider has previously been copied and we can just copy it.
 			if destRes.ID == r.ID {
+				continue
+			}
+			// If all the inputs of the provider in the destination stack are the same as the provider in the source stack,
+			// we can assume that the provider is equal for the purpose of resources depending on it.  We don't need to copy
+			// it, but we need to set the provider for all resources to the provider in the destination stack.
+			if destRes.Inputs.DeepEquals(r.Inputs) {
+				rewriteMap[fmt.Sprintf("%s::%s", res.URN, res.ID)] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
 				continue
 			}
 			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
@@ -341,7 +350,7 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(res, remainingResources)...)
-		err = rewriteURNs(res, dest)
+		err = rewriteURNs(res, dest, rewriteMap)
 		if err != nil {
 			return err
 		}
@@ -515,18 +524,22 @@ func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
 	return newURN, nil
 }
 
-func rewriteURNs(res *resource.State, dest backend.Stack) error {
+func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]string) error {
 	var err error
 	res.URN, err = renameStackAndProject(res.URN, dest)
 	if err != nil {
 		return err
 	}
 	if res.Provider != "" {
-		providerURN, err := renameStackAndProject(urn.URN(res.Provider), dest)
-		if err != nil {
-			return err
+		if newProviderURN, ok := rewriteMap[res.Provider]; ok {
+			res.Provider = newProviderURN
+		} else {
+			providerURN, err := renameStackAndProject(urn.URN(res.Provider), dest)
+			if err != nil {
+				return err
+			}
+			res.Provider = string(providerURN)
 		}
-		res.Provider = string(providerURN)
 	}
 	if res.Parent != "" {
 		parentURN, err := renameStackAndProject(res.Parent, dest)
