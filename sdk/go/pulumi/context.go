@@ -2385,7 +2385,7 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 		line = int32(frame.Line)
 	} else {
 		// line is out of range for int32, that's a long sourcefile!
-		line = 0
+		line = -1
 	}
 	return &pulumirpc.SourcePosition{
 		Uri:  "project://" + path.Join(elems...),
