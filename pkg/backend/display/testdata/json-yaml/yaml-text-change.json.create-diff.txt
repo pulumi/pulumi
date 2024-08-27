@@ -1,0 +1,6 @@
+Configuration:
+~ pulumi:pulumi:Stack: (update)
+    [urn=urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev]
+  ~ vehicles: {
+      ~ taxi: "\"color: yellow\\ntype: car\"" => "\"# a comment\\ncolor: yellow  \\ntype: car\""
+    }
