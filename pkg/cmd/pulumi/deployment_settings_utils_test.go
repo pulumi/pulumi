@@ -57,9 +57,8 @@ func TestRepoLookup(t *testing.T) {
 
 	t.Run("should handle directories that are a git repo", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
 
-		repoDir := setUpGitWorkspace(t, ctx)
+		repoDir := setUpGitWorkspace(context.Background(), t)
 		workDir := filepath.Join(repoDir, "goproj")
 
 		rl, err := newRepoLookup(workDir)
@@ -90,9 +89,8 @@ type relativeDirectoryValidationCase struct {
 
 func TestValidateRelativeDirectory(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
-	repoDir := setUpGitWorkspace(t, ctx)
+	repoDir := setUpGitWorkspace(context.Background(), t)
 	workDir := filepath.Join(repoDir, "goproj")
 
 	// relative directory values are always linux type paths
@@ -219,7 +217,7 @@ func TestDSFileParsing(t *testing.T) {
 	assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *deploymentFile.DeploymentSettings.AgentPoolID)
 }
 
-func setUpGitWorkspace(t *testing.T, ctx context.Context) string {
+func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 	workDir, err := os.MkdirTemp("", "pulumi_auto")
 	assert.NoError(t, err)
 

@@ -116,7 +116,7 @@ func (p *promptHandlersMock) PromptForValue(
 func TestDSConfigureGit(t *testing.T) {
 	t.Parallel()
 
-	repoDir := setUpGitWorkspace(t, context.Background())
+	repoDir := setUpGitWorkspace(context.Background(), t)
 	workDir := filepath.Join(repoDir, "goproj")
 
 	t.Run("using the GH app", func(t *testing.T) {
