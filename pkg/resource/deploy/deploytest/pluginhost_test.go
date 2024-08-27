@@ -35,7 +35,6 @@ func TestNewAnalyzerLoaderWithHost(t *testing.T) {
 	assert.Equal(t, apitype.PluginKind("analyzer"), a.kind)
 	assert.Equal(t, "pkgA", a.name)
 	assert.Equal(t, semver.Version{}, a.version)
-	assert.Equal(t, "", a.path)
 	assert.Equal(t, false, a.useGRPC)
 }
 

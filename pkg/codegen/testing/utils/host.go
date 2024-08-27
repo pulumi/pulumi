@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -25,11 +28,19 @@ func NewSchemaProvider(name, version string) SchemaProvider {
 func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) plugin.Host {
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
-			panic(fmt.Sprintf(
-				"expected plugin loader to use cached schema path, but cache was missed for package %v@%v, "+
-					"is an entry in the makefile or setup for this package missing?",
-				name, version))
-		}, deploytest.WithPath(schemaDirectoryPath))
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					path := filepath.Join(schemaDirectoryPath, fmt.Sprintf("%s-%s.json", name, version))
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return plugin.GetSchemaResponse{}, err
+					}
+					return plugin.GetSchemaResponse{
+						Schema: data,
+					}, nil
+				},
+			}, nil
+		})
 	}
 
 	pluginLoaders := slice.Prealloc[*deploytest.PluginLoader](len(providers))
