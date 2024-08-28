@@ -24,6 +24,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/lockedfile"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -35,10 +36,6 @@ import (
 //
 //nolint:gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
-
-// PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
-// used instead of the currently logged in backend or the current projects backend.
-const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
 
 // GetAccount returns an account underneath a given key.
 //
@@ -168,7 +165,7 @@ func getCredsFilePath() (string, error) {
 // instead irrespective of the backend for current project or stored credentials.
 func GetCurrentCloudURL(project *Project) (string, error) {
 	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
-	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
+	if backend := env.BackendURL.Value(); backend != "" {
 		return backend, nil
 	}
 
