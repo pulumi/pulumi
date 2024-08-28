@@ -49,6 +49,7 @@ extensions = [
 # Extensions for MyST, which we use to support Markdown as an alternative to
 # reStructuredText (Sphinx's default format).
 myst_enable_extensions = [
+    "attrs_inline",
     "colon_fence",
     "deflist",
     "fieldlist",

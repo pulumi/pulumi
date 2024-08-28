@@ -29,15 +29,15 @@
   (available using triple-colon fences in MyST) to achieve this. You can make
   use of globs to make this more "free" if you want:
 
-  ````markdown
-  ```{toctree}
+  ```markdown
+  :::{toctree}
   :glob:
   :maxdepth: 1
   :titlesonly:
 
   /path/to/package/**/README
+  :::
   ```
-  ````
 
 ## MyST-compatible Markdown style guide/cheatsheet
 

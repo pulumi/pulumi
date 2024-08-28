@@ -33,10 +33,10 @@ files from there:
 open docs/_build/docs/README.html
 ```
 
-```{toctree}
+:::{toctree}
 :maxdepth: 1
 :titlesonly:
 
 /docs/writing
 /docs/diagrams
-```
+:::
