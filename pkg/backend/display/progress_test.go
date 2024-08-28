@@ -36,17 +36,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testProgressEvents(t *testing.T, path string, accept, interactive bool, width, height int, raw bool) {
+func defaultOpts() Options {
+	return Options{
+		Color:                 colors.Raw,
+		ShowConfig:            true,
+		ShowReplacementSteps:  true,
+		ShowSameResources:     true,
+		ShowReads:             true,
+		SuppressLinkToCopilot: true,
+	}
+}
+
+func testProgressEvents(
+	t *testing.T,
+	path string,
+	accept bool,
+	suffix string,
+	testOpts Options,
+	width, height int,
+	raw bool,
+) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
-
-	suffix := ".non-interactive"
-	if interactive {
-		suffix = fmt.Sprintf(".interactive-%vx%v", width, height)
-		if !raw {
-			suffix += "-cooked"
-		}
-	}
 
 	var expectedStdout []byte
 	var expectedStderr []byte
@@ -63,21 +74,15 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	opts := testOpts
+	opts.Stdout = &stdout
+	opts.Stderr = &stderr
+	opts.term = terminal.NewMockTerminal(&stdout, width, height, raw)
+	opts.DeterministicOutput = true
+
 	go ShowProgressEvents(
 		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
-		Options{
-			IsInteractive:         interactive,
-			Color:                 colors.Raw,
-			ShowConfig:            true,
-			ShowReplacementSteps:  true,
-			ShowSameResources:     true,
-			ShowReads:             true,
-			Stdout:                &stdout,
-			Stderr:                &stderr,
-			term:                  terminal.NewMockTerminal(&stdout, width, height, true),
-			DeterministicOutput:   true,
-			SuppressLinkToCopilot: true,
-		}, false)
+		opts, false)
 
 	for _, e := range events {
 		eventChannel <- e
@@ -96,8 +101,9 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	}
 }
 
+//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	t.Parallel()
+	t.Setenv("TERM", "vt102")
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -110,7 +116,6 @@ func TestProgressEvents(t *testing.T) {
 		{width: 200, height: 80},
 	}
 
-	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -127,11 +132,17 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
-						testProgressEvents(t, path, accept, true, width, height, true)
+						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
+						opts := defaultOpts()
+						opts.IsInteractive = true
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
 					})
 
 					t.Run("cooked", func(t *testing.T) {
-						testProgressEvents(t, path, accept, true, width, height, false)
+						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
+						opts := defaultOpts()
+						opts.IsInteractive = true
+						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
 					})
 				})
 			}
@@ -140,7 +151,8 @@ func TestProgressEvents(t *testing.T) {
 		t.Run(entry.Name()+"non-interactive", func(t *testing.T) {
 			t.Parallel()
 
-			testProgressEvents(t, path, accept, false, 80, 24, false)
+			opts := defaultOpts()
+			testProgressEvents(t, path, accept, ".non-interactive", opts, 80, 24, false)
 		})
 	}
 }
