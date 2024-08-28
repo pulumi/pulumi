@@ -57,7 +57,7 @@ type Options struct {
 	// destroy.
 	DryRun bool
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int
+	Parallel int32
 	// whether or not to refresh before executing the deployment.
 	Refresh bool
 	// whether or not to exit after refreshing (i.e. this is specifically a
@@ -87,7 +87,7 @@ type Options struct {
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
 // deployment process.
-func (o Options) DegreeOfParallelism() int {
+func (o Options) DegreeOfParallelism() int32 {
 	if o.Parallel <= 1 {
 		return 1
 	}

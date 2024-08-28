@@ -346,7 +346,7 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	}
 
 	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
-		Version:           int32(req.Version),
+		Version:           req.Version,
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,
 	})
@@ -1478,7 +1478,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Config:                  config,
 		ConfigSecretKeys:        configSecretKeys,
 		DryRun:                  req.Info.DryRun,
-		Parallel:                int32(req.Info.Parallel),
+		Parallel:                req.Info.Parallel,
 		MonitorEndpoint:         req.Info.MonitorAddress,
 		Type:                    string(req.Type),
 		Name:                    req.Name,
@@ -1732,7 +1732,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		Stack:               req.Info.Stack,
 		Config:              config,
 		DryRun:              req.Info.DryRun,
-		Parallel:            int32(req.Info.Parallel),
+		Parallel:            req.Info.Parallel,
 		MonitorEndpoint:     req.Info.MonitorAddress,
 		AcceptsOutputValues: true,
 	})

@@ -147,7 +147,7 @@ type RunInfo struct {
 	Config            map[string]string
 	ConfigSecretKeys  []string
 	ConfigPropertyMap resource.PropertyMap
-	Parallel          int
+	Parallel          int32
 	DryRun            bool
 	MonitorAddr       string
 	EngineAddr        string
@@ -164,7 +164,7 @@ type RunInfo struct {
 // getEnvInfo reads various program information from the process environment.
 func getEnvInfo() RunInfo {
 	// Most of the variables are just strings, and we can read them directly.  A few of them require more parsing.
-	parallel, _ := strconv.Atoi(os.Getenv(EnvParallel))
+	parallel, _ := strconv.ParseInt(os.Getenv(EnvParallel), 10, 32)
 	dryRun, _ := strconv.ParseBool(os.Getenv(EnvDryRun))
 	getPlugins, _ := strconv.ParseBool(os.Getenv(envPlugins))
 
@@ -184,7 +184,7 @@ func getEnvInfo() RunInfo {
 		Stack:            os.Getenv(EnvStack),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
-		Parallel:         parallel,
+		Parallel:         int32(parallel), //nolint:gosec // guarded by strconv.ParseInt
 		DryRun:           dryRun,
 		MonitorAddr:      os.Getenv(EnvMonitor),
 		EngineAddr:       os.Getenv(EnvEngine),

@@ -1556,7 +1556,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		ConfigSecretKeys: req.GetConfigSecretKeys(),
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
-		Parallel:         int(req.GetParallel()),
+		Parallel:         req.GetParallel(),
 		DryRun:           req.GetDryRun(),
 		Organization:     req.GetOrganization(),
 	}

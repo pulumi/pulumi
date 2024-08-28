@@ -76,7 +76,7 @@ func TestProvider(t *testing.T) {
 			var called bool
 			prov := &Provider{
 				GetSchemaF: func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-					assert.Equal(t, 1, req.Version)
+					assert.Equal(t, int32(1), req.Version)
 					assert.Equal(t, "expected-subpackage", req.SubpackageName)
 					assert.Equal(t, &expectedVersion, req.SubpackageVersion)
 					called = true

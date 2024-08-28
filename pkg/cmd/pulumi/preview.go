@@ -255,7 +255,7 @@ func newPreviewCmd() *cobra.Command {
 	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var refresh string
 	var showConfig bool
 	var showPolicyRemediations bool
@@ -584,7 +584,7 @@ func newPreviewCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(

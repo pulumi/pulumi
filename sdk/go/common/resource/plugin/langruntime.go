@@ -201,7 +201,7 @@ type RunInfo struct {
 	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
 	DryRun            bool                  // true if we are performing a dry-run (preview).
 	QueryMode         bool                  // true if we're only doing a query.
-	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel          int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	Organization      string                // the organization name housing the program being run (might be empty).
 }
 
