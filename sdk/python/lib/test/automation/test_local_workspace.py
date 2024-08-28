@@ -1307,7 +1307,7 @@ class TestLocalWorkspace(unittest.TestCase):
             InvalidVersionError, ws.install, use_language_version_tools=True
         )
 
-        # not high enoguh to support install
+        # not high enough to support install
         mock_cmd.version = VersionInfo(3, 90)
         self.assertRaises(InvalidVersionError, ws.install)
 
