@@ -17,6 +17,7 @@ import os
 import unittest
 from typing import List, Optional
 import asyncio
+from semver import VersionInfo
 
 import pytest
 
@@ -28,6 +29,7 @@ from pulumi.automation import (
     ConfigMap,
     ConfigValue,
     EngineEvent,
+    InvalidVersionError,
     LocalWorkspace,
     LocalWorkspaceOptions,
     OpType,
@@ -1260,6 +1262,45 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_install(self):
+        class MockCmd(PulumiCommand):
+            version = VersionInfo(3, 130, 0) # high enough to support --use-language-version-tools
+            def run(self, *args, **kwargs):
+                self.args = args
+                self.kwars = kwargs
+                return CommandResult( stdout="", stderr="", code=0)
+
+        mock_cmd = MockCmd()
+        ws = LocalWorkspace(pulumi_command=mock_cmd)
+        ws.install()
+        self.assertEqual(mock_cmd.args[0], ["install"])
+        ws.install(no_dependencies=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--no-dependencies"])
+        ws.install(no_plugins=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--no-plugins"])
+        ws.install(reinstall=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--reinstall"])
+        ws.install(use_language_version_tools=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--use-language-version-tools"])
+        ws.install(
+            no_dependencies=True,
+            no_plugins=True,
+            reinstall=True,
+            use_language_version_tools=True,
+        )
+        self.assertEqual(mock_cmd.args[0], [
+            "install",
+            "--use-language-version-tools",
+            "--no-plugins",
+            "--no-dependencies",
+            "--reinstall"
+        ])
+
+        mock_cmd.version = VersionInfo(3, 100, 0) # not high enough to support --use-language-version-tools
+        self.assertRaises(InvalidVersionError, ws.install, use_language_version_tools=True)
+
+        mock_cmd.version = VersionInfo(3, 90) # not high enoguh to support install
+        self.assertRaises(InvalidVersionError, ws.install)
 
 def pulumi_program():
     config = Config()
