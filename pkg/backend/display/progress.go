@@ -493,6 +493,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	// don't really want to reprint any finished items we've already printed.
 	display.renderer.done()
 
+	display.printResourceDiffs()
+
 	// Render the policies section; this will print all policy packs that ran plus any specific
 	// policies that led to violations or remediations. This comes before diagnostics since policy
 	// violations yield failures and it is better to see those in advance of the failure message.
@@ -509,6 +511,58 @@ func (display *ProgressDisplay) processEndSteps() {
 	// In that case, we want to abruptly terminate the display so as not to confuse.
 	if !wroteMandatoryPolicyViolations {
 		display.printSummary(hasError)
+	}
+}
+
+// printResourceChanges prints a "Changes:" section with all of the resource diffs grouped by
+// resource.printResourceChanges
+func (display *ProgressDisplay) printResourceDiffs() {
+	if !display.opts.ShowResourceChanges {
+		return
+	}
+
+	wroteChangesHeader := false
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+	for _, row := range eventRows {
+		step := row.Step()
+
+		if step.Op == deploy.OpSame {
+			continue
+		}
+
+		var diffOutput bytes.Buffer
+		renderDiff(
+			&diffOutput,
+			step,
+			false,
+			false,
+			display.action == apitype.UpdateKind(apitype.Refresh),
+			seen,
+			display.opts,
+		)
+
+		diff := diffOutput.String()
+		if diff == "" {
+			continue
+		}
+
+		if !wroteChangesHeader {
+			wroteChangesHeader = true
+			display.println(colors.SpecHeadline + "Changes:" + colors.Reset)
+		}
+
+		columns := row.ColorizedColumns()
+		display.println(
+			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+
+		lines := splitIntoDisplayableLines(diff)
+		for _, line := range lines {
+			line = strings.TrimRightFunc(line, unicode.IsSpace)
+			display.println("    " + line)
+		}
+		display.println("")
 	}
 }
 

@@ -60,6 +60,22 @@ View in Browser (Ctrl+O): link
         ├─ pulumi:providers:kubernetes       cluster-eks-k8s                                       <%clear-to-end%>
         └─ pulumi:providers:kubernetes       cluster-provider                                      <%clear-to-end%>
 <%clear-to-end%>
+Changes:
+  aws:cloudformation:Stack (cluster-nodes):
+    ~ aws:cloudformation/stack:Stack: (update)
+        [id=arn:aws:cloudformation:us-west-2:616138583583:stack/cluster-9085c3f2/838936d0-b705-11ec-b5c6-0a71999bcd3f]
+        [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:cloudformation/stack:Stack::cluster-nodes]
+        [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
+      ~ templateBody:
+            ...
+                                      LaunchConfigurationName: cluster-nodeLaunchConfiguration-1013b9d
+                                      MinSize: 1
+          -                           MaxSize: 2
+          +                           MaxSize: 3
+                                      VPCZoneIdentifier: ["subnet-0065b9ab25cb0ab6b","subnet-0e7f681a099ea15a1"]
+                                      Tags:
+            ...
+
 Diagnostics:
   pulumi:pulumi:Stack (aws-ts-eks-dev):
     Configuration:

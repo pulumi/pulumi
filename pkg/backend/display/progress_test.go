@@ -158,7 +158,9 @@ func TestProgressEvents(t *testing.T) {
 						opts.RenderOnDirty = false
 						opts.ShowResourceChanges = true
 						opts.IsInteractive = true
+						opts.ShowResourceChanges = true
 						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
+						opts.IsInteractive = true
 					})
 				})
 			}
@@ -223,7 +225,9 @@ func BenchmarkProgressEvents(t *testing.B) {
 							opts.RenderOnDirty = false
 							opts.ShowResourceChanges = true
 							opts.IsInteractive = true
+							opts.ShowResourceChanges = true
 							testProgressEvents(t, path, false, suffix, opts, width, height, true)
+							opts.IsInteractive = true
 						}
 					})
 				})

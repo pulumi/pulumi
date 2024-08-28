@@ -8,6 +8,24 @@ View in Browser (Ctrl+O): link
      ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy              <%clear-to-end%>
      └─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy              <%clear-to-end%>
 <%clear-to-end%>
+Changes:
+  aws:ec2:SecurityGroup (eks-sg):
+    ~ aws:ec2/securityGroup:SecurityGroup: (update)
+        [id=sg-0d1f8bb63e78926f4]
+        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+      ~ ingress: [
+          + [1]: {
+                  + cidrBlocks: [
+                  +     [0]: "0.0.0.0/0"
+                    ]
+                  + fromPort  : 22
+                  + protocol  : "tcp"
+                  + self      : false
+                  + toPort    : 22
+                }
+        ]
+
 Diagnostics:
   pulumi:pulumi:Stack (eks-dev):
     Configuration:

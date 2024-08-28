@@ -5,6 +5,17 @@ View in Browser (Ctrl+O): link
  --  ├─ pulumi-python:dynamic:Resource  test-r    deleted original        <%clear-to-end%>
  ~   └─ pulumi-python:dynamic:Resource  test-x    **updating failed**     <%clear-to-end%>
 <%clear-to-end%>
+Changes:
+  pulumi-python:dynamic:Resource (test-r):
+    --pulumi-python:dynamic:Resource: (delete-replaced)
+        [id=foo]
+        [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-r]
+
+  pulumi-python:dynamic:Resource (test-x):
+    ~ pulumi-python:dynamic:Resource: (update)
+        [id=quux2]
+        [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-x]
+
 Diagnostics:
   pulumi:pulumi:Stack (test-dev):
     Configuration:

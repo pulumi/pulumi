@@ -40,6 +40,7 @@ type Options struct {
 	Color                  colors.Colorization // colorization to apply to events.
 	ShowConfig             bool                // true if we should show configuration information.
 	ShowPolicyRemediations bool                // true if we should show detailed policy remediations.
+	ShowResourceChanges    bool                // true if we should print detailed resource changes.
 	ShowReplacementSteps   bool                // true to show the replacement steps in the plan.
 	ShowSameResources      bool                // true to show the resources that aren't updated in addition to updates.
 	ShowReads              bool                // true to show resources that are being read in
