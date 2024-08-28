@@ -404,13 +404,14 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 	// ShowProgressEvents
 
 	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
-		Color:                colors.Raw,
-		ShowSameResources:    true,
-		ShowReplacementSteps: true,
-		ShowReads:            true,
-		Stdout:               &stdout,
-		Stderr:               &stderr,
-		DeterministicOutput:  true,
+		Color:                 colors.Raw,
+		ShowSameResources:     true,
+		ShowReplacementSteps:  true,
+		ShowReads:             true,
+		Stdout:                &stdout,
+		Stderr:                &stderr,
+		DeterministicOutput:   true,
+		SuppressLinkToCopilot: true,
 	})
 
 	for _, e := range expectedEvents {
@@ -451,14 +452,15 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		"test", apitype.UpdateUpdate,
 		tokens.MustParseStackName("stack"), "project", "http://example.com",
 		eventChannel, doneChannel, bdisplay.Options{
-			Color:                colors.Raw,
-			ShowSameResources:    true,
-			ShowReplacementSteps: true,
-			ShowReads:            true,
-			SuppressProgress:     true,
-			Stdout:               &stdout,
-			Stderr:               &stderr,
-			DeterministicOutput:  true,
+			Color:                 colors.Raw,
+			ShowSameResources:     true,
+			ShowReplacementSteps:  true,
+			ShowReads:             true,
+			SuppressProgress:      true,
+			Stdout:                &stdout,
+			Stderr:                &stderr,
+			DeterministicOutput:   true,
+			SuppressLinkToCopilot: true,
 		}, false)
 
 	for _, e := range expectedEvents {

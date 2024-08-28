@@ -66,16 +66,17 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	go ShowProgressEvents(
 		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
 		Options{
-			IsInteractive:        interactive,
-			Color:                colors.Raw,
-			ShowConfig:           true,
-			ShowReplacementSteps: true,
-			ShowSameResources:    true,
-			ShowReads:            true,
-			Stdout:               &stdout,
-			Stderr:               &stderr,
-			term:                 terminal.NewMockTerminal(&stdout, width, height, true),
-			DeterministicOutput:  true,
+			IsInteractive:         interactive,
+			Color:                 colors.Raw,
+			ShowConfig:            true,
+			ShowReplacementSteps:  true,
+			ShowSameResources:     true,
+			ShowReads:             true,
+			Stdout:                &stdout,
+			Stderr:                &stderr,
+			term:                  terminal.NewMockTerminal(&stdout, width, height, true),
+			DeterministicOutput:   true,
+			SuppressLinkToCopilot: true,
 		}, false)
 
 	for _, e := range events {

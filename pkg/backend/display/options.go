@@ -45,7 +45,7 @@ type Options struct {
 	ShowReads              bool                // true to show resources that are being read in
 	TruncateOutput         bool                // true if we should truncate long outputs
 	SuppressOutputs        bool                // true to suppress output summarization, e.g. if contains sensitive info.
-	SuppressPermalink      bool                // true to suppress state permalink
+	SuppressPermalink      bool                // true to suppress state permalink (including in DIY backends)
 	SummaryDiff            bool                // true if diff display should be summarized.
 	IsInteractive          bool                // true if we should display things interactively.
 	Type                   Type                // type of display (rich diff, progress, or query).
@@ -57,6 +57,7 @@ type Options struct {
 	Stderr                 io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 	SuppressTimings        bool                // true to suppress displaying timings of resource actions
 	SuppressProgress       bool                // true to suppress displaying progress spinner.
+	SuppressLinkToCopilot  bool                // true to suppress displaying a 'explainFailure' link to Copilot.
 
 	// testing-only options
 	term                terminal.Terminal
