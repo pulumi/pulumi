@@ -477,12 +477,12 @@ func (m defaultLoginManager) Login(
 	line1 := "Manage your " + message + " by logging in."
 	line1len := len(line1)
 	line1 = colors.Highlight(line1, message, colors.Underline+colors.Bold)
-	fmt.Printf(opts.Color.Colorize(line1) + "\n")
+	fmt.Println(opts.Color.Colorize(line1))
 	maxlen := line1len
 
 	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
 	line2len := len(line2)
-	fmt.Printf(opts.Color.Colorize(line2) + "\n")
+	fmt.Println(opts.Color.Colorize(line2))
 	if line2len > maxlen {
 		maxlen = line2len
 	}
@@ -503,7 +503,7 @@ func (m defaultLoginManager) Login(
 		line3len := len(line3)
 		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
 		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line3) + "\n")
+		fmt.Println(opts.Color.Colorize(line3))
 		if line3len > maxlen {
 			maxlen = line3len
 		}

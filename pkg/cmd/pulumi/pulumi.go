@@ -141,7 +141,7 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 type loggingWriter struct{}
 
 func (loggingWriter) Write(bytes []byte) (int, error) {
-	logging.Infof(string(bytes))
+	logging.Infof("%s", string(bytes))
 	return len(bytes), nil
 }
 
@@ -502,7 +502,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 			// If we're skipping the check,
 			// still log this to the internal logging system
 			// that users don't see by default.
-			logging.Warningf(msg)
+			logging.Warningf("%s", msg)
 			return nil
 		}
 		return diag.RawMessage("", msg)

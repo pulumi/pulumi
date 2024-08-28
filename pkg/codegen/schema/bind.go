@@ -997,6 +997,7 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 		if v < math.MinInt32 || v > math.MaxInt32 {
 			return 0, typeError("integer")
 		}
+		//nolint:gosec // int -> int32 conversion is guarded above.
 		return int32(v), nil
 	case NumberType:
 		v, ok := value.(float64)

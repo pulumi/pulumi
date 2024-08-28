@@ -32,7 +32,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	contents := "name: pulumi-test\ndescription: a test\nruntime: nodejs\n"
 	filePath := workspace.ProjectFile + ".yaml"
 	filePath = path.Join(e.CWD, filePath)
-	err := os.WriteFile(filePath, []byte(contents), os.ModePerm)
+	err := os.WriteFile(filePath, []byte(contents), 0o600)
 	assert.NoError(e, err, "writing %s file", filePath)
 }
 
@@ -42,7 +42,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 func CreatePulumiRepo(e *testing.Environment, projectFileContent string) {
 	e.RunCommand("git", "init")
 	filePath := path.Join(e.CWD, workspace.ProjectFile+".yaml")
-	err := os.WriteFile(filePath, []byte(projectFileContent), os.ModePerm)
+	err := os.WriteFile(filePath, []byte(projectFileContent), 0o600)
 	assert.NoError(e, err, "writing %s file", filePath)
 }
 

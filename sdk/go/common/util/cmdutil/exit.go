@@ -117,7 +117,7 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 				msg = DetailedError(err)
 			} else {
 				msg = errorMessage(err)
-				logging.V(3).Infof(DetailedError(err))
+				logging.V(3).Info(DetailedError(err))
 			}
 
 			ExitError(msg)

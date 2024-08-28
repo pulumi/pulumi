@@ -62,12 +62,14 @@ func InteractiveTerminal() bool {
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.
+	//nolint:gosec // os.Stdin.Fd() == 0 && os.Stdout.Fd() == 1: uintptr -> int conversion is always safe
 	return term.IsTerminal(int(os.Stdin.Fd())) &&
 		term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return readConsolePlain(os.Stdout, os.Stdin, prompt)
 	}

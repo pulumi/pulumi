@@ -276,7 +276,7 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
 	}
 
-	if err := os.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
+	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
 		e.T.Fatalf("writing test file (%v): %v", filename, err)
 	}
 }

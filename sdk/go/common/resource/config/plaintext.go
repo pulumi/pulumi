@@ -38,7 +38,7 @@ type Plaintext struct {
 func NewPlaintext[T PlaintextType](v T) Plaintext {
 	if m, ok := any(v).(map[string]Plaintext); ok && len(m) == 1 {
 		if _, ok := m["secure"].Value().(string); ok {
-			contract.Failf(errSecureReprReserved.Error())
+			contract.Failf("%s", errSecureReprReserved.Error())
 		}
 	}
 
