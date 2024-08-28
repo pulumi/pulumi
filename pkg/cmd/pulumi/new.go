@@ -157,7 +157,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	if args.templateNameOrURL == "" {
 		// Try to read the current project
-		project, _, err := readProject()
+		project, _, err := pkgWorkspace.Instance.ReadProject()
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
@@ -319,7 +319,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -842,7 +842,7 @@ func stackInit(
 
 // saveConfig saves the config for the stack.
 func saveConfig(stack backend.Stack, c config.Map) error {
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}

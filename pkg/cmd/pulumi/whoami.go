@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -79,7 +80,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

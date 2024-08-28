@@ -783,7 +783,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, root, err := readProject()
+			proj, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}

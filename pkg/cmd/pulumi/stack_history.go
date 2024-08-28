@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,7 +53,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				project, _, err := readProject()
+				project, _, err := pkgWorkspace.Instance.ReadProject()
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}

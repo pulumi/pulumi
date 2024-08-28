@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -50,7 +51,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, root, err := readProject()
+			project, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

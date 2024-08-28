@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -67,7 +68,7 @@ func newConfigCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -141,7 +142,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -366,7 +367,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -420,7 +421,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -469,7 +470,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -588,7 +589,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -707,7 +708,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -1035,7 +1036,7 @@ func listConfig(
 }
 
 func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool) error {
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}

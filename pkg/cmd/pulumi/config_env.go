@@ -24,6 +24,7 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,7 +35,7 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
-		readProject:      readProject,
+		ws:               pkgWorkspace.Instance,
 		requireStack:     requireStack,
 		loadProjectStack: loadProjectStack,
 		saveProjectStack: saveProjectStack,
@@ -64,7 +65,7 @@ type configEnvCmd struct {
 	interactive bool
 	color       colors.Colorization
 
-	readProject func() (*workspace.Project, string, error)
+	ws pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
@@ -89,7 +90,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
-	project, _, err := cmd.readProject()
+	project, _, err := cmd.ws.ReadProject()
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -84,12 +85,14 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		stdout:      stdout,
 		interactive: true,
 
-		readProject: func() (*workspace.Project, string, error) {
-			p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
-			if err != nil {
-				return nil, "", err
-			}
-			return p, "", nil
+		ws: &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
+				if err != nil {
+					return nil, "", err
+				}
+				return p, "", nil
+			},
 		},
 		requireStack: func(
 			ctx context.Context,

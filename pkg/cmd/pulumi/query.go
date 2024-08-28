@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -67,7 +68,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 			}
 
 			// Try to read the current project
-			project, root, err := readProject()
+			project, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}

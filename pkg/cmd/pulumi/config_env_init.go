@@ -99,7 +99,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	opts := display.Options{Color: cmd.parent.color}
 
-	project, _, err := cmd.parent.readProject()
+	project, _, err := cmd.parent.ws.ReadProject()
 	if err != nil {
 		return err
 	}
