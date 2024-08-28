@@ -452,6 +452,46 @@ class LocalWorkspace(Workspace):
             stack_list.append(stack)
         return stack_list
 
+    def install(
+        self,
+        no_plugins: bool = False,
+        no_dependencies: bool = False,
+        reinstall: bool = False,
+        use_language_version_tools: bool = False,
+        on_output: Optional[OnOutput] = None,
+    ) -> None:
+        ver = VersionInfo(3)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
+
+        if ver >= VersionInfo(3, 91):
+            # Pulumi 3.91.0 added the `pulumi install` command.
+            # https://github.com/pulumi/pulumi/releases/tag/v3.91.0
+            args = []
+            if use_language_version_tools:
+                if ver >= VersionInfo(3, 130):
+                    # Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+                    # https://github.com/pulumi/pulumi/releases/tag/v3.130.0
+                    args.append("--use-language-version-tools")
+                else:
+                    raise InvalidVersionError(
+                        "The installed version of the CLI does not support this operation. Please "
+                        "upgrade to at least version 3.130.0."
+                    )
+            if no_plugins:
+                args.append("--no-plugins")
+            if no_dependencies:
+                args.append("--no-dependencies")
+            if reinstall:
+                args.append("--reinstall")
+            self._run_pulumi_cmd_sync(["install", *args], on_output=on_output)
+            return
+
+        raise InvalidVersionError(
+            "The installed version of the CLI does not support this operation. Please "
+            "upgrade to at least version 3.91.0."
+        )
+
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
 
