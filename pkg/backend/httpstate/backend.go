@@ -62,8 +62,6 @@ import (
 )
 
 const (
-	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
-	defaultURLEnvVar = "PULUMI_API"
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
 	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
 )
@@ -132,9 +130,8 @@ type AIPromptRequestBody struct {
 // Name validation rules enforced by the Pulumi Service.
 var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 
-// DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
-// variable.  If no override is found, and we are authenticated with a cloud, choose that.  Otherwise,
-// we will default to the https://api.pulumi.com/ endpoint.
+// DefaultURL returns the default cloud URL. If no override is found, and we are authenticated with a cloud, choose
+// that. Otherwise, we will default to the https://api.pulumi.com/ endpoint.
 func DefaultURL() string {
 	return ValueOrDefaultURL("")
 }
@@ -144,11 +141,6 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If we have a cloud URL, just return it.
 	if cloudURL != "" {
 		return strings.TrimSuffix(cloudURL, "/")
-	}
-
-	// Otherwise, respect the PULUMI_API override.
-	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
-		return cloudURL
 	}
 
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful

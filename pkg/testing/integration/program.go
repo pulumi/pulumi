@@ -1339,7 +1339,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 
 	// Set the default target Pulumi API if not overridden in options.
 	if pt.opts.CloudURL == "" {
-		pulumiAPI := os.Getenv("PULUMI_API")
+		pulumiAPI := os.Getenv("PULUMI_BACKEND_URL")
 		if pulumiAPI != "" {
 			pt.opts.CloudURL = pulumiAPI
 		}
@@ -1352,7 +1352,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	stackInitName := string(pt.opts.GetStackNameWithOwner())
 
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" && pt.opts.CloudURL == "" {
-		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
+		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_BACKEND_URL to override.\n")
 	} else {
 		// Set PulumiCredentialsPathEnvVar to our CWD, so we use credentials specific to just this
 		// test.

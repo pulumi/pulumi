@@ -106,7 +106,7 @@ func TestCheckForUpdate(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
+	t.Setenv("PULUMI_BACKEND_URL", srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -163,7 +163,7 @@ func TestCheckForUpdate_allFail(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
+	t.Setenv("PULUMI_BACKEND_URL", srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -207,7 +207,7 @@ func TestCheckForUpdate_devVersion(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
+	t.Setenv("PULUMI_BACKEND_URL", srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
