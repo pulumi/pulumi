@@ -1,0 +1,56 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Names are taken from hcl2/model/expression.go
+
+syntax = "proto3";
+
+package codegen;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+
+message Package {
+  repeated Node nodes = 1;
+}
+
+message Node {
+  oneof value {
+    ResourceNode resource = 1;
+  }
+}
+
+message ResourceNode {
+  repeated Attribute inputs = 1;
+}
+
+message Attribute {
+  string name = 1;
+  Expression value = 2;
+}
+
+message Expression {
+  oneof Value {
+    float constNumber = 1;
+    string constString = 2;
+  }
+}
+
+message ObjectConstExpression {
+  repeated ObjectConsItem items = 1;
+}
+
+message ObjectConsItem {
+  Expression key = 1;
+  Expression value = 2;
+}
