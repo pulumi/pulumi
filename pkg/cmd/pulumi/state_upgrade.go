@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -64,7 +65,9 @@ type stateUpgradeCmd struct {
 
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
@@ -89,7 +92,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		Stdout: cmd.Stdout,
 	}
 
-	b, err := currentBackend(ctx, nil, dopts)
+	b, err := currentBackend(ctx, pkgWorkspace.Instance, nil, dopts)
 	if err != nil {
 		return err
 	}

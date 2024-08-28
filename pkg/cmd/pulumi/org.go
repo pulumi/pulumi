@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -37,12 +38,13 @@ func newOrgCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// Try to read the current project
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL(project)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
@@ -94,12 +96,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			orgName = args[0]
 
 			// Try to read the current project
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -108,7 +111,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL(project)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
@@ -137,12 +140,13 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, project, displayOpts)
 			if err != nil {
 				return err
 			}

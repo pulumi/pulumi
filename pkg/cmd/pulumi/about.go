@@ -182,7 +182,7 @@ func getSummaryAbout(
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx, proj)
+	backend, err = nonInteractiveCurrentBackend(ctx, ws, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {

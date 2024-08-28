@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -150,12 +151,13 @@ func requirePolicyPack(
 	//
 
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
 
-	cloudURL, err := workspace.GetCurrentCloudURL(project)
+	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}

@@ -210,7 +210,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(ctx context.Context,
+	upTemplateNameOrURL := func(ctx context.Context, ws pkgWorkspace.Context,
 		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
@@ -259,7 +259,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// There is no current project at this point to pass into currentBackend
-		b, err := currentBackend(ctx, nil, opts.Display)
+		b, err := currentBackend(ctx, ws, nil, opts.Display)
 		if err != nil {
 			return err
 		}
@@ -301,7 +301,6 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		ws := pkgWorkspace.Instance
 		proj, root, err := ws.ReadProject()
 		if err != nil {
 			return err
@@ -530,7 +529,7 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				return upTemplateNameOrURL(ctx, args[0], opts, cmd)
+				return upTemplateNameOrURL(ctx, ws, args[0], opts, cmd)
 			}
 
 			return upWorkingDirectory(ctx, ws, opts, cmd)

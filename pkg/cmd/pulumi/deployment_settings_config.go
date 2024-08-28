@@ -129,7 +129,7 @@ func initializeDeploymentSettingsCmd(
 		return nil, err
 	}
 
-	be, err := currentBackend(ctx, project, displayOpts)
+	be, err := currentBackend(ctx, ws, project, displayOpts)
 	if err != nil {
 		return nil, err
 	}
