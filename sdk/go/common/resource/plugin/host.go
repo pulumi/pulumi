@@ -140,6 +140,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
+		debugging:               debugging,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -281,7 +282,7 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 }
 
 func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	contract.Assertf(host.debugging != nil, "expected ctx.Debugging to be non-nil")
+	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
 	return host.debugging.StartDebugging(info)
 }
 
