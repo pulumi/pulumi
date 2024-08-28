@@ -886,6 +886,18 @@ func (host *nodeLanguageHost) InstallDependencies(
 	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
 	defer tracingSpan.Finish()
 
+	if req.UseLanguageVersionTools {
+		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
+		// as the default nodejs version.
+		if err := installNodeVersion(req.Info.ProgramDirectory, stdout); err != nil {
+			// If no version file is present, or fnm is not installed, we ignore the error and
+			// continue.
+			if !errors.Is(err, errVersionFileNotFound) && !errors.Is(err, errFnmNotFound) {
+				return fmt.Errorf("failed to install node version: %w", err)
+			}
+		}
+	}
+
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	workspaceRoot := req.Info.ProgramDirectory
@@ -924,6 +936,79 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 
 	return closer.Close()
+}
+
+var (
+	errVersionFileNotFound = errors.New("version file not found")
+	errFnmNotFound         = errors.New("fnm not found")
+)
+
+// useFnm checks if the current directory or any of its parents contains a `.nvmrc` or
+// `.node-version` file, and if fnm is installed. If both conditions are met, it returns the
+// the version string specified in the found version file.
+// `.nvmrc` takes precedence over `.node-version`.
+// Note that the version string is not necessarily a semver. The version string can have a `v`
+// prefix, or be a partial version string like `20` or `20.6`.
+func useFnm(cwd string) (string, error) {
+	if _, err := exec.LookPath("fnm"); err != nil {
+		if !errors.Is(err, exec.ErrNotFound) {
+			return "", fmt.Errorf("error while looking for fnm: %w", err)
+		}
+		// fnm is not installed
+		logging.V(9).Infof("Could not find fnm executable")
+		return "", errFnmNotFound
+	}
+	versionFile, err := fsutil.Searchup(cwd, ".nvmrc")
+	if err != nil {
+		if !errors.Is(err, fsutil.ErrNotFound) {
+			return "", fmt.Errorf("error while looking for .nvmrc: %w", err)
+		}
+		// No .nvmrc file found, look for .node-version
+		versionFile, err = fsutil.Searchup(cwd, ".node-version")
+		if err != nil {
+			if !errors.Is(err, fsutil.ErrNotFound) {
+				return "", fmt.Errorf("error while looking for .node-version: %w", err)
+			}
+			// No .nvmrc or .node-version file found
+			return "", errVersionFileNotFound
+		}
+	}
+	versionBytes, err := os.ReadFile(versionFile)
+	if err != nil {
+		return "", err
+	}
+	version := strings.TrimSpace(string(versionBytes))
+	logging.V(9).Infof("Found node version %s in file %s", version, versionFile)
+	return version, nil
+}
+
+// installNodeVersion installs the node version specified in the `.nvmrc` or `.node-version` file.
+// This is meant to be used in container like environments, where we do not run within a shell.
+// When running locally in a shell, fnm, nvm and other similar tools already set the node version
+// via their shell integration.
+func installNodeVersion(cwd string, stdout io.Writer) error {
+	version, err := useFnm(cwd)
+	if err != nil {
+		return err
+	}
+	if stdout != nil {
+		fmt.Fprintf(stdout, "Setting Nodejs version to %s\n", version)
+	}
+	// This is a no-op if the version is already installed
+	installCmd := exec.Command("fnm", "install", version, "--progress", "never")
+	out, err := installCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to install Nodejs version: %v: %s", err, out)
+	}
+	// Set the requested version as default so it is available at $FNM_DIR/aliases/default/bin
+	// This allows us to set the ambient node version for the whole container, without requiring
+	// us to pass environment variables to every `node` invocation.
+	setDefaultCmd := exec.Command("fnm", "alias", version, "default")
+	out, err = setDefaultCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to set default Nodejs version: %v: %s", err, out)
+	}
+	return nil
 }
 
 func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
