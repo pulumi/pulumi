@@ -626,7 +626,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 
 	// Print a link to Copilot to explain the failure.
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && !display.opts.SuppressLinkToCopilot {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +

@@ -57,6 +57,7 @@ type Options struct {
 	Stderr                 io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 	SuppressTimings        bool                // true to suppress displaying timings of resource actions
 	SuppressProgress       bool                // true to suppress displaying progress spinner.
+	SuppressLinkToCopilot  bool                // true to suppress displaying a 'explainFailure' link to Copilot.
 
 	// testing-only options
 	term                terminal.Terminal
