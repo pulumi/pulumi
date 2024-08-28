@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"sync"
 
 	"github.com/blang/semver"
@@ -69,19 +68,12 @@ func WithGrpc(p *PluginLoader) {
 	p.useGRPC = true
 }
 
-func WithPath(path string) func(p *PluginLoader) {
-	return func(p *PluginLoader) {
-		p.path = path
-	}
-}
-
 type PluginLoader struct {
 	kind         apitype.PluginKind
 	name         string
 	version      semver.Version
 	load         LoadPluginFunc
 	loadWithHost LoadPluginWithHostFunc
-	path         string
 	useGRPC      bool
 }
 
@@ -471,11 +463,10 @@ func (host *pluginHost) ResolvePlugin(
 	for _, v := range host.pluginLoaders {
 		v := v
 		p := workspace.PluginInfo{
-			Kind:       v.kind,
-			Name:       v.name,
-			Path:       v.path,
-			Version:    &v.version,
-			SchemaPath: filepath.Join(v.path, v.name+"-"+v.version.String()+".json"),
+			Kind:    v.kind,
+			Name:    v.name,
+			Version: &v.version,
+			// Path and SchemaPath not set as these plugins aren't actually on disk.
 			// SchemaTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)
