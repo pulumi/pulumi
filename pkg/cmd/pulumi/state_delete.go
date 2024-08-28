@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -53,6 +54,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			yes = yes || skipConfirmations()
 			var urn resource.URN
 			if len(args) == 0 {
@@ -61,7 +63,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 
 				var err error
-				urn, err = getURNFromState(ctx, stack, nil,
+				urn, err = getURNFromState(ctx, ws, stack, nil,
 					"Select the resource to delete")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
@@ -72,7 +74,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			err := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			err := runStateEdit(ctx, ws, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				var handleProtected func(*resource.State) error
 				if force {
 					handleProtected = func(res *resource.State) error {

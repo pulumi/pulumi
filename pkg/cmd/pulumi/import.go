@@ -783,7 +783,8 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			proj, root, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -825,7 +826,7 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -837,7 +838,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return err
 			}

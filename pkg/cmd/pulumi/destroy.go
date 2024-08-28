@@ -97,6 +97,7 @@ func newDestroyCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -160,10 +161,10 @@ func newDestroyCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -174,12 +175,12 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return err
 			}
 
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			proj, root, err := ws.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())

@@ -121,6 +121,7 @@ func newConvertCmd() *cobra.Command {
 			}
 
 			return runConvert(
+				pkgWorkspace.Instance,
 				env.Global(),
 				args,
 				cwd,
@@ -235,6 +236,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 }
 
 func runConvert(
+	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
 	cwd string,
@@ -483,7 +485,7 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := pkgWorkspace.Instance.ReadProject()
+		proj, root, err := ws.ReadProject()
 		if err != nil {
 			return err
 		}

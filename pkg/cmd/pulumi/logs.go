@@ -57,17 +57,18 @@ func newLogsCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the project.
-			proj, _, err := pkgWorkspace.Instance.ReadProject()
+			proj, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

@@ -104,7 +104,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	stack, err := cmd.parent.requireStack(ctx, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.parent.requireStack(ctx, cmd.parent.ws, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return err
 	}

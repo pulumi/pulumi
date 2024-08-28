@@ -46,12 +46,13 @@ func newStackSelectCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Try to read the current project
-			project, root, err := pkgWorkspace.Instance.ReadProject()
+			project, root, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -84,7 +85,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := stackInit(ctx, b, stack, root, false, secretsProvider)
+					s, err := stackInit(ctx, ws, b, stack, root, false, secretsProvider)
 					if err != nil {
 						return err
 					}
@@ -95,7 +96,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(ctx, b, stackOfferNew|stackSetCurrent, opts)
+			stack, err := chooseStack(ctx, ws, b, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}

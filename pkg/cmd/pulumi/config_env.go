@@ -69,6 +69,7 @@ type configEnvCmd struct {
 
 	requireStack func(
 		ctx context.Context,
+		ws pkgWorkspace.Context,
 		stackName string,
 		lopt stackLoadOption,
 		opts display.Options,
@@ -95,7 +96,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.ws, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -66,7 +66,7 @@ func newAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, transitiveDependencies, stack)
 			if jsonOut {
 				return printJSON(summary)
 			}
@@ -104,7 +104,9 @@ type summaryAbout struct {
 	LogMessage    string                   `json:"-"`
 }
 
-func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
+func getSummaryAbout(
+	ctx context.Context, ws pkgWorkspace.Context, transitiveDependencies bool, selectedStack string,
+) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -128,7 +130,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = pkgWorkspace.Instance.ReadProject(); err != nil {
+	if proj, pwd, err = ws.ReadProject(); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}

@@ -67,6 +67,7 @@ func newWatchCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
 				false /* previewOnly */)
@@ -91,17 +92,17 @@ func newWatchCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return err
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(s, configArray, configPath); err != nil {
+			if err := parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
 				return err
 			}
 
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			proj, root, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}

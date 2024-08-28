@@ -96,6 +96,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 		requireStack: func(
 			ctx context.Context,
+			ws pkgWorkspace.Context,
 			stackName string,
 			lopt stackLoadOption,
 			opts display.Options,

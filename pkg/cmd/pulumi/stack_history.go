@@ -39,10 +39,11 @@ func newStackHistoryCmd() *cobra.Command {
 This command displays data about previous updates for a stack.`,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -53,7 +54,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				project, _, err := pkgWorkspace.Instance.ReadProject()
+				project, _, err := ws.ReadProject()
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}

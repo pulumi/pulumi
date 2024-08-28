@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -69,12 +70,15 @@ type stackOutputCmd struct {
 	jsonOut     bool
 	shellOut    bool
 
+	ws pkgWorkspace.Context
 	OS string // defaults to runtime.GOOS
 
 	// requireStack is a reference to the top-level requireStack function.
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
-	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
+	requireStack func(
+		ctx context.Context, ws pkgWorkspace.Context, name string, lopt stackLoadOption, opts display.Options,
+	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
 }
@@ -87,6 +91,10 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	requireStack := requireStack
 	if cmd.requireStack != nil {
 		requireStack = cmd.requireStack
+	}
+
+	if cmd.ws == nil {
+		cmd.ws = pkgWorkspace.Instance
 	}
 
 	osys := runtime.GOOS
@@ -111,7 +119,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Fetch the current stack and its output properties.
-	s, err := requireStack(ctx, cmd.stackName, stackLoadOnly, opts)
+	s, err := requireStack(ctx, cmd.ws, cmd.stackName, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}

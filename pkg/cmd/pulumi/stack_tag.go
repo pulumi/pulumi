@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -60,12 +61,13 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			name := args[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, *stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -94,11 +96,12 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -150,12 +153,13 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			name := args[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -180,13 +184,14 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			name := args[0]
 			value := args[1]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}

@@ -88,6 +88,8 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		cmd.secretsProvider = stack.DefaultSecretsProvider
 	}
 
+	ws := pkgWorkspace.Instance
+
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
@@ -96,13 +98,13 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, ws, cmd.stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}
@@ -132,7 +134,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
+	if err := createSecretsManager(ctx, ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}

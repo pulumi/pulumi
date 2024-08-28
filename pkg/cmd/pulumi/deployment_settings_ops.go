@@ -17,6 +17,7 @@ package main
 import (
 	"errors"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -42,7 +43,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -90,7 +91,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -144,7 +145,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -187,7 +188,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Long:  "",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

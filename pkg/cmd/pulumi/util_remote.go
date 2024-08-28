@@ -366,7 +366,7 @@ func validateDeploymentFlags(url string, args RemoteArgs) error {
 }
 
 // runDeployment kicks off a remote deployment.
-func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options,
+func runDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Command, opts display.Options,
 	operation apitype.PulumiOperation, stack, url string, args RemoteArgs,
 ) error {
 	// Parse and validate the environment args.
@@ -394,7 +394,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	}
 
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

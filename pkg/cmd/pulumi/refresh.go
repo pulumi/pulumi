@@ -90,6 +90,7 @@ func newRefreshCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -153,10 +154,10 @@ func newRefreshCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
+				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -167,12 +168,12 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return err
 			}
 
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			proj, root, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}

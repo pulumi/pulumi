@@ -97,6 +97,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		IsInteractive: args.interactive,
 	}
 
+	ws := pkgWorkspace.Instance
+
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
 		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, pkgWorkspace.ValidateProjectName(args.name))
@@ -157,7 +159,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	if args.templateNameOrURL == "" {
 		// Try to read the current project
-		project, _, err := pkgWorkspace.Instance.ReadProject()
+		project, _, err := ws.ReadProject()
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
@@ -319,7 +321,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -360,7 +362,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(ctx, b, args.prompt,
+		if s, err = promptAndCreateStack(ctx, ws, b, args.prompt,
 			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -404,7 +406,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
 		err = handleConfig(
-			ctx, args.prompt, proj, s,
+			ctx, ws, args.prompt, proj, s,
 			args.templateNameOrURL, template, args.configArray,
 			args.yes, args.configPath, opts)
 		if err != nil {
@@ -781,7 +783,7 @@ func getStack(ctx context.Context, b backend.Backend,
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptForValueFunc,
+func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, prompt promptForValueFunc,
 	stack string, root string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string,
 ) (backend.Stack, error) {
@@ -793,7 +795,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, stackName, root, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -815,7 +817,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -830,19 +832,19 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 
 // stackInit creates the stack.
 func stackInit(
-	ctx context.Context, b backend.Backend, stackName string,
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
 	root string, setCurrent bool, secretsProvider string,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(ctx, b, stackRef, root, nil, setCurrent, secretsProvider)
+	return createStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stack backend.Stack, c config.Map) error {
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}

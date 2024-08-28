@@ -113,6 +113,8 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
+	ws := pkgWorkspace.Instance
+
 	// Try to read the current project
 	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -164,13 +166,13 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	proj, root, projectErr := pkgWorkspace.Instance.ReadProject()
+	proj, root, projectErr := ws.ReadProject()
 	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
 		return projectErr
 	}
 
 	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	newStack, err := createStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -185,7 +187,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(ctx, cmd.stackToCopy, stackLoadOnly, opts)
+		copyStack, err := requireStack(ctx, ws, cmd.stackToCopy, stackLoadOnly, opts)
 		if err != nil {
 			return err
 		}

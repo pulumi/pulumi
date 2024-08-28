@@ -88,18 +88,20 @@ func newUpCmd() *cobra.Command {
 	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) error {
-		s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
+	upWorkingDirectory := func(
+		ctx context.Context, ws pkgWorkspace.Context, opts backend.UpdateOptions, cmd *cobra.Command,
+	) error {
+		s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return err
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(ws, s, configArray, path); err != nil {
 			return err
 		}
 
-		proj, root, err := readProjectForUpdate(pkgWorkspace.Instance, client)
+		proj, root, err := readProjectForUpdate(ws, client)
 		if err != nil {
 			return err
 		}
@@ -299,7 +301,8 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := pkgWorkspace.Instance.ReadProject()
+		ws := pkgWorkspace.Instance
+		proj, root, err := ws.ReadProject()
 		if err != nil {
 			return err
 		}
@@ -312,7 +315,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, b, promptForValue, stackName, root, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(ctx, ws, b, promptForValue, stackName, root, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return err
 			}
@@ -321,7 +324,7 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for config values (if needed) and save.
 		if err = handleConfig(
-			ctx, promptForValue, proj, s,
+			ctx, ws, promptForValue, proj, s,
 			templateNameOrURL, template, configArray,
 			yes, path, opts.Display); err != nil {
 			return err
@@ -439,6 +442,7 @@ func newUpCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -511,10 +515,10 @@ func newUpCmd() *cobra.Command {
 					return err
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
+				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -529,7 +533,7 @@ func newUpCmd() *cobra.Command {
 				return upTemplateNameOrURL(ctx, args[0], opts, cmd)
 			}
 
-			return upWorkingDirectory(ctx, opts, cmd)
+			return upWorkingDirectory(ctx, ws, opts, cmd)
 		}),
 	}
 
@@ -691,6 +695,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
+	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	s backend.Stack,
@@ -739,7 +744,7 @@ func handleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = saveConfig(s, c); err != nil {
+		if err = saveConfig(ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 

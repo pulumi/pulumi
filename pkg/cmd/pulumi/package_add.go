@@ -47,7 +47,8 @@ as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value`,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			proj, root, err := ws.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -102,7 +103,7 @@ as in:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			return printLinkInstructions(language, root, pkg, out)
+			return printLinkInstructions(ws, language, root, pkg, out)
 		}),
 	}
 
@@ -111,12 +112,14 @@ as in:
 
 // Prints instructions for linking a locally generated SDK to an existing
 // project, in the absence of us attempting to perform this linking automatically.
-func printLinkInstructions(language string, root string, pkg *schema.Package, out string) error {
+func printLinkInstructions(
+	ws pkgWorkspace.Context, language string, root string, pkg *schema.Package, out string,
+) error {
 	switch language {
 	case "nodejs":
-		return printNodejsLinkInstructions(root, pkg, out)
+		return printNodejsLinkInstructions(ws, root, pkg, out)
 	case "python":
-		return printPythonLinkInstructions(root, pkg, out)
+		return printPythonLinkInstructions(ws, root, pkg, out)
 	case "go":
 		return printGoLinkInstructions(root, pkg, out)
 	case "dotnet":
@@ -131,12 +134,12 @@ func printLinkInstructions(language string, root string, pkg *schema.Package, ou
 
 // Prints instructions for linking a locally generated SDK to an existing NodeJS
 // project, in the absence of us attempting to perform this linking automatically.
-func printNodejsLinkInstructions(root string, pkg *schema.Package, out string) error {
+func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Nodejs project, run the following command:")
 	fmt.Println()
-	proj, _, err := pkgWorkspace.Instance.ReadProject()
+	proj, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -190,12 +193,12 @@ func printNodejsLinkInstructions(root string, pkg *schema.Package, out string) e
 
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
-func printPythonLinkInstructions(root string, pkg *schema.Package, out string) error {
+func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Python project, run the following command:")
 	fmt.Println()
-	proj, _, err := pkgWorkspace.Instance.ReadProject()
+	proj, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
