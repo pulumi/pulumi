@@ -83,6 +83,18 @@ func runMove(
 func runMoveWithOptions(
 	t *testing.T, sourceResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
+	return runMoveWithOptionsAndDestResources(t, sourceResources, []*resource.State{}, args, options)
+}
+
+func runMoveWithDestResources(
+	t *testing.T, sourceResources, destResources []*resource.State, args []string,
+) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
+	return runMoveWithOptionsAndDestResources(t, sourceResources, destResources, args, &MoveOptions{})
+}
+
+func runMoveWithOptionsAndDestResources(
+	t *testing.T, sourceResources, destResources []*resource.State, args []string, options *MoveOptions,
+) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
@@ -92,7 +104,6 @@ func runMoveWithOptions(
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
-	destResources := []*resource.State{}
 	destStackName := "organization/test/destStack"
 	destStack := createStackWithResources(t, b, destStackName, destResources)
 
@@ -351,6 +362,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "provider_id",
 			Custom: true,
+			Inputs: resource.PropertyMap{
+				"key": resource.NewStringProperty("value"),
+			},
 		},
 		{
 			URN:      resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
@@ -365,6 +379,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "other_provider_id",
 			Custom: true,
+			Inputs: resource.PropertyMap{
+				"key": resource.NewStringProperty("different value"),
+			},
 		},
 	}
 
@@ -1186,4 +1203,65 @@ runtime: mock
 	// Expect no resources to be moved
 	assert.Equal(t, 3, len(sourceSnapshot.Resources))
 	assert.Nil(t, destSnapshot)
+}
+
+func TestMoveProviderWithSameInputs(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Inputs: resource.PropertyMap{
+				"key": resource.NewStringProperty("value"),
+			},
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+	}
+
+	destProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	destResources := []*resource.State{
+		{
+			URN:    destProviderURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "another_provider_id",
+			Custom: true,
+			Inputs: resource.PropertyMap{
+				"key": resource.NewStringProperty("value"),
+			},
+		},
+	}
+
+	sourceSnapshot, destSnapshot, stdout := runMoveWithDestResources(
+		t, sourceResources, destResources, []string{string(sourceResources[1].URN)})
+
+	//nolint:lll
+	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
+
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name
+
+Successfully moved resources from organization/test/sourceStack to organization/test/destStack
+`
+	assert.Equal(t, expectedStdout, stdout.String())
+
+	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+
+	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::another_provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
 }
