@@ -21,7 +21,8 @@ import (
 )
 
 type MockContext struct {
-	ReadProjectF func() (*workspace.Project, string, error)
+	ReadProjectF          func() (*workspace.Project, string, error)
+	GetStoredCredentialsF func() (workspace.Credentials, error)
 }
 
 func (c *MockContext) ReadProject() (*workspace.Project, string, error) {
@@ -29,4 +30,11 @@ func (c *MockContext) ReadProject() (*workspace.Project, string, error) {
 		return c.ReadProjectF()
 	}
 	return nil, "", errors.New("ReadProject function is not implemented")
+}
+
+func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {
+	if c.GetStoredCredentialsF != nil {
+		return c.GetStoredCredentialsF()
+	}
+	return workspace.Credentials{}, errors.New("GetStoredCredentials function is not implemented")
 }

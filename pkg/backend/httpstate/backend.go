@@ -136,12 +136,12 @@ var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-
 // DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
 // variable.  If no override is found, and we are authenticated with a cloud, choose that.  Otherwise,
 // we will default to the https://api.pulumi.com/ endpoint.
-func DefaultURL() string {
-	return ValueOrDefaultURL("")
+func DefaultURL(ws pkgWorkspace.Context) string {
+	return ValueOrDefaultURL(ws, "")
 }
 
 // ValueOrDefaultURL returns the value if specified, or the default cloud URL otherwise.
-func ValueOrDefaultURL(cloudURL string) string {
+func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	// If we have a cloud URL, just return it.
 	if cloudURL != "" {
 		return strings.TrimSuffix(cloudURL, "/")
@@ -154,7 +154,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the diy cloud.
-	if creds, err := workspace.GetStoredCredentials(); err == nil {
+	if creds, err := ws.GetStoredCredentials(); err == nil {
 		if creds.Current != "" && !diy.IsDIYBackendURL(creds.Current) {
 			return creds.Current
 		}
@@ -202,7 +202,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
 func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool) (Backend, error) {
-	cloudURL = ValueOrDefaultURL(cloudURL)
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
@@ -367,7 +367,7 @@ func (m defaultLoginManager) Current(
 	insecure bool,
 	setCurrent bool,
 ) (*workspace.Account, error) {
-	cloudURL = ValueOrDefaultURL(cloudURL)
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
@@ -463,7 +463,7 @@ func (m defaultLoginManager) Login(
 		return current, nil
 	}
 
-	cloudURL = ValueOrDefaultURL(cloudURL)
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
 	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
