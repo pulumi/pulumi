@@ -55,11 +55,10 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 
 	// Create a context for plugins.
 	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config)
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config, debugging)
 	if err != nil {
 		return "", "", nil, err
 	}
-	ctx.Debugging = debugging
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{

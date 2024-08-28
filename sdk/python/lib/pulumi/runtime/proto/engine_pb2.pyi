@@ -161,7 +161,7 @@ class StartDebuggerRequest(google.protobuf.message.Message):
     MESSAGE_FIELD_NUMBER: builtins.int
     @property
     def config(self) -> google.protobuf.struct_pb2.Struct:
-        """the debug configuration parameters."""
+        """the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume."""
     message: builtins.str
     """the string to display to the user with instructions on how to connect to the debugger."""
     def __init__(

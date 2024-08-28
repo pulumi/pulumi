@@ -356,7 +356,7 @@ type StartDebuggerRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the debug configuration parameters.
+	// the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume.
 	Config *structpb.Struct `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	// the string to display to the user with instructions on how to connect to the debugger.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`

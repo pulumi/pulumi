@@ -135,7 +135,7 @@ message RunRequest {
     ProgramInfo info = 14; // the program info to use to execute the program.
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 15;
-    bool debug = 16;                // true if we're running in debug mode.
+    bool start_debugger = 16;       // true if the language host is supposed to start the program under a debugger.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

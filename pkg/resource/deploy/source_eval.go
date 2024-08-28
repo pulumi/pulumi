@@ -285,7 +285,7 @@ func (iter *evalSourceIterator) forkRun(
 				Organization:      string(iter.src.runinfo.Target.Organization),
 				Info:              programInfo,
 				LoaderAddress:     iter.loaderServer.Addr(),
-				Debug:             iter.src.opts.EnableDebugging,
+				StartDebugger:     iter.src.opts.EnableDebugging,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
