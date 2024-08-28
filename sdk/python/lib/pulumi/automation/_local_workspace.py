@@ -452,12 +452,13 @@ class LocalWorkspace(Workspace):
             stack_list.append(stack)
         return stack_list
 
-    def install(self,
+    def install(
+        self,
         no_plugins: bool = False,
         no_dependencies: bool = False,
         reinstall: bool = False,
         use_language_version_tools: bool = False,
-        on_output: Optional[OnOutput] = None
+        on_output: Optional[OnOutput] = None,
     ) -> None:
         ver = VersionInfo(3)
         if self.pulumi_command.version is not None:

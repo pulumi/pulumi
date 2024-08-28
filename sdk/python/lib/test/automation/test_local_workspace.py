@@ -1264,11 +1264,13 @@ class TestLocalWorkspace(unittest.TestCase):
 
     def test_install(self):
         class MockCmd(PulumiCommand):
-            version = VersionInfo(3, 130, 0) # high enough to support --use-language-version-tools
+            # high enough to support --use-language-version-tools
+            version = VersionInfo(3, 130, 0)
+
             def run(self, *args, **kwargs):
                 self.args = args
                 self.kwars = kwargs
-                return CommandResult( stdout="", stderr="", code=0)
+                return CommandResult(stdout="", stderr="", code=0)
 
         mock_cmd = MockCmd()
         ws = LocalWorkspace(pulumi_command=mock_cmd)
@@ -1288,19 +1290,27 @@ class TestLocalWorkspace(unittest.TestCase):
             reinstall=True,
             use_language_version_tools=True,
         )
-        self.assertEqual(mock_cmd.args[0], [
-            "install",
-            "--use-language-version-tools",
-            "--no-plugins",
-            "--no-dependencies",
-            "--reinstall"
-        ])
+        self.assertEqual(
+            mock_cmd.args[0],
+            [
+                "install",
+                "--use-language-version-tools",
+                "--no-plugins",
+                "--no-dependencies",
+                "--reinstall",
+            ],
+        )
 
-        mock_cmd.version = VersionInfo(3, 100, 0) # not high enough to support --use-language-version-tools
-        self.assertRaises(InvalidVersionError, ws.install, use_language_version_tools=True)
+        # not high enough to support --use-language-version-tools
+        mock_cmd.version = VersionInfo(3, 100, 0)
+        self.assertRaises(
+            InvalidVersionError, ws.install, use_language_version_tools=True
+        )
 
-        mock_cmd.version = VersionInfo(3, 90) # not high enoguh to support install
+        # not high enoguh to support install
+        mock_cmd.version = VersionInfo(3, 90)
         self.assertRaises(InvalidVersionError, ws.install)
+
 
 def pulumi_program():
     config = Config()
