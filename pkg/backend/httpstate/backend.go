@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -745,7 +746,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(b.currentProject)
+		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(b.currentProject)
 		if err != nil {
 			return nil, err
 		}
@@ -885,7 +886,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return workspace.GetBackendConfigDefaultOrg(nil)
+		return pkgWorkspace.GetBackendConfigDefaultOrg(nil)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)

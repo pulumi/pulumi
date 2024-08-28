@@ -72,7 +72,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 	if err != nil {
 		return err
 	}
