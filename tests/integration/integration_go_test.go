@@ -1275,14 +1275,10 @@ func TestDebuggerAttach(t *testing.T) {
 		defer wg.Done()
 		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
 		e.RunCommand("pulumi", "stack", "init", "debugger-test")
-		fmt.Println("stack created")
 		e.RunCommand("pulumi", "stack", "select", "debugger-test")
-		fmt.Println("stack selected")
-		out, err := e.RunCommand("pulumi", "preview", "--attach-debugger", "--event-log", filepath.Join(e.RootPath, "debugger.log"))
-		fmt.Println(out, err)
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
 	}()
-
-	fmt.Println(e.RootPath)
 
 	// Wait for the debugging event
 	wait := 20 * time.Millisecond
@@ -1294,7 +1290,6 @@ outer:
 			require.NoError(t, err)
 		}
 		for _, event := range events {
-			fmt.Println(event)
 			if event.StartDebuggingEvent != nil {
 				debugEvent = event.StartDebuggingEvent
 				break outer
@@ -1325,7 +1320,7 @@ outer:
 		},
 	})
 	assert.NoError(t, err)
-	seq += 1
+	seq++
 	reader := bufio.NewReader(conn)
 	// We need to read the response, but we don't actually care
 	// about it.  It just includes the capabilities of the
@@ -1334,12 +1329,13 @@ outer:
 	assert.NoError(t, err)
 	assert.IsType(t, &dap.InitializeResponse{}, resp)
 	json, err := json.Marshal(debugEvent.Config)
+	assert.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
 		Request:   newRequest(seq, "attach"),
 		Arguments: json,
 	})
 	assert.NoError(t, err)
-	seq += 1
+	seq++
 	// read the initialized event, and then the response to the attach request.
 	resp, err = dap.ReadProtocolMessage(reader)
 	assert.NoError(t, err)
@@ -1352,7 +1348,7 @@ outer:
 		Request: newRequest(seq, "continue"),
 	})
 	assert.NoError(t, err)
-	seq += 1
+	seq++
 	resp, err = dap.ReadProtocolMessage(reader)
 	assert.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
@@ -1364,7 +1360,6 @@ outer:
 		Request: newRequest(seq, "disconnect"),
 	})
 	assert.NoError(t, err)
-	seq += 1
 
 	// Make sure the program finished successfully.
 	wg.Wait()
