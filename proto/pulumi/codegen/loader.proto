@@ -38,8 +38,10 @@ message GetSchemaRequest {
     string package = 1;
     // the version for the schema being requested, must be a valid semver or empty.
     string version = 2;
+    // the optional download url for the schema being requested.
+    string download_url = 3;
     // the parameterization for the schema being requested, can be empty.
-    Parameterization parameterization = 3;
+    Parameterization parameterization = 4;
 }
 
 // GetSchemaResponse returns the schema data for the requested package.

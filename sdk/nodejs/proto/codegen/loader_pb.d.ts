@@ -39,6 +39,8 @@ export class GetSchemaRequest extends jspb.Message {
     setPackage(value: string): GetSchemaRequest;
     getVersion(): string;
     setVersion(value: string): GetSchemaRequest;
+    getDownloadUrl(): string;
+    setDownloadUrl(value: string): GetSchemaRequest;
 
     hasParameterization(): boolean;
     clearParameterization(): void;
@@ -59,6 +61,7 @@ export namespace GetSchemaRequest {
     export type AsObject = {
         pb_package: string,
         version: string,
+        downloadUrl: string,
         parameterization?: Parameterization.AsObject,
     }
 }

@@ -329,6 +329,7 @@ proto.codegen.GetSchemaRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
     version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
     parameterization: (f = msg.getParameterization()) && proto.codegen.Parameterization.toObject(includeInstance, f)
   };
 
@@ -375,6 +376,10 @@ proto.codegen.GetSchemaRequest.deserializeBinaryFromReader = function(msg, reade
       msg.setVersion(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDownloadUrl(value);
+      break;
+    case 4:
       var value = new proto.codegen.Parameterization;
       reader.readMessage(value,proto.codegen.Parameterization.deserializeBinaryFromReader);
       msg.setParameterization(value);
@@ -422,10 +427,17 @@ proto.codegen.GetSchemaRequest.serializeBinaryToWriter = function(message, write
       f
     );
   }
+  f = message.getDownloadUrl();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
   f = message.getParameterization();
   if (f != null) {
     writer.writeMessage(
-      3,
+      4,
       f,
       proto.codegen.Parameterization.serializeBinaryToWriter
     );
@@ -470,12 +482,30 @@ proto.codegen.GetSchemaRequest.prototype.setVersion = function(value) {
 
 
 /**
- * optional Parameterization parameterization = 3;
+ * optional string download_url = 3;
+ * @return {string}
+ */
+proto.codegen.GetSchemaRequest.prototype.getDownloadUrl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.codegen.GetSchemaRequest} returns this
+ */
+proto.codegen.GetSchemaRequest.prototype.setDownloadUrl = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional Parameterization parameterization = 4;
  * @return {?proto.codegen.Parameterization}
  */
 proto.codegen.GetSchemaRequest.prototype.getParameterization = function() {
   return /** @type{?proto.codegen.Parameterization} */ (
-    jspb.Message.getWrapperField(this, proto.codegen.Parameterization, 3));
+    jspb.Message.getWrapperField(this, proto.codegen.Parameterization, 4));
 };
 
 
@@ -484,7 +514,7 @@ proto.codegen.GetSchemaRequest.prototype.getParameterization = function() {
  * @return {!proto.codegen.GetSchemaRequest} returns this
 */
 proto.codegen.GetSchemaRequest.prototype.setParameterization = function(value) {
-  return jspb.Message.setWrapperField(this, 3, value);
+  return jspb.Message.setWrapperField(this, 4, value);
 };
 
 
@@ -502,7 +532,7 @@ proto.codegen.GetSchemaRequest.prototype.clearParameterization = function() {
  * @return {boolean}
  */
 proto.codegen.GetSchemaRequest.prototype.hasParameterization = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.getField(this, 4) != null;
 };
 
 

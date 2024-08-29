@@ -61,11 +61,14 @@ class GetSchemaRequest(google.protobuf.message.Message):
 
     PACKAGE_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
+    DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
     package: builtins.str
     """the package name for the schema being requested."""
     version: builtins.str
     """the version for the schema being requested, must be a valid semver or empty."""
+    download_url: builtins.str
+    """the optional download url for the schema being requested."""
     @property
     def parameterization(self) -> global___Parameterization:
         """the parameterization for the schema being requested, can be empty."""
@@ -74,10 +77,11 @@ class GetSchemaRequest(google.protobuf.message.Message):
         *,
         package: builtins.str = ...,
         version: builtins.str = ...,
+        download_url: builtins.str = ...,
         parameterization: global___Parameterization | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["download_url", b"download_url", "package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
 
 global___GetSchemaRequest = GetSchemaRequest
 
