@@ -339,9 +339,9 @@ jobs:
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then
-            TS=$(python -c 'import time; print(int(time.time() * 1000))')
+            UUID=$(uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-')
             yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"
-            mv "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage.xml" "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage-$TS.xml"
+            mv "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage.xml" "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage-$UUID.xml"
           fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
@@ -350,8 +350,8 @@ jobs:
           # if available.
           if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
-            TS=$(python -c 'import time; print(int(time.time() * 1000))')
-            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
+            UUID=$(uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-')
+            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$UUID.cov"
           fi
       - name: Upload code coverage
         uses: actions/upload-artifact@v4
