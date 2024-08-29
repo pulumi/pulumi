@@ -21,6 +21,7 @@ coverage run -m unittest \
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then
-        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast.xml
+        TS=$(python -c 'import time; print(int(time.time() * 1000))')
+        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast-$TS.xml
     fi
 fi

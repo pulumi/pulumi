@@ -338,7 +338,11 @@ jobs:
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           cd sdk/nodejs
-          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
+          if [ -e .nyc_output ]; then
+            TS=$(python -c 'import time; print(int(time.time() * 1000))')
+            yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"
+            mv "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage.xml" "$PULUMI_TEST_COVERAGE_PATH/cobertura-coverage-$TS.xml"
+          fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
         run: |
