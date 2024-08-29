@@ -158,7 +158,7 @@ func nonInteractiveCurrentBackend(
 		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
-	insecure := workspace.GetCloudInsecure(url)
+	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	_, err = httpstate.NewLoginManager().Current(ctx, url, insecure, true)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func currentBackend(
 		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
-	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)
+	return loginToCloud(ctx, url, project, pkgWorkspace.GetCloudInsecure(ws, url), opts)
 }
 
 func createSecretsManager(
