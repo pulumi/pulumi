@@ -1,21 +1,34 @@
-.PHONY: build watch
+.PHONY: build ensure ensure-python watch
 
-ensure:: .ensure.phony
-.ensure.phony: requirements.txt
-	python -m venv venv
-	. venv/*/activate && python -m pip install --upgrade pip setuptools wheel
-	. venv/*/activate && python -m pip install -r requirements.txt
-	@touch .ensure.phony
+VENV = venv
 
+ensure-python:: .ensure-python.phony
+.ensure-python.phony: requirements.txt
+	python -m $(VENV) $(VENV)
+	. $(VENV)/*/activate && python -m pip install --upgrade pip setuptools wheel
+	. $(VENV)/*/activate && python -m pip install -r requirements.txt
+	@touch .ensure-python.phony
+
+ensure:: ensure-python
+
+# This target is intended to be called by Read the Docs as part of deployment,
+# whereby the READTHEDOCS_OUTPUT environment variable will be set to a
+# destination that Read the Docs expects to be populated with the generated
+# documentation.
 build: ensure
-	. venv/*/activate && sphinx-build \
+	mkdir -p $$READTHEDOCS_OUTPUT/html
+	. $(VENV)/*/activate && python -m sphinx \
+		-T \
 		-c sphinx \
 		-b html \
+		-d _build/doctrees \
+		-D language=en \
 		.. \
-		_build
+		$$READTHEDOCS_OUTPUT/html
+	cp sphinx/index.html.template $$READTHEDOCS_OUTPUT/html/index.html
 
 watch: ensure
-	. venv/*/activate && sphinx-autobuild \
+	. $(VENV)/*/activate && sphinx-autobuild \
 		-c sphinx \
 		-b html \
 		--ignore "*~" \
@@ -27,3 +40,6 @@ watch: ensure
 		--ignore "_build/*" \
 		.. \
 		_build
+
+format:
+	. $(VENV)/*/activate && black .
