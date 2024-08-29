@@ -21,6 +21,7 @@ coverage run -m unittest \
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then
-        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast.xml
+        UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
+        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast-$UUID.xml
     fi
 fi
