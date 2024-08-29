@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -198,7 +199,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	// Now override to local filesystem backend
 	backendURL := "file://" + filepath.ToSlash(backendDir)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
-	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
+	t.Setenv(env.BackendURL.Var().Name(), backendURL)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
