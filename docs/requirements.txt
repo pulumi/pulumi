@@ -3,6 +3,7 @@ alabaster==0.7.16
 anyio==4.4.0
 Babel==2.15.0
 beautifulsoup4==4.12.3
+black==24.8.0
 certifi==2024.7.4
 charset-normalizer==3.3.2
 click==8.1.7
@@ -17,8 +18,11 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdit-py-plugins==0.4.1
 mdurl==0.1.2
+mypy-extensions==1.0.0
 myst-parser==3.0.1
 packaging==24.1
+pathspec==0.12.1
+platformdirs==4.2.2
 pydata-sphinx-theme==0.15.4
 Pygments==2.18.0
 PyYAML==6.0.1

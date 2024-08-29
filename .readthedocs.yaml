@@ -9,10 +9,7 @@ build:
   tools:
     python: "3.12"
   commands:
-    - mkdir -p $READTHEDOCS_OUTPUT/html
-    - pip install -r docs/requirements.txt
-    - python -m sphinx -T -c docs/sphinx -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html
-    - cp docs/sphinx/index.html.template $READTHEDOCS_OUTPUT/html/index.html
+    - make -C docs build
 
 sphinx:
   configuration: docs/sphinx/conf.py

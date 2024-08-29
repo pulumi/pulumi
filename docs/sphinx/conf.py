@@ -62,14 +62,12 @@ myst_links_external_new_tab = True
 myst_url_schemes = {
     "http": None,
     "https": None,
-
     # Usage: <gh-file:repository-under-pulumi-org#path/to/file>
     "gh-file": {
         "url": "https://github.com/pulumi/{{path}}/blob/master/{{fragment}}",
         "title": "pulumi/{{path}}:{{fragment}}",
         "classes": ["github"],
     },
-
     # Usage: <gh-file:repository-under-pulumi-org#issue-or-pr-number>
     "gh-issue": {
         "url": "https://github.com/pulumi/{{path}}/issues/{{fragment}}",
@@ -103,16 +101,13 @@ exclude_patterns = [
     ".direnv",
     ".git",
     "node_modules",
-
     # Pulumi-specific cases
-
     ## Standalone documentation files/noise from vendored libraries (CHANGELOGs,
     ## LICENSEs, etc.)
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "README.md",
-
     ## Test data
     "**/testdata",
 ]
@@ -133,7 +128,6 @@ html_logo = "https://www.pulumi.com/images/logo/logo-on-white-box.svg"
 html_theme_options = {
     # Show all headings up to level 2 in the sidebar table of contents.
     "show_toc_levels": 2,
-
     # Enable margin notes
     # (https://sphinx-book-theme.readthedocs.io/en/stable/content/content-blocks.html#sidenotes-and-marginnotes).
     "use_sidenotes": True,
@@ -151,13 +145,13 @@ html_css_files = ["custom.css"]
 
 # -- Application-specific setup ----------------------------------------------
 
+
 def setup(app):
     # Connect a listener which ignores any text between ".. AUTODOC-IGNORE"
     # markers when autodoc is processing docstrings. This means that, for
     # example, custom roles and directives can include documentation that talks
     # both about the role API as well as how it should be consumed.
     app.connect(
-        "autodoc-process-docstring",
-        between("^.*\.\. AUTODOC-IGNORE.*$", exclude = True)
+        "autodoc-process-docstring", between("^.*\.\. AUTODOC-IGNORE.*$", exclude=True)
     )
     return app
