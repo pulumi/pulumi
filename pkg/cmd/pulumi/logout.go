@@ -69,7 +69,8 @@ func newLogoutCmd() *cobra.Command {
 			} else {
 				if cloudURL == "" {
 					// Try to read the current project
-					project, _, err := pkgWorkspace.Instance.ReadProject()
+					ws := pkgWorkspace.Instance
+					project, _, err := ws.ReadProject()
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
 					}
@@ -81,7 +82,7 @@ func newLogoutCmd() *cobra.Command {
 
 					// Default to the default cloud URL. This means a `pulumi logout` will delete the
 					// credentials for pulumi.com if there's no "current" user set in the credentials file.
-					cloudURL = httpstate.ValueOrDefaultURL(cloudURL)
+					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
 				err = workspace.DeleteAccount(cloudURL)

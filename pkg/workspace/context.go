@@ -27,6 +27,9 @@ type Context interface {
 	// project is successfully detected and read, it is returned along with the path to its containing
 	// directory, which will be used as the root of the project's Pulumi program.
 	ReadProject() (*workspace.Project, string, error)
+
+	// GetStoredCredentials returns any credentials stored on the local machine.
+	GetStoredCredentials() (workspace.Credentials, error)
 }
 
 var Instance Context = &context{}
@@ -40,4 +43,8 @@ func (c *context) ReadProject() (*workspace.Project, string, error) {
 	}
 
 	return proj, filepath.Dir(path), nil
+}
+
+func (c *context) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.GetStoredCredentials()
 }
