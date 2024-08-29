@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -393,7 +394,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

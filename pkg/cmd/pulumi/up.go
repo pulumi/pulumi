@@ -99,7 +99,7 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		proj, root, err := readProjectForUpdate(client)
+		proj, root, err := readProjectForUpdate(pkgWorkspace.Instance, client)
 		if err != nil {
 			return err
 		}
@@ -299,7 +299,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := readProject()
+		proj, root, err := pkgWorkspace.Instance.ReadProject()
 		if err != nil {
 			return err
 		}

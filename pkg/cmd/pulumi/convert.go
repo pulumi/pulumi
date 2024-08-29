@@ -483,7 +483,7 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := pkgWorkspace.Instance.ReadProject()
 		if err != nil {
 			return err
 		}

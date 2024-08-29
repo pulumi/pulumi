@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -113,7 +114,7 @@ func isDIYBackend(opts display.Options) (bool, error) {
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return false, err
 	}
@@ -200,7 +201,7 @@ func createSecretsManager(
 		}
 	}
 
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -301,7 +302,7 @@ func requireStack(ctx context.Context,
 	}
 
 	// Try to read the current project
-	project, root, err := readProject()
+	project, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -342,7 +343,7 @@ func requireStack(ctx context.Context,
 
 func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -379,7 +380,7 @@ func chooseStack(ctx context.Context,
 		return nil, errors.New(chooseStackErr)
 	}
 
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
@@ -522,8 +523,8 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 // containing directory, which will be used as the root of the project's Pulumi program. If a
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
-func readProjectForUpdate(clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := readProject()
+func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
+	proj, root, err := ws.ReadProject()
 	if err != nil {
 		return nil, "", err
 	}
@@ -533,18 +534,6 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 		})
 	}
 	return proj, root, nil
-}
-
-// readProject attempts to detect and read a Pulumi project for the current workspace. If the
-// project is successfully detected and read, it is returned along with the path to its containing
-// directory, which will be used as the root of the project's Pulumi program.
-func readProject() (*workspace.Project, string, error) {
-	proj, path, err := workspace.DetectProjectAndPath()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return proj, filepath.Dir(path), nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current

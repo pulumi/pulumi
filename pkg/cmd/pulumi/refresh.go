@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -171,7 +172,7 @@ func newRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}

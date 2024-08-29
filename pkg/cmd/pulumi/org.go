@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -36,7 +37,7 @@ func newOrgCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// Try to read the current project
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -93,7 +94,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			orgName = args[0]
 
 			// Try to read the current project
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -136,7 +137,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

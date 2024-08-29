@@ -24,6 +24,7 @@ import (
 
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -46,7 +47,7 @@ as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value`,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			proj, root, err := readProject()
+			proj, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -135,7 +136,7 @@ func printNodejsLinkInstructions(root string, pkg *schema.Package, out string) e
 	fmt.Println()
 	fmt.Println("To use this SDK in your Nodejs project, run the following command:")
 	fmt.Println()
-	proj, _, err := readProject()
+	proj, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -194,7 +195,7 @@ func printPythonLinkInstructions(root string, pkg *schema.Package, out string) e
 	fmt.Println()
 	fmt.Println("To use this SDK in your Python project, run the following command:")
 	fmt.Println()
-	proj, _, err := readProject()
+	proj, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return err
 	}

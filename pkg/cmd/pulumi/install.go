@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -76,7 +77,7 @@ func newInstallCmd() *cobra.Command {
 			}
 
 			// Load the project
-			proj, root, err := readProject()
+			proj, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil {
 				return err
 			}

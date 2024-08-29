@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -178,7 +179,7 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())

@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -113,7 +114,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
@@ -163,7 +164,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	proj, root, projectErr := readProject()
+	proj, root, projectErr := pkgWorkspace.Instance.ReadProject()
 	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
 		return projectErr
 	}

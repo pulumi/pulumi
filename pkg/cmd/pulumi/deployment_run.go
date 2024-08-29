@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -60,7 +61,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				SuppressPermalink: suppressPermalink,
 			}
 
-			project, _, err := readProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

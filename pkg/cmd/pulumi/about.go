@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -127,7 +128,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = readProject(); err != nil {
+	if proj, pwd, err = pkgWorkspace.Instance.ReadProject(); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}

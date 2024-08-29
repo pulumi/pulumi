@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -55,7 +56,7 @@ func newPluginCmd() *cobra.Command {
 
 // getProjectPlugins fetches a list of plugins used by this project.
 func getProjectPlugins() ([]workspace.PluginSpec, error) {
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 }
 
 func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
