@@ -267,6 +267,8 @@ export class RunRequest extends jspb.Message {
     clearInfo(): void;
     getInfo(): ProgramInfo | undefined;
     setInfo(value?: ProgramInfo): RunRequest;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): RunRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunRequest.AsObject;
@@ -295,6 +297,7 @@ export namespace RunRequest {
         organization: string,
         configpropertymap?: google_protobuf_struct_pb.Struct.AsObject,
         info?: ProgramInfo.AsObject,
+        loaderTarget: string,
     }
 }
 

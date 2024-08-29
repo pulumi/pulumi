@@ -289,6 +289,7 @@ class RunRequest(google.protobuf.message.Message):
     ORGANIZATION_FIELD_NUMBER: builtins.int
     CONFIGPROPERTYMAP_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -322,6 +323,8 @@ class RunRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """the program info to use to execute the program."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     def __init__(
         self,
         *,
@@ -339,9 +342,10 @@ class RunRequest(google.protobuf.message.Message):
         organization: builtins.str = ...,
         configPropertyMap: google.protobuf.struct_pb2.Struct | None = ...,
         info: global___ProgramInfo | None = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 

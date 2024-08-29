@@ -230,6 +230,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Parallel:          info.Parallel,
 		Organization:      info.Organization,
 		Info:              minfo,
+		LoaderTarget:      info.LoaderAddress,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
