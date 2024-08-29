@@ -92,7 +92,7 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 	"Continue to perform the update/destroy operation despite the occurrence of errors.")
 
 var BackendURL = env.String("BACKEND_URL",
-	"Set the backend that will be used instead of the currently logged in backend or the current projects backend.")
+	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
