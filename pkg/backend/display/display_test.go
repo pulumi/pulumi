@@ -29,6 +29,8 @@ import (
 )
 
 func TestShowEvents(t *testing.T) {
+	t.Parallel()
+
 	// Test that internal events are filtered out.
 	events := make(chan engine.Event)
 	done := make(chan bool)
@@ -36,6 +38,7 @@ func TestShowEvents(t *testing.T) {
 	assert.NoError(t, err)
 
 	eventLog, err := os.CreateTemp("", "event-log-")
+	assert.NoError(t, err)
 
 	go func() {
 		events <- engine.NewEvent(engine.ResourcePreEventPayload{
