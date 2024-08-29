@@ -64,14 +64,14 @@ func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
+	if opts.EventLogPath != "" {
+		events, done = startEventLogger(events, done, opts)
+	}
+
 	// Need to filter the engine events here to exclude any internal events.
 	events = channel.FilterRead(events, func(e engine.Event) bool {
 		return !e.Internal()
 	})
-
-	if opts.EventLogPath != "" {
-		events, done = startEventLogger(events, done, opts)
-	}
 
 	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
 
