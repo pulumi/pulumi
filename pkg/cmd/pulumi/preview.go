@@ -295,6 +295,7 @@ func newPreviewCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -342,10 +343,10 @@ func newPreviewCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
+				return runDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(displayOpts)
+			isDIYBackend, err := isDIYBackend(ws, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -360,17 +361,17 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, displayOpts)
+			s, err := requireStack(ctx, ws, stackName, stackOfferNew, displayOpts)
 			if err != nil {
 				return err
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
 				return err
 			}
 
-			proj, root, err := readProjectForUpdate(pkgWorkspace.Instance, client)
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
 			}

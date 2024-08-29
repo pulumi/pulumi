@@ -43,6 +43,7 @@ func newDeploymentRunCmd() *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
@@ -61,7 +62,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				SuppressPermalink: suppressPermalink,
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -76,7 +77,7 @@ func newDeploymentRunCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, display)
+			s, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, display)
 			if err != nil {
 				return err
 			}
@@ -85,7 +86,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				return errResult
 			}
 
-			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return runDeployment(ctx, ws, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
 		}),
 	}
 

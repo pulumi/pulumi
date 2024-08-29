@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -46,12 +47,13 @@ func newStackRenameCmd() *cobra.Command {
 			"to update the name field of Pulumi.yaml, so the project names match.",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Look up the stack to be moved, and find the path to the project file's location.
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

@@ -108,13 +108,13 @@ func skipConfirmations() bool {
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
-func isDIYBackend(opts display.Options) (bool, error) {
+func isDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 	if backendInstance != nil {
 		return false, nil
 	}
 
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return false, err
 	}
@@ -182,7 +182,7 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 }
 
 func createSecretsManager(
-	ctx context.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -201,7 +201,7 @@ func createSecretsManager(
 		}
 	}
 
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func createSecretsManager(
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(ctx context.Context,
+func createStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
@@ -252,7 +252,7 @@ func createStack(ctx context.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(ctx, stack, secretsProvider,
+	if err := createSecretsManager(ctx, ws, stack, secretsProvider,
 		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
 		return nil, err
 	}
@@ -294,15 +294,15 @@ func (o stackLoadOption) SetCurrent() bool {
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(ctx context.Context,
+func requireStack(ctx context.Context, ws pkgWorkspace.Context,
 	stackName string, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(ctx, lopt, opts)
+		return requireCurrentStack(ctx, ws, lopt, opts)
 	}
 
 	// Try to read the current project
-	project, root, err := pkgWorkspace.Instance.ReadProject()
+	project, root, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -335,15 +335,17 @@ func requireStack(ctx context.Context,
 			return nil, err
 		}
 
-		return createStack(ctx, b, stackRef, root, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
+func requireCurrentStack(
+	ctx context.Context, ws pkgWorkspace.Context, lopt stackLoadOption, opts display.Options,
+) (backend.Stack, error) {
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -361,12 +363,12 @@ func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(ctx, b, lopt, opts)
+	return chooseStack(ctx, ws, b, lopt, opts)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(ctx context.Context,
+func chooseStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
@@ -380,7 +382,7 @@ func chooseStack(ctx context.Context,
 		return nil, errors.New(chooseStackErr)
 	}
 
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := ws.ReadProject()
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +476,7 @@ func chooseStack(ctx context.Context,
 			return nil, parseErr
 		}
 
-		return createStack(ctx, b, stackRef, root, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "")
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -503,7 +505,7 @@ func chooseStack(ctx context.Context,
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArray []string, path bool) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -512,7 +514,7 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 		return err
 	}
 
-	if err = saveConfig(s, commandLineConfig); err != nil {
+	if err = saveConfig(ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

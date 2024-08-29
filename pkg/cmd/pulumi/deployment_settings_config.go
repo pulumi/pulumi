@@ -115,7 +115,7 @@ type deploymentSettingsCommandDependencies struct {
 }
 
 func initializeDeploymentSettingsCmd(
-	ctx context.Context, stack string,
+	ctx context.Context, ws pkgWorkspace.Context, stack string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
 
@@ -124,7 +124,7 @@ func initializeDeploymentSettingsCmd(
 		IsInteractive: interactive,
 	}
 
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func initializeDeploymentSettingsCmd(
 			be.Name())
 	}
 
-	s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+	s, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, displayOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -295,7 +295,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return errors.New("configure command is only supported in interactive mode")
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

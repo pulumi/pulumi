@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -45,12 +46,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
 			if unprotectAll {
-				return unprotectAllResources(ctx, stack, showPrompt)
+				return unprotectAllResources(ctx, ws, stack, showPrompt)
 			}
 
 			var urn resource.URN
@@ -60,14 +62,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, ws, stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
 				urn = resource.URN(args[0])
 			}
-			return unprotectResource(ctx, stack, urn, showPrompt)
+			return unprotectResource(ctx, ws, stack, urn, showPrompt)
 		}),
 	}
 
@@ -80,8 +82,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	return cmd
 }
 
-func unprotectAllResources(ctx context.Context, stackName string, showPrompt bool) error {
-	err := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
+	err := runTotalStateEdit(ctx, ws, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		// Protects against Panic when a user tries to unprotect non-existing resources
 		if snap == nil {
 			return errors.New("no resources found to unprotect")
@@ -101,8 +103,10 @@ func unprotectAllResources(ctx context.Context, stackName string, showPrompt boo
 	return nil
 }
 
-func unprotectResource(ctx context.Context, stackName string, urn resource.URN, showPrompt bool) error {
-	err := runStateEdit(ctx, stackName, showPrompt, urn, edit.UnprotectResource)
+func unprotectResource(
+	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+) error {
+	err := runStateEdit(ctx, ws, stackName, showPrompt, urn, edit.UnprotectResource)
 	if err != nil {
 		return err
 	}

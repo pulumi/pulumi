@@ -64,16 +64,17 @@ func newConfigCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
-			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -138,17 +139,18 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			currentStack, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -161,7 +163,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(ctx, destinationStackName, stackLoadOnly, opts)
+			destinationStack, err := requireStack(ctx, ws, destinationStackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -318,11 +320,12 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -332,7 +335,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut, open)
+			return getConfig(ctx, ws, s, key, path, jsonOut, open)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
@@ -363,16 +366,17 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -417,16 +421,17 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 		Args: cmdutil.MinimumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, ws, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -466,17 +471,18 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stk, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, *stk, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -585,17 +591,18 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -704,17 +711,18 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
 			// Ensure the stack exists.
-			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, ws, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -1035,8 +1043,10 @@ func listConfig(
 	return nil
 }
 
-func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool) error {
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+func getConfig(
+	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool,
+) error {
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}

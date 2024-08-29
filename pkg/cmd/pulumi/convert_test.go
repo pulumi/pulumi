@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,7 @@ func TestYamlConvert(t *testing.T) {
 	}
 
 	result := runConvert(
-		env.Global(), []string{}, "convert_testdata", []string{},
+		pkgWorkspace.Instance, env.Global(), []string{}, "convert_testdata", []string{},
 		"yaml", "go", "convert_testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
@@ -46,7 +47,7 @@ func TestPclConvert(t *testing.T) {
 	tmp := t.TempDir()
 
 	result := runConvert(
-		env.Global(), []string{}, "pcl_convert_testdata",
+		pkgWorkspace.Instance, env.Global(), []string{}, "pcl_convert_testdata",
 		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
@@ -76,6 +77,7 @@ func TestProjectNameDefaults(t *testing.T) {
 
 	// Act.
 	err := runConvert(
+		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{},             /*args*/
 		"pcl_convert_testdata", /*cwd*/
@@ -105,6 +107,7 @@ func TestProjectNameOverrides(t *testing.T) {
 
 	// Act.
 	err := runConvert(
+		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{},             /*args*/
 		"pcl_convert_testdata", /*cwd*/

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -44,6 +45,8 @@ type stateMoveCmd struct {
 	Colorizer      colors.Colorization
 	Yes            bool
 	IncludeParents bool
+
+	ws pkgWorkspace.Context
 }
 
 func newStateMoveCommand() *cobra.Command {
@@ -65,18 +68,19 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 		Args: cmdutil.MinimumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, sourceStackName, stackLoadOnly, display.Options{
+			sourceStack, err := requireStack(ctx, ws, sourceStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, destStackName, stackLoadOnly, display.Options{
+			destStack, err := requireStack(ctx, ws, destStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -116,6 +120,9 @@ func (cmd *stateMoveCmd) Run(
 	}
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
+	}
+	if cmd.ws == nil {
+		cmd.ws = pkgWorkspace.Instance
 	}
 
 	sourceSnapshot, err := source.Snapshot(ctx, sourceSecretsProvider)
@@ -166,7 +173,7 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = createSecretsManager(ctx, dest, "", false, true)
+		err = createSecretsManager(ctx, cmd.ws, dest, "", false, true)
 		if err != nil {
 			return err
 		}

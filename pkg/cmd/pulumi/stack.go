@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -59,11 +60,12 @@ func newStackCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts)
+			s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}

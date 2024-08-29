@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,7 +58,8 @@ a preview showing a diff of the altered state.`,
 				return errors.New("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
-			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{
+			ws := pkgWorkspace.Instance
+			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
