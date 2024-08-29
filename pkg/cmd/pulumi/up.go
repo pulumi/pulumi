@@ -529,6 +529,10 @@ func newUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
+			// For now, 'explainFailure' link to Copilot in the CLI output
+			// requires env var PULUMI_SHOW_COPILOT_LINK to be set to true
+			opts.Display.ShowLinkToCopilot = env.ShowCopilotLink.Value()
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(ctx, args[0], opts, cmd)
 			}
