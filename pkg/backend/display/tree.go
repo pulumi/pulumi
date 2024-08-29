@@ -189,7 +189,7 @@ func (r *treeRenderer) markDirty() {
 	}
 
 	r.dirty = true
-	if r.opts.DeterministicOutput {
+	if r.opts.DeterministicOutput && r.opts.RenderOnDirty {
 		r.frame(true, false)
 	}
 }

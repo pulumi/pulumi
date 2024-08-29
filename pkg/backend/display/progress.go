@@ -335,8 +335,9 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
-	for urn, row := range display.eventUrnToResourceRow {
-		display.getOrCreateTreeNode(&result, urn, row, urnToTreeNode)
+	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+	for _, row := range eventRows {
+		display.getOrCreateTreeNode(&result, row.Step().URN, row, urnToTreeNode)
 	}
 
 	return result
@@ -479,23 +480,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// since the display was marked 'done'.
 	if !display.isTerminal {
 		if display.opts.DeterministicOutput {
-			sort.Slice(inProgressRows, func(i, j int) bool {
-				if inProgressRows[i].Step().Op == "same" && inProgressRows[i].Step().URN == "" {
-					// This is the root stack event.  Always sort it last
-					return false
-				}
-				if inProgressRows[j].Step().Op == "same" && inProgressRows[j].Step().URN == "" {
-					// This is the root stack event.  Always sort it last
-					return true
-				}
-				if inProgressRows[i].Step().Res == nil {
-					return false
-				}
-				if inProgressRows[j].Step().Res == nil {
-					return true
-				}
-				return inProgressRows[i].Step().Res.URN < inProgressRows[j].Step().Res.URN
-			})
+			sortResourceRows(inProgressRows)
 		}
 		for _, v := range inProgressRows {
 			display.renderer.rowUpdated(v)
@@ -507,6 +492,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	// only do something in a terminal.  This is what we want, because if we're not in a terminal we
 	// don't really want to reprint any finished items we've already printed.
 	display.renderer.done()
+
+	display.printResourceDiffs()
 
 	// Render the policies section; this will print all policy packs that ran plus any specific
 	// policies that led to violations or remediations. This comes before diagnostics since policy
@@ -527,6 +514,58 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 }
 
+// printResourceChanges prints a "Changes:" section with all of the resource diffs grouped by
+// resource.printResourceChanges
+func (display *ProgressDisplay) printResourceDiffs() {
+	if !display.opts.ShowResourceChanges {
+		return
+	}
+
+	wroteChangesHeader := false
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+	for _, row := range eventRows {
+		step := row.Step()
+
+		if step.Op == deploy.OpSame {
+			continue
+		}
+
+		var diffOutput bytes.Buffer
+		renderDiff(
+			&diffOutput,
+			step,
+			false,
+			false,
+			display.action == apitype.UpdateKind(apitype.Refresh),
+			seen,
+			display.opts,
+		)
+
+		diff := diffOutput.String()
+		if diff == "" {
+			continue
+		}
+
+		if !wroteChangesHeader {
+			wroteChangesHeader = true
+			display.println(colors.SpecHeadline + "Changes:" + colors.Reset)
+		}
+
+		columns := row.ColorizedColumns()
+		display.println(
+			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+
+		lines := splitIntoDisplayableLines(diff)
+		for _, line := range lines {
+			line = strings.TrimRightFunc(line, unicode.IsSpace)
+			display.println("    " + line)
+		}
+		display.println("")
+	}
+}
+
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
 // resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
 func (display *ProgressDisplay) printDiagnostics() bool {
@@ -536,29 +575,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
 
-	eventRows := make([]ResourceRow, 0, len(display.eventUrnToResourceRow))
-	for _, row := range display.eventUrnToResourceRow {
-		eventRows = append(eventRows, row)
-	}
-	if display.opts.DeterministicOutput {
-		sort.Slice(eventRows, func(i, j int) bool {
-			if eventRows[i].Step().Op == "same" && eventRows[i].Step().URN == "" {
-				// This is the root stack event.  Always sort it last
-				return false
-			}
-			if eventRows[j].Step().Op == "same" && eventRows[j].Step().URN == "" {
-				// This is the root stack event.  Always sort it last
-				return true
-			}
-			if eventRows[i].Step().Res == nil {
-				return false
-			}
-			if eventRows[j].Step().Res == nil {
-				return true
-			}
-			return eventRows[i].Step().Res.URN < eventRows[j].Step().Res.URN
-		})
-	}
+	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, row := range eventRows {
 		// The header for the diagnogistics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
@@ -1474,4 +1491,40 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return fmt.Sprintf("%s (%ds)", opText, int(secondsElapsed))
 	}
 	return deploy.ColorProgress(op) + getDescription() + colors.Reset
+}
+
+// toResourceRows sorts a map of resources by their URN and returns the sorted rows.
+func toResourceRows(rowMap map[resource.URN]ResourceRow, sorted bool) []ResourceRow {
+	rows := make([]ResourceRow, 0, len(rowMap))
+	for _, row := range rowMap {
+		rows = append(rows, row)
+	}
+	if sorted {
+		sortResourceRows(rows)
+	}
+	return rows
+}
+
+// sortResourceRows sorts the given rows in a deterministic order.
+func sortResourceRows(rows []ResourceRow) {
+	sort.Slice(rows, func(i, j int) bool {
+		a := rows[i].Step()
+		b := rows[j].Step()
+
+		if a.Op == "same" && a.URN == "" {
+			// This is the root stack event. Always sort it last
+			return false
+		}
+		if b.Op == "same" && b.URN == "" {
+			return true
+		}
+		if a.Res == nil {
+			return false
+		}
+		if b.Res == nil {
+			return true
+		}
+
+		return a.Res.URN < b.Res.URN
+	})
 }
