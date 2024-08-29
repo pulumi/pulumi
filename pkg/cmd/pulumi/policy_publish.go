@@ -42,7 +42,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			return policyPublishCmd.Run(cmd.Context(), args)
+			return policyPublishCmd.Run(cmd.Context(), DefaultLoginManager, args)
 		}),
 	}
 
@@ -50,17 +50,13 @@ func newPolicyPublishCmd() *cobra.Command {
 }
 
 type policyPublishCmd struct {
-	getwd        func() (string, error)
-	loginToCloud func(context.Context, string, *workspace.Project, bool, display.Options) (backend.Backend, error)
-	defaultOrg   func(*workspace.Project) (string, error)
+	getwd      func() (string, error)
+	defaultOrg func(*workspace.Project) (string, error)
 }
 
-func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
+func (cmd *policyPublishCmd) Run(ctx context.Context, lm backend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
-	}
-	if cmd.loginToCloud == nil {
-		cmd.loginToCloud = loginToCloud
 	}
 	if cmd.defaultOrg == nil {
 		cmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
@@ -96,7 +92,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 	//
 
-	policyPack, err := requirePolicyPack(ctx, policyPackRef, cmd.loginToCloud)
+	policyPack, err := requirePolicyPack(ctx, policyPackRef, lm)
 	if err != nil {
 		return err
 	}
@@ -144,7 +140,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 func requirePolicyPack(
 	ctx context.Context,
 	policyPack string,
-	loginToCloud func(context.Context, string, *workspace.Project, bool, display.Options) (backend.Backend, error),
+	lm backend.LoginManager,
 ) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
@@ -166,7 +162,7 @@ func requirePolicyPack(
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := loginToCloud(ctx, cloudURL, project, pkgWorkspace.GetCloudInsecure(ws, cloudURL), displayOptions)
+	b, err := lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/, displayOptions.Color)
 	if err != nil {
 		return nil, err
 	}

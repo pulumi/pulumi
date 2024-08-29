@@ -65,7 +65,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, ws, project, opts.Display)
+	backend, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
 	if err != nil {
 		return err
 	}

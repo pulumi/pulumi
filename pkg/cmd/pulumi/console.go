@@ -49,7 +49,7 @@ func newConsoleCmd() *cobra.Command {
 				return err
 			}
 
-			currentBackend, err := currentBackend(ctx, ws, project, opts)
+			currentBackend, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 			if err != nil {
 				return err
 			}

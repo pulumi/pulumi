@@ -137,7 +137,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = currentBackend(ctx, ws, nil, opts)
+		b, err = currentBackend(ctx, ws, DefaultLoginManager, nil, opts)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
-		b, err := currentBackend(ctx, ws, project, opts)
+		b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 		if err != nil {
 			return err
 		}

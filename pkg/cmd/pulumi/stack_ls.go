@@ -142,7 +142,9 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(ctx, ws, project, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(
+		ctx, ws, DefaultLoginManager, project,
+		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

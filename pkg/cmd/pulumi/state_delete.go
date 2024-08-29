@@ -63,7 +63,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 
 				var err error
-				urn, err = getURNFromState(ctx, ws, stack, nil,
+				urn, err = getURNFromState(ctx, ws, DefaultLoginManager, stack, nil,
 					"Select the resource to delete")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
@@ -74,17 +74,18 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			err := runStateEdit(ctx, ws, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
-				var handleProtected func(*resource.State) error
-				if force {
-					handleProtected = func(res *resource.State) error {
-						cmdutil.Diag().Warningf(diag.Message(res.URN,
-							"deleting protected resource %s due to presence of --force"), res.URN)
-						return edit.UnprotectResource(nil, res)
+			err := runStateEdit(
+				ctx, ws, DefaultLoginManager, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+					var handleProtected func(*resource.State) error
+					if force {
+						handleProtected = func(res *resource.State) error {
+							cmdutil.Diag().Warningf(diag.Message(res.URN,
+								"deleting protected resource %s due to presence of --force"), res.URN)
+							return edit.UnprotectResource(nil, res)
+						}
 					}
-				}
-				return edit.DeleteResource(snap, res, handleProtected, targetDependents)
-			})
+					return edit.DeleteResource(snap, res, handleProtected, targetDependents)
+				})
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:

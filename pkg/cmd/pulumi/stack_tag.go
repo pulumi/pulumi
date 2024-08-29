@@ -67,7 +67,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, *stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -191,7 +191,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}

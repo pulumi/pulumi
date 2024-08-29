@@ -74,7 +74,7 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -150,7 +150,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(ctx, ws, *stack, stackSetCurrent, opts)
+			currentStack, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -163,7 +163,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(ctx, ws, destinationStackName, stackLoadOnly, opts)
+			destinationStack, err := requireStack(ctx, ws, DefaultLoginManager, destinationStackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -325,7 +325,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -376,7 +376,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -431,7 +431,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -482,7 +482,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, ws, *stk, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stk, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -602,7 +602,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, ws, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -722,7 +722,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			stack, err := requireStack(ctx, ws, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, ws, DefaultLoginManager, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}

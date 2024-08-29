@@ -67,7 +67,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, ws, project, display)
+			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, display)
 			if err != nil {
 				return err
 			}
@@ -77,7 +77,7 @@ func newDeploymentRunCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			s, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, display)
 			if err != nil {
 				return err
 			}

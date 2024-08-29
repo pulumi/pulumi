@@ -66,7 +66,7 @@ type stateUpgradeCmd struct {
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
 	currentBackend func(
-		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 
@@ -92,7 +92,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		Stdout: cmd.Stdout,
 	}
 
-	b, err := currentBackend(ctx, pkgWorkspace.Instance, nil, dopts)
+	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, dopts)
 	if err != nil {
 		return err
 	}

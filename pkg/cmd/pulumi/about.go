@@ -66,7 +66,7 @@ func newAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
 				return printJSON(summary)
 			}
@@ -105,7 +105,8 @@ type summaryAbout struct {
 }
 
 func getSummaryAbout(
-	ctx context.Context, ws pkgWorkspace.Context, transitiveDependencies bool, selectedStack string,
+	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+	transitiveDependencies bool, selectedStack string,
 ) summaryAbout {
 	var err error
 	cli := getCLIAbout()
@@ -182,7 +183,7 @@ func getSummaryAbout(
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx, ws, proj)
+	backend, err = nonInteractiveCurrentBackend(ctx, ws, lm, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
