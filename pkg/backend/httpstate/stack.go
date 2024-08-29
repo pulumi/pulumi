@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -64,7 +65,7 @@ func (c cloudBackendReference) String() string {
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
+		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {

@@ -47,7 +47,7 @@ func newOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}
@@ -151,7 +151,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}

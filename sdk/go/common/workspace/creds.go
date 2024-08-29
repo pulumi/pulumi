@@ -354,23 +354,3 @@ func SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
 
 	return StorePulumiConfig(config)
 }
-
-func GetBackendConfigDefaultOrg(project *Project) (string, error) {
-	config, err := GetPulumiConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return "", err
-	}
-
-	backendURL, err := GetCurrentCloudURL(project)
-	if err != nil {
-		return "", err
-	}
-
-	if beConfig, ok := config.BackendConfig[backendURL]; ok {
-		if beConfig.DefaultOrg != "" {
-			return beConfig.DefaultOrg, nil
-		}
-	}
-
-	return "", nil
-}

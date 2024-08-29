@@ -62,7 +62,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 		cmd.loginToCloud = loginToCloud
 	}
 	if cmd.defaultOrg == nil {
-		cmd.defaultOrg = workspace.GetBackendConfigDefaultOrg
+		cmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
 	}
 	var orgName string
 	if len(args) > 0 {
