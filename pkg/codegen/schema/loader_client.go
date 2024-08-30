@@ -128,7 +128,7 @@ func (l *LoaderClient) LoadPackage(pkg string, version *semver.Version) (*Packag
 	return ref.Definition()
 }
 
-func (l *loaderClient) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+func (l *LoaderClient) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
 	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, err
