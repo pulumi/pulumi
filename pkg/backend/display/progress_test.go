@@ -38,14 +38,14 @@ import (
 
 func defaultOpts() Options {
 	return Options{
-		Color:                 colors.Raw,
-		ShowConfig:            true,
-		ShowReplacementSteps:  true,
-		ShowSameResources:     true,
-		ShowReads:             true,
-		DeterministicOutput:   true,
-		SuppressLinkToCopilot: true,
-		RenderOnDirty:         true,
+		Color:                colors.Raw,
+		ShowConfig:           true,
+		ShowReplacementSteps: true,
+		ShowSameResources:    true,
+		ShowReads:            true,
+		DeterministicOutput:  true,
+		ShowLinkToCopilot:    false,
+		RenderOnDirty:        true,
 	}
 }
 

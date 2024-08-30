@@ -94,6 +94,9 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
+var ShowCopilotLink = env.Bool("SHOW_COPILOT_LINK",
+	"Show the 'explainFailure' link to Copilot in the CLI output.")
+
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //
