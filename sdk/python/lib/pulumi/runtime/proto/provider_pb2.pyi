@@ -469,19 +469,23 @@ class CallResponse(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     RETURN_FIELD_NUMBER: builtins.int
-    RETURNDEPENDENCIES_FIELD_NUMBER: builtins.int
     FAILURES_FIELD_NUMBER: builtins.int
-    @property
-    def returnDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CallResponse.ReturnDependencies]:
-        """a map from return value keys to the dependencies of the return value."""
+    RETURNDEPENDENCIES_FIELD_NUMBER: builtins.int
     @property
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
         """the failures if any arguments didn't pass verification."""
+    @property
+    def returnDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CallResponse.ReturnDependencies]:
+        """a map from return value keys to the dependencies of the return value.
+
+        returnDependencies will be augmented by the set of dependencies specified in return
+        via output property values.
+        """
     def __init__(
         self,
         *,
-        returnDependencies: collections.abc.Mapping[builtins.str, global___CallResponse.ReturnDependencies] | None = ...,
         failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
+        returnDependencies: collections.abc.Mapping[builtins.str, global___CallResponse.ReturnDependencies] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["return", b"return"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["failures", b"failures", "return", b"return", "returnDependencies", b"returnDependencies"]) -> None: ...
