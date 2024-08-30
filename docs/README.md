@@ -10,4 +10,5 @@ complete documentation for maintainers of and contributors to Pulumi.
 self
 /docs/documentation
 /docs/architecture/README
+/docs/references/README
 :::
