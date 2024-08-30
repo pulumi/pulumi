@@ -3905,9 +3905,9 @@ proto.pulumirpc.CallResponse.prototype.toObject = function(opt_includeInstance) 
 proto.pulumirpc.CallResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    returndependenciesMap: (f = msg.getReturndependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallResponse.ReturnDependencies.toObject) : [],
     failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
-    proto.pulumirpc.CheckFailure.toObject, includeInstance)
+    proto.pulumirpc.CheckFailure.toObject, includeInstance),
+    returndependenciesMap: (f = msg.getReturndependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallResponse.ReturnDependencies.toObject) : []
   };
 
   if (includeInstance) {
@@ -3949,16 +3949,16 @@ proto.pulumirpc.CallResponse.deserializeBinaryFromReader = function(msg, reader)
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setReturn(value);
       break;
+    case 3:
+      var value = new proto.pulumirpc.CheckFailure;
+      reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
+      msg.addFailures(value);
+      break;
     case 2:
       var value = msg.getReturndependenciesMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.CallResponse.ReturnDependencies.deserializeBinaryFromReader, "", new proto.pulumirpc.CallResponse.ReturnDependencies());
          });
-      break;
-    case 3:
-      var value = new proto.pulumirpc.CheckFailure;
-      reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
-      msg.addFailures(value);
       break;
     default:
       reader.skipField();
@@ -3997,10 +3997,6 @@ proto.pulumirpc.CallResponse.serializeBinaryToWriter = function(message, writer)
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getReturndependenciesMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(2, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.CallResponse.ReturnDependencies.serializeBinaryToWriter);
-  }
   f = message.getFailuresList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
@@ -4008,6 +4004,10 @@ proto.pulumirpc.CallResponse.serializeBinaryToWriter = function(message, writer)
       f,
       proto.pulumirpc.CheckFailure.serializeBinaryToWriter
     );
+  }
+  f = message.getReturndependenciesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(2, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.CallResponse.ReturnDependencies.serializeBinaryToWriter);
   }
 };
 
@@ -4206,28 +4206,6 @@ proto.pulumirpc.CallResponse.prototype.hasReturn = function() {
 
 
 /**
- * map<string, ReturnDependencies> returnDependencies = 2;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,!proto.pulumirpc.CallResponse.ReturnDependencies>}
- */
-proto.pulumirpc.CallResponse.prototype.getReturndependenciesMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,!proto.pulumirpc.CallResponse.ReturnDependencies>} */ (
-      jspb.Message.getMapField(this, 2, opt_noLazyCreate,
-      proto.pulumirpc.CallResponse.ReturnDependencies));
-};
-
-
-/**
- * Clears values from the map. The map will be non-null.
- * @return {!proto.pulumirpc.CallResponse} returns this
- */
-proto.pulumirpc.CallResponse.prototype.clearReturndependenciesMap = function() {
-  this.getReturndependenciesMap().clear();
-  return this;};
-
-
-/**
  * repeated CheckFailure failures = 3;
  * @return {!Array<!proto.pulumirpc.CheckFailure>}
  */
@@ -4263,6 +4241,28 @@ proto.pulumirpc.CallResponse.prototype.addFailures = function(opt_value, opt_ind
 proto.pulumirpc.CallResponse.prototype.clearFailuresList = function() {
   return this.setFailuresList([]);
 };
+
+
+/**
+ * map<string, ReturnDependencies> returnDependencies = 2;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!proto.pulumirpc.CallResponse.ReturnDependencies>}
+ */
+proto.pulumirpc.CallResponse.prototype.getReturndependenciesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!proto.pulumirpc.CallResponse.ReturnDependencies>} */ (
+      jspb.Message.getMapField(this, 2, opt_noLazyCreate,
+      proto.pulumirpc.CallResponse.ReturnDependencies));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.CallResponse} returns this
+ */
+proto.pulumirpc.CallResponse.prototype.clearReturndependenciesMap = function() {
+  this.getReturndependenciesMap().clear();
+  return this;};
 
 
 

@@ -221,9 +221,14 @@ message CallResponse {
         repeated string urns = 1; // A list of URNs this return value depends on.
     }
 
-    google.protobuf.Struct return = 1;                      // the returned values, if call was successful.
-    map<string, ReturnDependencies> returnDependencies = 2; // a map from return value keys to the dependencies of the return value.
-    repeated CheckFailure failures = 3;                     // the failures if any arguments didn't pass verification.
+    google.protobuf.Struct return = 1;  // the returned values, if call was successful.
+    repeated CheckFailure failures = 3; // the failures if any arguments didn't pass verification.
+
+    // a map from return value keys to the dependencies of the return value.
+    //
+    // returnDependencies will be augmented by the set of dependencies specified in return
+    // via output property values.
+    map<string, ReturnDependencies> returnDependencies = 2;
 }
 
 message CheckRequest {

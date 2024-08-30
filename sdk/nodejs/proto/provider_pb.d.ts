@@ -430,13 +430,13 @@ export class CallResponse extends jspb.Message {
     clearReturn(): void;
     getReturn(): google_protobuf_struct_pb.Struct | undefined;
     setReturn(value?: google_protobuf_struct_pb.Struct): CallResponse;
-
-    getReturndependenciesMap(): jspb.Map<string, CallResponse.ReturnDependencies>;
-    clearReturndependenciesMap(): void;
     clearFailuresList(): void;
     getFailuresList(): Array<CheckFailure>;
     setFailuresList(value: Array<CheckFailure>): CallResponse;
     addFailures(value?: CheckFailure, index?: number): CheckFailure;
+
+    getReturndependenciesMap(): jspb.Map<string, CallResponse.ReturnDependencies>;
+    clearReturndependenciesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallResponse.AsObject;
@@ -451,9 +451,9 @@ export class CallResponse extends jspb.Message {
 export namespace CallResponse {
     export type AsObject = {
         pb_return?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<CheckFailure.AsObject>,
 
         returndependenciesMap: Array<[string, CallResponse.ReturnDependencies.AsObject]>,
-        failuresList: Array<CheckFailure.AsObject>,
     }
 
 
