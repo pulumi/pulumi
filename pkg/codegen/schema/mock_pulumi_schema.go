@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"context"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -55,6 +57,11 @@ type nullLoader struct{}
 
 func (nullLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
 	contract.Failf("nullLoader invoked on %s,%s", pkg, version)
+	return nil, nil
+}
+
+func (nullLoader) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+	contract.Failf("nullLoader invoked on %s,%s", descriptor.Name, descriptor.Version)
 	return nil, nil
 }
 
