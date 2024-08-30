@@ -126,8 +126,14 @@ html_title = "Pulumi developer documentation"
 html_logo = "https://www.pulumi.com/images/logo/logo-on-white-box.svg"
 
 html_theme_options = {
-    # Show all headings up to level 2 in the sidebar table of contents.
-    "show_toc_levels": 2,
+    # Expand all headings up to level 2 by default in the left sidebar (global)
+    # table of contents.
+    "show_navbar_depth": 2,
+    # Show all headings up to level 2 in the right sidebar (in-page) table of
+    # contents.
+    "show_toc_level": 2,
+    # Expand all headings up to level 2 by default in the sidebar table of
+    # contents.
     # Enable margin notes
     # (https://sphinx-book-theme.readthedocs.io/en/stable/content/content-blocks.html#sidenotes-and-marginnotes).
     "use_sidenotes": True,
