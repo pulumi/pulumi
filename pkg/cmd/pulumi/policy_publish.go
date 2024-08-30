@@ -166,7 +166,7 @@ func requirePolicyPack(
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := loginToCloud(ctx, cloudURL, project, workspace.GetCloudInsecure(cloudURL), displayOptions)
+	b, err := loginToCloud(ctx, cloudURL, project, pkgWorkspace.GetCloudInsecure(ws, cloudURL), displayOptions)
 	if err != nil {
 		return nil, err
 	}

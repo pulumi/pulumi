@@ -34,6 +34,19 @@ func GetCurrentCloudURL(ws Context, e env.Env, project *workspace.Project) (stri
 	return url, nil
 }
 
+// GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.
+func GetCloudInsecure(ws Context, cloudURL string) bool {
+	insecure := false
+	creds, err := ws.GetStoredCredentials()
+	// If this errors just assume insecure == false
+	if err == nil {
+		if account, has := creds.Accounts[cloudURL]; has {
+			insecure = account.Insecure
+		}
+	}
+	return insecure
+}
+
 func GetBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 	config, err := workspace.GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {

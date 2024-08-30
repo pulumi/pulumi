@@ -159,19 +159,6 @@ func getCredsFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "credentials.json"), nil
 }
 
-// GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.
-func GetCloudInsecure(cloudURL string) bool {
-	insecure := false
-	creds, err := GetStoredCredentials()
-	// If this errors just assume insecure == false
-	if err == nil {
-		if account, has := creds.Accounts[cloudURL]; has {
-			insecure = account.Insecure
-		}
-	}
-	return insecure
-}
-
 // GetStoredCredentials returns any credentials stored on the local machine.
 func GetStoredCredentials() (Credentials, error) {
 	credsFile, err := getCredsFilePath()
