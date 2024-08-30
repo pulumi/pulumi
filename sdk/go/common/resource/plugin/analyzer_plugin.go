@@ -184,7 +184,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
-	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{ // TODO: resp is missing urn
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       name,
@@ -196,6 +196,12 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return nil, rpcError
+	}
+	// TODO: For some reason, URN is not set by the analyzer for external resources, so manually patch that in here.
+	for _, diag := range resp.Diagnostics {
+		if diag.Urn != string(urn) {
+			diag.Urn = string(urn)
+		}
 	}
 
 	failures := resp.GetDiagnostics()
