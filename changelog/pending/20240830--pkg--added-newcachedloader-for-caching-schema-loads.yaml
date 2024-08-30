@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: Added `NewCachedLoader` for caching schema loads.
