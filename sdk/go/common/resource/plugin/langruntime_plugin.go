@@ -231,6 +231,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Organization:      info.Organization,
 		Info:              minfo,
 		LoaderTarget:      info.LoaderAddress,
+		StartDebugger:     info.StartDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

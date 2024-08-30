@@ -88,17 +88,20 @@ func TestEngineEvents(t *testing.T) {
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)
 
-			// Ensure that we have two "ResourcePre" events: one for the stack and one for our resource.
+			// Ensure that we have three "ResourcePre" events: one for the stack and one for our resource
+			// and one for the provider
 			preEventResourceTypes := []string{}
 			for _, e := range stackInfo.Events {
 				if e.ResourcePreEvent != nil {
+					fmt.Println(e.ResourcePreEvent.Metadata.Type)
 					preEventResourceTypes = append(preEventResourceTypes, e.ResourcePreEvent.Metadata.Type)
 				}
 			}
 
-			assert.Equal(t, 2, len(preEventResourceTypes))
+			assert.Equal(t, 3, len(preEventResourceTypes))
 			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
+			assert.Contains(t, preEventResourceTypes, "pulumi:providers:pulumi-nodejs")
 		},
 	})
 }

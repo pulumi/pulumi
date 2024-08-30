@@ -19,6 +19,7 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_engine_pb = require('./engine_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
+var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
@@ -86,6 +87,17 @@ function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
   return pulumi_engine_pb.SetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_StartDebuggerRequest(arg) {
+  if (!(arg instanceof pulumi_engine_pb.StartDebuggerRequest)) {
+    throw new Error('Expected argument of type pulumirpc.StartDebuggerRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_StartDebuggerRequest(buffer_arg) {
+  return pulumi_engine_pb.StartDebuggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
 // to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
@@ -127,6 +139,17 @@ setRootResource: {
     requestDeserialize: deserialize_pulumirpc_SetRootResourceRequest,
     responseSerialize: serialize_pulumirpc_SetRootResourceResponse,
     responseDeserialize: deserialize_pulumirpc_SetRootResourceResponse,
+  },
+  startDebugger: {
+    path: '/pulumirpc.Engine/StartDebugger',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_engine_pb.StartDebuggerRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_StartDebuggerRequest,
+    requestDeserialize: deserialize_pulumirpc_StartDebuggerRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

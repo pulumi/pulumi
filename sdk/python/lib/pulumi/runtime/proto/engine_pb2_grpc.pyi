@@ -46,6 +46,10 @@ class EngineStub:
         pulumi.engine_pb2.SetRootResourceResponse,
     ]
     """SetRootResource sets the URN of the root resource."""
+    StartDebugger: grpc.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.StartDebuggerRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
 
 class EngineServicer(metaclass=abc.ABCMeta):
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
@@ -76,5 +80,11 @@ class EngineServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.engine_pb2.SetRootResourceResponse:
         """SetRootResource sets the URN of the root resource."""
+    
+    def StartDebugger(
+        self,
+        request: pulumi.engine_pb2.StartDebuggerRequest,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty: ...
 
 def add_EngineServicer_to_server(servicer: EngineServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

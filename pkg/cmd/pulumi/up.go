@@ -332,7 +332,7 @@ func newUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -527,6 +527,10 @@ func newUpCmd() *cobra.Command {
 			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
+
+			// For now, 'explainFailure' link to Copilot in the CLI output
+			// requires env var PULUMI_SHOW_COPILOT_LINK to be set to true
+			opts.Display.ShowLinkToCopilot = env.ShowCopilotLink.Value()
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(ctx, ws, args[0], opts, cmd)

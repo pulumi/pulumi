@@ -166,6 +166,10 @@ func (h *testHost) Close() error {
 	return nil
 }
 
+func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
+	panic("not implemented")
+}
+
 type grpcWrapper struct {
 	stop chan bool
 }

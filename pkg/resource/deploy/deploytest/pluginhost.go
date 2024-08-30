@@ -232,6 +232,12 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
+func (e *hostEngine) StartDebugger(ctx context.Context,
+	req *pulumirpc.StartDebuggerRequest,
+) (*emptypb.Empty, error) {
+	return nil, errors.New("unsupported")
+}
+
 type PluginHostFactory func() plugin.Host
 
 type pluginHost struct {
@@ -431,6 +437,10 @@ func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg strin
 	if !host.isClosed() {
 		host.statusSink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 	}
+}
+
+func (host *pluginHost) StartDebugging(plugin.DebuggingInfo) error {
+	return nil
 }
 
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {

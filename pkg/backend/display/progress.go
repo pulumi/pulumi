@@ -578,7 +578,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, row := range eventRows {
-		// The header for the diagnogistics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
+		// The header for the diagnostics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
 		wroteResourceHeader := false
 
 		// Each row in the display corresponded with a resource, and that resource could have emitted
@@ -643,7 +643,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 
 	// Print a link to Copilot to explain the failure.
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && !display.opts.SuppressLinkToCopilot {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
@@ -985,6 +985,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if msg == "" {
 			return
 		}
+	case engine.StartDebuggingEvent:
+		return
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return

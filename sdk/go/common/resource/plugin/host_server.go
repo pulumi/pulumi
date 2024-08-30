@@ -129,3 +129,23 @@ func (eng *hostServer) SetRootResource(ctx context.Context,
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil
 }
+
+func (eng *hostServer) StartDebugger(ctx context.Context,
+	req *pulumirpc.StartDebuggerRequest,
+) (*emptypb.Empty, error) {
+	// fire an engine event to start the debugger
+	info := DebuggingInfo{
+		Config: req.Config.AsMap(),
+	}
+	// log a status message
+	eng.host.LogStatus(
+		diag.Info, resource.URN(""),
+		fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
+
+	err := eng.host.StartDebugging(info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}

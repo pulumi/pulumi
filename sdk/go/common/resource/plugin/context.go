@@ -74,17 +74,18 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 	}
 
 	return NewContextWithRoot(d, statusD, host, pwd, pwd, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, nil)
+		disableProviderPreview, parentSpan, plugins, nil, nil)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, config map[config.Key]string,
+	debugging DebugEventEmitter,
 ) (*Context, error) {
 	return NewContextWithContext(
 		context.Background(), d, statusD, host, pwd, root,
-		runtimeOptions, disableProviderPreview, parentSpan, plugins, config)
+		runtimeOptions, disableProviderPreview, parentSpan, plugins, config, debugging)
 }
 
 // NewContextWithContext is a variation of NewContextWithRoot that also sets the base context.
@@ -93,6 +94,7 @@ func NewContextWithContext(
 	d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, config map[config.Key]string,
+	debugging DebugEventEmitter,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -113,7 +115,7 @@ func NewContextWithContext(
 		baseContext:     ctx,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(pctx, runtimeOptions, disableProviderPreview, plugins, config)
+		h, err := NewDefaultHost(pctx, runtimeOptions, disableProviderPreview, plugins, config, debugging)
 		if err != nil {
 			return nil, err
 		}

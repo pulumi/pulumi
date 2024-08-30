@@ -1068,6 +1068,7 @@ func installPolicyPackDependencies(ctx context.Context, root string, proj *works
 		nil,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
+		nil,
 		false,
 		span,
 		nil,

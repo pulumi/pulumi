@@ -738,6 +738,10 @@ func (h *mockHost) Close() error {
 	panic("unimplemented")
 }
 
+func (h *mockHost) StartDebugging(plugin.DebuggingInfo) error {
+	panic("unimplemented")
+}
+
 type mockLanguageRuntime struct {
 	CloseF func() error
 
