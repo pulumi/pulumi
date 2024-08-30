@@ -112,3 +112,14 @@ follows:[^side-node-exhaustive]
   a similar pattern when it comes to several of the core components -- e.g. most
   providers will have an `sdk/` directory exposing provider SDKs for each
   supported language.
+
+The remainder of this section covers many of these components in more detail, as
+well as discussing how they are verified and tested.
+
+:::{toctree}
+:maxdepth: 1
+:titlesonly:
+
+/docs/architecture/deployment-execution/README
+/docs/architecture/mlcs
+:::
