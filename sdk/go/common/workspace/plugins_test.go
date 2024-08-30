@@ -1502,3 +1502,44 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 	assert.Equal(t, ambientPath, path)
 	assert.Empty(t, stderr.String())
 }
+
+// Test that GetPluginInfo works against shimless plugins (i.e. those without a direct executable file).
+//
+//nolint:paralleltest // modifies environment variables
+func TestPluginInfoShimless(t *testing.T) {
+	// Create a fake plugin in temp
+	pathDir := t.TempDir()
+
+	pluginPath := filepath.Join(pathDir, "pulumi-resource-mock")
+	err := os.MkdirAll(pluginPath, 0o700) //nolint: gosec
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(pluginPath, "PulumiPlugin.yaml"), []byte(`runtime: nodejs`), 0o600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(pluginPath, "test.ts"), []byte(`testcode`), 0o600)
+	require.NoError(t, err)
+
+	stat, err := os.Stat(pluginPath)
+	require.NoError(t, err)
+
+	var stderr bytes.Buffer
+	d := diag.DefaultSink(
+		iotest.LogWriter(t), // stdout
+		&stderr,
+		diag.FormatOptions{Color: "never"},
+	)
+
+	info, err := GetPluginInfo(d, apitype.ResourcePlugin, "mock", nil, []ProjectPlugin{
+		{
+			Name: "mock",
+			Kind: apitype.ResourcePlugin,
+			Path: pluginPath,
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, pluginPath, info.Path)
+	assert.Equal(t, int64(23), info.Size)
+	assert.Equal(t, stat.ModTime(), info.InstallTime)
+	assert.Equal(t, stat.ModTime(), info.SchemaTime)
+	// schemaPaths are odd, they're one directory up from the plugin directory
+	assert.Equal(t, filepath.Join(filepath.Dir(pluginPath), "schema-mock.json"), info.SchemaPath)
+}

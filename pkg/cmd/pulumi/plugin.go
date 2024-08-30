@@ -105,10 +105,6 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	for _, plugin := range plugins {
 		info, err := workspace.GetPluginInfo(d, plugin.Kind, plugin.Name, plugin.Version, ctx.Host.GetProjectPlugins())
 		if err != nil {
-			err = info.SetFileMetadata(info.Path)
-			if err != nil {
-				return nil, err
-			}
 			contract.IgnoreError(err)
 		}
 		if info != nil {

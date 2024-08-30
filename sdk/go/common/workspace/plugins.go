@@ -901,7 +901,7 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 		logging.V(6).Infof("unable to get plugin dir size for %s: %v", path, err)
 	}
 
-	// Next get the access times from the plugin binary itself.
+	// Next get the access times from the plugin folder.
 	tinfo := times.Get(file)
 
 	if tinfo.HasChangeTime() {
@@ -1845,13 +1845,13 @@ func getPluginInfoAndPath(
 			Version: spec.Version,
 			Path:    plugin.Path,
 		}
-		path := getPluginPath(info)
 		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata && path != "" {
-			if err := info.SetFileMetadata(path); err != nil {
+		if !skipMetadata {
+			if err := info.SetFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}
+		path := getPluginPath(info)
 		return info, path, nil
 	}
 
@@ -1915,11 +1915,18 @@ func getPluginInfoAndPath(
 		pluginPath = ambientPath
 	}
 	if pluginPath != "" {
-		return &PluginInfo{
+		info := &PluginInfo{
 			Kind: kind,
 			Name: name,
 			Path: filepath.Dir(pluginPath),
-		}, pluginPath, nil
+		}
+		// computing plugin sizes can be very expensive (nested node_modules)
+		if !skipMetadata {
+			if err := info.SetFileMetadata(info.Path); err != nil {
+				return nil, "", err
+			}
+		}
+		return info, pluginPath, nil
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.
