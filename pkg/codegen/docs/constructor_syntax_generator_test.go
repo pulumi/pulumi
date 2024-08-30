@@ -15,6 +15,11 @@
 package docs
 
 import (
+	"encoding/base64"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"strings"
 	"testing"
 
@@ -98,7 +103,7 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 		},
 	})
 
-	languages := []string{"csharp", "go", "nodejs", "python", "yaml", "java"}
+	languages := []string{"csharp", "go", "nodejs", "python", "yaml", "java", "protobuf"}
 	constructorSyntax := generateConstructorSyntaxData(pkg, languages)
 
 	trim := func(s string) string {
@@ -109,6 +114,25 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 		program, has := language.resources[token]
 		assert.True(t, has, "Expected to find program for token %s", token)
 		assert.Equal(t, trim(expected), trim(program))
+	}
+
+	equalProtobufPrograms := func(language *languageConstructorSyntax, token string, expected string) {
+		programInBase64, has := language.resources[token]
+		var program codegen.PclProtobufProgram
+		programBytes, err := base64.StdEncoding.DecodeString(programInBase64)
+		if err != nil {
+			panic(err)
+		}
+		err = proto.Unmarshal(programBytes, &program)
+		if err != nil {
+			panic(err)
+		}
+		bytes, err := protojson.Marshal(&program)
+		if err != nil {
+			panic(err)
+		}
+		assert.True(t, has, "Expected to find program for token %s", token)
+		require.JSONEq(t, expected, string(bytes))
 	}
 
 	expectedResources := 3
@@ -227,5 +251,115 @@ var secondResource = new Second("secondResource", SecondArgs.builder()
 
 	equalPrograms(constructorSyntax.java, "test:index:NoInputs", `
 var noInputsResource = new NoInputs("noInputsResource");
+`)
+	assert.Equal(t, expectedResources, len(constructorSyntax.protobuf.resources))
+	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:First", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "firstResource",
+        "logicalName": "firstResource",
+        "token": "test:index:First",
+        "inputs": [
+          {
+            "name": "fooBool",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "fooEnum",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "first"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "fooInt",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 0
+              }
+            }
+          },
+          {
+            "name": "fooNumericEnum",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 10
+              }
+            }
+          },
+          {
+            "name": "fooString",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`)
+	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:Second", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "secondResource",
+        "logicalName": "secondResource",
+        "token": "test:index:Second",
+        "inputs": [
+          {
+            "name": "barString",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`)
+	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:NoInputs", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "noInputsResource",
+        "logicalName": "noInputsResource",
+        "token": "test:index:NoInputs"
+      }
+    }
+  ]
+}
 `)
 }

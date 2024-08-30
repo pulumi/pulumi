@@ -12,45 +12,200 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Names are taken from hcl2/model/expression.go
-
 syntax = "proto3";
 
 package codegen;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
 
-message Package {
+message PclProtobufProgram {
   repeated Node nodes = 1;
+  repeated PluginReference plugins = 2;
+}
+
+message PluginReference {
+  string name = 1;
+  string version = 2;
 }
 
 message Node {
   oneof value {
-    ResourceNode resource = 1;
+    Resource resource = 1;
+    LocalVariable localVariable = 2;
+    ConfigVariable configVariable = 3;
+    OutputVariable outputVariable = 4;
   }
 }
 
-message ResourceNode {
-  repeated Attribute inputs = 1;
+message Resource {
+  string name = 1;
+  string logicalName = 2;
+  string token = 3;
+  repeated ResourceInput inputs = 4;
+  optional ResourceOptions options = 5;
 }
 
-message Attribute {
+message ResourceInput {
   string name = 1;
   Expression value = 2;
 }
 
+message ResourceOptions {
+  optional Expression dependsOn = 1;
+  optional Expression protect = 2;
+  optional Expression parent = 3;
+  optional Expression ignoreChanges = 4;
+  optional Expression provider = 5;
+  optional Expression version = 6;
+}
+
+message LocalVariable {
+  string name = 1;
+  string logicalName = 2;
+  Expression value = 3;
+}
+
+message ConfigVariable {
+  string name = 1;
+  string logicalName = 2;
+  ConfigType configType = 3;
+  Expression defaultValue = 4;
+}
+
+enum ConfigType {
+  STRING = 0;
+  NUMBER = 1;
+  INT = 2;
+  BOOL = 3;
+}
+
+message OutputVariable {
+  string name = 1;
+  string logicalName = 2;
+  Expression value = 3;
+}
+
 message Expression {
-  oneof Value {
-    float constNumber = 1;
-    string constString = 2;
+  oneof value {
+    LiteralValueExpression literalValueExpression = 1;
+    TemplateExpression templateExpression = 2;
+    IndexExpression indexExpression = 3;
+    ObjectConsExpression objectConsExpression = 4;
+    TupleConsExpression tupleConsExpression = 5;
+    FunctionCallExpression functionCallExpression = 6;
+    RelativeTraversalExpression relativeTraversalExpression = 7;
+    ScopeTraversalExpression scopeTraversalExpression = 8;
+    AnonymousFunctionExpression anonymousFunctionExpression = 9;
+    ConditionalExpression conditionalExpression = 10;
+    BinaryOpExpression binaryOpExpression = 11;
+    UnaryOpExpression unaryOpExpression = 12;
   }
 }
 
-message ObjectConstExpression {
-  repeated ObjectConsItem items = 1;
+message LiteralValueExpression {
+  oneof value {
+    bool unknownValue = 1;
+    string stringValue = 2;
+    double numberValue = 3;
+    bool boolValue = 4;
+  }
 }
 
-message ObjectConsItem {
-  Expression key = 1;
-  Expression value = 2;
+message TemplateExpression {
+  repeated Expression parts = 1;
+}
+
+message IndexExpression {
+  Expression collection = 1;
+  Expression key = 2;
+}
+
+message ObjectConsExpression {
+  map<string, Expression> properties = 1;
+}
+
+message TupleConsExpression {
+  repeated Expression items = 1;
+}
+
+message FunctionCallExpression {
+  string name = 1;
+  repeated Expression args = 2;
+}
+
+message RelativeTraversalExpression {
+  Expression source = 1;
+  Traversal traversal = 2;
+}
+
+message ScopeTraversalExpression {
+  string rootName = 1;
+  Traversal traversal = 2;
+}
+
+message AnonymousFunctionExpression {
+  Expression body = 1;
+  repeated string parameters = 2;
+}
+
+message ConditionalExpression {
+  Expression condition = 1;
+  Expression trueExpr = 2;
+  Expression falseExpr = 3;
+}
+
+message BinaryOpExpression {
+  Operation operation = 1;
+  Expression left = 2;
+  Expression right = 3;
+}
+
+message UnaryOpExpression {
+  Operation operation = 1;
+  Expression operand = 2;
+}
+
+enum Operation {
+  ADD = 0;
+  DIVIDE = 1;
+  EQUAL = 2;
+  GREATER_THAN = 3;
+  GREATER_THAN_OR_EQUAL = 4;
+  LESS_THAN = 5;
+  LESS_THAN_OR_EQUAL = 6;
+  LOGICAL_AND = 7;
+  LOGICAL_OR = 8;
+  MODULO = 9;
+  MULTIPLY = 10;
+  NOT_EQUAL = 11;
+  SUBTRACT = 12;
+}
+
+message Traversal {
+  repeated Traverser each = 1;
+}
+
+message Traverser {
+  oneof value {
+    TraverseAttr traverseAttr = 1;
+    TraverseIndex traverseIndex = 2;
+    TraverseRoot traverseRoot = 3;
+    TraverseSplat traverseSplat = 4;
+  }
+}
+
+message TraverseAttr {
+  string name = 1;
+}
+
+message TraverseIndex {
+  int64 index = 1;
+}
+
+message TraverseRoot {
+  string name = 1;
+}
+
+message TraverseSplat {
+  Traversal each = 1;
 }

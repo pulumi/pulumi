@@ -25,7 +25,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl_serialized"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/protobuf"
 	"go/format"
 	"html"
 	"html/template"
@@ -176,6 +176,7 @@ type constructorSyntaxData struct {
 	csharp     *languageConstructorSyntax
 	java       *languageConstructorSyntax
 	yaml       *languageConstructorSyntax
+	protobuf   *languageConstructorSyntax
 }
 
 func emptyLanguageConstructorSyntax() *languageConstructorSyntax {
@@ -193,6 +194,7 @@ func newConstructorSyntaxData() *constructorSyntaxData {
 		csharp:     emptyLanguageConstructorSyntax(),
 		java:       emptyLanguageConstructorSyntax(),
 		yaml:       emptyLanguageConstructorSyntax(),
+		protobuf:   emptyLanguageConstructorSyntax(),
 	}
 }
 
@@ -1815,6 +1817,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
 		}
+		if example, found := dctx.constructorSyntaxData.protobuf.resources[r.Token]; found {
+			creationExampleSyntax["protobuf"] = example
+		}
 	}
 
 	// Set a cap on how many auxiliary types the docs will include. We do that to limit the maximum size of
@@ -2433,8 +2438,13 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 					"//",       /* comment prefix */
 					func(line string) bool { return strings.HasSuffix(line, ");") })
 			}
-		case "pcl_serialized":
-			_, _, _ = safeExtract(pcl_serialized.GenerateProgram)
+		case "protobuf":
+			files, diags, err := safeExtract(protobuf.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["program.base64"])
+				protobufProgram, _ := extractConstructorSyntaxExamplesFromProtobuf(program)
+				constructorSyntax.protobuf = protobufProgram
+			}
 		}
 
 	}

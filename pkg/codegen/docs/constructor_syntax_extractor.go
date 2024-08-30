@@ -15,6 +15,9 @@
 package docs
 
 import (
+	"encoding/base64"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"google.golang.org/protobuf/proto"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -111,4 +114,41 @@ func extractConstructorSyntaxExamplesFromYAML(programText string) *languageConst
 		resources: resources,
 		invokes:   invokes,
 	}
+}
+
+func extractConstructorSyntaxExamplesFromProtobuf(programInBase64 string) (*languageConstructorSyntax, error) {
+	var program codegen.PclProtobufProgram
+	programBytes, err := base64.StdEncoding.DecodeString(programInBase64)
+	if err != nil {
+		return nil, err
+	}
+	err = proto.Unmarshal(programBytes, &program)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := map[string]string{}
+	invokes := map[string]string{}
+
+	for _, node := range program.Nodes {
+		switch value := node.Value.(type) {
+		case *codegen.Node_Resource:
+			resource := value.Resource
+			innerProgram := codegen.PclProtobufProgram{
+				Nodes:   []*codegen.Node{node},
+				Plugins: make([]*codegen.PluginReference, 0),
+			}
+			out, err := proto.Marshal(&innerProgram)
+			if err != nil {
+				return nil, err
+			}
+			str := base64.StdEncoding.EncodeToString(out)
+			resources[resource.Token] = str
+		}
+	}
+
+	return &languageConstructorSyntax{
+		resources: resources,
+		invokes:   invokes,
+	}, nil
 }

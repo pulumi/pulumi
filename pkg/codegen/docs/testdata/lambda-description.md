@@ -307,6 +307,9 @@ variables:
         sourceFile: lambda.js
         outputPath: lambda_function_payload.zip
 ```
+```protobuf
+BASE64
+```
 <!--End PulumiCodeChooser -->
 
 ### Lambda Layers
@@ -662,6 +665,9 @@ variables:
                   - lambda.amazonaws.com
             actions:
               - sts:AssumeRole
+```
+```protobuf
+BASE64
 ```
 <!--End PulumiCodeChooser -->
 
@@ -1026,6 +1032,9 @@ resources:
         gid: 1000
         uid: 1000
 ```
+```protobuf
+BASE64
+```
 <!--End PulumiCodeChooser -->
 
 ### Lambda retries
@@ -1367,6 +1376,9 @@ variables:
               - logs:PutLogEvents
             resources:
               - arn:aws:logs:*:*:*
+```
+```protobuf
+BASE64
 ```
 <!--End PulumiCodeChooser -->
 

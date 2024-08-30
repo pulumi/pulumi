@@ -159,6 +159,9 @@ resources:
       nodeType: DEV1-M
       size: 1
 ```
+```protobuf
+BASE64
+```
 <!--End PulumiCodeChooser -->
 
 ### Multicloud
@@ -310,6 +313,9 @@ resources:
       nodeType: external
       size: 0
       minSize: 0
+```
+```protobuf
+BASE64
 ```
 <!--End PulumiCodeChooser -->
 
@@ -485,6 +491,9 @@ func main() {
 		return nil
 	})
 }
+```
+```protobuf
+BASE64
 ```
 <!--End PulumiCodeChooser -->
 
@@ -669,6 +678,9 @@ resources:
       clusterId: ${jack.id}
       nodeType: DEV1-M
       size: 1
+```
+```protobuf
+BASE64
 ```
 <!--End PulumiCodeChooser -->
 
