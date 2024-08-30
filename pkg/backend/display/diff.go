@@ -101,6 +101,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return ""
 	case engine.PolicyLoadEvent:
 		return ""
+	case engine.StartDebuggingEvent:
+		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.

@@ -45,7 +45,7 @@ type Event struct {
 type EventPayload interface {
 	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
-		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload
+		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -75,6 +75,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = PolicyRemediationEvent
 	case PolicyLoadEventPayload:
 		typ = PolicyLoadEvent
+	case StartDebuggingEventPayload:
+		typ = StartDebuggingEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -99,6 +101,7 @@ const (
 	PolicyViolationEvent    EventType = "policy-violation"
 	PolicyRemediationEvent  EventType = "policy-remediation"
 	PolicyLoadEvent         EventType = "policy-load"
+	StartDebuggingEvent     EventType = "debugging-start"
 )
 
 func (e Event) Payload() interface{} {
@@ -112,6 +115,8 @@ func (e Event) Internal() bool {
 		return payload.Internal
 	case ResourceOutputsEventPayload:
 		return payload.Internal
+	case StartDebuggingEventPayload:
+		return true
 	default:
 		return false
 	}
@@ -153,6 +158,11 @@ type PolicyRemediationEventPayload struct {
 
 // PolicyLoadEventPayload is the payload for an event with type `policy-load`.
 type PolicyLoadEventPayload struct{}
+
+// StartDebuggingEventPayload is the payload for an event of type `debugging-start`
+type StartDebuggingEventPayload struct {
+	Config map[string]interface{} // the debug configuration (language-specific, see Debug Adapter Protocol)
+}
 
 type StdoutEventPayload struct {
 	Message string
@@ -565,6 +575,13 @@ func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemera
 
 func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
 	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
+}
+
+func (e *eventEmitter) startDebugging(info plugin.DebuggingInfo) {
+	contract.Requiref(e != nil, "e", "!= nil")
+	e.sendEvent(NewEvent(StartDebuggingEventPayload{
+		Config: info.Config,
+	}))
 }
 
 func filterResourceProperties(m resource.PropertyMap, debug bool) resource.PropertyMap {

@@ -45,6 +45,11 @@ type DiagnosticEvent struct {
 	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
+// StartDebuggingEvent is emitted to start a debugging session.
+type StartDebuggingEvent struct {
+	Config map[string]interface{} `json:"config,omitempty"`
+}
+
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
 	ResourceURN          string `json:"resourceUrn,omitempty"`
@@ -227,6 +232,7 @@ type EngineEvent struct {
 	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
 	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
 	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
+	StartDebuggingEvent    *StartDebuggingEvent    `json:"startDebuggingEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

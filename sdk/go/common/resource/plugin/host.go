@@ -89,6 +89,9 @@ type Host interface {
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
 
+	// StartDebugging asks the host to start a debugging session with the given configuration.
+	StartDebugging(DebuggingInfo) error
+
 	// Close reclaims any resources associated with the host.
 	Close() error
 }
@@ -96,6 +99,7 @@ type Host interface {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, config map[config.Key]string,
+	debugging DebugEventEmitter,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -136,6 +140,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
+		debugging:               debugging,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -238,6 +243,7 @@ type defaultHost struct {
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
+	debugging               DebugEventEmitter
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -273,6 +279,11 @@ func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, st
 
 func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+}
+
+func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
+	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
+	return host.debugging.StartDebugging(info)
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
