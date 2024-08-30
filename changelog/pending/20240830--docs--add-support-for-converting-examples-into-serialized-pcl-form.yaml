@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: docs
+  description: Add support for converting examples into serialized PCL form
