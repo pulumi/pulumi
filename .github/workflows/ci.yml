@@ -381,7 +381,6 @@ jobs:
     # appearing in the rendered title of the job name. See: unit test.
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
-    if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
     # alow jobs to fail if the platform contains windows
     strategy:
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
