@@ -88,7 +88,8 @@ func TestEngineEvents(t *testing.T) {
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)
 
-			// Ensure that we have three "ResourcePre" events: one for the stack and one for our resource and one for the provider
+			// Ensure that we have three "ResourcePre" events: one for the stack and one for our resource
+			// and one for the provider
 			preEventResourceTypes := []string{}
 			for _, e := range stackInfo.Events {
 				if e.ResourcePreEvent != nil {
