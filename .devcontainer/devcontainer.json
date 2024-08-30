@@ -14,10 +14,6 @@
         "PULUMI_TEST_ORG": "${localEnv:PULUMI_TEST_ORG}"
     },
 
-    "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-    },
-
     "remoteUser": "user",
 
     "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python", "formulahendry.dotnet-test-explorer"],
