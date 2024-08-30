@@ -994,14 +994,47 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			// * This traversal has to be depth-first -- we need to push steps for our
 			//   dependencies before we push a step for ourselves.
 			//
-			// * "Dependencies" here includes dependencies, property dependencies, and
-			//   deleted-with relationships.
+			// * "Dependencies" here includes parents, dependencies, property
+			//   dependencies, and deleted-with relationships.
 
 			var getDependencySteps func(old *resource.State, event RegisterResourceEvent) ([]Step, error)
 			getDependencySteps = func(old *resource.State, event RegisterResourceEvent) ([]Step, error) {
+				// We need to track old URNs for the following reasons:
+				//
+				// * In sg.urns, in order to allow checkParent to find parents that may
+				//   have changed in the program, but not targeted. This is possible if
+				//   a parent is removed and its child is aliased to its
+				//   (previously-parented) URN.
+				//
+				// * In sg.sames, in order to avoid emitting duplicate SameSteps in the
+				//   presence of aliased resources.
+				sg.urns[old.URN] = true
+
 				sg.sames[urn] = true
+				sg.sames[old.URN] = true
 
 				var steps []Step
+
+				if old.Parent != "" {
+					generatedParent := sg.hasGeneratedStep(old.Parent)
+					if !generatedParent {
+						parentOld, has := sg.deployment.Olds()[old.Parent]
+						if !has {
+							return nil, result.BailErrorf(
+								"parent %s of untargeted resource %s has no old state",
+								old.Parent,
+								urn,
+							)
+						}
+
+						parentSteps, err := getDependencySteps(parentOld, nil)
+						if err != nil {
+							return nil, err
+						}
+
+						steps = append(steps, parentSteps...)
+					}
+				}
 
 				for _, dep := range old.Dependencies {
 					generatedDep := sg.hasGeneratedStep(dep)
