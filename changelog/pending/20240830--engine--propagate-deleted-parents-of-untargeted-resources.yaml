@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Propagate deleted parents of untargeted resources
