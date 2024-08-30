@@ -25,6 +25,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl_serialized"
 	"go/format"
 	"html"
 	"html/template"
@@ -2432,7 +2433,10 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 					"//",       /* comment prefix */
 					func(line string) bool { return strings.HasSuffix(line, ");") })
 			}
+		case "pcl_serialized":
+			_, _, _ = safeExtract(pcl_serialized.GenerateProgram)
 		}
+
 	}
 
 	return constructorSyntax
