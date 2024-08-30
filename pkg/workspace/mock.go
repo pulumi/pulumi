@@ -15,8 +15,6 @@
 package workspace
 
 import (
-	"errors"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -29,12 +27,12 @@ func (c *MockContext) ReadProject() (*workspace.Project, string, error) {
 	if c.ReadProjectF != nil {
 		return c.ReadProjectF()
 	}
-	return nil, "", errors.New("ReadProject function is not implemented")
+	return nil, "", workspace.ErrProjectNotFound
 }
 
 func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {
 	if c.GetStoredCredentialsF != nil {
 		return c.GetStoredCredentialsF()
 	}
-	return workspace.Credentials{}, errors.New("GetStoredCredentials function is not implemented")
+	return workspace.Credentials{}, nil
 }

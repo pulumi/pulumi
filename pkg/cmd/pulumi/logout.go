@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -75,7 +76,7 @@ func newLogoutCmd() *cobra.Command {
 						return err
 					}
 
-					cloudURL, err = workspace.GetCurrentCloudURL(project)
+					cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 					if err != nil {
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}

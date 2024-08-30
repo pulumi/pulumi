@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -80,7 +81,9 @@ type aiWebCmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {

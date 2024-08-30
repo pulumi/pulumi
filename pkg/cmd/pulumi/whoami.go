@@ -62,7 +62,9 @@ type whoAmICmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *whoAmICmd) Run(ctx context.Context) error {
@@ -80,12 +82,13 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	b, err := currentBackend(ctx, project, opts)
+	b, err := currentBackend(ctx, ws, project, opts)
 	if err != nil {
 		return err
 	}

@@ -57,7 +57,7 @@ func newStackSelectCmd() *cobra.Command {
 				return err
 			}
 
-			b, err := currentBackend(ctx, project, opts)
+			b, err := currentBackend(ctx, ws, project, opts)
 			if err != nil {
 				return err
 			}
