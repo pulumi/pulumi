@@ -12,27 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package workspace
+package engine
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-type MockContext struct {
-	ReadProjectF          func() (*workspace.Project, string, error)
-	GetStoredCredentialsF func() (workspace.Credentials, error)
+func newDebuggingEventEmitter(events eventEmitter) plugin.DebugEventEmitter {
+	return &debuggingEventEmitter{
+		events: events,
+	}
 }
 
-func (c *MockContext) ReadProject() (*workspace.Project, string, error) {
-	if c.ReadProjectF != nil {
-		return c.ReadProjectF()
-	}
-	return nil, "", workspace.ErrProjectNotFound
+type debuggingEventEmitter struct {
+	events eventEmitter // the channel to emit events into.
 }
 
-func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {
-	if c.GetStoredCredentialsF != nil {
-		return c.GetStoredCredentialsF()
-	}
-	return workspace.Credentials{}, nil
+var _ plugin.DebugEventEmitter = (*debuggingEventEmitter)(nil)
+
+func (s *debuggingEventEmitter) StartDebugging(info plugin.DebuggingInfo) error {
+	s.events.startDebugging(info)
+	return nil
 }

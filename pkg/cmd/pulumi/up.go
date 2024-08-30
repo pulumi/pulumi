@@ -210,7 +210,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(ctx context.Context,
+	upTemplateNameOrURL := func(ctx context.Context, ws pkgWorkspace.Context,
 		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
@@ -259,7 +259,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// There is no current project at this point to pass into currentBackend
-		b, err := currentBackend(ctx, nil, opts.Display)
+		b, err := currentBackend(ctx, ws, nil, opts.Display)
 		if err != nil {
 			return err
 		}
@@ -301,7 +301,6 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		ws := pkgWorkspace.Instance
 		proj, root, err := ws.ReadProject()
 		if err != nil {
 			return err
@@ -333,7 +332,7 @@ func newUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -534,7 +533,7 @@ func newUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToCopilot = env.ShowCopilotLink.Value()
 
 			if len(args) > 0 {
-				return upTemplateNameOrURL(ctx, args[0], opts, cmd)
+				return upTemplateNameOrURL(ctx, ws, args[0], opts, cmd)
 			}
 
 			return upWorkingDirectory(ctx, ws, opts, cmd)

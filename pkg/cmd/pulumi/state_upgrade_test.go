@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -93,7 +94,9 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 
 	var called bool
 	cmd := stateUpgradeCmd{
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
 					called = true
@@ -116,7 +119,9 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 
 	var called bool
 	cmd := stateUpgradeCmd{
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
 					called = true
@@ -139,7 +144,9 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	t.Parallel()
 
 	cmd := stateUpgradeCmd{
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
 					t.Fatal("Upgrade should not be called")
@@ -161,7 +168,9 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd := stateUpgradeCmd{
 		Stdout: &stdout,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{}, nil
 		},
 	}
@@ -177,7 +186,9 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 
 	giveErr := errors.New("great sadness")
 	cmd := stateUpgradeCmd{
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return nil, giveErr
 		},
 	}

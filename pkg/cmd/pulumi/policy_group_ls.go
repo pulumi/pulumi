@@ -51,13 +51,14 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			// Try to read the current project
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
 			// Get backend.
-			b, err := currentBackend(ctx, project, display.Options{Color: cmdutil.GetGlobalColorization()})
+			b, err := currentBackend(ctx, ws, project, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return fmt.Errorf("failed to get current backend: %w", err)
 			}

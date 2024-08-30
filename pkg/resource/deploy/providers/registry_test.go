@@ -108,6 +108,10 @@ func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.Progr
 	return nil, nil
 }
 
+func (host *testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
+	return nil
+}
+
 type testProvider struct {
 	plugin.UnimplementedProvider
 

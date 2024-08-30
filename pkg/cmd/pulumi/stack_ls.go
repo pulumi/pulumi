@@ -135,13 +135,14 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(ctx, project, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(ctx, ws, project, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

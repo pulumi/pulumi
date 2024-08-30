@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +47,9 @@ func TestSearch_cmd(t *testing.T) {
 		searchCmd: searchCmd{
 			orgName: orgName,
 			Stdout:  &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			currentBackend: func(
+				context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			) (backend.Backend, error) {
 				return &stubHTTPBackend{
 					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 						return &apitype.ResourceSearchResponse{
@@ -98,7 +101,9 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
 			Stdout: &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			currentBackend: func(
+				context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			) (backend.Backend, error) {
 				return &stubHTTPBackend{
 					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 						return &apitype.ResourceSearchResponse{

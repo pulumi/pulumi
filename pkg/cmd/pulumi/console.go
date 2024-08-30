@@ -43,12 +43,13 @@ func newConsoleCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			currentBackend, err := currentBackend(ctx, project, opts)
+			currentBackend, err := currentBackend(ctx, ws, project, opts)
 			if err != nil {
 				return err
 			}

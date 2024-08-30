@@ -119,7 +119,7 @@ func isDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 		return false, err
 	}
 
-	url, err := workspace.GetCurrentCloudURL(project)
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -142,12 +142,14 @@ func loginToCloud(
 	return httpstate.New(cmdutil.Diag(), cloudURL, project, insecure)
 }
 
-func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
+func nonInteractiveCurrentBackend(
+	ctx context.Context, ws pkgWorkspace.Context, project *workspace.Project,
+) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL(project)
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -164,12 +166,14 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 	return httpstate.New(cmdutil.Diag(), url, project, insecure)
 }
 
-func currentBackend(ctx context.Context, project *workspace.Project, opts display.Options) (backend.Backend, error) {
+func currentBackend(
+	ctx context.Context, ws pkgWorkspace.Context, project *workspace.Project, opts display.Options,
+) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL(project)
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -307,7 +311,7 @@ func requireStack(ctx context.Context, ws pkgWorkspace.Context,
 		return nil, err
 	}
 
-	b, err := currentBackend(ctx, project, opts)
+	b, err := currentBackend(ctx, ws, project, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +355,7 @@ func requireCurrentStack(
 	}
 
 	// Search for the current stack.
-	b, err := currentBackend(ctx, project, opts)
+	b, err := currentBackend(ctx, ws, project, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1064,6 +1068,7 @@ func installPolicyPackDependencies(ctx context.Context, root string, proj *works
 		nil,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
+		nil,
 		false,
 		span,
 		nil,

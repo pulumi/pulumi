@@ -135,7 +135,7 @@ func getSummaryAbout(
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {
@@ -182,7 +182,7 @@ func getSummaryAbout(
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx, proj)
+	backend, err = nonInteractiveCurrentBackend(ctx, ws, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {

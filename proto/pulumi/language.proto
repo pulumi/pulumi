@@ -133,9 +133,9 @@ message RunRequest {
     string organization = 12;       // the organization of the stack being deployed into.
     google.protobuf.Struct configPropertyMap = 13; // the configuration variables to apply before running.
     ProgramInfo info = 14; // the program info to use to execute the program.
-
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 15;
+    bool start_debugger = 16;       // true if the language host is supposed to start the program under a debugger.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

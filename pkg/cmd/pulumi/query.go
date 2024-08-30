@@ -68,12 +68,13 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 			}
 
 			// Try to read the current project
-			project, root, err := pkgWorkspace.Instance.ReadProject()
+			ws := pkgWorkspace.Instance
+			project, root, err := ws.ReadProject()
 			if err != nil {
 				return err
 			}
 
-			b, err := currentBackend(ctx, project, opts.Display)
+			b, err := currentBackend(ctx, ws, project, opts.Display)
 			if err != nil {
 				return err
 			}

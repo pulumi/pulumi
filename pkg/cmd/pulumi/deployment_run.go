@@ -67,7 +67,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, project, display)
+			currentBe, err := currentBackend(ctx, ws, project, display)
 			if err != nil {
 				return err
 			}

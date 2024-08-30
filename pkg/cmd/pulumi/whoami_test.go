@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,9 @@ func TestWhoAmICmd_default(t *testing.T) {
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
 		Stdout: &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user1", []string{"org1", "org2"}, nil, nil
@@ -40,7 +43,9 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 	cmd := whoAmICmd{
 		verbose: true,
 		Stdout:  &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user2", []string{"org1", "org2"}, nil, nil
@@ -69,7 +74,9 @@ func TestWhoAmICmd_json(t *testing.T) {
 	cmd := whoAmICmd{
 		jsonOut: true,
 		Stdout:  &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user3", []string{"org1", "org2"}, nil, nil
@@ -98,7 +105,9 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	cmd := whoAmICmd{
 		verbose: true,
 		Stdout:  &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
@@ -131,7 +140,9 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	cmd := whoAmICmd{
 		jsonOut: true,
 		Stdout:  &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user3", []string{"org1", "org2"}, &workspace.TokenInformation{
@@ -164,7 +175,9 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	cmd := whoAmICmd{
 		verbose: true,
 		Stdout:  &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 					return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{

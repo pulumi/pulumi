@@ -68,6 +68,16 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Ephemeral: p.Ephemeral,
 		}
 
+	case engine.StartDebuggingEvent:
+		p, ok := e.Payload().(engine.StartDebuggingEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+
+		apiEvent.StartDebuggingEvent = &apitype.StartDebuggingEvent{
+			Config: p.Config,
+		}
+
 	case engine.PolicyViolationEvent:
 		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
 		if !ok {

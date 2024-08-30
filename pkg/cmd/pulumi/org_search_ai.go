@@ -59,12 +59,13 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		Type:          display.DisplayQuery,
 	}
 	// Try to read the current project
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, project, opts.Display)
+	backend, err := currentBackend(ctx, ws, project, opts.Display)
 	if err != nil {
 		return err
 	}
