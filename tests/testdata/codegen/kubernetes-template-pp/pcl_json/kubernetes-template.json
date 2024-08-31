@@ -1,0 +1,190 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "argocd_serverDeployment",
+        "logicalName": "argocd_serverDeployment",
+        "token": "kubernetes:apps/v1:Deployment",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "apps/v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Deployment"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "argocd-server"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "spec",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "replicas": {
+                    "literalValueExpression": {
+                      "numberValue": 1
+                    }
+                  },
+                  "selector": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "matchLabels": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "app": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "server"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "template": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "metadata": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "labels": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "app": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "server"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "spec": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "containers": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "image": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "nginx"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "nginx"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "readinessProbe": {
+                                            "objectConsExpression": {
+                                              "properties": {
+                                                "httpGet": {
+                                                  "objectConsExpression": {
+                                                    "properties": {
+                                                      "port": {
+                                                        "literalValueExpression": {
+                                                          "numberValue": 8080
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "kubernetes",
+      "version": "3.7.2"
+    }
+  ]
+}

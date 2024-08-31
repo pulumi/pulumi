@@ -1,0 +1,1376 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "pulumi_kubernetes_operatorDeployment",
+        "logicalName": "pulumi_kubernetes_operatorDeployment",
+        "token": "kubernetes:apps/v1:Deployment",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "apps/v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Deployment"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "pulumi-kubernetes-operator"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "spec",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "replicas": {
+                    "literalValueExpression": {
+                      "numberValue": 1
+                    }
+                  },
+                  "selector": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "matchLabels": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "name": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pulumi-kubernetes-operator"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "template": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "metadata": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "labels": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "name": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "pulumi-kubernetes-operator"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "spec": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "containers": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "args": {
+                                            "tupleConsExpression": {
+                                              "items": [
+                                                {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "--zap-level=debug"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "command": {
+                                            "tupleConsExpression": {
+                                              "items": [
+                                                {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "pulumi-kubernetes-operator"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "env": {
+                                            "tupleConsExpression": {
+                                              "items": [
+                                                {
+                                                  "objectConsExpression": {
+                                                    "properties": {
+                                                      "name": {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "WATCH_NAMESPACE"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      },
+                                                      "valueFrom": {
+                                                        "objectConsExpression": {
+                                                          "properties": {
+                                                            "fieldRef": {
+                                                              "objectConsExpression": {
+                                                                "properties": {
+                                                                  "fieldPath": {
+                                                                    "templateExpression": {
+                                                                      "parts": [
+                                                                        {
+                                                                          "literalValueExpression": {
+                                                                            "stringValue": "metadata.namespace"
+                                                                          }
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "objectConsExpression": {
+                                                    "properties": {
+                                                      "name": {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "POD_NAME"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      },
+                                                      "valueFrom": {
+                                                        "objectConsExpression": {
+                                                          "properties": {
+                                                            "fieldRef": {
+                                                              "objectConsExpression": {
+                                                                "properties": {
+                                                                  "fieldPath": {
+                                                                    "templateExpression": {
+                                                                      "parts": [
+                                                                        {
+                                                                          "literalValueExpression": {
+                                                                            "stringValue": "metadata.name"
+                                                                          }
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "objectConsExpression": {
+                                                    "properties": {
+                                                      "name": {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "OPERATOR_NAME"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      },
+                                                      "value": {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "pulumi-kubernetes-operator"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "image": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "pulumi/pulumi-kubernetes-operator:v0.0.2"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "imagePullPolicy": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "Always"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "pulumi-kubernetes-operator"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "imagePullSecrets": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "pulumi-kubernetes-operator"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "serviceAccountName": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pulumi-kubernetes-operator"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "pulumi_kubernetes_operatorRole",
+        "logicalName": "pulumi_kubernetes_operatorRole",
+        "token": "kubernetes:rbac.authorization.k8s.io/v1:Role",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "rbac.authorization.k8s.io/v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Role"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "creationTimestamp": {
+                    "literalValueExpression": {
+                      "unknownValue": true
+                    }
+                  },
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "pulumi-kubernetes-operator"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "rules",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": ""
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pods"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "services"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "services/finalizers"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "endpoints"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "persistentvolumeclaims"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "events"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "configmaps"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "secrets"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "create"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "delete"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "list"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "patch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "update"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "watch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "apps"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "deployments"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "daemonsets"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "replicasets"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "statefulsets"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "create"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "delete"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "list"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "patch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "update"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "watch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "monitoring.coreos.com"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "servicemonitors"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "create"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "apps"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resourceNames": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pulumi-kubernetes-operator"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "deployments/finalizers"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "update"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": ""
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pods"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "apps"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "replicasets"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "deployments"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "apiGroups": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "pulumi.com"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "*"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "verbs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "create"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "delete"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "get"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "list"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "patch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "update"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "watch"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "pulumi_kubernetes_operatorRoleBinding",
+        "logicalName": "pulumi_kubernetes_operatorRoleBinding",
+        "token": "kubernetes:rbac.authorization.k8s.io/v1:RoleBinding",
+        "inputs": [
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "RoleBinding"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "rbac.authorization.k8s.io/v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "pulumi-kubernetes-operator"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "subjects",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "kind": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "ServiceAccount"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "name": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "pulumi-kubernetes-operator"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "roleRef",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "apiGroup": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "rbac.authorization.k8s.io"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "kind": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Role"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "pulumi-kubernetes-operator"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "pulumi_kubernetes_operatorServiceAccount",
+        "logicalName": "pulumi_kubernetes_operatorServiceAccount",
+        "token": "kubernetes:core/v1:ServiceAccount",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "ServiceAccount"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "pulumi-kubernetes-operator"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "kubernetes",
+      "version": "3.7.2"
+    }
+  ]
+}

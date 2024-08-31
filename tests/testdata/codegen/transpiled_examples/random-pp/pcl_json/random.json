@@ -1,0 +1,74 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "randomPassword",
+        "logicalName":  "randomPassword",
+        "token":  "random:index/randomPassword:RandomPassword",
+        "inputs":  [
+          {
+            "name":  "length",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  16
+              }
+            }
+          },
+          {
+            "name":  "special",
+            "value":  {
+              "literalValueExpression":  {
+                "boolValue":  true
+              }
+            }
+          },
+          {
+            "name":  "overrideSpecial",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "_%@"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "password",
+        "logicalName":  "password",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "randomPassword",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "randomPassword"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "result"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "random",
+      "version":  "4.11.2"
+    }
+  ]
+}

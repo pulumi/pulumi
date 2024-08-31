@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "outputVariable": {
+        "name": "result",
+        "logicalName": "result",
+        "value": {
+          "functionCallExpression": {
+            "name": "singleOrNone",
+            "args": [
+              {
+                "tupleConsExpression": {
+                  "items": [
+                    {
+                      "literalValueExpression": {
+                        "numberValue": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

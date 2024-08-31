@@ -1,0 +1,70 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "argocd_serverDeployment",
+        "logicalName": "argocd_serverDeployment",
+        "token": "kubernetes:apps/v1:Deployment",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "apps/v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Deployment"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "labels": {
+                    "objectConsExpression": {}
+                  },
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "argocd-server"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "kubernetes",
+      "version": "3.7.2"
+    }
+  ]
+}

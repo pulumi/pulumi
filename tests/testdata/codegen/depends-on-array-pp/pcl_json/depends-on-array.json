@@ -1,0 +1,306 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "myBucket",
+        "logicalName": "myBucket",
+        "token": "aws:s3/bucket:Bucket",
+        "inputs": [
+          {
+            "name": "website",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "indexDocument": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "ownershipControls",
+        "logicalName": "ownershipControls",
+        "token": "aws:s3/bucketOwnershipControls:BucketOwnershipControls",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "myBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "myBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "rule",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "objectOwnership": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "ObjectWriter"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "publicAccessBlock",
+        "logicalName": "publicAccessBlock",
+        "token": "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "myBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "myBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "blockPublicAcls",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "indexHtml",
+        "logicalName": "index.html",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "myBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "myBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "fileAsset",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "./index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "contentType",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "text/html"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "acl",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "public-read"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "options": {
+          "dependsOn": {
+            "tupleConsExpression": {
+              "items": [
+                {
+                  "scopeTraversalExpression": {
+                    "rootName": "publicAccessBlock",
+                    "traversal": {
+                      "each": [
+                        {
+                          "traverseRoot": {
+                            "name": "publicAccessBlock"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "scopeTraversalExpression": {
+                    "rootName": "ownershipControls",
+                    "traversal": {
+                      "each": [
+                        {
+                          "traverseRoot": {
+                            "name": "ownershipControls"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "bucketName",
+        "logicalName": "bucketName",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "myBucket",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "myBucket"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "bucketEndpoint",
+        "logicalName": "bucketEndpoint",
+        "value": {
+          "templateExpression": {
+            "parts": [
+              {
+                "literalValueExpression": {
+                  "stringValue": "http://"
+                }
+              },
+              {
+                "scopeTraversalExpression": {
+                  "rootName": "myBucket",
+                  "traversal": {
+                    "each": [
+                      {
+                        "traverseRoot": {
+                          "name": "myBucket"
+                        }
+                      },
+                      {
+                        "traverseAttr": {
+                          "name": "websiteEndpoint"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

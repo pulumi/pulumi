@@ -1,0 +1,143 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "numbers",
+        "logicalName": "numbers",
+        "token": "random:index/randomInteger:RandomInteger",
+        "inputs": [
+          {
+            "name": "min",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 1
+              }
+            }
+          },
+          {
+            "name": "max",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "range",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "range"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "value"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "seed",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "seed"
+                    }
+                  },
+                  {
+                    "scopeTraversalExpression": {
+                      "rootName": "range",
+                      "traversal": {
+                        "each": [
+                          {
+                            "traverseRoot": {
+                              "name": "range"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "value"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "options": {}
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "first",
+        "logicalName": "first",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "numbers",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "numbers"
+                  }
+                },
+                {
+                  "traverseIndex": {
+                    "intIndex": "0"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "second",
+        "logicalName": "second",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "numbers",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "numbers"
+                  }
+                },
+                {
+                  "traverseIndex": {
+                    "intIndex": "1"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "random",
+      "version": "4.11.2"
+    }
+  ]
+}

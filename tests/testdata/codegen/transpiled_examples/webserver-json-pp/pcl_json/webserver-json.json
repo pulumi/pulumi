@@ -1,0 +1,430 @@
+{
+  "nodes":  [
+    {
+      "configVariable":  {
+        "name":  "instanceType",
+        "logicalName":  "InstanceType",
+        "defaultValue":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "t3.micro"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "webSecGrp",
+        "logicalName":  "WebSecGrp",
+        "token":  "aws:ec2/securityGroup:SecurityGroup",
+        "inputs":  [
+          {
+            "name":  "ingress",
+            "value":  {
+              "tupleConsExpression":  {
+                "items":  [
+                  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "cidrBlocks":  {
+                          "tupleConsExpression":  {
+                            "items":  [
+                              {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "0.0.0.0/0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "fromPort":  {
+                          "literalValueExpression":  {
+                            "numberValue":  80
+                          }
+                        },
+                        "protocol":  {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "tcp"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "toPort":  {
+                          "literalValueExpression":  {
+                            "numberValue":  80
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "options":  {
+          "version":  {
+            "templateExpression":  {
+              "parts":  [
+                {
+                  "literalValueExpression":  {
+                    "stringValue":  "4.37.1"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "webServer",
+        "logicalName":  "WebServer",
+        "token":  "aws:ec2/instance:Instance",
+        "inputs":  [
+          {
+            "name":  "instanceType",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "instanceType",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "instanceType"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "ami",
+            "value":  {
+              "relativeTraversalExpression":  {
+                "source":  {
+                  "functionCallExpression":  {
+                    "name":  "invoke",
+                    "args":  [
+                      {
+                        "templateExpression":  {
+                          "parts":  [
+                            {
+                              "literalValueExpression":  {
+                                "stringValue":  "aws::getAmi"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "objectConsExpression":  {
+                          "properties":  {
+                            "filters":  {
+                              "tupleConsExpression":  {
+                                "items":  [
+                                  {
+                                    "objectConsExpression":  {
+                                      "properties":  {
+                                        "name":  {
+                                          "templateExpression":  {
+                                            "parts":  [
+                                              {
+                                                "literalValueExpression":  {
+                                                  "stringValue":  "name"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "values":  {
+                                          "tupleConsExpression":  {
+                                            "items":  [
+                                              {
+                                                "templateExpression":  {
+                                                  "parts":  [
+                                                    {
+                                                      "literalValueExpression":  {
+                                                        "stringValue":  "amzn-ami-hvm-*-x86_64-ebs"
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            "mostRecent":  {
+                              "literalValueExpression":  {
+                                "boolValue":  true
+                              }
+                            },
+                            "owners":  {
+                              "tupleConsExpression":  {
+                                "items":  [
+                                  {
+                                    "templateExpression":  {
+                                      "parts":  [
+                                        {
+                                          "literalValueExpression":  {
+                                            "stringValue":  "137112412989"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseAttr":  {
+                        "name":  "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "userData",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "join",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "\n"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tupleConsExpression":  {
+                      "items":  [
+                        {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "#!/bin/bash"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "echo 'Hello, World from "
+                                }
+                              },
+                              {
+                                "scopeTraversalExpression":  {
+                                  "rootName":  "webSecGrp",
+                                  "traversal":  {
+                                    "each":  [
+                                      {
+                                        "traverseRoot":  {
+                                          "name":  "webSecGrp"
+                                        }
+                                      },
+                                      {
+                                        "traverseAttr":  {
+                                          "name":  "arn"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "!' > index.html"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "nohup python -m SimpleHTTPServer 80 &"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "vpcSecurityGroupIds",
+            "value":  {
+              "tupleConsExpression":  {
+                "items":  [
+                  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "webSecGrp",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "webSecGrp"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "id"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "options":  {
+          "version":  {
+            "templateExpression":  {
+              "parts":  [
+                {
+                  "literalValueExpression":  {
+                    "stringValue":  "4.37.1"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "instanceId",
+        "logicalName":  "InstanceId",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "publicIp",
+        "logicalName":  "PublicIp",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "publicIp"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "publicHostName",
+        "logicalName":  "PublicHostName",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "publicDns"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "4.37.1"
+    }
+  ]
+}

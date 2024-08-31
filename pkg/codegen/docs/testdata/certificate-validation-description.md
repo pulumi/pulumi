@@ -286,8 +286,11 @@ resources:
  properties:
  certificateArn: ${exampleCertificate.arn}
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 {{% /example %}}
 

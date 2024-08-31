@@ -307,8 +307,11 @@ variables:
         sourceFile: lambda.js
         outputPath: lambda_function_payload.zip
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -666,8 +669,11 @@ variables:
             actions:
               - sts:AssumeRole
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -1032,8 +1038,11 @@ resources:
         gid: 1000
         uid: 1000
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -1377,8 +1386,11 @@ variables:
             resources:
               - arn:aws:logs:*:*:*
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 

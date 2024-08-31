@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "stackRef",
+        "logicalName": "stackRef",
+        "token": "pulumi:pulumi:StackReference",
+        "inputs": [
+          {
+            "name": "name",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "foo/bar/dev"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "pulumi",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -1,17 +1,16 @@
-package protobuf
+package pcl
 
 import (
-	_ "embed"
 	"encoding/base64"
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/zclconf/go-cty/cty"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -41,14 +40,31 @@ func transformTraverser(part hcl.Traverser) (*codegen.Traverser, error) {
 			},
 		}, nil
 	case hcl.TraverseIndex:
-		index, _ := part.Key.AsBigFloat().Int64()
-		return &codegen.Traverser{
-			Value: &codegen.Traverser_TraverseIndex{
-				TraverseIndex: &codegen.TraverseIndex{
-					Index: index,
+		switch part.Key.Type() {
+		case cty.Number:
+			number, _ := part.Key.AsBigFloat().Float64()
+			return &codegen.Traverser{
+				Value: &codegen.Traverser_TraverseIndex{
+					TraverseIndex: &codegen.TraverseIndex{
+						Value: &codegen.TraverseIndex_IntIndex{
+							IntIndex: int64(number),
+						},
+					},
 				},
-			},
-		}, nil
+			}, nil
+		case cty.String:
+			return &codegen.Traverser{
+				Value: &codegen.Traverser_TraverseIndex{
+					TraverseIndex: &codegen.TraverseIndex{
+						Value: &codegen.TraverseIndex_StringIndex{
+							StringIndex: part.Key.AsString(),
+						},
+					},
+				},
+			}, nil
+		default:
+			return nil, fmt.Errorf("unknown traverse index type: %v", part.Key.Type())
+		}
 	case hcl.TraverseRoot:
 		return &codegen.Traverser{
 			Value: &codegen.Traverser_TraverseRoot{
@@ -127,12 +143,24 @@ func transformExpression(expr model.Expression) (*codegen.Expression, error) {
 		var value *codegen.LiteralValueExpression
 		switch expr.Value.Type() {
 		case cty.Bool:
-			value = &codegen.LiteralValueExpression{Value: &codegen.LiteralValueExpression_BoolValue{BoolValue: expr.Value.True()}}
+			value = &codegen.LiteralValueExpression{
+				Value: &codegen.LiteralValueExpression_BoolValue{
+					BoolValue: expr.Value.True(),
+				},
+			}
 		case cty.Number:
 			number, _ := expr.Value.AsBigFloat().Float64()
-			value = &codegen.LiteralValueExpression{Value: &codegen.LiteralValueExpression_NumberValue{NumberValue: number}}
+			value = &codegen.LiteralValueExpression{
+				Value: &codegen.LiteralValueExpression_NumberValue{
+					NumberValue: number,
+				},
+			}
 		case cty.String:
-			value = &codegen.LiteralValueExpression{Value: &codegen.LiteralValueExpression_StringValue{StringValue: expr.Value.AsString()}}
+			value = &codegen.LiteralValueExpression{
+				Value: &codegen.LiteralValueExpression_StringValue{
+					StringValue: expr.Value.AsString(),
+				},
+			}
 		default:
 			// TODO: Maybe throw error instead? Are we sure this is null?
 			value = &codegen.LiteralValueExpression{Value: &codegen.LiteralValueExpression_UnknownValue{UnknownValue: true}}
@@ -339,7 +367,7 @@ func transformExpression(expr model.Expression) (*codegen.Expression, error) {
 	}
 }
 
-func transformResourceOptions(options *pcl.ResourceOptions) (*codegen.ResourceOptions, error) {
+func transformResourceOptions(options *ResourceOptions) (*codegen.ResourceOptions, error) {
 	optionsProto := &codegen.ResourceOptions{}
 
 	if options.DependsOn != nil {
@@ -393,7 +421,7 @@ func transformResourceOptions(options *pcl.ResourceOptions) (*codegen.ResourceOp
 	return optionsProto, nil
 }
 
-func transformResource(resource *pcl.Resource) (*codegen.Resource, error) {
+func transformResource(resource *Resource) (*codegen.Resource, error) {
 	token := resource.Token
 	if resource.Schema != nil {
 		token = resource.Schema.Token // resource.Token() does not contain "index"
@@ -428,7 +456,7 @@ func transformResource(resource *pcl.Resource) (*codegen.Resource, error) {
 	return resourceProto, nil
 }
 
-func transformLocalVariable(variable *pcl.LocalVariable) (*codegen.LocalVariable, error) {
+func transformLocalVariable(variable *LocalVariable) (*codegen.LocalVariable, error) {
 	value, err := transformExpression(variable.Definition.Value)
 	if err != nil {
 		return nil, err
@@ -441,7 +469,7 @@ func transformLocalVariable(variable *pcl.LocalVariable) (*codegen.LocalVariable
 	}, nil
 }
 
-func transformOutput(output *pcl.OutputVariable) (*codegen.OutputVariable, error) {
+func transformOutput(output *OutputVariable) (*codegen.OutputVariable, error) {
 	value, err := transformExpression(output.Value)
 	if err != nil {
 		return nil, err
@@ -454,7 +482,7 @@ func transformOutput(output *pcl.OutputVariable) (*codegen.OutputVariable, error
 	}, nil
 }
 
-func transformConfigVariable(variable *pcl.ConfigVariable) (*codegen.ConfigVariable, error) {
+func transformConfigVariable(variable *ConfigVariable) (*codegen.ConfigVariable, error) {
 	defaultValue, err := transformExpression(variable.DefaultValue)
 	if err != nil {
 		return nil, err
@@ -482,14 +510,14 @@ func transformConfigVariable(variable *pcl.ConfigVariable) (*codegen.ConfigVaria
 	}, nil
 }
 
-func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*codegen.PclProtobufProgram, error) {
+func transformProgram(pclNodes []Node, pclPackages []*schema.Package) (*codegen.PclProtobufProgram, error) {
 	nodes := make([]*codegen.Node, len(pclNodes))
 	plugins := make([]*codegen.PluginReference, len(pclPackages))
 
 	for i, node := range pclNodes {
 		var transformedNode *codegen.Node
 		switch node := node.(type) {
-		case *pcl.Resource:
+		case *Resource:
 			transformedResource, err := transformResource(node)
 			if err != nil {
 				return nil, err
@@ -497,7 +525,7 @@ func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*code
 			transformedNode = &codegen.Node{
 				Value: &codegen.Node_Resource{Resource: transformedResource},
 			}
-		case *pcl.OutputVariable:
+		case *OutputVariable:
 			transformedOutput, err := transformOutput(node)
 			if err != nil {
 				return nil, err
@@ -505,7 +533,7 @@ func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*code
 			transformedNode = &codegen.Node{
 				Value: &codegen.Node_OutputVariable{OutputVariable: transformedOutput},
 			}
-		case *pcl.LocalVariable:
+		case *LocalVariable:
 			transformedVariable, err := transformLocalVariable(node)
 			if err != nil {
 				return nil, err
@@ -513,7 +541,7 @@ func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*code
 			transformedNode = &codegen.Node{
 				Value: &codegen.Node_LocalVariable{LocalVariable: transformedVariable},
 			}
-		case *pcl.ConfigVariable:
+		case *ConfigVariable:
 			transformedVariable, err := transformConfigVariable(node)
 			if err != nil {
 				return nil, err
@@ -521,6 +549,8 @@ func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*code
 			transformedNode = &codegen.Node{
 				Value: &codegen.Node_ConfigVariable{ConfigVariable: transformedVariable},
 			}
+		default:
+			return nil, fmt.Errorf("unknown node type type: %v", node.Type())
 		}
 		nodes[i] = transformedNode
 	}
@@ -544,19 +574,42 @@ func transformProgram(pclNodes []pcl.Node, pclPackages []*schema.Package) (*code
 	}, nil
 }
 
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	pcl.MapProvidersAsResources(program)
+func generateProtobufProgram(program *Program) (*codegen.PclProtobufProgram, error) {
+	MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := pcl.Linearize(program)
+	nodes := Linearize(program)
 	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	serialized, err := transformProgram(nodes, packages)
+	if err != nil {
+		return nil, err
+	}
+	return serialized, nil
+}
+
+func GenerateJSONProgram(program *Program) (map[string][]byte, hcl.Diagnostics, error) {
+	protobuf, err := generateProtobufProgram(program)
 	if err != nil {
 		return nil, nil, err
 	}
-	serialized, err := transformProgram(nodes, packages)
-	out, err := proto.Marshal(serialized)
+	bytes, err := protojson.MarshalOptions{Multiline: true}.Marshal(protobuf)
+	if err != nil {
+		return nil, nil, err
+	}
+	return map[string][]byte{"main.pcl.json": bytes}, nil, nil
+}
+
+func GenerateSerializedProtobufProgram(program *Program) (map[string][]byte, hcl.Diagnostics, error) {
+	protobuf, err := generateProtobufProgram(program)
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := proto.Marshal(protobuf)
 	if err != nil {
 		return nil, nil, err
 	}
 	str := base64.StdEncoding.EncodeToString(out)
-	return map[string][]byte{"program.base64": []byte(str)}, nil, nil
+	return map[string][]byte{"main.pcl.protobuf": []byte(str)}, nil, nil
 }

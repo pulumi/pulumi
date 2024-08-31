@@ -1,0 +1,64 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "webSecurityGroup",
+        "logicalName": "webSecurityGroup",
+        "token": "aws:ec2/securityGroup:SecurityGroup",
+        "inputs": [
+          {
+            "name": "vpcId",
+            "value": {
+              "relativeTraversalExpression": {
+                "source": {
+                  "functionCallExpression": {
+                    "name": "invoke",
+                    "args": [
+                      {
+                        "templateExpression": {
+                          "parts": [
+                            {
+                              "literalValueExpression": {
+                                "stringValue": "aws:ec2:getVpc"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "objectConsExpression": {
+                          "properties": {
+                            "default": {
+                              "literalValueExpression": {
+                                "boolValue": true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

@@ -1,0 +1,563 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "encoded",
+        "logicalName": "encoded",
+        "value": {
+          "functionCallExpression": {
+            "name": "toBase64",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "haha business"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "decoded",
+        "logicalName": "decoded",
+        "value": {
+          "functionCallExpression": {
+            "name": "fromBase64",
+            "args": [
+              {
+                "scopeTraversalExpression": {
+                  "rootName": "encoded",
+                  "traversal": {
+                    "each": [
+                      {
+                        "traverseRoot": {
+                          "name": "encoded"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "joined",
+        "logicalName": "joined",
+        "value": {
+          "functionCallExpression": {
+            "name": "join",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "-"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "tupleConsExpression": {
+                  "items": [
+                    {
+                      "scopeTraversalExpression": {
+                        "rootName": "encoded",
+                        "traversal": {
+                          "each": [
+                            {
+                              "traverseRoot": {
+                                "name": "encoded"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "scopeTraversalExpression": {
+                        "rootName": "decoded",
+                        "traversal": {
+                          "each": [
+                            {
+                              "traverseRoot": {
+                                "name": "decoded"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "templateExpression": {
+                        "parts": [
+                          {
+                            "literalValueExpression": {
+                              "stringValue": "2"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "zone",
+        "logicalName": "zone",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws::getAvailabilityZones"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {}
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "zone2",
+        "logicalName": "zone2",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws::getAvailabilityZones"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {}
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "bucket",
+        "logicalName": "bucket",
+        "token": "aws:s3/bucket:Bucket"
+      }
+    },
+    {
+      "localVariable": {
+        "name": "encoded2",
+        "logicalName": "encoded2",
+        "value": {
+          "functionCallExpression": {
+            "name": "toBase64",
+            "args": [
+              {
+                "scopeTraversalExpression": {
+                  "rootName": "bucket",
+                  "traversal": {
+                    "each": [
+                      {
+                        "traverseRoot": {
+                          "name": "bucket"
+                        }
+                      },
+                      {
+                        "traverseAttr": {
+                          "name": "id"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "decoded2",
+        "logicalName": "decoded2",
+        "value": {
+          "functionCallExpression": {
+            "name": "fromBase64",
+            "args": [
+              {
+                "scopeTraversalExpression": {
+                  "rootName": "bucket",
+                  "traversal": {
+                    "each": [
+                      {
+                        "traverseRoot": {
+                          "name": "bucket"
+                        }
+                      },
+                      {
+                        "traverseAttr": {
+                          "name": "id"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "secretValue",
+        "logicalName": "secretValue",
+        "value": {
+          "functionCallExpression": {
+            "name": "secret",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "hello"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "plainValue",
+        "logicalName": "plainValue",
+        "value": {
+          "functionCallExpression": {
+            "name": "unsecret",
+            "args": [
+              {
+                "scopeTraversalExpression": {
+                  "rootName": "secretValue",
+                  "traversal": {
+                    "each": [
+                      {
+                        "traverseRoot": {
+                          "name": "secretValue"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "currentStack",
+        "logicalName": "currentStack",
+        "value": {
+          "functionCallExpression": {
+            "name": "stack"
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "currentProject",
+        "logicalName": "currentProject",
+        "value": {
+          "functionCallExpression": {
+            "name": "project"
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "workingDirectory",
+        "logicalName": "workingDirectory",
+        "value": {
+          "functionCallExpression": {
+            "name": "cwd"
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "fileMimeType",
+        "logicalName": "fileMimeType",
+        "value": {
+          "functionCallExpression": {
+            "name": "mimeType",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "./base64.txt"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "first",
+        "logicalName": "first",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "bucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "bucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "stringAsset",
+                "args": [
+                  {
+                    "functionCallExpression": {
+                      "name": "filebase64",
+                      "args": [
+                        {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "./base64.txt"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "contentType",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "fileMimeType",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "fileMimeType"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "tags",
+            "value": {
+              "objectConsExpression": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "second",
+        "logicalName": "second",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "bucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "bucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "stringAsset",
+                "args": [
+                  {
+                    "functionCallExpression": {
+                      "name": "filebase64sha256",
+                      "args": [
+                        {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "./base64.txt"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "third",
+        "logicalName": "third",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "bucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "bucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "stringAsset",
+                "args": [
+                  {
+                    "functionCallExpression": {
+                      "name": "sha1",
+                      "args": [
+                        {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "content"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

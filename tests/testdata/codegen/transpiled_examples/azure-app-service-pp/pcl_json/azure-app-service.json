@@ -1,0 +1,1292 @@
+{
+  "nodes":  [
+    {
+      "configVariable":  {
+        "name":  "sqlAdmin",
+        "logicalName":  "sqlAdmin",
+        "defaultValue":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "pulumi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "appservicegroup",
+        "logicalName":  "appservicegroup",
+        "token":  "azure-native:resources:ResourceGroup"
+      }
+    },
+    {
+      "resource":  {
+        "name":  "sa",
+        "logicalName":  "sa",
+        "token":  "azure-native:storage:StorageAccount",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "kind",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "StorageV2"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "sku",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "name":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "Standard_LRS"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "container",
+        "logicalName":  "container",
+        "token":  "azure-native:storage:BlobContainer",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "sa",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "sa"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "publicAccess",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "None"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable":  {
+        "name":  "blobAccessToken",
+        "logicalName":  "blobAccessToken",
+        "value":  {
+          "functionCallExpression":  {
+            "name":  "secret",
+            "args":  [
+              {
+                "relativeTraversalExpression":  {
+                  "source":  {
+                    "functionCallExpression":  {
+                      "name":  "invoke",
+                      "args":  [
+                        {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "azure-native:storage:listStorageAccountServiceSAS"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "accountName":  {
+                                "scopeTraversalExpression":  {
+                                  "rootName":  "sa",
+                                  "traversal":  {
+                                    "each":  [
+                                      {
+                                        "traverseRoot":  {
+                                          "name":  "sa"
+                                        }
+                                      },
+                                      {
+                                        "traverseAttr":  {
+                                          "name":  "name"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "cacheControl":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "max-age=5"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "canonicalizedResource":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "/blob/"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "sa",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "sa"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "/"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "container",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "container"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "contentDisposition":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "inline"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "contentEncoding":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "deflate"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "contentType":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "application/json"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "permissions":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "r"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "protocols":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "https"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "resource":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "c"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "resourceGroupName":  {
+                                "scopeTraversalExpression":  {
+                                  "rootName":  "appservicegroup",
+                                  "traversal":  {
+                                    "each":  [
+                                      {
+                                        "traverseRoot":  {
+                                          "name":  "appservicegroup"
+                                        }
+                                      },
+                                      {
+                                        "traverseAttr":  {
+                                          "name":  "name"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "sharedAccessExpiryTime":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "2030-01-01"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "sharedAccessStartTime":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "2022-01-01"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "traversal":  {
+                    "each":  [
+                      {
+                        "traverseAttr":  {
+                          "name":  "serviceSasToken"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "appserviceplan",
+        "logicalName":  "appserviceplan",
+        "token":  "azure-native:web:AppServicePlan",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "kind",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "App"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "sku",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "name":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "B1"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "tier":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "Basic"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "blob",
+        "logicalName":  "blob",
+        "token":  "azure-native:storage:Blob",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "sa",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "sa"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "containerName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "container",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "container"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "type",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "Block"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileArchive",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "appInsights",
+        "logicalName":  "appInsights",
+        "token":  "azure-native:insights:Component",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "applicationType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "web"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "kind",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "web"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "sqlPassword",
+        "logicalName":  "sqlPassword",
+        "token":  "random:index/randomPassword:RandomPassword",
+        "inputs":  [
+          {
+            "name":  "length",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  16
+              }
+            }
+          },
+          {
+            "name":  "special",
+            "value":  {
+              "literalValueExpression":  {
+                "boolValue":  true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "sqlServer",
+        "logicalName":  "sqlServer",
+        "token":  "azure-native:sql:Server",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "administratorLogin",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "sqlAdmin",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "sqlAdmin"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "administratorLoginPassword",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "sqlPassword",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "sqlPassword"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "result"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "version",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "12.0"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "db",
+        "logicalName":  "db",
+        "token":  "azure-native:sql:Database",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "serverName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "sqlServer",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "sqlServer"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "sku",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "name":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "S0"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "app",
+        "logicalName":  "app",
+        "token":  "azure-native:web:WebApp",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appservicegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appservicegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "serverFarmId",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "appserviceplan",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "appserviceplan"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "siteConfig",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "appSettings":  {
+                    "tupleConsExpression":  {
+                      "items":  [
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "name":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "WEBSITE_RUN_FROM_PACKAGE"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "value":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "https://"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "sa",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "sa"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  ".blob.core.windows.net/"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "container",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "container"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "/"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "blob",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "blob"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "?"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "blobAccessToken",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "blobAccessToken"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "name":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "APPINSIGHTS_INSTRUMENTATIONKEY"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "value":  {
+                                "scopeTraversalExpression":  {
+                                  "rootName":  "appInsights",
+                                  "traversal":  {
+                                    "each":  [
+                                      {
+                                        "traverseRoot":  {
+                                          "name":  "appInsights"
+                                        }
+                                      },
+                                      {
+                                        "traverseAttr":  {
+                                          "name":  "instrumentationKey"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "name":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "APPLICATIONINSIGHTS_CONNECTION_STRING"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "value":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "InstrumentationKey="
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "appInsights",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "appInsights"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "instrumentationKey"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "name":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "ApplicationInsightsAgent_EXTENSION_VERSION"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "value":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "~2"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "connectionStrings":  {
+                    "tupleConsExpression":  {
+                      "items":  [
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "connectionString":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "Server= tcp:"
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "sqlServer",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "sqlServer"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  ".database.windows.net;initial catalog="
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "db",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "db"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "name"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  ";userID="
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "sqlAdmin",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "sqlAdmin"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  ";password="
+                                      }
+                                    },
+                                    {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "sqlPassword",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "sqlPassword"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "result"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  ";Min Pool Size=0;Max Pool Size=30;Persist Security Info=true;"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "name":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "db"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "type":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "SQLAzure"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "endpoint",
+        "logicalName":  "endpoint",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "app",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "app"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "defaultHostName"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "azure-native",
+      "version":  "1.56.0"
+    },
+    {
+      "name":  "random",
+      "version":  "4.11.2"
+    }
+  ]
+}

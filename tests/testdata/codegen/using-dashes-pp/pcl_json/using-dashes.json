@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "main",
+        "logicalName": "main",
+        "token": "using-dashes:index:Dash",
+        "inputs": [
+          {
+            "name": "stack",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "dev"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "using-dashes",
+      "version": "1.0.0"
+    }
+  ]
+}

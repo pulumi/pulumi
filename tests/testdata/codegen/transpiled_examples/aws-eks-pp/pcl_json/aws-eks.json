@@ -1,0 +1,229 @@
+{
+  "nodes":  [
+    {
+      "localVariable":  {
+        "name":  "vpcId",
+        "logicalName":  "vpcId",
+        "value":  {
+          "relativeTraversalExpression":  {
+            "source":  {
+              "functionCallExpression":  {
+                "name":  "invoke",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "aws:ec2:getVpc"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "default":  {
+                          "literalValueExpression":  {
+                            "boolValue":  true
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseAttr":  {
+                    "name":  "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "localVariable":  {
+        "name":  "subnetIds",
+        "logicalName":  "subnetIds",
+        "value":  {
+          "relativeTraversalExpression":  {
+            "source":  {
+              "functionCallExpression":  {
+                "name":  "invoke",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "aws:ec2:getSubnetIds"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "vpcId":  {
+                          "scopeTraversalExpression":  {
+                            "rootName":  "vpcId",
+                            "traversal":  {
+                              "each":  [
+                                {
+                                  "traverseRoot":  {
+                                    "name":  "vpcId"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseAttr":  {
+                    "name":  "ids"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "cluster",
+        "logicalName":  "cluster",
+        "token":  "eks:index:Cluster",
+        "inputs":  [
+          {
+            "name":  "vpcId",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "vpcId",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "vpcId"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "subnetIds",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "subnetIds",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "subnetIds"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "instanceType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "t2.medium"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "desiredCapacity",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  2
+              }
+            }
+          },
+          {
+            "name":  "minSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  1
+              }
+            }
+          },
+          {
+            "name":  "maxSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  2
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "kubeconfig",
+        "logicalName":  "kubeconfig",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "cluster",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "cluster"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "kubeconfig"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.16.2"
+    },
+    {
+      "name":  "eks",
+      "version":  "0.40.0"
+    },
+    {
+      "name":  "kubernetes",
+      "version":  "3.0.0"
+    }
+  ]
+}

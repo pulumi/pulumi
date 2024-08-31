@@ -1,0 +1,21 @@
+{
+  "nodes":  [
+    {
+      "outputVariable":  {
+        "name":  "imageName",
+        "logicalName":  "imageName",
+        "value":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "pulumi/pulumi:latest"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

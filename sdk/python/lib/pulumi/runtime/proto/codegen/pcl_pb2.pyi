@@ -717,14 +717,19 @@ global___TraverseAttr = TraverseAttr
 class TraverseIndex(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    INDEX_FIELD_NUMBER: builtins.int
-    index: builtins.int
+    INTINDEX_FIELD_NUMBER: builtins.int
+    STRINGINDEX_FIELD_NUMBER: builtins.int
+    intIndex: builtins.int
+    stringIndex: builtins.str
     def __init__(
         self,
         *,
-        index: builtins.int = ...,
+        intIndex: builtins.int = ...,
+        stringIndex: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["index", b"index"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["intIndex", b"intIndex", "stringIndex", b"stringIndex", "value", b"value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["intIndex", b"intIndex", "stringIndex", b"stringIndex", "value", b"value"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["value", b"value"]) -> typing_extensions.Literal["intIndex", "stringIndex"] | None: ...
 
 global___TraverseIndex = TraverseIndex
 

@@ -1,0 +1,61 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "foo",
+        "logicalName": "foo",
+        "token": "random:index/randomShuffle:RandomShuffle",
+        "inputs": [
+          {
+            "name": "inputs",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "just one\nnewline"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "foo\nbar\nbaz\nqux\nquux\nqux"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "{\n    \"a\": 1,\n    \"b\": 2,\n    \"c\": [\n      \"foo\",\n      \"bar\",\n      \"baz\",\n      \"qux\",\n      \"quux\"\n    ]\n}\n"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "random",
+      "version": "4.11.2"
+    }
+  ]
+}

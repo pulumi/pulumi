@@ -1,0 +1,322 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "websiteResource",
+        "logicalName": "websiteResource",
+        "token": "aws-static-website:index:Website",
+        "inputs": [
+          {
+            "name": "sitePath",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "indexHTML",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "cacheTTL",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 0
+              }
+            }
+          },
+          {
+            "name": "cdnArgs",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "cloudfrontFunctionAssociations": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "eventType": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "functionArn": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "forwardedValues": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "cookies": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "forward": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "whitelistedNames": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "headers": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "queryString": {
+                          "literalValueExpression": {
+                            "boolValue": false
+                          }
+                        },
+                        "queryStringCacheKeys": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "lambdaFunctionAssociations": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "eventType": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "includeBody": {
+                                "literalValueExpression": {
+                                  "boolValue": false
+                                }
+                              },
+                              "lambdaArn": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "string"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "certificateARN",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "error404",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "addWebsiteVersionHeader",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "priceClass",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "atomicDeployments",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "subdomain",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "targetDomain",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "withCDN",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "withLogs",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    },
+    {
+      "name": "aws-static-website",
+      "version": "0.4.0"
+    }
+  ]
+}

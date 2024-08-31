@@ -1,0 +1,78 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "example",
+        "logicalName": "example",
+        "token": "azure-native:eventgrid:EventSubscription",
+        "inputs": [
+          {
+            "name": "destination",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "endpointType": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "EventHub"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "resourceId": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "example"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "expirationTimeUtc",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "example"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "scope",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "example"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "2.41.0"
+    }
+  ]
+}

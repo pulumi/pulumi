@@ -1,0 +1,161 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "cluster",
+        "logicalName":  "cluster",
+        "token":  "aws:ecs/cluster:Cluster"
+      }
+    },
+    {
+      "resource":  {
+        "name":  "lb",
+        "logicalName":  "lb",
+        "token":  "awsx:lb:ApplicationLoadBalancer"
+      }
+    },
+    {
+      "resource":  {
+        "name":  "nginx",
+        "logicalName":  "nginx",
+        "token":  "awsx:ecs:FargateService",
+        "inputs":  [
+          {
+            "name":  "cluster",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "cluster",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "cluster"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "taskDefinitionArgs",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "container":  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "cpu":  {
+                          "literalValueExpression":  {
+                            "numberValue":  512
+                          }
+                        },
+                        "image":  {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "nginx:latest"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "memory":  {
+                          "literalValueExpression":  {
+                            "numberValue":  128
+                          }
+                        },
+                        "portMappings":  {
+                          "tupleConsExpression":  {
+                            "items":  [
+                              {
+                                "objectConsExpression":  {
+                                  "properties":  {
+                                    "containerPort":  {
+                                      "literalValueExpression":  {
+                                        "numberValue":  80
+                                      }
+                                    },
+                                    "targetGroup":  {
+                                      "scopeTraversalExpression":  {
+                                        "rootName":  "lb",
+                                        "traversal":  {
+                                          "each":  [
+                                            {
+                                              "traverseRoot":  {
+                                                "name":  "lb"
+                                              }
+                                            },
+                                            {
+                                              "traverseAttr":  {
+                                                "name":  "defaultTargetGroup"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "url",
+        "logicalName":  "url",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "lb",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "lb"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "loadBalancer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "dnsName"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.16.2"
+    },
+    {
+      "name":  "awsx",
+      "version":  "1.0.0-beta.5"
+    }
+  ]
+}

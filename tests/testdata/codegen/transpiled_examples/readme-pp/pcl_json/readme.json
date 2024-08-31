@@ -1,0 +1,79 @@
+{
+  "nodes":  [
+    {
+      "outputVariable":  {
+        "name":  "strVar",
+        "logicalName":  "strVar",
+        "value":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "foo"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "arrVar",
+        "logicalName":  "arrVar",
+        "value":  {
+          "tupleConsExpression":  {
+            "items":  [
+              {
+                "templateExpression":  {
+                  "parts":  [
+                    {
+                      "literalValueExpression":  {
+                        "stringValue":  "fizz"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "templateExpression":  {
+                  "parts":  [
+                    {
+                      "literalValueExpression":  {
+                        "stringValue":  "buzz"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "readme",
+        "logicalName":  "readme",
+        "value":  {
+          "functionCallExpression":  {
+            "name":  "readFile",
+            "args":  [
+              {
+                "templateExpression":  {
+                  "parts":  [
+                    {
+                      "literalValueExpression":  {
+                        "stringValue":  "./Pulumi.README.md"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

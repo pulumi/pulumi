@@ -1,0 +1,92 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "namespaceAuthorizationRule",
+        "logicalName": "namespaceAuthorizationRule",
+        "token": "azure-native:servicebus:NamespaceAuthorizationRule",
+        "inputs": [
+          {
+            "name": "authorizationRuleName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "sdk-AuthRules-1788"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "namespaceName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "sdk-Namespace-6914"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "ArunMonocle"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "rights",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Listen"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Send"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "1.56.0"
+    }
+  ]
+}

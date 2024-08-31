@@ -1,0 +1,97 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "data",
+        "logicalName": "data",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "unknown:index:getData"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "input": {
+                      "templateExpression": {
+                        "parts": [
+                          {
+                            "literalValueExpression": {
+                              "stringValue": "hello"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "values",
+        "logicalName": "values",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "unknown:eks:moduleValues"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {}
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "content",
+        "logicalName": "content",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "data",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "data"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "content"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

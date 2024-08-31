@@ -1,0 +1,223 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "everyArg",
+        "logicalName": "everyArg",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "std::AbsMultiArgs"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "a": {
+                      "literalValueExpression": {
+                        "numberValue": 10
+                      }
+                    },
+                    "b": {
+                      "literalValueExpression": {
+                        "numberValue": 20
+                      }
+                    },
+                    "c": {
+                      "literalValueExpression": {
+                        "numberValue": 30
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "onlyRequiredArgs",
+        "logicalName": "onlyRequiredArgs",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "std::AbsMultiArgs"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "a": {
+                      "literalValueExpression": {
+                        "numberValue": 10
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "optionalArgs",
+        "logicalName": "optionalArgs",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "std::AbsMultiArgs"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "a": {
+                      "literalValueExpression": {
+                        "numberValue": 10
+                      }
+                    },
+                    "c": {
+                      "literalValueExpression": {
+                        "numberValue": 30
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "nestedUse",
+        "logicalName": "nestedUse",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "std::AbsMultiArgs"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "a": {
+                      "scopeTraversalExpression": {
+                        "rootName": "everyArg",
+                        "traversal": {
+                          "each": [
+                            {
+                              "traverseRoot": {
+                                "name": "everyArg"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "b": {
+                      "functionCallExpression": {
+                        "name": "invoke",
+                        "args": [
+                          {
+                            "templateExpression": {
+                              "parts": [
+                                {
+                                  "literalValueExpression": {
+                                    "stringValue": "std::AbsMultiArgs"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "objectConsExpression": {
+                              "properties": {
+                                "a": {
+                                  "literalValueExpression": {
+                                    "numberValue": 42
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "result",
+        "logicalName": "result",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "nestedUse",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "nestedUse"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "std",
+      "version": "1.0.0"
+    }
+  ]
+}

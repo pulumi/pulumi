@@ -1,0 +1,386 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "siteBucket",
+        "logicalName": "siteBucket",
+        "token": "aws:s3/bucket:Bucket",
+        "inputs": [
+          {
+            "name": "website",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "indexDocument": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable": {
+        "name": "siteDir",
+        "logicalName": "siteDir",
+        "value": {
+          "templateExpression": {
+            "parts": [
+              {
+                "literalValueExpression": {
+                  "stringValue": "www"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "files",
+        "logicalName": "files",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "key",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "range",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "range"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "value"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "fileAsset",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "scopeTraversalExpression": {
+                            "rootName": "siteDir",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "siteDir"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "/"
+                          }
+                        },
+                        {
+                          "scopeTraversalExpression": {
+                            "rootName": "range",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "range"
+                                  }
+                                },
+                                {
+                                  "traverseAttr": {
+                                    "name": "value"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "contentType",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "range",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "range"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "value"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "options": {}
+      }
+    },
+    {
+      "resource": {
+        "name": "bucketPolicy",
+        "logicalName": "bucketPolicy",
+        "token": "aws:s3/bucketPolicy:BucketPolicy",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "policy",
+            "value": {
+              "functionCallExpression": {
+                "name": "toJSON",
+                "args": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "Statement": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "Action": {
+                                      "tupleConsExpression": {
+                                        "items": [
+                                          {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "s3:GetObject"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "Effect": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "Allow"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "Principal": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "*"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "Resource": {
+                                      "tupleConsExpression": {
+                                        "items": [
+                                          {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "arn:aws:s3:::"
+                                                  }
+                                                },
+                                                {
+                                                  "scopeTraversalExpression": {
+                                                    "rootName": "siteBucket",
+                                                    "traversal": {
+                                                      "each": [
+                                                        {
+                                                          "traverseRoot": {
+                                                            "name": "siteBucket"
+                                                          }
+                                                        },
+                                                        {
+                                                          "traverseAttr": {
+                                                            "name": "id"
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "/*"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "Version": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "2012-10-17"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "bucketName",
+        "logicalName": "bucketName",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "siteBucket",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "siteBucket"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "bucket"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "websiteUrl",
+        "logicalName": "websiteUrl",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "siteBucket",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "siteBucket"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "websiteEndpoint"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

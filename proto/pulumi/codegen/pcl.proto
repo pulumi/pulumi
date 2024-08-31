@@ -199,7 +199,10 @@ message TraverseAttr {
 }
 
 message TraverseIndex {
-  int64 index = 1;
+  oneof value {
+    int64 intIndex = 1;
+    string stringIndex = 2;
+  }
 }
 
 message TraverseRoot {

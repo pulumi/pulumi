@@ -1,0 +1,147 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "rt",
+        "logicalName": "rt",
+        "token": "synthetic:resourceProperties:Root"
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "trivial",
+        "logicalName": "trivial",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "rt",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "rt"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "simple",
+        "logicalName": "simple",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "rt",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "rt"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "res1"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "foo",
+        "logicalName": "foo",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "rt",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "rt"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "res1"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "obj1"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "res2"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "obj2"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "complex",
+        "logicalName": "complex",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "rt",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "rt"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "res1"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "obj1"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "res2"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "obj2"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "answer"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "synthetic",
+      "version": "0.1.0"
+    }
+  ]
+}

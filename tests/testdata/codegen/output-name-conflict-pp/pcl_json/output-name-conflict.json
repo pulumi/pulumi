@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "configVariable": {
+        "name": "cidrBlock",
+        "logicalName": "cidrBlock",
+        "defaultValue": {
+          "templateExpression": {
+            "parts": [
+              {
+                "literalValueExpression": {
+                  "stringValue": "Test config variable"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "cidrBlock",
+        "logicalName": "cidrBlock",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "cidrBlock",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "cidrBlock"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

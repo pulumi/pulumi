@@ -1,0 +1,321 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "securityGroup",
+        "logicalName": "securityGroup",
+        "token": "aws:ec2/securityGroup:SecurityGroup",
+        "inputs": [
+          {
+            "name": "ingress",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "cidrBlocks": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "0.0.0.0/0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "fromPort": {
+                          "literalValueExpression": {
+                            "numberValue": 0
+                          }
+                        },
+                        "protocol": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "tcp"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "toPort": {
+                          "literalValueExpression": {
+                            "numberValue": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable": {
+        "name": "ami",
+        "logicalName": "ami",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws::getAmi"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "filters": {
+                      "tupleConsExpression": {
+                        "items": [
+                          {
+                            "objectConsExpression": {
+                              "properties": {
+                                "name": {
+                                  "templateExpression": {
+                                    "parts": [
+                                      {
+                                        "literalValueExpression": {
+                                          "stringValue": "name"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                "values": {
+                                  "tupleConsExpression": {
+                                    "items": [
+                                      {
+                                        "templateExpression": {
+                                          "parts": [
+                                            {
+                                              "literalValueExpression": {
+                                                "stringValue": "amzn-ami-hvm-*-x86_64-ebs"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "mostRecent": {
+                      "literalValueExpression": {
+                        "boolValue": true
+                      }
+                    },
+                    "owners": {
+                      "tupleConsExpression": {
+                        "items": [
+                          {
+                            "templateExpression": {
+                              "parts": [
+                                {
+                                  "literalValueExpression": {
+                                    "stringValue": "137112412989"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "server",
+        "logicalName": "server",
+        "token": "aws:ec2/instance:Instance",
+        "inputs": [
+          {
+            "name": "tags",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "Name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "web-server-www"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "instanceType",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "t2.micro"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "securityGroups",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "scopeTraversalExpression": {
+                      "rootName": "securityGroup",
+                      "traversal": {
+                        "each": [
+                          {
+                            "traverseRoot": {
+                              "name": "securityGroup"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "name"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "ami",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "ami",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "ami"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "userData",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "publicIp",
+        "logicalName": "publicIp",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "server",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "server"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "publicIp"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "publicHostName",
+        "logicalName": "publicHostName",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "server",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "server"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "publicDns"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

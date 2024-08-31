@@ -1,0 +1,90 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "replica",
+        "logicalName": "replica",
+        "token": "basic-unions:index:ExampleServer",
+        "inputs": [
+          {
+            "name": "properties",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "createMode": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Replica"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "version": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "0.1.0-dev"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "restore",
+        "logicalName": "restore",
+        "token": "basic-unions:index:ExampleServer",
+        "inputs": [
+          {
+            "name": "properties",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "createMode": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "PointInTimeRestore"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "restorePointInTime": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "example"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "basic-unions",
+      "version": "1.0.0"
+    }
+  ]
+}

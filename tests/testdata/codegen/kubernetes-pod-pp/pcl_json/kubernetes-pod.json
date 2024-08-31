@@ -1,0 +1,250 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "bar",
+        "logicalName": "bar",
+        "token": "kubernetes:core/v1:Pod",
+        "inputs": [
+          {
+            "name": "apiVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "v1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "bar"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "namespace": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "foo"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "spec",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "containers": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "image": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "nginx:1.14-alpine"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "name": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "nginx"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "ports": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "containerPort": {
+                                            "literalValueExpression": {
+                                              "numberValue": 80
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "resources": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "limits": {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "cpu": {
+                                            "literalValueExpression": {
+                                              "numberValue": 0.2
+                                            }
+                                          },
+                                          "memory": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "20Mi"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "image": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "nginx:1.14-alpine"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "name": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "nginx2"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "ports": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "containerPort": {
+                                            "literalValueExpression": {
+                                              "numberValue": 80
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "resources": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "limits": {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "cpu": {
+                                            "literalValueExpression": {
+                                              "numberValue": 0.2
+                                            }
+                                          },
+                                          "memory": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "20Mi"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable": {
+        "name": "kind",
+        "logicalName": "kind",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "bar",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "bar"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "kind"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "kubernetes",
+      "version": "3.7.2"
+    }
+  ]
+}

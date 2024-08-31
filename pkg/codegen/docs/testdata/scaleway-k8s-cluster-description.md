@@ -159,8 +159,11 @@ resources:
       nodeType: DEV1-M
       size: 1
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -314,8 +317,11 @@ resources:
       size: 0
       minSize: 0
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -492,8 +498,11 @@ func main() {
 	})
 }
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 
@@ -679,8 +688,11 @@ resources:
       nodeType: DEV1-M
       size: 1
 ```
-```protobuf
+```pcl_protobuf
 BASE64
+```
+```pcl_json
+{}
 ```
 <!--End PulumiCodeChooser -->
 

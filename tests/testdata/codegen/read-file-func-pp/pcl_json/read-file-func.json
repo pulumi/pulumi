@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "key",
+        "logicalName": "key",
+        "value": {
+          "functionCallExpression": {
+            "name": "readFile",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "key.pub"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "result",
+        "logicalName": "result",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "key",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "key"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

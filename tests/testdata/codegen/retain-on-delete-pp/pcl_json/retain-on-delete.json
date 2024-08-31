@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "foo",
+        "logicalName": "foo",
+        "token": "random:index/randomPet:RandomPet",
+        "options": {}
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "random",
+      "version": "4.11.2"
+    }
+  ]
+}

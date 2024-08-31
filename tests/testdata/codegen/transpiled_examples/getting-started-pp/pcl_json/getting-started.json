@@ -1,0 +1,155 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "mybucket",
+        "logicalName":  "mybucket",
+        "token":  "aws:s3/bucket:Bucket",
+        "inputs":  [
+          {
+            "name":  "website",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "indexDocument":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "indexhtml",
+        "logicalName":  "indexhtml",
+        "token":  "aws:s3/bucketObject:BucketObject",
+        "inputs":  [
+          {
+            "name":  "bucket",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "mybucket",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "mybucket"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "stringAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "<h1>Hello, world!</h1>"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "acl",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "public-read"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "text/html"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "bucketEndpoint",
+        "logicalName":  "bucketEndpoint",
+        "value":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "http://"
+                }
+              },
+              {
+                "scopeTraversalExpression":  {
+                  "rootName":  "mybucket",
+                  "traversal":  {
+                    "each":  [
+                      {
+                        "traverseRoot":  {
+                          "name":  "mybucket"
+                        }
+                      },
+                      {
+                        "traverseAttr":  {
+                          "name":  "websiteEndpoint"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.16.2"
+    }
+  ]
+}

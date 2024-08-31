@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "storageAccounts",
+        "logicalName": "storageAccounts",
+        "token": "azure-native:storage:StorageAccount",
+        "inputs": [
+          {
+            "name": "accountName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "sto4445"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "BlockBlobStorage"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "location",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "eastus"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "res9101"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "sku",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Premium_LRS"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "networkRuleSet",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "defaultAction": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Allow"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "ipRules": {
+                    "tupleConsExpression": {}
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "1.56.0"
+    }
+  ]
+}

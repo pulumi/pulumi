@@ -1,0 +1,311 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "siteBucket",
+        "logicalName":  "site-bucket",
+        "token":  "aws-native:s3:Bucket",
+        "inputs":  [
+          {
+            "name":  "websiteConfiguration",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "indexDocument":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "indexHtml",
+        "logicalName":  "index.html",
+        "token":  "aws:s3/bucketObject:BucketObject",
+        "inputs":  [
+          {
+            "name":  "bucket",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "siteBucket",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "siteBucket"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www/index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "acl",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "public-read"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "text/html"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "faviconPng",
+        "logicalName":  "favicon.png",
+        "token":  "aws:s3/bucketObject:BucketObject",
+        "inputs":  [
+          {
+            "name":  "bucket",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "siteBucket",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "siteBucket"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www/favicon.png"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "acl",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "public-read"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "image/png"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "bucketPolicy",
+        "logicalName":  "bucketPolicy",
+        "token":  "aws:s3/bucketPolicy:BucketPolicy",
+        "inputs":  [
+          {
+            "name":  "bucket",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "siteBucket",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "policy",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": [\"s3:GetObject\"],\n      \"Resource\": [\""
+                    }
+                  },
+                  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "siteBucket",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "siteBucket"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "arn"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "/*\"]\n    }\n  ]\n}\n"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "bucketName",
+        "logicalName":  "bucketName",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "siteBucket",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "siteBucket"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "bucketName"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "websiteUrl",
+        "logicalName":  "websiteUrl",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "siteBucket",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "siteBucket"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "websiteURL"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.16.2"
+    },
+    {
+      "name":  "aws-native"
+    }
+  ]
+}

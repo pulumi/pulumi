@@ -1,0 +1,320 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "someString",
+        "logicalName": "someString",
+        "value": {
+          "templateExpression": {
+            "parts": [
+              {
+                "literalValueExpression": {
+                  "stringValue": "foobar"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "typeVar",
+        "logicalName": "typeVar",
+        "value": {
+          "templateExpression": {
+            "parts": [
+              {
+                "literalValueExpression": {
+                  "stringValue": "Block"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "staticwebsite",
+        "logicalName": "staticwebsite",
+        "token": "azure-native:storage:StorageAccountStaticWebsite",
+        "inputs": [
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "accountName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "faviconpng",
+        "logicalName": "faviconpng",
+        "token": "azure-native:storage:Blob",
+        "inputs": [
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "accountName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "containerName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "type",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Block"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "_404html",
+        "logicalName": "_404html",
+        "token": "azure-native:storage:Blob",
+        "inputs": [
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "accountName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "containerName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "type",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "staticwebsite",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "staticwebsite"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "indexDocument"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "another",
+        "logicalName": "another",
+        "token": "azure-native:storage:Blob",
+        "inputs": [
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "accountName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "containerName",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "someString",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "someString"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "type",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "typeVar",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "typeVar"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "1.56.0"
+    }
+  ]
+}

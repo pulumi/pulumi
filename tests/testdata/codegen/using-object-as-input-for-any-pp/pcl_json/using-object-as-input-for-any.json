@@ -1,0 +1,120 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "role",
+        "logicalName": "role",
+        "token": "aws-native:iam:Role",
+        "inputs": [
+          {
+            "name": "roleName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "ScriptIAMRole"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "assumeRolePolicyDocument",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "Statement": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "Action": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "sts:AssumeRole"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "Effect": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "Allow"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "Principal": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "Service": {
+                                      "tupleConsExpression": {
+                                        "items": [
+                                          {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "cloudformation.amazonaws.com"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "gamelift.amazonaws.com"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "Version": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "2012-10-17"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws-native"
+    }
+  ]
+}

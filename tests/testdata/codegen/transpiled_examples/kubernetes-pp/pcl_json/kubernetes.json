@@ -1,0 +1,419 @@
+{
+  "nodes":  [
+    {
+      "configVariable":  {
+        "name":  "hostname",
+        "logicalName":  "hostname",
+        "defaultValue":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "example.com"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "nginxDemo",
+        "logicalName":  "nginx-demo",
+        "token":  "kubernetes:core/v1:Namespace"
+      }
+    },
+    {
+      "resource":  {
+        "name":  "app",
+        "logicalName":  "app",
+        "token":  "kubernetes:apps/v1:Deployment",
+        "inputs":  [
+          {
+            "name":  "metadata",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "namespace":  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "nginxDemo",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "nginxDemo"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "metadata"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "name"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name":  "spec",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "replicas":  {
+                    "literalValueExpression":  {
+                      "numberValue":  1
+                    }
+                  },
+                  "selector":  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "matchLabels":  {
+                          "objectConsExpression":  {}
+                        }
+                      }
+                    }
+                  },
+                  "template":  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "metadata":  {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "labels":  {
+                                "objectConsExpression":  {}
+                              }
+                            }
+                          }
+                        },
+                        "spec":  {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "containers":  {
+                                "tupleConsExpression":  {
+                                  "items":  [
+                                    {
+                                      "objectConsExpression":  {
+                                        "properties":  {
+                                          "image":  {
+                                            "templateExpression":  {
+                                              "parts":  [
+                                                {
+                                                  "literalValueExpression":  {
+                                                    "stringValue":  "nginx:1.15-alpine"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "name":  {
+                                            "templateExpression":  {
+                                              "parts":  [
+                                                {
+                                                  "literalValueExpression":  {
+                                                    "stringValue":  "app"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "service",
+        "logicalName":  "service",
+        "token":  "kubernetes:core/v1:Service",
+        "inputs":  [
+          {
+            "name":  "metadata",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "labels":  {
+                    "objectConsExpression":  {}
+                  },
+                  "namespace":  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "nginxDemo",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "nginxDemo"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "metadata"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "name"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name":  "spec",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "ports":  {
+                    "tupleConsExpression":  {
+                      "items":  [
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "port":  {
+                                "literalValueExpression":  {
+                                  "numberValue":  80
+                                }
+                              },
+                              "protocol":  {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "TCP"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "targetPort":  {
+                                "literalValueExpression":  {
+                                  "numberValue":  80
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "selector":  {
+                    "objectConsExpression":  {}
+                  },
+                  "type":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "ClusterIP"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "ingress",
+        "logicalName":  "ingress",
+        "token":  "kubernetes:networking.k8s.io/v1:Ingress",
+        "inputs":  [
+          {
+            "name":  "metadata",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "namespace":  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "nginxDemo",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "nginxDemo"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "metadata"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "name"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name":  "spec",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "rules":  {
+                    "tupleConsExpression":  {
+                      "items":  [
+                        {
+                          "objectConsExpression":  {
+                            "properties":  {
+                              "host":  {
+                                "scopeTraversalExpression":  {
+                                  "rootName":  "hostname",
+                                  "traversal":  {
+                                    "each":  [
+                                      {
+                                        "traverseRoot":  {
+                                          "name":  "hostname"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "http":  {
+                                "objectConsExpression":  {
+                                  "properties":  {
+                                    "paths":  {
+                                      "tupleConsExpression":  {
+                                        "items":  [
+                                          {
+                                            "objectConsExpression":  {
+                                              "properties":  {
+                                                "backend":  {
+                                                  "objectConsExpression":  {
+                                                    "properties":  {
+                                                      "service":  {
+                                                        "objectConsExpression":  {
+                                                          "properties":  {
+                                                            "name":  {
+                                                              "scopeTraversalExpression":  {
+                                                                "rootName":  "service",
+                                                                "traversal":  {
+                                                                  "each":  [
+                                                                    {
+                                                                      "traverseRoot":  {
+                                                                        "name":  "service"
+                                                                      }
+                                                                    },
+                                                                    {
+                                                                      "traverseAttr":  {
+                                                                        "name":  "metadata"
+                                                                      }
+                                                                    },
+                                                                    {
+                                                                      "traverseAttr":  {
+                                                                        "name":  "name"
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            "port":  {
+                                                              "objectConsExpression":  {
+                                                                "properties":  {
+                                                                  "number":  {
+                                                                    "literalValueExpression":  {
+                                                                      "numberValue":  80
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "path":  {
+                                                  "templateExpression":  {
+                                                    "parts":  [
+                                                      {
+                                                        "literalValueExpression":  {
+                                                          "stringValue":  "/"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "pathType":  {
+                                                  "templateExpression":  {
+                                                    "parts":  [
+                                                      {
+                                                        "literalValueExpression":  {
+                                                          "stringValue":  "Prefix"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "kubernetes",
+      "version":  "3.7.2"
+    }
+  ]
+}

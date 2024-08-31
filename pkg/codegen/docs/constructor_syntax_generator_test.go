@@ -16,12 +16,13 @@ package docs
 
 import (
 	"encoding/base64"
+	"strings"
+	"testing"
+
 	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"strings"
-	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
@@ -103,7 +104,7 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 		},
 	})
 
-	languages := []string{"csharp", "go", "nodejs", "python", "yaml", "java", "protobuf"}
+	languages := []string{"csharp", "go", "nodejs", "python", "yaml", "java", "pcl_protobuf", "pcl_json"}
 	constructorSyntax := generateConstructorSyntaxData(pkg, languages)
 
 	trim := func(s string) string {
@@ -133,6 +134,11 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 		}
 		assert.True(t, has, "Expected to find program for token %s", token)
 		require.JSONEq(t, expected, string(bytes))
+	}
+	equalJSONPrograms := func(language *languageConstructorSyntax, token string, expected string) {
+		program, has := language.resources[token]
+		assert.True(t, has, "Expected to find program for token %s", token)
+		require.JSONEq(t, trim(expected), trim(program))
 	}
 
 	expectedResources := 3
@@ -252,8 +258,8 @@ var secondResource = new Second("secondResource", SecondArgs.builder()
 	equalPrograms(constructorSyntax.java, "test:index:NoInputs", `
 var noInputsResource = new NoInputs("noInputsResource");
 `)
-	assert.Equal(t, expectedResources, len(constructorSyntax.protobuf.resources))
-	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:First", `
+	assert.Equal(t, expectedResources, len(constructorSyntax.pclProtobuf.resources))
+	equalProtobufPrograms(constructorSyntax.pclProtobuf, "test:index:First", `
 {
   "nodes": [
     {
@@ -320,7 +326,7 @@ var noInputsResource = new NoInputs("noInputsResource");
   ]
 }
 `)
-	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:Second", `
+	equalProtobufPrograms(constructorSyntax.pclProtobuf, "test:index:Second", `
 {
   "nodes": [
     {
@@ -349,7 +355,118 @@ var noInputsResource = new NoInputs("noInputsResource");
   ]
 }
 `)
-	equalProtobufPrograms(constructorSyntax.protobuf, "test:index:NoInputs", `
+	equalProtobufPrograms(constructorSyntax.pclProtobuf, "test:index:NoInputs", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "noInputsResource",
+        "logicalName": "noInputsResource",
+        "token": "test:index:NoInputs"
+      }
+    }
+  ]
+}
+`)
+
+	assert.Equal(t, expectedResources, len(constructorSyntax.pclJSON.resources))
+	equalJSONPrograms(constructorSyntax.pclJSON, "test:index:First", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "firstResource",
+        "logicalName": "firstResource",
+        "token": "test:index:First",
+        "inputs": [
+          {
+            "name": "fooBool",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "fooEnum",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "first"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "fooInt",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 0
+              }
+            }
+          },
+          {
+            "name": "fooNumericEnum",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 10
+              }
+            }
+          },
+          {
+            "name": "fooString",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`)
+	equalJSONPrograms(constructorSyntax.pclJSON, "test:index:Second", `
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "secondResource",
+        "logicalName": "secondResource",
+        "token": "test:index:Second",
+        "inputs": [
+          {
+            "name": "barString",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`)
+	equalJSONPrograms(constructorSyntax.pclJSON, "test:index:NoInputs", `
 {
   "nodes": [
     {

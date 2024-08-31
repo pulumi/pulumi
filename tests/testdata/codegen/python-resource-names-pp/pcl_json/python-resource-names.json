@@ -1,0 +1,429 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "cluster",
+        "logicalName": "cluster",
+        "token": "azure-native:containerservice:ManagedCluster",
+        "inputs": [
+          {
+            "name": "agentPoolProfiles",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "count": {
+                          "literalValueExpression": {
+                            "numberValue": 2
+                          }
+                        },
+                        "enableFIPS": {
+                          "literalValueExpression": {
+                            "boolValue": false
+                          }
+                        },
+                        "kubeletDiskType": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "OS"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "maxPods": {
+                          "literalValueExpression": {
+                            "numberValue": 110
+                          }
+                        },
+                        "mode": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "System"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "name": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "type1"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "orchestratorVersion": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "1.21.9"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "osDiskSizeGB": {
+                          "literalValueExpression": {
+                            "numberValue": 128
+                          }
+                        },
+                        "osDiskType": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "Managed"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "osSKU": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "Ubuntu"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "osType": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "Linux"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "type": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "VirtualMachineScaleSets"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "vmSize": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "Standard_B2ms"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "vnetSubnetID": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "/subscriptions/0282681f-7a9e-424b-80b2-96babd57a8a1/resourceGroups/test-rga2bd359a/providers/Microsoft.Network/virtualNetworks/test-vnet4b80e99b/subnets/test-subnet"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "dnsPrefix",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "dns"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "enableRBAC",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": true
+              }
+            }
+          },
+          {
+            "name": "kubernetesVersion",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "1.21.9"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "location",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "eastus"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "networkProfile",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "dnsServiceIP": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "10.10.0.10"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "dockerBridgeCidr": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "172.17.0.1/16"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "loadBalancerProfile": {
+                    "objectConsExpression": {
+                      "properties": {
+                        "effectiveOutboundIPs": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "id": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "/subscriptions/0282681f-7a9e-424b-80b2-96babd57a8a1/resourceGroups/MC_test-rga2bd359a_test-aks5fb1e730_eastus/providers/Microsoft.Network/publicIPAddresses/2a2610b5-67f3-4aec-a277-a032b2364d70"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "managedOutboundIPs": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "count": {
+                                "literalValueExpression": {
+                                  "numberValue": 1
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "loadBalancerSku": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Standard"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "networkPlugin": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "azure"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "outboundType": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "loadBalancer"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "serviceCidr": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "10.10.0.0/16"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "nodeResourceGroup",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "MC_test-rga2bd359a_test-aks5fb1e730_eastus"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "test-rga2bd359a"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "resourceName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "test-aks5fb1e730"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "servicePrincipalProfile",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "clientId": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "64e3783f-3214-4ba7-bb52-12ad85412527"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "sku",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "name": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Basic"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "tier": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "Free"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "options": {
+          "protect": {
+            "literalValueExpression": {
+              "boolValue": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "1.56.0"
+    }
+  ]
+}

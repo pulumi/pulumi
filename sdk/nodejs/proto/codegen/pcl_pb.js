@@ -43,6 +43,7 @@ goog.exportSymbol('proto.codegen.TemplateExpression', null, global);
 goog.exportSymbol('proto.codegen.Traversal', null, global);
 goog.exportSymbol('proto.codegen.TraverseAttr', null, global);
 goog.exportSymbol('proto.codegen.TraverseIndex', null, global);
+goog.exportSymbol('proto.codegen.TraverseIndex.ValueCase', null, global);
 goog.exportSymbol('proto.codegen.TraverseRoot', null, global);
 goog.exportSymbol('proto.codegen.TraverseSplat', null, global);
 goog.exportSymbol('proto.codegen.Traverser', null, global);
@@ -585,7 +586,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.codegen.TraverseIndex = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, proto.codegen.TraverseIndex.oneofGroups_);
 };
 goog.inherits(proto.codegen.TraverseIndex, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -6685,6 +6686,32 @@ proto.codegen.TraverseAttr.prototype.setName = function(value) {
 
 
 
+/**
+ * Oneof group definitions for this message. Each group defines the field
+ * numbers belonging to that group. When of these fields' value is set, all
+ * other fields in the group are cleared. During deserialization, if multiple
+ * fields are encountered for a group, only the last value seen will be kept.
+ * @private {!Array<!Array<number>>}
+ * @const
+ */
+proto.codegen.TraverseIndex.oneofGroups_ = [[1,2]];
+
+/**
+ * @enum {number}
+ */
+proto.codegen.TraverseIndex.ValueCase = {
+  VALUE_NOT_SET: 0,
+  INTINDEX: 1,
+  STRINGINDEX: 2
+};
+
+/**
+ * @return {proto.codegen.TraverseIndex.ValueCase}
+ */
+proto.codegen.TraverseIndex.prototype.getValueCase = function() {
+  return /** @type {proto.codegen.TraverseIndex.ValueCase} */(jspb.Message.computeOneofCase(this, proto.codegen.TraverseIndex.oneofGroups_[0]));
+};
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -6716,7 +6743,8 @@ proto.codegen.TraverseIndex.prototype.toObject = function(opt_includeInstance) {
  */
 proto.codegen.TraverseIndex.toObject = function(includeInstance, msg) {
   var f, obj = {
-    index: jspb.Message.getFieldWithDefault(msg, 1, 0)
+    intindex: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    stringindex: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -6755,7 +6783,11 @@ proto.codegen.TraverseIndex.deserializeBinaryFromReader = function(msg, reader) 
     switch (field) {
     case 1:
       var value = /** @type {number} */ (reader.readInt64());
-      msg.setIndex(value);
+      msg.setIntindex(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setStringindex(value);
       break;
     default:
       reader.skipField();
@@ -6786,10 +6818,17 @@ proto.codegen.TraverseIndex.prototype.serializeBinary = function() {
  */
 proto.codegen.TraverseIndex.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getIndex();
-  if (f !== 0) {
+  f = /** @type {number} */ (jspb.Message.getField(message, 1));
+  if (f != null) {
     writer.writeInt64(
       1,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 2));
+  if (f != null) {
+    writer.writeString(
+      2,
       f
     );
   }
@@ -6797,10 +6836,10 @@ proto.codegen.TraverseIndex.serializeBinaryToWriter = function(message, writer) 
 
 
 /**
- * optional int64 index = 1;
+ * optional int64 intIndex = 1;
  * @return {number}
  */
-proto.codegen.TraverseIndex.prototype.getIndex = function() {
+proto.codegen.TraverseIndex.prototype.getIntindex = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
@@ -6809,8 +6848,62 @@ proto.codegen.TraverseIndex.prototype.getIndex = function() {
  * @param {number} value
  * @return {!proto.codegen.TraverseIndex} returns this
  */
-proto.codegen.TraverseIndex.prototype.setIndex = function(value) {
-  return jspb.Message.setProto3IntField(this, 1, value);
+proto.codegen.TraverseIndex.prototype.setIntindex = function(value) {
+  return jspb.Message.setOneofField(this, 1, proto.codegen.TraverseIndex.oneofGroups_[0], value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.codegen.TraverseIndex} returns this
+ */
+proto.codegen.TraverseIndex.prototype.clearIntindex = function() {
+  return jspb.Message.setOneofField(this, 1, proto.codegen.TraverseIndex.oneofGroups_[0], undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.codegen.TraverseIndex.prototype.hasIntindex = function() {
+  return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional string stringIndex = 2;
+ * @return {string}
+ */
+proto.codegen.TraverseIndex.prototype.getStringindex = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.codegen.TraverseIndex} returns this
+ */
+proto.codegen.TraverseIndex.prototype.setStringindex = function(value) {
+  return jspb.Message.setOneofField(this, 2, proto.codegen.TraverseIndex.oneofGroups_[0], value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.codegen.TraverseIndex} returns this
+ */
+proto.codegen.TraverseIndex.prototype.clearStringindex = function() {
+  return jspb.Message.setOneofField(this, 2, proto.codegen.TraverseIndex.oneofGroups_[0], undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.codegen.TraverseIndex.prototype.hasStringindex = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 

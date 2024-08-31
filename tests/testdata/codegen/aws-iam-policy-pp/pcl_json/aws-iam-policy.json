@@ -1,0 +1,85 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "policy",
+        "logicalName": "policy",
+        "token": "aws:iam/policy:Policy",
+        "inputs": [
+          {
+            "name": "path",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "/"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "description",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "My test policy"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "policy",
+            "value": {
+              "functionCallExpression": {
+                "name": "toJSON",
+                "args": [
+                  {
+                    "objectConsExpression": {}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "policyName",
+        "logicalName": "policyName",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "policy",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "policy"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "name"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

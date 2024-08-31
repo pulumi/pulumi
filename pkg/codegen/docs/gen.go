@@ -25,7 +25,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/protobuf"
 	"go/format"
 	"html"
 	"html/template"
@@ -170,13 +169,14 @@ type languageConstructorSyntax struct {
 }
 
 type constructorSyntaxData struct {
-	typescript *languageConstructorSyntax
-	python     *languageConstructorSyntax
-	golang     *languageConstructorSyntax
-	csharp     *languageConstructorSyntax
-	java       *languageConstructorSyntax
-	yaml       *languageConstructorSyntax
-	protobuf   *languageConstructorSyntax
+	typescript  *languageConstructorSyntax
+	python      *languageConstructorSyntax
+	golang      *languageConstructorSyntax
+	csharp      *languageConstructorSyntax
+	java        *languageConstructorSyntax
+	yaml        *languageConstructorSyntax
+	pclProtobuf *languageConstructorSyntax
+	pclJSON     *languageConstructorSyntax
 }
 
 func emptyLanguageConstructorSyntax() *languageConstructorSyntax {
@@ -188,13 +188,14 @@ func emptyLanguageConstructorSyntax() *languageConstructorSyntax {
 
 func newConstructorSyntaxData() *constructorSyntaxData {
 	return &constructorSyntaxData{
-		typescript: emptyLanguageConstructorSyntax(),
-		python:     emptyLanguageConstructorSyntax(),
-		golang:     emptyLanguageConstructorSyntax(),
-		csharp:     emptyLanguageConstructorSyntax(),
-		java:       emptyLanguageConstructorSyntax(),
-		yaml:       emptyLanguageConstructorSyntax(),
-		protobuf:   emptyLanguageConstructorSyntax(),
+		typescript:  emptyLanguageConstructorSyntax(),
+		python:      emptyLanguageConstructorSyntax(),
+		golang:      emptyLanguageConstructorSyntax(),
+		csharp:      emptyLanguageConstructorSyntax(),
+		java:        emptyLanguageConstructorSyntax(),
+		yaml:        emptyLanguageConstructorSyntax(),
+		pclProtobuf: emptyLanguageConstructorSyntax(),
+		pclJSON:     emptyLanguageConstructorSyntax(),
 	}
 }
 
@@ -1817,8 +1818,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
 		}
-		if example, found := dctx.constructorSyntaxData.protobuf.resources[r.Token]; found {
-			creationExampleSyntax["protobuf"] = example
+		if example, found := dctx.constructorSyntaxData.pclProtobuf.resources[r.Token]; found {
+			creationExampleSyntax["pcl_protobuf"] = example
+		}
+		if example, found := dctx.constructorSyntaxData.pclJSON.resources[r.Token]; found {
+			creationExampleSyntax["pcl_json"] = example
 		}
 	}
 
@@ -2438,15 +2442,21 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 					"//",       /* comment prefix */
 					func(line string) bool { return strings.HasSuffix(line, ");") })
 			}
-		case "protobuf":
-			files, diags, err := safeExtract(protobuf.GenerateProgram)
+		case "pcl_protobuf":
+			files, diags, err := safeExtract(pcl.GenerateSerializedProtobufProgram)
 			if !diags.HasErrors() && err == nil {
-				program := string(files["program.base64"])
-				protobufProgram, _ := extractConstructorSyntaxExamplesFromProtobuf(program)
-				constructorSyntax.protobuf = protobufProgram
+				program := string(files["main.pcl.protobuf"])
+				protobufProgram, _ := extractConstructorSyntaxExamplesFromProtobufPcl(program)
+				constructorSyntax.pclProtobuf = protobufProgram
+			}
+		case "pcl_json":
+			files, diags, err := safeExtract(pcl.GenerateSerializedProtobufProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["main.pcl.protobuf"])
+				jsonProgram, _ := extractJSONConstructorSyntaxExamplesFromProtobufPcl(program)
+				constructorSyntax.pclJSON = jsonProgram
 			}
 		}
-
 	}
 
 	return constructorSyntax

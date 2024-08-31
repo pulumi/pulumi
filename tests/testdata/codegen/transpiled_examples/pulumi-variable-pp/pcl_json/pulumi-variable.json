@@ -1,0 +1,37 @@
+{
+  "nodes":  [
+    {
+      "outputVariable":  {
+        "name":  "cwd0",
+        "logicalName":  "cwd",
+        "value":  {
+          "functionCallExpression":  {
+            "name":  "cwd"
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "stack0",
+        "logicalName":  "stack",
+        "value":  {
+          "functionCallExpression":  {
+            "name":  "stack"
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "project0",
+        "logicalName":  "project",
+        "value":  {
+          "functionCallExpression":  {
+            "name":  "project"
+          }
+        }
+      }
+    }
+  ]
+}

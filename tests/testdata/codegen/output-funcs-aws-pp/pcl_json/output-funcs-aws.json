@@ -1,0 +1,393 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "aws_vpc",
+        "logicalName": "aws_vpc",
+        "token": "aws:ec2/vpc:Vpc",
+        "inputs": [
+          {
+            "name": "cidrBlock",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "10.0.0.0/16"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "instanceTenancy",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "default"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "privateS3VpcEndpoint",
+        "logicalName": "privateS3VpcEndpoint",
+        "token": "aws:ec2/vpcEndpoint:VpcEndpoint",
+        "inputs": [
+          {
+            "name": "vpcId",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "aws_vpc",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "aws_vpc"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "serviceName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "com.amazonaws.us-west-2.s3"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable": {
+        "name": "privateS3PrefixList",
+        "logicalName": "privateS3PrefixList",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws:ec2:getPrefixList"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "prefixListId": {
+                      "scopeTraversalExpression": {
+                        "rootName": "privateS3VpcEndpoint",
+                        "traversal": {
+                          "each": [
+                            {
+                              "traverseRoot": {
+                                "name": "privateS3VpcEndpoint"
+                              }
+                            },
+                            {
+                              "traverseAttr": {
+                                "name": "prefixListId"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "bar",
+        "logicalName": "bar",
+        "token": "aws:ec2/networkAcl:NetworkAcl",
+        "inputs": [
+          {
+            "name": "vpcId",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "aws_vpc",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "aws_vpc"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "privateS3NetworkAclRule",
+        "logicalName": "privateS3NetworkAclRule",
+        "token": "aws:ec2/networkAclRule:NetworkAclRule",
+        "inputs": [
+          {
+            "name": "networkAclId",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "bar",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "bar"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "ruleNumber",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 200
+              }
+            }
+          },
+          {
+            "name": "egress",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": false
+              }
+            }
+          },
+          {
+            "name": "protocol",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "tcp"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "ruleAction",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "allow"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "cidrBlock",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "privateS3PrefixList",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "privateS3PrefixList"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "cidrBlocks"
+                      }
+                    },
+                    {
+                      "traverseIndex": {
+                        "intIndex": "0"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "fromPort",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 443
+              }
+            }
+          },
+          {
+            "name": "toPort",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 443
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "localVariable": {
+        "name": "amis",
+        "logicalName": "amis",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws:ec2:getAmiIds"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "filters": {
+                      "tupleConsExpression": {
+                        "items": [
+                          {
+                            "objectConsExpression": {
+                              "properties": {
+                                "name": {
+                                  "scopeTraversalExpression": {
+                                    "rootName": "bar",
+                                    "traversal": {
+                                      "each": [
+                                        {
+                                          "traverseRoot": {
+                                            "name": "bar"
+                                          }
+                                        },
+                                        {
+                                          "traverseAttr": {
+                                            "name": "id"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                "values": {
+                                  "tupleConsExpression": {
+                                    "items": [
+                                      {
+                                        "templateExpression": {
+                                          "parts": [
+                                            {
+                                              "literalValueExpression": {
+                                                "stringValue": "pulumi*"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "owners": {
+                      "tupleConsExpression": {
+                        "items": [
+                          {
+                            "scopeTraversalExpression": {
+                              "rootName": "bar",
+                              "traversal": {
+                                "each": [
+                                  {
+                                    "traverseRoot": {
+                                      "name": "bar"
+                                    }
+                                  },
+                                  {
+                                    "traverseAttr": {
+                                      "name": "id"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

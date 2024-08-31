@@ -1,0 +1,321 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "siteBucket",
+        "logicalName": "siteBucket",
+        "token": "aws:s3/bucket:Bucket"
+      }
+    },
+    {
+      "resource": {
+        "name": "testFileAsset",
+        "logicalName": "testFileAsset",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "fileAsset",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "file.txt"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testStringAsset",
+        "logicalName": "testStringAsset",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "stringAsset",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "<h1>File contents</h1>"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testRemoteAsset",
+        "logicalName": "testRemoteAsset",
+        "token": "aws:s3/bucketObject:BucketObject",
+        "inputs": [
+          {
+            "name": "bucket",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "source",
+            "value": {
+              "functionCallExpression": {
+                "name": "remoteAsset",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "https://pulumi.test"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testFileArchive",
+        "logicalName": "testFileArchive",
+        "token": "aws:lambda/function:Function",
+        "inputs": [
+          {
+            "name": "role",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "code",
+            "value": {
+              "functionCallExpression": {
+                "name": "fileArchive",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "file.tar.gz"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testRemoteArchive",
+        "logicalName": "testRemoteArchive",
+        "token": "aws:lambda/function:Function",
+        "inputs": [
+          {
+            "name": "role",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "code",
+            "value": {
+              "functionCallExpression": {
+                "name": "remoteArchive",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "https://pulumi.test/foo.tar.gz"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testAssetArchive",
+        "logicalName": "testAssetArchive",
+        "token": "aws:lambda/function:Function",
+        "inputs": [
+          {
+            "name": "role",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "siteBucket",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "siteBucket"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "code",
+            "value": {
+              "functionCallExpression": {
+                "name": "assetArchive",
+                "args": [
+                  {
+                    "objectConsExpression": {}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

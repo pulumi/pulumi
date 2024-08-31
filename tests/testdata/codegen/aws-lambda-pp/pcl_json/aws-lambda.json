@@ -1,0 +1,125 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "iamForLambda",
+        "logicalName": "iamForLambda",
+        "token": "aws:iam/role:Role",
+        "inputs": [
+          {
+            "name": "assumeRolePolicy",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "canBeAString"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "testLambda",
+        "logicalName": "testLambda",
+        "token": "aws:lambda/function:Function",
+        "inputs": [
+          {
+            "name": "code",
+            "value": {
+              "functionCallExpression": {
+                "name": "fileArchive",
+                "args": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "lambda_function_payload.zip"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "role",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "iamForLambda",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "iamForLambda"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "handler",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "index.test"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "runtime",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "nodejs12.x"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "environment",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "variables": {
+                    "objectConsExpression": {}
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

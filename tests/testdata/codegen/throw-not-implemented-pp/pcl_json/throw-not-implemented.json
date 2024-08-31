@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "outputVariable": {
+        "name": "result",
+        "logicalName": "result",
+        "value": {
+          "functionCallExpression": {
+            "name": "notImplemented",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "expression here is not implemented yet"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

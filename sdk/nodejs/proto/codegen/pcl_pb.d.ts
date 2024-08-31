@@ -865,8 +865,18 @@ export namespace TraverseAttr {
 }
 
 export class TraverseIndex extends jspb.Message { 
-    getIndex(): number;
-    setIndex(value: number): TraverseIndex;
+
+    hasIntindex(): boolean;
+    clearIntindex(): void;
+    getIntindex(): number;
+    setIntindex(value: number): TraverseIndex;
+
+    hasStringindex(): boolean;
+    clearStringindex(): void;
+    getStringindex(): string;
+    setStringindex(value: string): TraverseIndex;
+
+    getValueCase(): TraverseIndex.ValueCase;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TraverseIndex.AsObject;
@@ -880,8 +890,16 @@ export class TraverseIndex extends jspb.Message {
 
 export namespace TraverseIndex {
     export type AsObject = {
-        index: number,
+        intindex: number,
+        stringindex: string,
     }
+
+    export enum ValueCase {
+        VALUE_NOT_SET = 0,
+        INTINDEX = 1,
+        STRINGINDEX = 2,
+    }
+
 }
 
 export class TraverseRoot extends jspb.Message { 

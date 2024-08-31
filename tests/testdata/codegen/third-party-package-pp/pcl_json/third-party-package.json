@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "Other",
+        "logicalName": "Other",
+        "token": "other:index:Thing",
+        "inputs": [
+          {
+            "name": "idea",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "Support Third Party"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "Question",
+        "logicalName": "Question",
+        "token": "other:module:Object",
+        "inputs": [
+          {
+            "name": "answer",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 42
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "Question2",
+        "logicalName": "Question2",
+        "token": "other:module/sub:Object",
+        "inputs": [
+          {
+            "name": "answer",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 24
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "Provider",
+        "logicalName": "Provider",
+        "token": "pulumi:providers:other",
+        "inputs": [
+          {
+            "name": "objectProp",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "prop1": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "foo"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "prop2": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "bar"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "prop3": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "fizz"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "other",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -1,0 +1,505 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "frontDoor",
+        "logicalName": "frontDoor",
+        "token": "azure-native:network:FrontDoor",
+        "inputs": [
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "someGroupName"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "routingRules",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "routeConfiguration": {
+                          "objectConsExpression": {
+                            "properties": {
+                              "backendPool": {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "id": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "odataType": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "endpoint",
+        "logicalName": "endpoint",
+        "token": "azure-native:cdn:Endpoint",
+        "inputs": [
+          {
+            "name": "origins",
+            "value": {
+              "tupleConsExpression": {}
+            }
+          },
+          {
+            "name": "deliveryPolicy",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "rules": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "actions": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "CacheExpiration"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "parameters": {
+                                            "objectConsExpression": {
+                                              "properties": {
+                                                "cacheBehavior": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "Override"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "cacheDuration": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "10:10:09"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "cacheType": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "All"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "odataType": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "ModifyResponseHeader"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "parameters": {
+                                            "objectConsExpression": {
+                                              "properties": {
+                                                "headerAction": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "Overwrite"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "headerName": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "Access-Control-Allow-Origin"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "odataType": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "value": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "*"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "ModifyRequestHeader"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "parameters": {
+                                            "objectConsExpression": {
+                                              "properties": {
+                                                "headerAction": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "Overwrite"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "headerName": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "Accept-Encoding"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "odataType": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "value": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "gzip"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "conditions": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "name": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "RemoteAddress"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "parameters": {
+                                            "objectConsExpression": {
+                                              "properties": {
+                                                "matchValues": {
+                                                  "tupleConsExpression": {
+                                                    "items": [
+                                                      {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "192.168.1.0/24"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      },
+                                                      {
+                                                        "templateExpression": {
+                                                          "parts": [
+                                                            {
+                                                              "literalValueExpression": {
+                                                                "stringValue": "10.0.0.0/24"
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "negateCondition": {
+                                                  "literalValueExpression": {
+                                                    "boolValue": true
+                                                  }
+                                                },
+                                                "odataType": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "#Microsoft.Azure.Cdn.Models.DeliveryRuleRemoteAddressConditionParameters"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "operator": {
+                                                  "templateExpression": {
+                                                    "parts": [
+                                                      {
+                                                        "literalValueExpression": {
+                                                          "stringValue": "IPMatch"
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "name": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "rule1"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "order": {
+                                "literalValueExpression": {
+                                  "numberValue": 1
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "endpointName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "endpoint1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "isCompressionEnabled",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": true
+              }
+            }
+          },
+          {
+            "name": "isHttpAllowed",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": true
+              }
+            }
+          },
+          {
+            "name": "isHttpsAllowed",
+            "value": {
+              "literalValueExpression": {
+                "boolValue": true
+              }
+            }
+          },
+          {
+            "name": "location",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "WestUs"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "profileName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "profileName"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "resourceGroupName",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "resourceGroupName"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "azure-native",
+      "version": "1.56.0"
+    }
+  ]
+}

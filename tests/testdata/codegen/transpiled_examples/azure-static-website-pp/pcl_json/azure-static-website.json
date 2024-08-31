@@ -1,0 +1,565 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "staticsitegroup",
+        "logicalName":  "staticsitegroup",
+        "token":  "azure-native:resources:ResourceGroup"
+      }
+    },
+    {
+      "resource":  {
+        "name":  "storageaccount",
+        "logicalName":  "storageaccount",
+        "token":  "azure-native:storage:StorageAccount",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticsitegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticsitegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "kind",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "StorageV2"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "sku",
+            "value":  {
+              "objectConsExpression":  {
+                "properties":  {
+                  "name":  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "Standard_LRS"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "staticwebsite",
+        "logicalName":  "staticwebsite",
+        "token":  "azure-native:storage:StorageAccountStaticWebsite",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticsitegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticsitegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "storageaccount",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "storageaccount"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "indexDocument",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "index.html"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "error404Document",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "404.html"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "indexHtml",
+        "logicalName":  "index.html",
+        "token":  "azure-native:storage:Blob",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticsitegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticsitegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "storageaccount",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "storageaccount"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "containerName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticwebsite",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticwebsite"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "containerName"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "text/html"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "type",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "Block"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www/index.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "faviconPng",
+        "logicalName":  "favicon.png",
+        "token":  "azure-native:storage:Blob",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticsitegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticsitegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "storageaccount",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "storageaccount"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "containerName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticwebsite",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticwebsite"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "containerName"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "image/png"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "type",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "Block"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www/favicon.png"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "404Html",
+        "logicalName":  "404.html",
+        "token":  "azure-native:storage:Blob",
+        "inputs":  [
+          {
+            "name":  "resourceGroupName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticsitegroup",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticsitegroup"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "accountName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "storageaccount",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "storageaccount"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "containerName",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "staticwebsite",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "staticwebsite"
+                      }
+                    },
+                    {
+                      "traverseAttr":  {
+                        "name":  "containerName"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "contentType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "text/html"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "type",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "Block"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "source",
+            "value":  {
+              "functionCallExpression":  {
+                "name":  "fileAsset",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "./www/404.html"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "endpoint",
+        "logicalName":  "endpoint",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "storageaccount",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "storageaccount"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "primaryEndpoints"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "web"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "azure-native",
+      "version":  "1.56.0"
+    }
+  ]
+}

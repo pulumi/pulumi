@@ -1,0 +1,424 @@
+{
+  "nodes":  [
+    {
+      "configVariable":  {
+        "name":  "instanceType",
+        "logicalName":  "InstanceType",
+        "defaultValue":  {
+          "templateExpression":  {
+            "parts":  [
+              {
+                "literalValueExpression":  {
+                  "stringValue":  "t3.micro"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable":  {
+        "name":  "ec2Ami",
+        "logicalName":  "ec2Ami",
+        "value":  {
+          "relativeTraversalExpression":  {
+            "source":  {
+              "functionCallExpression":  {
+                "name":  "invoke",
+                "args":  [
+                  {
+                    "templateExpression":  {
+                      "parts":  [
+                        {
+                          "literalValueExpression":  {
+                            "stringValue":  "aws::getAmi"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "filters":  {
+                          "tupleConsExpression":  {
+                            "items":  [
+                              {
+                                "objectConsExpression":  {
+                                  "properties":  {
+                                    "name":  {
+                                      "templateExpression":  {
+                                        "parts":  [
+                                          {
+                                            "literalValueExpression":  {
+                                              "stringValue":  "name"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "values":  {
+                                      "tupleConsExpression":  {
+                                        "items":  [
+                                          {
+                                            "templateExpression":  {
+                                              "parts":  [
+                                                {
+                                                  "literalValueExpression":  {
+                                                    "stringValue":  "amzn-ami-hvm-*-x86_64-ebs"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "mostRecent":  {
+                          "literalValueExpression":  {
+                            "boolValue":  true
+                          }
+                        },
+                        "owners":  {
+                          "tupleConsExpression":  {
+                            "items":  [
+                              {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "137112412989"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseAttr":  {
+                    "name":  "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "resource":  {
+        "name":  "webSecGrp",
+        "logicalName":  "WebSecGrp",
+        "token":  "aws:ec2/securityGroup:SecurityGroup",
+        "inputs":  [
+          {
+            "name":  "ingress",
+            "value":  {
+              "tupleConsExpression":  {
+                "items":  [
+                  {
+                    "objectConsExpression":  {
+                      "properties":  {
+                        "cidrBlocks":  {
+                          "tupleConsExpression":  {
+                            "items":  [
+                              {
+                                "templateExpression":  {
+                                  "parts":  [
+                                    {
+                                      "literalValueExpression":  {
+                                        "stringValue":  "0.0.0.0/0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "fromPort":  {
+                          "literalValueExpression":  {
+                            "numberValue":  80
+                          }
+                        },
+                        "protocol":  {
+                          "templateExpression":  {
+                            "parts":  [
+                              {
+                                "literalValueExpression":  {
+                                  "stringValue":  "tcp"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "toPort":  {
+                          "literalValueExpression":  {
+                            "numberValue":  80
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "webServer",
+        "logicalName":  "WebServer",
+        "token":  "aws:ec2/instance:Instance",
+        "inputs":  [
+          {
+            "name":  "instanceType",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "instanceType",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "instanceType"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "ami",
+            "value":  {
+              "scopeTraversalExpression":  {
+                "rootName":  "ec2Ami",
+                "traversal":  {
+                  "each":  [
+                    {
+                      "traverseRoot":  {
+                        "name":  "ec2Ami"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name":  "userData",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "#!/bin/bash\necho 'Hello, World from "
+                    }
+                  },
+                  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "webSecGrp",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "webSecGrp"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "arn"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "!' > index.html\nnohup python -m SimpleHTTPServer 80 &"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "vpcSecurityGroupIds",
+            "value":  {
+              "tupleConsExpression":  {
+                "items":  [
+                  {
+                    "scopeTraversalExpression":  {
+                      "rootName":  "webSecGrp",
+                      "traversal":  {
+                        "each":  [
+                          {
+                            "traverseRoot":  {
+                              "name":  "webSecGrp"
+                            }
+                          },
+                          {
+                            "traverseAttr":  {
+                              "name":  "id"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "usEast2Provider",
+        "logicalName":  "UsEast2Provider",
+        "token":  "pulumi:providers:aws",
+        "inputs":  [
+          {
+            "name":  "region",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "us-east-2"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "myBucket",
+        "logicalName":  "MyBucket",
+        "token":  "aws:s3/bucket:Bucket",
+        "options":  {
+          "provider":  {
+            "scopeTraversalExpression":  {
+              "rootName":  "usEast2Provider",
+              "traversal":  {
+                "each":  [
+                  {
+                    "traverseRoot":  {
+                      "name":  "usEast2Provider"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "instanceId",
+        "logicalName":  "InstanceId",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "publicIp",
+        "logicalName":  "PublicIp",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "publicIp"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable":  {
+        "name":  "publicHostName",
+        "logicalName":  "PublicHostName",
+        "value":  {
+          "scopeTraversalExpression":  {
+            "rootName":  "webServer",
+            "traversal":  {
+              "each":  [
+                {
+                  "traverseRoot":  {
+                    "name":  "webServer"
+                  }
+                },
+                {
+                  "traverseAttr":  {
+                    "name":  "publicDns"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.16.2"
+    }
+  ]
+}

@@ -1,0 +1,1005 @@
+{
+  "nodes": [
+    {
+      "localVariable": {
+        "name": "vpc",
+        "logicalName": "vpc",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws:ec2:getVpc"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "default": {
+                      "literalValueExpression": {
+                        "boolValue": true
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "localVariable": {
+        "name": "subnets",
+        "logicalName": "subnets",
+        "value": {
+          "functionCallExpression": {
+            "name": "invoke",
+            "args": [
+              {
+                "templateExpression": {
+                  "parts": [
+                    {
+                      "literalValueExpression": {
+                        "stringValue": "aws:ec2:getSubnetIds"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "objectConsExpression": {
+                  "properties": {
+                    "vpcId": {
+                      "scopeTraversalExpression": {
+                        "rootName": "vpc",
+                        "traversal": {
+                          "each": [
+                            {
+                              "traverseRoot": {
+                                "name": "vpc"
+                              }
+                            },
+                            {
+                              "traverseAttr": {
+                                "name": "id"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "name": "webSecurityGroup",
+        "logicalName": "webSecurityGroup",
+        "token": "aws:ec2/securityGroup:SecurityGroup",
+        "inputs": [
+          {
+            "name": "vpcId",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "vpc",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "vpc"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "egress",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "cidrBlocks": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "0.0.0.0/0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "fromPort": {
+                          "literalValueExpression": {
+                            "numberValue": 0
+                          }
+                        },
+                        "protocol": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "-1"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "toPort": {
+                          "literalValueExpression": {
+                            "numberValue": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "ingress",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "cidrBlocks": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "0.0.0.0/0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "fromPort": {
+                          "literalValueExpression": {
+                            "numberValue": 80
+                          }
+                        },
+                        "protocol": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "tcp"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "toPort": {
+                          "literalValueExpression": {
+                            "numberValue": 80
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "cluster",
+        "logicalName": "cluster",
+        "token": "aws:ecs/cluster:Cluster"
+      }
+    },
+    {
+      "resource": {
+        "name": "taskExecRole",
+        "logicalName": "taskExecRole",
+        "token": "aws:iam/role:Role",
+        "inputs": [
+          {
+            "name": "assumeRolePolicy",
+            "value": {
+              "functionCallExpression": {
+                "name": "toJSON",
+                "args": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "Statement": {
+                          "tupleConsExpression": {
+                            "items": [
+                              {
+                                "objectConsExpression": {
+                                  "properties": {
+                                    "Action": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "sts:AssumeRole"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "Effect": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": "Allow"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "Principal": {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "Service": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "ecs-tasks.amazonaws.com"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "Sid": {
+                                      "templateExpression": {
+                                        "parts": [
+                                          {
+                                            "literalValueExpression": {
+                                              "stringValue": ""
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "Version": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "2008-10-17"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "taskExecRolePolicyAttachment",
+        "logicalName": "taskExecRolePolicyAttachment",
+        "token": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+        "inputs": [
+          {
+            "name": "role",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "taskExecRole",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "taskExecRole"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "policyArn",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "webLoadBalancer",
+        "logicalName": "webLoadBalancer",
+        "token": "aws:elasticloadbalancingv2/loadBalancer:LoadBalancer",
+        "inputs": [
+          {
+            "name": "subnets",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "subnets",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "subnets"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "ids"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "securityGroups",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "scopeTraversalExpression": {
+                      "rootName": "webSecurityGroup",
+                      "traversal": {
+                        "each": [
+                          {
+                            "traverseRoot": {
+                              "name": "webSecurityGroup"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "id"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "webTargetGroup",
+        "logicalName": "webTargetGroup",
+        "token": "aws:elasticloadbalancingv2/targetGroup:TargetGroup",
+        "inputs": [
+          {
+            "name": "port",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 80
+              }
+            }
+          },
+          {
+            "name": "protocol",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "HTTP"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "targetType",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "ip"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "vpcId",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "vpc",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "vpc"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "webListener",
+        "logicalName": "webListener",
+        "token": "aws:elasticloadbalancingv2/listener:Listener",
+        "inputs": [
+          {
+            "name": "loadBalancerArn",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "webLoadBalancer",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "webLoadBalancer"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "port",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 80
+              }
+            }
+          },
+          {
+            "name": "defaultActions",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "targetGroupArn": {
+                          "scopeTraversalExpression": {
+                            "rootName": "webTargetGroup",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "webTargetGroup"
+                                  }
+                                },
+                                {
+                                  "traverseAttr": {
+                                    "name": "arn"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "type": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "forward"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "appTask",
+        "logicalName": "appTask",
+        "token": "aws:ecs/taskDefinition:TaskDefinition",
+        "inputs": [
+          {
+            "name": "family",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "fargate-task-definition"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "cpu",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "memory",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "512"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "networkMode",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "awsvpc"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "requiresCompatibilities",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "FARGATE"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "executionRoleArn",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "taskExecRole",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "taskExecRole"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "containerDefinitions",
+            "value": {
+              "functionCallExpression": {
+                "name": "toJSON",
+                "args": [
+                  {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "objectConsExpression": {
+                            "properties": {
+                              "image": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "nginx"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "name": {
+                                "templateExpression": {
+                                  "parts": [
+                                    {
+                                      "literalValueExpression": {
+                                        "stringValue": "my-app"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "portMappings": {
+                                "tupleConsExpression": {
+                                  "items": [
+                                    {
+                                      "objectConsExpression": {
+                                        "properties": {
+                                          "containerPort": {
+                                            "literalValueExpression": {
+                                              "numberValue": 80
+                                            }
+                                          },
+                                          "hostPort": {
+                                            "literalValueExpression": {
+                                              "numberValue": 80
+                                            }
+                                          },
+                                          "protocol": {
+                                            "templateExpression": {
+                                              "parts": [
+                                                {
+                                                  "literalValueExpression": {
+                                                    "stringValue": "tcp"
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "appService",
+        "logicalName": "appService",
+        "token": "aws:ecs/service:Service",
+        "inputs": [
+          {
+            "name": "cluster",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "cluster",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "cluster"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "desiredCount",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 5
+              }
+            }
+          },
+          {
+            "name": "launchType",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "FARGATE"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "taskDefinition",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "appTask",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "appTask"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "arn"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "networkConfiguration",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "assignPublicIp": {
+                    "literalValueExpression": {
+                      "boolValue": true
+                    }
+                  },
+                  "securityGroups": {
+                    "tupleConsExpression": {
+                      "items": [
+                        {
+                          "scopeTraversalExpression": {
+                            "rootName": "webSecurityGroup",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "webSecurityGroup"
+                                  }
+                                },
+                                {
+                                  "traverseAttr": {
+                                    "name": "id"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "subnets": {
+                    "scopeTraversalExpression": {
+                      "rootName": "subnets",
+                      "traversal": {
+                        "each": [
+                          {
+                            "traverseRoot": {
+                              "name": "subnets"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "ids"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "loadBalancers",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "containerName": {
+                          "templateExpression": {
+                            "parts": [
+                              {
+                                "literalValueExpression": {
+                                  "stringValue": "my-app"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "containerPort": {
+                          "literalValueExpression": {
+                            "numberValue": 80
+                          }
+                        },
+                        "targetGroupArn": {
+                          "scopeTraversalExpression": {
+                            "rootName": "webTargetGroup",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "webTargetGroup"
+                                  }
+                                },
+                                {
+                                  "traverseAttr": {
+                                    "name": "arn"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "options": {
+          "dependsOn": {
+            "tupleConsExpression": {
+              "items": [
+                {
+                  "scopeTraversalExpression": {
+                    "rootName": "webListener",
+                    "traversal": {
+                      "each": [
+                        {
+                          "traverseRoot": {
+                            "name": "webListener"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "url",
+        "logicalName": "url",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "webLoadBalancer",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "webLoadBalancer"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "dnsName"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "test",
+        "logicalName": "test",
+        "token": "aws:fsx/openZfsFileSystem:OpenZfsFileSystem",
+        "inputs": [
+          {
+            "name": "storageCapacity",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 64
+              }
+            }
+          },
+          {
+            "name": "subnetIds",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "scopeTraversalExpression": {
+                      "rootName": "aws_subnet",
+                      "traversal": {
+                        "each": [
+                          {
+                            "traverseRoot": {
+                              "name": "aws_subnet"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "test1"
+                            }
+                          },
+                          {
+                            "traverseAttr": {
+                              "name": "id"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "deploymentType",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "SINGLE_AZ_1"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "throughputCapacity",
+            "value": {
+              "literalValueExpression": {
+                "numberValue": 64
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

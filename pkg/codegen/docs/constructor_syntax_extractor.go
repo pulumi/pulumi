@@ -16,9 +16,11 @@ package docs
 
 import (
 	"encoding/base64"
-	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
-	"google.golang.org/protobuf/proto"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"gopkg.in/yaml.v3"
 )
@@ -116,7 +118,7 @@ func extractConstructorSyntaxExamplesFromYAML(programText string) *languageConst
 	}
 }
 
-func extractConstructorSyntaxExamplesFromProtobuf(programInBase64 string) (*languageConstructorSyntax, error) {
+func extractConstructorSyntaxExamplesFromProtobufPcl(programInBase64 string) (*languageConstructorSyntax, error) {
 	var program codegen.PclProtobufProgram
 	programBytes, err := base64.StdEncoding.DecodeString(programInBase64)
 	if err != nil {
@@ -144,6 +146,42 @@ func extractConstructorSyntaxExamplesFromProtobuf(programInBase64 string) (*lang
 			}
 			str := base64.StdEncoding.EncodeToString(out)
 			resources[resource.Token] = str
+		}
+	}
+
+	return &languageConstructorSyntax{
+		resources: resources,
+		invokes:   invokes,
+	}, nil
+}
+
+func extractJSONConstructorSyntaxExamplesFromProtobufPcl(programInBase64 string) (*languageConstructorSyntax, error) {
+	var program codegen.PclProtobufProgram
+	programBytes, err := base64.StdEncoding.DecodeString(programInBase64)
+	if err != nil {
+		return nil, err
+	}
+	err = proto.Unmarshal(programBytes, &program)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := map[string]string{}
+	invokes := map[string]string{}
+
+	for _, node := range program.Nodes {
+		switch value := node.Value.(type) {
+		case *codegen.Node_Resource:
+			resource := value.Resource
+			innerProgram := codegen.PclProtobufProgram{
+				Nodes:   []*codegen.Node{node},
+				Plugins: make([]*codegen.PluginReference, 0),
+			}
+			bytes, err := protojson.Marshal(&innerProgram)
+			if err != nil {
+				return nil, err
+			}
+			resources[resource.Token] = string(bytes)
 		}
 	}
 

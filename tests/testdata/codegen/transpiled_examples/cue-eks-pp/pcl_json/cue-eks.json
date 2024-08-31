@@ -1,0 +1,112 @@
+{
+  "nodes":  [
+    {
+      "resource":  {
+        "name":  "rawkode",
+        "logicalName":  "rawkode",
+        "token":  "eks:index:Cluster",
+        "inputs":  [
+          {
+            "name":  "instanceType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "t2.medium"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "desiredCapacity",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  2
+              }
+            }
+          },
+          {
+            "name":  "minSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  1
+              }
+            }
+          },
+          {
+            "name":  "maxSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  2
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource":  {
+        "name":  "stack72",
+        "logicalName":  "stack72",
+        "token":  "eks:index:Cluster",
+        "inputs":  [
+          {
+            "name":  "instanceType",
+            "value":  {
+              "templateExpression":  {
+                "parts":  [
+                  {
+                    "literalValueExpression":  {
+                      "stringValue":  "t2.medium"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name":  "desiredCapacity",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  4
+              }
+            }
+          },
+          {
+            "name":  "minSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  1
+              }
+            }
+          },
+          {
+            "name":  "maxSize",
+            "value":  {
+              "literalValueExpression":  {
+                "numberValue":  8
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins":  [
+    {
+      "name":  "aws",
+      "version":  "5.4.0"
+    },
+    {
+      "name":  "eks",
+      "version":  "0.40.0"
+    },
+    {
+      "name":  "kubernetes",
+      "version":  "3.0.0"
+    }
+  ]
+}

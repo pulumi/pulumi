@@ -1,0 +1,141 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "provider",
+        "logicalName": "provider",
+        "token": "pulumi:providers:unknown"
+      }
+    },
+    {
+      "resource": {
+        "name": "main",
+        "logicalName": "main",
+        "token": "unknown:index:main",
+        "inputs": [
+          {
+            "name": "first",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "hello"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "second",
+            "value": {
+              "objectConsExpression": {
+                "properties": {
+                  "foo": {
+                    "templateExpression": {
+                      "parts": [
+                        {
+                          "literalValueExpression": {
+                            "stringValue": "bar"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "name": "fromModule",
+        "logicalName": "fromModule",
+        "token": "unknown:eks:example",
+        "inputs": [
+          {
+            "name": "associatedMain",
+            "value": {
+              "scopeTraversalExpression": {
+                "rootName": "main",
+                "traversal": {
+                  "each": [
+                    {
+                      "traverseRoot": {
+                        "name": "main"
+                      }
+                    },
+                    {
+                      "traverseAttr": {
+                        "name": "id"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "options": {}
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "mainId",
+        "logicalName": "mainId",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "main",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "main"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "values",
+        "logicalName": "values",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "fromModule",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "fromModule"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "values"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "first"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

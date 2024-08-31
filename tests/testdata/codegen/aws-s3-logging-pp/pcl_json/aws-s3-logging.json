@@ -1,0 +1,95 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "logs",
+        "logicalName": "logs",
+        "token": "aws:s3/bucket:Bucket"
+      }
+    },
+    {
+      "resource": {
+        "name": "bucket",
+        "logicalName": "bucket",
+        "token": "aws:s3/bucket:Bucket",
+        "inputs": [
+          {
+            "name": "loggings",
+            "value": {
+              "tupleConsExpression": {
+                "items": [
+                  {
+                    "objectConsExpression": {
+                      "properties": {
+                        "targetBucket": {
+                          "scopeTraversalExpression": {
+                            "rootName": "logs",
+                            "traversal": {
+                              "each": [
+                                {
+                                  "traverseRoot": {
+                                    "name": "logs"
+                                  }
+                                },
+                                {
+                                  "traverseAttr": {
+                                    "name": "bucket"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "outputVariable": {
+        "name": "targetBucket",
+        "logicalName": "targetBucket",
+        "value": {
+          "scopeTraversalExpression": {
+            "rootName": "bucket",
+            "traversal": {
+              "each": [
+                {
+                  "traverseRoot": {
+                    "name": "bucket"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "loggings"
+                  }
+                },
+                {
+                  "traverseIndex": {
+                    "intIndex": "0"
+                  }
+                },
+                {
+                  "traverseAttr": {
+                    "name": "targetBucket"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "aws",
+      "version": "5.16.2"
+    }
+  ]
+}

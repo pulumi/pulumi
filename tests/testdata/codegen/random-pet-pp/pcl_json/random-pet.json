@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "resource": {
+        "name": "random-pet",
+        "logicalName": "random-pet",
+        "token": "random:index/randomPet:RandomPet",
+        "inputs": [
+          {
+            "name": "prefix",
+            "value": {
+              "templateExpression": {
+                "parts": [
+                  {
+                    "literalValueExpression": {
+                      "stringValue": "doggo"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "random",
+      "version": "4.11.2"
+    }
+  ]
+}
