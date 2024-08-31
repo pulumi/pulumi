@@ -2439,7 +2439,7 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 	return constructorSyntax
 }
 
-// collapseToken converts an exact token to a token more suitable for
+// collapseYAMLToken converts an exact token to a token more suitable for
 // display. For example, it converts
 //
 //	  fizz:index/buzz:Buzz => fizz:Buzz

@@ -1701,7 +1701,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 // TestResourcesTargeted checks that a plan created with targets specified captures only those targets and
 // default providers. It checks that trying to construct a new resource that was not targeted in the plan
 // fails and that the update with the same --targets specified is compatible with the plan (roundtripped).
-func TestResoucesTargeted(t *testing.T) {
+func TestResourcesTargeted(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
