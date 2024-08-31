@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -34,7 +35,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	user "github.com/tweekmonster/luser"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"

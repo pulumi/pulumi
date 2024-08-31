@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
