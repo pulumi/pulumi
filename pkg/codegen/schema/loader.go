@@ -83,9 +83,7 @@ type pluginLoaderCacheOptions struct {
 }
 
 func NewPluginLoader(host plugin.Host) ReferenceLoader {
-	return &pluginLoader{
-		host: host,
-	}
+	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{})
 }
 
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
