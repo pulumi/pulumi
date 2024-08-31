@@ -23,7 +23,6 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.9.0
 	github.com/texttheater/golang-levenshtein v1.0.1
-	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	golang.org/x/crypto v0.24.0
 	golang.org/x/mod v0.18.0 // indirect

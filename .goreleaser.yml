@@ -18,6 +18,10 @@ builds:
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version=v{{.Env.PULUMI_VERSION}}
   mod_timestamp: '{{ .CommitTimestamp }}'
+  tags:
+    # Enforce the pure Go implementation of os/user, even when cgo is available.
+    # See https://pkg.go.dev/os/user#pkg-overview.
+    - osusergo
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go
