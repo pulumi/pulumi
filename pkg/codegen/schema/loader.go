@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/natefinch/atomic"
 
@@ -68,10 +67,7 @@ type ReferenceLoader interface {
 }
 
 type pluginLoader struct {
-	m sync.RWMutex
-
-	host    plugin.Host
-	entries map[string]PackageReference
+	host plugin.Host
 
 	cacheOptions pluginLoaderCacheOptions
 }
@@ -87,40 +83,20 @@ type pluginLoaderCacheOptions struct {
 }
 
 func NewPluginLoader(host plugin.Host) ReferenceLoader {
-	return &pluginLoader{
-		host:    host,
-		entries: map[string]PackageReference{},
-	}
+	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{})
 }
 
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
-	return &pluginLoader{
-		host:    host,
-		entries: map[string]PackageReference{},
+	var l ReferenceLoader
+	l = &pluginLoader{
+		host: host,
 
 		cacheOptions: cacheOptions,
 	}
-}
-
-func (l *pluginLoader) getPackage(key string) (PackageReference, bool) {
-	if l.cacheOptions.disableEntryCache {
-		return nil, false
+	if !cacheOptions.disableFileCache {
+		l = NewCachedLoader(l)
 	}
-	p, ok := l.entries[key]
-	return p, ok
-}
-
-func (l *pluginLoader) setPackage(key string, p PackageReference) PackageReference {
-	if l.cacheOptions.disableEntryCache {
-		return p
-	}
-
-	if p, ok := l.entries[key]; ok {
-		return p
-	}
-
-	l.entries[key] = p
-	return p
+	return l
 }
 
 func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
@@ -178,19 +154,6 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		return DefaultPulumiPackage.Reference(), nil
 	}
 
-	l.m.Lock()
-	defer l.m.Unlock()
-
-	var key string
-	if descriptor.Parameterization == nil {
-		key = packageIdentity(descriptor.Name, descriptor.Version)
-	} else {
-		key = packageIdentity(descriptor.Parameterization.Name, &descriptor.Parameterization.Version)
-	}
-	if p, ok := l.getPackage(key); ok {
-		return p, nil
-	}
-
 	schemaBytes, version, err := l.loadSchemaBytes(ctx, descriptor)
 	if err != nil {
 		return nil, err
@@ -225,7 +188,7 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	if err != nil {
 		return nil, err
 	}
-	return l.setPackage(key, p), nil
+	return p, nil
 }
 
 // deprecated: use LoadPackageReferenceV2
@@ -258,16 +221,25 @@ func LoadPackageReferenceV2(
 		return nil, err
 	}
 
-	if descriptor.Name != ref.Name() ||
-		descriptor.Version != nil &&
+	name := descriptor.Name
+	if descriptor.Parameterization != nil {
+		name = descriptor.Parameterization.Name
+	}
+	version := descriptor.Version
+	if descriptor.Parameterization != nil {
+		version = &descriptor.Parameterization.Version
+	}
+
+	if name != ref.Name() ||
+		version != nil &&
 			ref.Version() != nil &&
-			!ref.Version().Equals(*descriptor.Version) {
-		if l, ok := loader.(*pluginLoader); ok {
-			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", descriptor.Name, descriptor.Version,
+			!ref.Version().Equals(*version) {
+		if l, ok := loader.(*cachedLoader); ok {
+			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", name, version,
 				l.entries, ref.Name(), ref.Version())
 		}
 		return nil, fmt.Errorf(
-			"loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), descriptor.Name, descriptor.Version)
+			"loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), name, version)
 	}
 
 	return ref, nil
