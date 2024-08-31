@@ -69,10 +69,10 @@ func TestCachedLoader(t *testing.T) {
 
 	loader := NewCachedLoader(mockLoader)
 
-	_, err := loader.LoadPackage("pkg", nil)
+	_, err := loader.LoadPackageReference("pkg", nil)
 	require.NoError(t, err)
 
-	_, err = loader.LoadPackage("pkg", nil)
+	_, err = loader.LoadPackageReference("pkg", nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, calls)
