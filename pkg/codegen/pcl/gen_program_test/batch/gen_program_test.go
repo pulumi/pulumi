@@ -26,7 +26,6 @@ import (
 
 func TestGenerateProgram(t *testing.T) {
 	os.Chdir("../../../pcl") // chdir into codegen/pcl
-	os.Setenv("PULUMI_ACCEPT", "true")
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "pcl_json",
