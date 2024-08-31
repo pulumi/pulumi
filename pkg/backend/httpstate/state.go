@@ -16,6 +16,7 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -180,6 +181,11 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 			tok, err := b.Client().RenewUpdateLease(
 				ctx, update, currentToken, duration)
 			if err != nil {
+				// Translate 403 status codes to expired token errors to stop the token refresh loop.
+				var apierr apitype.ErrorResponse
+				if errors.As(err, &apierr) && apierr.Code == 403 {
+					return "", time.Time{}, expiredTokenError{err}
+				}
 				return "", time.Time{}, err
 			}
 			return tok, assumedExpires(), err
