@@ -25,6 +25,12 @@ builds:
   main: ./
   gobinary: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
+  id: pulumi-analyzer-policy-go
+  binary: pulumi-analyzer-policy-go
+  dir: sdk/go/pulumi-analyzer-policy-go
+  main: ./
+  gobinary: ../../../scripts/go-wrapper.sh
+- <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk/nodejs/cmd/pulumi-language-nodejs
