@@ -1061,13 +1061,14 @@ func (host *goLanguageHost) GenerateProject(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var extraOptions []pcl.BindOption
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1104,6 +1105,7 @@ func (host *goLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
@@ -1118,7 +1120,7 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
 	if err != nil {
 		return nil, err
 	}
@@ -1156,6 +1158,7 @@ func (host *goLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var spec schema.PackageSpec
 	err = json.Unmarshal([]byte(req.Schema), &spec)
@@ -1163,7 +1166,7 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, loader)
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}

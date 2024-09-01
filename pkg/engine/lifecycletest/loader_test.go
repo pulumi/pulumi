@@ -67,6 +67,7 @@ func TestLoader(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("could not connect to resource monitor: %w", err)
 		}
+		defer conn.Close()
 		loader := codegenrpc.NewLoaderClient(conn)
 
 		ctx := context.Background()

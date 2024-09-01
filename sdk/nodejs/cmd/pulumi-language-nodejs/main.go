@@ -1275,6 +1275,7 @@ func (host *nodeLanguageHost) GenerateProject(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var extraOptions []pcl.BindOption
 	if !req.Strict {
@@ -1284,7 +1285,7 @@ func (host *nodeLanguageHost) GenerateProject(
 	// for nodejs, prefer output-versioned invokes
 	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1320,6 +1321,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
@@ -1335,7 +1337,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(loader),
+		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for nodejs, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1378,6 +1380,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var spec schema.PackageSpec
 	err = json.Unmarshal([]byte(req.Schema), &spec)
@@ -1385,7 +1388,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, loader)
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
