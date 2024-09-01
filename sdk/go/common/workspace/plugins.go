@@ -1738,6 +1738,12 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.
 // Eventually we want to fix this so new plugins are true plugins in the plugin cache.
 func IsPluginBundled(kind apitype.PluginKind, name string) bool {
+
+	if (kind == apitype.AnalyzerPlugin && name == "policy-go") &&
+		env.Experimental.Value() {
+		return true
+	}
+
 	return (kind == apitype.LanguagePlugin && name == "nodejs") ||
 		(kind == apitype.LanguagePlugin && name == "go") ||
 		(kind == apitype.LanguagePlugin && name == "python") ||
