@@ -1363,6 +1363,90 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stacks[i]);
         }
     });
+
+    it(`runs the install command`, async () => {
+        let recordedArgs: string[] = [];
+        const mockCommand = {
+            command: "pulumi",
+            // Version high enough to support --use-language-version-tools
+            version: semver.parse("3.130.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+                onOutput?: (data: string) => void,
+            ): Promise<CommandResult> => {
+                recordedArgs = args;
+                return new CommandResult("some output", "", 0);
+            },
+        };
+        const ws = await LocalWorkspace.create({ pulumiCommand: mockCommand });
+
+        await ws.install();
+        assert.deepStrictEqual(recordedArgs, ["install"]);
+
+        await ws.install({ noPlugins: true });
+        assert.deepStrictEqual(recordedArgs, ["install", "--no-plugins"]);
+
+        await ws.install({ noDependencies: true });
+        assert.deepStrictEqual(recordedArgs, ["install", "--no-dependencies"]);
+
+        await ws.install({ reinstall: true });
+        assert.deepStrictEqual(recordedArgs, ["install", "--reinstall"]);
+
+        await ws.install({ useLanguageVersionTools: true });
+        assert.deepStrictEqual(recordedArgs, ["install", "--use-language-version-tools"]);
+
+        await ws.install({
+            noDependencies: true,
+            noPlugins: true,
+            reinstall: true,
+            useLanguageVersionTools: true,
+        });
+        assert.deepStrictEqual(recordedArgs, [
+            "install",
+            "--use-language-version-tools",
+            "--no-plugins",
+            "--no-dependencies",
+            "--reinstall",
+        ]);
+    });
+
+    it(`install requires version >= 3.91`, async () => {
+        const mockCommand = {
+            command: "pulumi",
+            version: semver.parse("3.90.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+                onOutput?: (data: string) => void,
+            ): Promise<CommandResult> => {
+                return new CommandResult("some output", "", 0);
+            },
+        };
+        const ws = await LocalWorkspace.create({ pulumiCommand: mockCommand });
+
+        assert.rejects(() => ws.install());
+    });
+
+    it(`install --use-language-version-tools requires version >= 3.130`, async () => {
+        const mockCommand = {
+            command: "pulumi",
+            version: semver.parse("3.129.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+                onOutput?: (data: string) => void,
+            ): Promise<CommandResult> => {
+                return new CommandResult("some output", "", 0);
+            },
+        };
+        const ws = await LocalWorkspace.create({ pulumiCommand: mockCommand });
+
+        assert.rejects(() => ws.install());
+    });
 });
 
 const normalizeConfigKey = (key: string, projectName: string) => {

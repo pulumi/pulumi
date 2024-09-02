@@ -876,6 +876,44 @@ export class LocalWorkspace implements Workspace {
     }
 
     /**
+     * Install plugin and language dependencies needed for the project.
+     *
+     * @param opts Options to customize the behavior of install.
+     */
+    async install(opts?: InstallOptions): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            ver = semver.parse("3.0.0")!;
+        }
+
+        if (ver.compare("3.91.0") < 0) {
+            // Pulumi 3.91.0 added the `pulumi install` command.
+            // https://github.com/pulumi/pulumi/releases/tag/v3.91.0
+            throw new Error(`pulumi install requires Pulumi version >= 3.91.0`);
+        }
+
+        const args: string[] = [];
+        if (opts?.useLanguageVersionTools) {
+            if (ver.compare("3.130.0") < 0) {
+                // Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+                // https://github.com/pulumi/pulumi/releases/tag/v3.130.0
+                throw new Error(`useLanguageVersionTools requires Pulumi version >= 3.130.0`);
+            }
+            args.push("--use-language-version-tools");
+        }
+        if (opts?.noPlugins) {
+            args.push("--no-plugins");
+        }
+        if (opts?.noDependencies) {
+            args.push("--no-dependencies");
+        }
+        if (opts?.reinstall) {
+            args.push("--reinstall");
+        }
+        await this.runPulumiCmd(["install", ...args]);
+    }
+
+    /**
      * Installs a plugin in the workspace, for example to use cloud providers
      * like AWS or GCP.
      *
@@ -1302,6 +1340,28 @@ function loadProjectSettings(workDir: string) {
         return yaml.safeLoad(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
+}
+
+export interface InstallOptions {
+    /**
+     * Skip installing plugins
+     */
+    noPlugins?: boolean;
+    /**
+     * Skip installing dependencies
+     */
+    noDependencies?: boolean;
+    /**
+     * Reinstall plugins even if they already exist
+     */
+    reinstall?: boolean;
+    /**
+     * Use language version tools to setup the language runtime before installing the dependencies.
+     * For Python this will use `pyenv` to install the Python version specified in a
+     * `.python-version` file. For Nodejs this will use `fnm` to install the Node.js version
+     * specified in a `.nvmrc` or `.node-version file.
+     */
+    useLanguageVersionTools?: boolean;
 }
 
 export interface ListOptions {
