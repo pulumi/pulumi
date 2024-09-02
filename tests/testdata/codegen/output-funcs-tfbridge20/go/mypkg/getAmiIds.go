@@ -59,14 +59,20 @@ type GetAmiIdsResult struct {
 
 func GetAmiIdsOutput(ctx *pulumi.Context, args GetAmiIdsOutputArgs, opts ...pulumi.InvokeOption) GetAmiIdsResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (GetAmiIdsResult, error) {
+		ApplyT(func(v interface{}) (GetAmiIdsResultOutput, error) {
 			args := v.(GetAmiIdsArgs)
-			r, err := GetAmiIds(ctx, &args, opts...)
-			var s GetAmiIdsResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv GetAmiIdsResult
+			secret, err := ctx.InvokePackageRaw("mypkg::getAmiIds", args, &rv, "", opts...)
+			if err != nil {
+				return GetAmiIdsResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(GetAmiIdsResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(GetAmiIdsResultOutput), nil
+			}
+			return output, nil
 		}).(GetAmiIdsResultOutput)
 }
 

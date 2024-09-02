@@ -3139,18 +3139,33 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 
 	code := ""
 
+	var inputsVar string
+	if f.Inputs == nil {
+		inputsVar = "nil"
+	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
+		inputsVar = "args.Defaults()"
+	} else {
+		inputsVar = "args"
+	}
+
 	if f.Inputs != nil {
 		code = `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (${fn}Result, error) {
+		ApplyT(func(v interface{}) (${outputType}, error) {
 			args := v.(${fn}Args)
-			r, err := ${fn}(ctx, &args, opts...)
-			var s ${fn}Result
-			if r != nil {
-				s = *r
+			opts = ${internalModule}.PkgInvokeDefaultOpts(opts)
+			var rv ${fn}Result
+			secret, err := ctx.InvokePackageRaw("${token}", ${args}, &rv, "", opts...)
+			if err != nil {
+				return ${outputType}{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(${outputType})
+			if secret {
+				return pulumi.ToSecret(output).(${outputType}), nil
+			}
+			return output, nil
 		}).(${outputType})
 }
 
@@ -3158,13 +3173,19 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 	} else {
 		code = `
 func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType} {
-	return pulumi.ToOutput(0).ApplyT(func(int) (${fn}Result, error) {
-		r, err := ${fn}(ctx, opts...)
-		var s ${fn}Result
-		if r != nil {
-			s = *r
+	return pulumi.ToOutput(0).ApplyT(func(int) (${outputType}, error) {
+		opts = ${internalModule}.PkgInvokeDefaultOpts(opts)
+		var rv ${fn}Result
+		secret, err := ctx.InvokePackageRaw("${token}", nil, &rv, "", opts...)
+		if err != nil {
+			return ${outputType}{}, err
 		}
-		return s, err
+
+		output := pulumi.ToOutput(rv).(${outputType})
+		if secret {
+			return pulumi.ToSecret(output).(${outputType}), nil
+		}
+		return output, nil
 	}).(${outputType})
 }
 
@@ -3173,6 +3194,9 @@ func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType}
 
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
+	code = strings.ReplaceAll(code, "${token}", f.Token)
+	code = strings.ReplaceAll(code, "${args}", inputsVar)
+	code = strings.ReplaceAll(code, "${internalModule}", pkg.internalModuleName)
 	fmt.Fprint(w, code)
 
 	if f.Inputs != nil {
