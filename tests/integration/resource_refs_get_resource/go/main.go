@@ -33,6 +33,36 @@ func NewChild(ctx *pulumi.Context, name string, message pulumi.StringInput,
 	}); err != nil {
 		return nil, err
 	}
+	// Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
+	//
+	// See also the comment in NewContainer below for a more thorough explanation.
+	//
+	// TODO: make RegisterResourceOutputs not racy [pulumi/pulumi#16896]
+	componentURNResult, err := internals.UnsafeAwaitOutput(ctx.Context(), component.URN())
+	if err != nil {
+		return nil, err
+	}
+	componentURN := componentURNResult.Value.(pulumi.URN)
+	sleep := 20 * time.Millisecond
+	for i := 0; ; i++ {
+		roundTrippedComponent := &Child{}
+
+		if err := ctx.RegisterComponentResource("test:index:Child", "mychild", roundTrippedComponent,
+			pulumi.URN_(string(componentURN))); err != nil {
+			return nil, err
+		}
+		message, err := internals.UnsafeAwaitOutput(ctx.Context(), roundTrippedComponent.Message)
+		if err != nil {
+			return nil, err
+		}
+		if message.Value.(string) != "" {
+			break
+		} else if i > 10 {
+			return nil, errors.New("outputs were not registered successfully")
+		}
+		time.Sleep(sleep)
+		sleep *= 2
+	}
 	return component, nil
 }
 
