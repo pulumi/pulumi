@@ -240,8 +240,16 @@ func newDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
 			localPolicyPackPaths, ctx.BackendClient)
 	} else {
-		_, defaultProviderInfo, pluginErr := installPlugins(cancelCtx, proj, pwd, main, target, plugctx,
-			false /*returnInstallErrors*/)
+		_, defaultProviderInfo, pluginErr := installPlugins(
+			cancelCtx,
+			proj,
+			pwd,
+			main,
+			target,
+			opts,
+			plugctx,
+			false, /*returnInstallErrors*/
+		)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}

@@ -187,8 +187,12 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
-	plugins pluginSet, projectPlugins []workspace.ProjectPlugin,
+func ensurePluginsAreInstalled(
+	ctx context.Context,
+	opts *deploymentOptions,
+	d diag.Sink,
+	plugins pluginSet,
+	projectPlugins []workspace.ProjectPlugin,
 ) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
@@ -228,7 +232,7 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(ctx, info)
+			return installPlugin(ctx, opts, info)
 		})
 	}
 
@@ -244,7 +248,11 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
+func installPlugin(
+	ctx context.Context,
+	opts *deploymentOptions,
+	plugin workspace.PluginSpec,
+) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
@@ -262,25 +270,83 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 
-	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+	pluginID := fmt.Sprintf("%s-%s", plugin.Name, plugin.Version)
+	downloadMessage := "Downloading plugin " + pluginID
+
+	// We want to report download progress so that users are not left wondering if
+	// their program has hung. To do this we wrap the downloading ReadCloser with
+	// one that observes the bytes read and renders a progress bar in some
+	// fashion. If we have an event emitter available, we'll use that to report
+	// program by publishing progress events. If not, we'll wrap with a ReadCloser
+	// that renders progress directly to the console itself.
+	var withDownloadProgress func(io.ReadCloser, int64) io.ReadCloser
+	if opts == nil {
+		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return workspace.ReadCloserProgressBar(
+				stream,
+				size,
+				downloadMessage,
+				cmdutil.GetGlobalColorization(),
+			)
+		}
+	} else {
+		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return NewProgressReportingCloser(
+				opts.Events,
+				PluginDownload,
+				string(PluginDownload)+":"+pluginID,
+				downloadMessage,
+				size,
+				100*time.Millisecond, /*reportingInterval */
+				stream,
+			)
+		}
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	tarball, err := workspace.DownloadToFile(plugin, withProgress, retry)
+	tarball, err := workspace.DownloadToFile(plugin, withDownloadProgress, retry)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
 	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 
-	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
-
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(tarball), false); err != nil {
+
+	// In a similar manner to downloads, we'll use a progress bar to show install
+	// progress by wrapping the download stream with a progress reporting
+	// ReadCloser where possible.
+	var withInstallProgress func(io.ReadCloser) io.ReadCloser
+	stat, err := tarball.Stat()
+	if opts == nil || err != nil {
+		withInstallProgress = func(stream io.ReadCloser) io.ReadCloser {
+			return stream
+		}
+
+		installing := fmt.Sprintf("[%s plugin %s] installing", plugin.Kind, pluginID)
+		fmt.Fprintln(os.Stderr, installing)
+	} else {
+		withInstallProgress = func(stream io.ReadCloser) io.ReadCloser {
+			return NewProgressReportingCloser(
+				opts.Events,
+				PluginInstall,
+				string(PluginInstall)+":"+pluginID,
+				"Installing plugin "+pluginID,
+				stat.Size(),
+				100*time.Millisecond, /*reportingInterval */
+				tarball,
+			)
+		}
+	}
+
+	if err := plugin.InstallWithContext(
+		ctx,
+		workspace.TarPlugin(withInstallProgress(tarball)),
+		false,
+	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 	}
