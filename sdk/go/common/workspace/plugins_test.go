@@ -1543,3 +1543,39 @@ func TestPluginInfoShimless(t *testing.T) {
 	// schemaPaths are odd, they're one directory up from the plugin directory
 	assert.Equal(t, filepath.Join(filepath.Dir(pluginPath), "schema-mock.json"), info.SchemaPath)
 }
+
+//nolint:paralleltest // modifies environment variables
+func TestProjectPluginsWithUncleanPath(t *testing.T) {
+	tempdir := t.TempDir()
+
+	os.WriteFile(filepath.Join(tempdir, "pulumi-resource-aws"), []byte{}, 0o700)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+		{
+			Name: "aws",
+			Kind: apitype.ResourcePlugin,
+			Path: tempdir + "/", // path with a trailing slash
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(tempdir, "pulumi-resource-aws"), path)
+}
+
+//nolint:paralleltest // modifies environment variables
+func TestProjectPluginsWithSymlink(t *testing.T) {
+	tempdir := t.TempDir()
+
+	os.Mkdir(filepath.Join(tempdir, "subdir"), 0o700)
+	os.Symlink(filepath.Join(tempdir, "subdir"), filepath.Join(tempdir, "symlink"))
+	os.WriteFile(filepath.Join(tempdir, "subdir", "pulumi-resource-aws"), []byte{}, 0o700)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+		{
+			Name: "aws",
+			Kind: apitype.ResourcePlugin,
+			Path: filepath.Join(tempdir, "symlink"),
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(tempdir, "symlink", "pulumi-resource-aws"), path)
+}
