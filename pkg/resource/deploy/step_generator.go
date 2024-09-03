@@ -1273,9 +1273,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			//     * DeleteBeforeCreate: this mode can be used for resources that cannot be tolerate having
 			//       side-by-side old and new instances alive at once.  This first deletes the resource and
-			//       then creates the new one.  This may result in downtime, so is less preferred.  Note that
-			//       until pulumi/pulumi#624 is resolved, we cannot safely perform this operation on resources
-			//       that have dependent resources (we try to delete the resource while they refer to it).
+			//       then creates the new one.  This may result in downtime, so is less preferred.
 			//
 			// The provider is responsible for requesting which of these two modes to use. The user can override
 			// the provider's decision by setting the `deleteBeforeReplace` field of `ResourceOptions` to either
