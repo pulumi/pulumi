@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 
-go 1.20
+go 1.21
 
 replace (
 	github.com/pulumi/pulumi/pkg/v3 => ../../../../pkg
