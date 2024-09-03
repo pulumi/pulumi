@@ -55,7 +55,7 @@ func processCmdErrors(err error) error {
 		printDecryptError(*de)
 		return nil
 	} else if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-		printSnapshotIntegrityError(*sie)
+		printSnapshotIntegrityError(err, *sie)
 
 		// Having printed out a specific error, we don't want RunFunc to print out
 		// the underlying message again. We do however want it to exit with a
@@ -89,13 +89,23 @@ func printDecryptError(e engine.DecryptError) {
 // Pulumi engine. This function is a type-specific handler for these errors that
 // prints out a panic-like banner with information about the error and how to
 // report it.
-func printSnapshotIntegrityError(err deploy.SnapshotIntegrityError) {
+func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
+	readOrWrite := ""
+	if sie.Op == deploy.SnapshotIntegrityRead {
+		readOrWrite = `
+NOTE: This error occurred while reading a snaphot. This error was introduced by
+a previous operation when it wrote the snapshot. If you have details of this
+operation, please include them in your report as well.
+`
+	}
+
 	cmdutil.Diag().Errorf(diag.RawMessage(
 		"", /*urn*/
 		fmt.Sprintf(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
 
 ================================================================================
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
+%s
 Please provide all of the below text in your report.
 ================================================================================
 Pulumi Version:    %s
@@ -110,14 +120,15 @@ Stack Trace:
 
 %s
 `,
+			readOrWrite,
 			version.Version,
 			runtime.Version(),
 			runtime.Compiler,
 			runtime.GOARCH,
 			runtime.GOOS,
 			strings.Join(os.Args, " "),
-			err.Error(),
-			string(err.Stack),
+			err,
+			string(sie.Stack),
 		),
 	))
 }
