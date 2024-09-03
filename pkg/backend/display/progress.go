@@ -274,6 +274,61 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 	close(done)
 }
 
+// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
+// for rendering the progress of an update.
+//
+// A "simple" terminal is used which does not render control sequences. The simple terminal's output
+// is written to opts.Stdout.
+//
+// For consistent output approximating a terminal, consider setting:
+//
+//	opts.Color = colors.Never
+//	opts.RenderOnDirty = false
+//	opts.ShowResourceChanges = true
+//	opts.IsInteractive = true
+func RenderProgressEvents(
+	op string,
+	action apitype.UpdateKind,
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	permalink string,
+	events <-chan engine.Event,
+	done chan<- bool,
+	opts Options,
+	isPreview bool,
+	width, height int,
+) {
+	term := opts.term
+	if term == nil {
+		term = terminal.NewSimpleTerminal(opts.Stdout, width, height)
+	}
+
+	printPermalinkInteractive(term, opts, permalink)
+	renderer := newInteractiveRenderer(term, permalink, opts)
+	display := &ProgressDisplay{
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            true,
+		opts:                  opts,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
+		permalink:             permalink,
+	}
+	renderer.initializeDisplay(display)
+
+	display.processEvents(&time.Ticker{}, events)
+	contract.IgnoreClose(display.renderer)
+
+	// let our caller know we're done.
+	close(done)
+}
+
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
 }

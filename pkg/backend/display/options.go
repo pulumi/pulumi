@@ -60,7 +60,7 @@ type Options struct {
 	SuppressProgress       bool                // true to suppress displaying progress spinner.
 	ShowLinkToCopilot      bool                // true to display a 'explainFailure' link to Copilot.
 
-	// testing-only options
+	// Low level options
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering
 	RenderOnDirty       bool // true to always render frames when marked dirty
