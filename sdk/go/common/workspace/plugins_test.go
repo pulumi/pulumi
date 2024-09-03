@@ -1548,7 +1548,9 @@ func TestPluginInfoShimless(t *testing.T) {
 func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	tempdir := t.TempDir()
 
-	os.WriteFile(filepath.Join(tempdir, "pulumi-resource-aws"), []byte{}, 0o700)
+	err := os.WriteFile(filepath.Join(tempdir, "pulumi-resource-aws"), []byte{}, 0o600)
+	require.NoError(t, err)
+
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
 	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
 		{
@@ -1565,9 +1567,13 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 func TestProjectPluginsWithSymlink(t *testing.T) {
 	tempdir := t.TempDir()
 
-	os.Mkdir(filepath.Join(tempdir, "subdir"), 0o700)
-	os.Symlink(filepath.Join(tempdir, "subdir"), filepath.Join(tempdir, "symlink"))
-	os.WriteFile(filepath.Join(tempdir, "subdir", "pulumi-resource-aws"), []byte{}, 0o700)
+	err := os.Mkdir(filepath.Join(tempdir, "subdir"), 0o700)
+	require.NoError(t, err)
+	err = os.Symlink(filepath.Join(tempdir, "subdir"), filepath.Join(tempdir, "symlink"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tempdir, "subdir", "pulumi-resource-aws"), []byte{}, 0o600)
+	require.NoError(t, err)
+
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
 	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
 		{
