@@ -2,8 +2,6 @@
 
 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%reset%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> 
- <{%reset%}>~ <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> 
  <{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%fg 13%}>replaced<{%reset%}> 
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> 
