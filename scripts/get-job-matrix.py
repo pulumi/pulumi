@@ -120,7 +120,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
-    "go": "1.21.x",
+    "go": "1.22.x",
     "nodejs": "18.x",
     "python": "3.8.x",
 }
@@ -128,7 +128,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
 CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
-    "go": "1.22.x",
+    "go": "1.23.x",
     "nodejs": "22.x",
     "python": "3.12.x",
 }
