@@ -1251,7 +1251,9 @@ type DiffResponse struct {
 	Stables             []string                 `protobuf:"bytes,2,rep,name=stables,proto3" json:"stables,omitempty"`                                          // an optional list of properties that will not ever change.
 	DeleteBeforeReplace bool                     `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`                 // if true, this resource must be deleted before replacing it.
 	Changes             DiffResponse_DiffChanges `protobuf:"varint,4,opt,name=changes,proto3,enum=pulumirpc.DiffResponse_DiffChanges" json:"changes,omitempty"` // if true, this diff represents an actual difference and thus requires an update.
-	Diffs               []string                 `protobuf:"bytes,5,rep,name=diffs,proto3" json:"diffs,omitempty"`                                              // a list of the properties that changed.
+	// a list of the properties that changed. This should only contain top level property names, it does not
+	// support nested properties. For that use detailedDiff.
+	Diffs []string `protobuf:"bytes,5,rep,name=diffs,proto3" json:"diffs,omitempty"`
 	// detailedDiff is an optional field that contains map from each changed property to the type of the change.
 	//
 	// The keys of this map are property paths. These paths are essentially Javascript property access expressions

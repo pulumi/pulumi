@@ -729,7 +729,9 @@ class DiffResponse(google.protobuf.message.Message):
     """if true, this diff represents an actual difference and thus requires an update."""
     @property
     def diffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of the properties that changed."""
+        """a list of the properties that changed. This should only contain top level property names, it does not
+        support nested properties. For that use detailedDiff.
+        """
     @property
     def detailedDiff(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PropertyDiff]:
         """detailedDiff is an optional field that contains map from each changed property to the type of the change.
