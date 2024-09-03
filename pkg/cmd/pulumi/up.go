@@ -86,6 +86,7 @@ func newUpCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var planFilePath string
+	var attachDebugger bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -169,6 +170,7 @@ func newUpCmd() *cobra.Command {
 			GeneratePlan:    true,
 			Experimental:    hasExperimentalCommands(),
 			ContinueOnError: continueOnError,
+			EnableDebugging: attachDebugger,
 		}
 
 		if planFilePath != "" {
@@ -393,6 +395,8 @@ func newUpCmd() *cobra.Command {
 
 			UseLegacyRefreshDiff: useLegacyRefreshDiff(),
 			ContinueOnError:      continueOnError,
+
+			EnableDebugging: attachDebugger,
 		}
 
 		// TODO for the URL case:
@@ -648,6 +652,10 @@ func newUpCmd() *cobra.Command {
 		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
+	cmd.PersistentFlags().BoolVar(
+		&attachDebugger, "attach-debugger", false,
+		"Enable the ability to attach a debugger to the program being executed")
+	cmd.Flag("attach-debugger").Hidden = true
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",

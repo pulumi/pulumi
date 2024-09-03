@@ -270,6 +270,7 @@ func newPreviewCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var attachDebugger bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if remoteSupported() {
@@ -440,8 +441,9 @@ func newPreviewCmd() *cobra.Command {
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan: hasExperimentalCommands() || planFilePath != "",
-					Experimental: hasExperimentalCommands(),
+					GeneratePlan:    hasExperimentalCommands() || planFilePath != "",
+					Experimental:    hasExperimentalCommands(),
+					EnableDebugging: attachDebugger,
 				},
 				Display: displayOpts,
 			}
@@ -619,6 +621,10 @@ func newPreviewCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().BoolVar(
+		&attachDebugger, "attach-debugger", false,
+		"Enable the ability to attach a debugger to the program being executed")
+	cmd.Flag("attach-debugger").Hidden = true
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
