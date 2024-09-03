@@ -280,11 +280,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 // A "simple" terminal is used which does not render control sequences. The simple terminal's output
 // is written to opts.Stdout.
 //
-// For consistent output approximating a terminal, consider setting:
+// For consistent output, these settings are enforced:
 //
 //	opts.Color = colors.Never
 //	opts.RenderOnDirty = false
-//	opts.ShowResourceChanges = true
 //	opts.IsInteractive = true
 func RenderProgressEvents(
 	op string,
@@ -298,18 +297,21 @@ func RenderProgressEvents(
 	isPreview bool,
 	width, height int,
 ) {
-	term := opts.term
-	if term == nil {
-		term = terminal.NewSimpleTerminal(opts.Stdout, width, height)
+	o := opts
+	if o.term == nil {
+		o.term = terminal.NewSimpleTerminal(o.Stdout, width, height)
 	}
+	o.Color = colors.Never
+	o.RenderOnDirty = false
+	o.IsInteractive = true
 
-	printPermalinkInteractive(term, opts, permalink)
-	renderer := newInteractiveRenderer(term, permalink, opts)
+	printPermalinkInteractive(o.term, o, permalink)
+	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
 		isTerminal:            true,
-		opts:                  opts,
+		opts:                  o,
 		renderer:              renderer,
 		stack:                 stack,
 		proj:                  proj,

@@ -154,10 +154,7 @@ func TestProgressEvents(t *testing.T) {
 					t.Run("plain", func(t *testing.T) {
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
-						opts.Color = colors.Never
-						opts.RenderOnDirty = false
 						opts.ShowResourceChanges = true
-						opts.IsInteractive = true
 						testSimpleRenderer(t, path, accept, suffix, opts, width, height)
 					})
 				})
@@ -219,10 +216,7 @@ func BenchmarkProgressEvents(t *testing.B) {
 						for i := 0; i < t.N; i++ {
 							suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 							opts := defaultOpts()
-							opts.Color = colors.Never
-							opts.RenderOnDirty = false
 							opts.ShowResourceChanges = true
-							opts.IsInteractive = true
 							testSimpleRenderer(t, path, false, suffix, opts, width, height)
 						}
 					})
