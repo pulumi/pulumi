@@ -260,7 +260,6 @@ func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRunti
 }
 
 func (host *goLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	// Make a connection to the real engine that we will log messages to.
 	conn, err := grpc.Dial(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -817,7 +816,7 @@ func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
 	return dlvCmd, &debugger{Host: "127.0.0.1", LogDest: logFile.Name()}, nil
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger) error {
 	// wait for the debugger to be ready
 	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	err := dbg.WaitForReady(ctx)
@@ -836,7 +835,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 	if err != nil {
 		return err
 	}
-	_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
+	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
 		Config:  debugConfig,
 		Message: "on port " + strconv.FormatInt(dbg.Port, 10),
 	})
@@ -857,7 +856,7 @@ func runProgram(
 	var err error
 	var dbg *debugger
 	var cmd *exec.Cmd
-	if req.GetStartDebugger() {
+	if req.GetAttachDebugger() {
 		cmd, dbg, err = debugCommand(bin)
 		if err != nil {
 			return &pulumirpc.RunResponse{
@@ -865,33 +864,24 @@ func runProgram(
 			}
 		}
 		defer dbg.Cleanup()
+		// create a sub-context to cancel the startDebugging operation when the process exits.
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go func() {
+			err := startDebugging(ctx, engineClient, dbg)
+			if err != nil {
+				// kill the program if we can't start debugging.
+				logging.Errorf("Unable to start debugging: %v", err)
+				contract.IgnoreError(cmd.Process.Kill())
+			}
+		}()
 	} else {
 		cmd = exec.Command(bin)
 	}
 	cmd.Dir = pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	run := func() error {
-		err := cmd.Start()
-		if err != nil {
-			return err
-		}
-		if req.GetStartDebugger() {
-			// create a sub-context to cancel the startDebugging operation when the process exits.
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			go func() {
-				err := startDebugging(ctx, engineClient, cmd, dbg)
-				if err != nil {
-					// kill the program if we can't start debugging.
-					logging.Errorf("Unable to start debugging: %v", err)
-					contract.IgnoreError(cmd.Process.Kill())
-				}
-			}()
-		}
-		return cmd.Wait()
-	}
-	status, err := runCmdStatus(run)
+	status, err := runCmdStatus(cmd.Run)
 	if err != nil {
 		return &pulumirpc.RunResponse{
 			Error: err.Error(),
@@ -981,7 +971,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetStartDebugger())
+	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger())
 	if err != nil {
 		return nil, fmt.Errorf("error in compiling Go: %w", err)
 	}
