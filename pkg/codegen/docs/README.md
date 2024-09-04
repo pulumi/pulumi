@@ -1,6 +1,8 @@
-# Docs generator
+(docsgen)=
+# Documentation
 
-This generator generates resource-level docs by utilizing the Pulumi schema.
+This package supports generating documentation for Pulumi packages from their
+[schema](schema).
 
 ## Crash course on templates
 
