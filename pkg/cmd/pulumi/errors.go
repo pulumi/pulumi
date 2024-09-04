@@ -94,7 +94,7 @@ func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
 	if sie.Op == deploy.SnapshotIntegrityRead {
 		readOrWrite = `
 NOTE: This error occurred while reading a snaphot. This error was introduced by
-a previous operation when it wrote the snapshot. If you have details of this
+a previous operation when it wrote the snapshot. If you have details about that
 operation, please include them in your report as well.
 `
 	}
@@ -106,7 +106,7 @@ operation, please include them in your report as well.
 ================================================================================
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 %s
-Please provide all of the below text in your report.
+Please provide all of the text below in your report.
 ================================================================================
 Pulumi Version:    %s
 Go Version:        %s
