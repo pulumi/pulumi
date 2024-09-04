@@ -655,3 +655,129 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	assert.True(t, createCalled, "Create should be called when resuming a replacement (updated goals)")
 	assert.False(t, removeSnap.Resources[1].PendingReplacement)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/17111
+func TestInteruptedPendingReplace(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	// Act.
+
+	// Operation 1 -- initialise the state with two resources.
+	provider := func() plugin.Provider { return &deploytest.Provider{} }
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return provider(), nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		dbr := true
+		a, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			DeleteBeforeReplace: &dbr,
+		})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{a.URN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+
+	upSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	assert.Len(t, upSnap.Resources, 3)
+	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, upSnap.Resources[2].URN.Name(), "resB")
+
+	// Operation 2 -- return a diff and interrupt it with a failing
+	// create.
+	provider = func() plugin.Provider {
+		return &deploytest.Provider{
+			DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
+				if dr.URN.Name() == "resA" {
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: []resource.PropertyKey{"key"},
+					}, nil
+				}
+				return plugin.DiffResult{
+					Changes: plugin.DiffNone,
+				}, nil
+			},
+			CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+				if cr.URN.Name() == "resA" {
+					return plugin.CreateResponse{}, errors.New("interrupt replace")
+				}
+				return plugin.CreateResponse{}, nil
+			},
+		}
+	}
+
+	replaceSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, upSnap), upOptions, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	assert.Len(t, replaceSnap.Resources, 3)
+	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
+	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
+	assert.Equal(t, replaceSnap.Resources[2].URN.Name(), "resB")
+
+	// Operation 3 -- try and resume the replacement with the same program, but fail the create again.
+
+	secondReplaceSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, replaceSnap), upOptions, false, p.BackendClient, nil, "2")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	assert.Len(t, secondReplaceSnap.Resources, 3)
+	assert.Equal(t, secondReplaceSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, secondReplaceSnap.Resources[1].URN.Name(), "resA")
+	assert.True(t, secondReplaceSnap.Resources[1].PendingReplacement)
+	assert.Equal(t, secondReplaceSnap.Resources[2].URN.Name(), "resB")
+
+	// Operation 4 -- try and resume the replacement with the same program, and let the create succeed.
+
+	provider = func() plugin.Provider {
+		return &deploytest.Provider{
+			DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
+				if dr.URN.Name() == "resA" {
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: []resource.PropertyKey{"key"},
+					}, nil
+				}
+				return plugin.DiffResult{
+					Changes: plugin.DiffNone,
+				}, nil
+			},
+			CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "created-id",
+					Properties: cr.Properties,
+				}, nil
+			},
+		}
+	}
+
+	secondUpSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, secondReplaceSnap), upOptions, false, p.BackendClient, nil, "3")
+	assert.NoError(t, err)
+
+	assert.Len(t, secondUpSnap.Resources, 3)
+	assert.Equal(t, secondUpSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, secondUpSnap.Resources[1].URN.Name(), "resA")
+	assert.False(t, secondUpSnap.Resources[1].PendingReplacement)
+	assert.Equal(t, secondUpSnap.Resources[2].URN.Name(), "resB")
+}
