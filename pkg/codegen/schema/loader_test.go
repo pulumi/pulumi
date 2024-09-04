@@ -117,7 +117,9 @@ func TestLoadParameterized(t *testing.T) {
 	mockProvider := &plugin.MockProvider{
 		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
 			assert.Equal(t, &plugin.ParameterizeValue{
-				Value: []byte("testdata"),
+				Name:    "aws",
+				Version: semver.MustParse("3.0.0"),
+				Value:   []byte("testdata"),
 			}, req.Parameters)
 
 			return plugin.ParameterizeResponse{

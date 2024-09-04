@@ -350,7 +350,9 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 	if descriptor.Parameterization != nil {
 		parameterization := plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Value: descriptor.Parameterization.Value,
+				Name:    descriptor.Parameterization.Name,
+				Version: descriptor.Parameterization.Version,
+				Value:   descriptor.Parameterization.Value,
 			},
 		}
 		resp, err := provider.Parameterize(ctx, parameterization)
