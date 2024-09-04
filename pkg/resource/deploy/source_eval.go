@@ -86,8 +86,8 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
-	// EnableDebugging to launch the language host in debug mode.
-	EnableDebugging bool
+	// AttachDebugger to launch the language host in debug mode.
+	AttachDebugger bool
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -285,7 +285,7 @@ func (iter *evalSourceIterator) forkRun(
 				Organization:      string(iter.src.runinfo.Target.Organization),
 				Info:              programInfo,
 				LoaderAddress:     iter.loaderServer.Addr(),
-				StartDebugger:     iter.src.opts.EnableDebugging,
+				AttachDebugger:    iter.src.opts.AttachDebugger,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that

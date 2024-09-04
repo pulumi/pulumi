@@ -154,7 +154,7 @@ class SetRootResourceResponse(google.protobuf.message.Message):
 global___SetRootResourceResponse = SetRootResourceResponse
 
 @typing_extensions.final
-class StartDebuggerRequest(google.protobuf.message.Message):
+class StartDebuggingRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     CONFIG_FIELD_NUMBER: builtins.int
@@ -173,4 +173,4 @@ class StartDebuggerRequest(google.protobuf.message.Message):
     def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "message", b"message"]) -> None: ...
 
-global___StartDebuggerRequest = StartDebuggerRequest
+global___StartDebuggingRequest = StartDebuggingRequest

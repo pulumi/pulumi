@@ -232,8 +232,8 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
-func (e *hostEngine) StartDebugger(ctx context.Context,
-	req *pulumirpc.StartDebuggerRequest,
+func (e *hostEngine) StartDebugging(ctx context.Context,
+	req *pulumirpc.StartDebuggingRequest,
 ) (*emptypb.Empty, error) {
 	return nil, errors.New("unsupported")
 }

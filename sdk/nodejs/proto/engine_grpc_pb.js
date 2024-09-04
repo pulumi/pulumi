@@ -87,15 +87,15 @@ function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
   return pulumi_engine_pb.SetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_StartDebuggerRequest(arg) {
-  if (!(arg instanceof pulumi_engine_pb.StartDebuggerRequest)) {
-    throw new Error('Expected argument of type pulumirpc.StartDebuggerRequest');
+function serialize_pulumirpc_StartDebuggingRequest(arg) {
+  if (!(arg instanceof pulumi_engine_pb.StartDebuggingRequest)) {
+    throw new Error('Expected argument of type pulumirpc.StartDebuggingRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_StartDebuggerRequest(buffer_arg) {
-  return pulumi_engine_pb.StartDebuggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_StartDebuggingRequest(buffer_arg) {
+  return pulumi_engine_pb.StartDebuggingRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -140,14 +140,16 @@ setRootResource: {
     responseSerialize: serialize_pulumirpc_SetRootResourceResponse,
     responseDeserialize: deserialize_pulumirpc_SetRootResourceResponse,
   },
-  startDebugger: {
-    path: '/pulumirpc.Engine/StartDebugger',
+  // StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+// should notify the user of how to connect to the debugger.
+startDebugging: {
+    path: '/pulumirpc.Engine/StartDebugging',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_engine_pb.StartDebuggerRequest,
+    requestType: pulumi_engine_pb.StartDebuggingRequest,
     responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_pulumirpc_StartDebuggerRequest,
-    requestDeserialize: deserialize_pulumirpc_StartDebuggerRequest,
+    requestSerialize: serialize_pulumirpc_StartDebuggingRequest,
+    requestDeserialize: deserialize_pulumirpc_StartDebuggingRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

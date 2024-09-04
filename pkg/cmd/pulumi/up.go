@@ -170,7 +170,7 @@ func newUpCmd() *cobra.Command {
 			GeneratePlan:    true,
 			Experimental:    hasExperimentalCommands(),
 			ContinueOnError: continueOnError,
-			EnableDebugging: attachDebugger,
+			AttachDebugger:  attachDebugger,
 		}
 
 		if planFilePath != "" {
@@ -396,7 +396,7 @@ func newUpCmd() *cobra.Command {
 			UseLegacyRefreshDiff: useLegacyRefreshDiff(),
 			ContinueOnError:      continueOnError,
 
-			EnableDebugging: attachDebugger,
+			AttachDebugger: attachDebugger,
 		}
 
 		// TODO for the URL case:

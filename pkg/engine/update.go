@@ -172,8 +172,8 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
-	// EnableDebugging to launch the language host in debug mode.
-	EnableDebugging bool
+	// AttachDebugger to launch the language host in debug mode.
+	AttachDebugger bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -521,7 +521,7 @@ func newUpdateSource(ctx context.Context,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
-		EnableDebugging:           opts.EnableDebugging,
+		AttachDebugger:            opts.AttachDebugger,
 	}), nil
 }
 

@@ -114,26 +114,26 @@ export namespace SetRootResourceResponse {
     }
 }
 
-export class StartDebuggerRequest extends jspb.Message { 
+export class StartDebuggingRequest extends jspb.Message { 
 
     hasConfig(): boolean;
     clearConfig(): void;
     getConfig(): google_protobuf_struct_pb.Struct | undefined;
-    setConfig(value?: google_protobuf_struct_pb.Struct): StartDebuggerRequest;
+    setConfig(value?: google_protobuf_struct_pb.Struct): StartDebuggingRequest;
     getMessage(): string;
-    setMessage(value: string): StartDebuggerRequest;
+    setMessage(value: string): StartDebuggingRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): StartDebuggerRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: StartDebuggerRequest): StartDebuggerRequest.AsObject;
+    toObject(includeInstance?: boolean): StartDebuggingRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: StartDebuggingRequest): StartDebuggingRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: StartDebuggerRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): StartDebuggerRequest;
-    static deserializeBinaryFromReader(message: StartDebuggerRequest, reader: jspb.BinaryReader): StartDebuggerRequest;
+    static serializeBinaryToWriter(message: StartDebuggingRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StartDebuggingRequest;
+    static deserializeBinaryFromReader(message: StartDebuggingRequest, reader: jspb.BinaryReader): StartDebuggingRequest;
 }
 
-export namespace StartDebuggerRequest {
+export namespace StartDebuggingRequest {
     export type AsObject = {
         config?: google_protobuf_struct_pb.Struct.AsObject,
         message: string,
