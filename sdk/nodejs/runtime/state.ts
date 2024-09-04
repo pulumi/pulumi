@@ -185,6 +185,12 @@ export interface Store {
     supportsInvokeTransforms: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * package references and parameterized providers.
+     */
+    supportsPackageReferences: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -242,6 +248,7 @@ export class LocalStore implements Store {
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
+    supportsPackageReferences = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
 }

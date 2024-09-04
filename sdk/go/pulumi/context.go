@@ -62,16 +62,17 @@ type contextState struct {
 	callbacksLock sync.Mutex
 	callbacks     *callbackServer
 
-	keepResources            bool       // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues         bool       // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith      bool       // true if deletedWith supported by pulumi
-	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
-	supportsTransforms       bool       // true if remote transforms are supported by pulumi
-	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
-	rpcs                     int        // the number of outstanding RPC requests.
-	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
-	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
-	rpcError                 error      // the first error (if any) encountered during an RPC.
+	keepResources             bool       // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues          bool       // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith       bool       // true if deletedWith supported by pulumi
+	supportsAliasSpecs        bool       // true if full alias specification is supported by pulumi
+	supportsTransforms        bool       // true if remote transforms are supported by pulumi
+	supportsInvokeTransforms  bool       // true if remote invoke transforms are supported by pulumi
+	supportsPackageReferences bool       // if package references and parameterized providers are supported by pulumi
+	rpcs                      int        // the number of outstanding RPC requests.
+	rpcsDone                  *sync.Cond // an event signaling completion of RPCs.
+	rpcsLock                  sync.Mutex // a lock protecting the RPC count and event.
+	rpcError                  error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 }
@@ -169,19 +170,25 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsPackageReferences, err := supportsFeature("packageReferences")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
-		info:                     info,
-		exports:                  make(map[string]Input),
-		monitorConn:              monitorConn,
-		monitor:                  monitor,
-		engineConn:               engineConn,
-		engine:                   engine,
-		keepResources:            keepResources,
-		keepOutputValues:         keepOutputValues,
-		supportsDeletedWith:      supportsDeletedWith,
-		supportsAliasSpecs:       supportsAliasSpecs,
-		supportsTransforms:       supportsTransforms,
-		supportsInvokeTransforms: supportsInvokeTransforms,
+		info:                      info,
+		exports:                   make(map[string]Input),
+		monitorConn:               monitorConn,
+		monitor:                   monitor,
+		engineConn:                engineConn,
+		engine:                    engine,
+		keepResources:             keepResources,
+		keepOutputValues:          keepOutputValues,
+		supportsDeletedWith:       supportsDeletedWith,
+		supportsAliasSpecs:        supportsAliasSpecs,
+		supportsTransforms:        supportsTransforms,
+		supportsInvokeTransforms:  supportsInvokeTransforms,
+		supportsPackageReferences: supportsPackageReferences,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -1476,6 +1483,9 @@ func (ctx *Context) RegisterPackageRemoteComponentResource(
 func (ctx *Context) RegisterPackage(
 	in *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
+	if !ctx.state.supportsPackageReferences {
+		return nil, errors.New("the Pulumi CLI does not support package references. Please update the Pulumi CLI")
+	}
 	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 

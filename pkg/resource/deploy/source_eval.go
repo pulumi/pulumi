@@ -951,6 +951,9 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "invokeTransforms":
 		hasSupport = true
+	case "packageReferences":
+		// N.B This serves a dual purpose of also indicating that parameterized providers are supported.
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)

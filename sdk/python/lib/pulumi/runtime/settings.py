@@ -392,4 +392,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),
+        monitor_supports_feature("packageReferences"),
     )

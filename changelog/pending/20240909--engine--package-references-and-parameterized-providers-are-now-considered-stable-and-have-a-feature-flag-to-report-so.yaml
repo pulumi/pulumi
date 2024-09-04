@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Package references and parameterized providers are now considered stable and have a feature flag to report so

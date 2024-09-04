@@ -539,24 +539,24 @@ _package_lock = asyncio.Lock()
 _package_ref = ...
 async def get_package():
 	global _package_ref
-	# TODO: This should check a feature flag for if RegisterPackage is supported.
 	if _package_ref is ...:
-		async with _package_lock:
-			if _package_ref is ...:
-				monitor = pulumi.runtime.settings.get_monitor()
-				parameterization = resource_pb2.Parameterization(
-					name=%q,
-					version=get_version(),
-					value=base64.b64decode(%q),
-				)
-				registerPackageResponse = monitor.RegisterPackage(
-					resource_pb2.RegisterPackageRequest(
+		if pulumi.runtime.settings._sync_monitor_supports_invoke_transforms():
+			async with _package_lock:
+				if _package_ref is ...:
+					monitor = pulumi.runtime.settings.get_monitor()
+					parameterization = resource_pb2.Parameterization(
 						name=%q,
-						version=%q,
-						download_url=get_plugin_download_url(),
-						parameterization=parameterization,
-					))
-				_package_ref = registerPackageResponse.ref
+						version=get_version(),
+						value=base64.b64decode(%q),
+					)
+					registerPackageResponse = monitor.RegisterPackage(
+						resource_pb2.RegisterPackageRequest(
+							name=%q,
+							version=%q,
+							download_url=get_plugin_download_url(),
+							parameterization=parameterization,
+						))
+					_package_ref = registerPackageResponse.ref
 	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
 	# using package with them.
 	if _package_ref is None:
@@ -2329,7 +2329,7 @@ func genPackageMetadata(
 	// Collect the deps into a tuple, where the first
 	// element is the dep name and the second element
 	// is the version constraint.
-	deps, err := calculateDeps(requires)
+	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
 	if err != nil {
 		return "", err
 	}
@@ -3372,7 +3372,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 			requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
 		}
 	}
-	deps, err := calculateDeps(requires)
+	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
 	if err != nil {
 		return err
 	}
@@ -3389,6 +3389,10 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 
+// Require the SDK to fall within the same major version, and be at least 3.132 which added support for the
+// package reference feature flag.
+var MinimumValidParameterizationSDKVersion = ">=3.132,<4.0.0"
+
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
 // as provided in the package schema, and validates whether
@@ -3399,19 +3403,25 @@ var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 // a valid value.
 // This function returns an error if the provided Pulumi version fails to
 // validate.
-func ensureValidPulumiVersion(requires map[string]string) (map[string]string, error) {
+func ensureValidPulumiVersion(paramaterised bool, requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
+
+	miniumumVersion := MinimumValidSDKVersion
+	if paramaterised {
+		miniumumVersion = MinimumValidParameterizationSDKVersion
+	}
+
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": MinimumValidSDKVersion,
+			"pulumi": miniumumVersion,
 		}
 		return result, nil
 	}
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = MinimumValidSDKVersion
+		deps["pulumi"] = miniumumVersion
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.
@@ -3450,10 +3460,10 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 // is the dependency's version constraint.
 // This function returns an error if the version of Pulumi listed as a
 // dep fails to validate.
-func calculateDeps(requires map[string]string) ([][2]string, error) {
+func calculateDeps(parameterized bool, requires map[string]string) ([][2]string, error) {
 	var err error
 	result := slice.Prealloc[[2]string](len(requires))
-	if requires, err = ensureValidPulumiVersion(requires); err != nil {
+	if requires, err = ensureValidPulumiVersion(parameterized, requires); err != nil {
 		return nil, err
 	}
 	// Collect all of the names into an array, including
