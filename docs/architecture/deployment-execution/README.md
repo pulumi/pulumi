@@ -86,6 +86,5 @@ following pages.
 :titlesonly:
 
 /docs/architecture/deployment-execution/resource-registration
-/docs/architecture/deployment-execution/providers
 /docs/architecture/deployment-execution/state
 :::
