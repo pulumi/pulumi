@@ -315,7 +315,7 @@ func (m *mockEngine) SetRootResource(ctx context.Context, in *pulumirpc.SetRootR
 	return &pulumirpc.SetRootResourceResponse{}, nil
 }
 
-func (m *mockEngine) StartDebugger(ctx context.Context, in *pulumirpc.StartDebuggerRequest,
+func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebuggingRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil

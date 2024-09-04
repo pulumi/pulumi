@@ -130,8 +130,8 @@ func (eng *hostServer) SetRootResource(ctx context.Context,
 	return &response, nil
 }
 
-func (eng *hostServer) StartDebugger(ctx context.Context,
-	req *pulumirpc.StartDebuggerRequest,
+func (eng *hostServer) StartDebugging(ctx context.Context,
+	req *pulumirpc.StartDebuggingRequest,
 ) (*emptypb.Empty, error) {
 	// fire an engine event to start the debugger
 	info := DebuggingInfo{

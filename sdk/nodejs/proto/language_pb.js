@@ -2228,7 +2228,7 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
     loaderTarget: jspb.Message.getFieldWithDefault(msg, 15, ""),
-    startDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
+    attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
   };
 
   if (includeInstance) {
@@ -2331,7 +2331,7 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 16:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setStartDebugger(value);
+      msg.setAttachDebugger(value);
       break;
     default:
       reader.skipField();
@@ -2466,7 +2466,7 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getStartDebugger();
+  f = message.getAttachDebugger();
   if (f) {
     writer.writeBool(
       16,
@@ -2827,10 +2827,10 @@ proto.pulumirpc.RunRequest.prototype.setLoaderTarget = function(value) {
 
 
 /**
- * optional bool start_debugger = 16;
+ * optional bool attach_debugger = 16;
  * @return {boolean}
  */
-proto.pulumirpc.RunRequest.prototype.getStartDebugger = function() {
+proto.pulumirpc.RunRequest.prototype.getAttachDebugger = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 16, false));
 };
 
@@ -2839,7 +2839,7 @@ proto.pulumirpc.RunRequest.prototype.getStartDebugger = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.RunRequest} returns this
  */
-proto.pulumirpc.RunRequest.prototype.setStartDebugger = function(value) {
+proto.pulumirpc.RunRequest.prototype.setAttachDebugger = function(value) {
   return jspb.Message.setProto3BooleanField(this, 16, value);
 };
 
