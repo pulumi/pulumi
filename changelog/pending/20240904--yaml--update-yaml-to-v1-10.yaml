@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: yaml
-  description: Update yaml to v1.10.
+  description: Update yaml to v1.10
