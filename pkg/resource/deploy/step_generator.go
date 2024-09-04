@@ -1355,7 +1355,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", old.URN, err)
 				}
 
-				// If the resource is already pending replacement we don't need to any step to start. The "old"
+				// If the resource is already pending replacement we don't need to emit any step. The "old"
 				// currently pending replace resource will get removed from the state when the CreateReplacementStep is
 				// successful.
 				if !old.PendingReplacement {
