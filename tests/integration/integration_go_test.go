@@ -1298,7 +1298,7 @@ outer:
 		time.Sleep(wait)
 		wait *= 2
 	}
-	assert.NotNil(t, debugEvent)
+	require.NotNil(t, debugEvent)
 
 	// We've attached a debugger, so we need to connect to it and let the program continue.
 	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
