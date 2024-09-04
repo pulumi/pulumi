@@ -560,8 +560,8 @@ github.com/pulumi/inflector v0.1.1 h1:dvlxlWtXwOJTUUtcYDvwnl6Mpg33prhK+7mzeF+Sob
 github.com/pulumi/inflector v0.1.1/go.mod h1:HUFCjcPTz96YtTuUlwG3i3EZG4WlniBvR9bd+iJxCUY=
 github.com/pulumi/pulumi-java/pkg v0.14.0 h1:CKL7lLF81Fq6VRhA5TNFsSMnHraTNCUzIhqCzYX8Wzk=
 github.com/pulumi/pulumi-java/pkg v0.14.0/go.mod h1:VybuJMWJtJc9ZNbt1kcYH4TbpocMx9mEi7YWL2Co99c=
-github.com/pulumi/pulumi-yaml v1.9.2 h1:BCUuRPA1USmFXrExiHRU8yJ+OiphLYnroPxKRgGCJrs=
-github.com/pulumi/pulumi-yaml v1.9.2/go.mod h1:sIh/Oa/NLRGTojevh8D2/cPDPvo2j9iXegVDQIKKfw4=
+github.com/pulumi/pulumi-yaml v1.10.0 h1:djbgMJCxJBmYMr4kOpAXH5iauxGohYjEuTLfxD3NUUI=
+github.com/pulumi/pulumi-yaml v1.10.0/go.mod h1://lTvwHpgJ+WBKeMGiLrd/jinc4dl3eWV5LZ3G8iCfE=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=
 github.com/pulumi/ssh-agent v0.5.1/go.mod h1:e6cyz/FUcE3PcJZ0tiuygkRsnHnCZcSQoQU+APbnrVA=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
