@@ -89,7 +89,7 @@ jobs:
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
           && 'macos-latest windows-latest'
-          || ''
+          || 'windows-latest'
         }}
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false

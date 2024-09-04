@@ -44,6 +44,7 @@ jobs:
       enable-coverage: true
       fail-fast: true
       test-retries: 2
+      acceptance-test-platforms: 'macos-latest'
     secrets: inherit
 
   prepare-release:

@@ -37,7 +37,7 @@ on:
         type: string
       acceptance-test-platforms:
         required: false
-        default: windows-latest macos-latest
+        default: macos-latest
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
@@ -382,7 +382,7 @@ jobs:
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
     if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
-    # alow jobs to fail if the platform contains windows
+    # allow jobs to fail if the platform contains windows
     strategy:
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
     uses: ./.github/workflows/ci-run-test.yml
@@ -408,7 +408,7 @@ jobs:
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
     if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
-    # alow jobs to fail if the platform contains windows
+    # allow jobs to fail if the platform contains windows
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
@@ -429,7 +429,7 @@ jobs:
     secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [unit-test, integration-test, acceptance-test-macos]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -450,7 +450,7 @@ jobs:
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
-    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [unit-test, integration-test, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
@@ -485,7 +485,7 @@ jobs:
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries
-    needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [matrix, unit-test, integration-test, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
