@@ -1843,7 +1843,7 @@ func getPluginInfoAndPath(
 			Name:    spec.Name,
 			Kind:    spec.Kind,
 			Version: spec.Version,
-			Path:    plugin.Path,
+			Path:    filepath.Clean(plugin.Path),
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
