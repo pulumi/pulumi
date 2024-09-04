@@ -121,8 +121,40 @@ func (dctx *docGenContext) processDescription(description, supportedSnippetLangu
 	// append remainder of description, if any
 	markedUpDescription += description[startIndex:]
 
+	// sanitize to remove unclosed remaining "```" if any exist
+	sanitizedDescription, err := sanitizeMarkdown(markedUpDescription)
+	contract.AssertNoErrorf(err, "error rendering docs")
+
 	return docInfo{
-		description:   markedUpDescription,
+		description:   sanitizedDescription,
 		importDetails: importDetails,
 	}
+}
+
+func sanitizeMarkdown(description string) (string, error) {
+	sanitized, _, err := removeUnclosedFence(description, 0)
+	return sanitized, err
+}
+
+func removeUnclosedFence(description string, start int) (string, int, error) {
+	// find the first occurrence of backticks
+	openingIndex := strings.Index(description[start:], "```")
+
+	if openingIndex == -1 {
+		// if no more backticks are found, return the content (this means everything was fine)
+		return description, start, nil
+	}
+	openingIndex += start
+
+	// get closing backticks after the opening set
+	closingIndex := strings.Index(description[openingIndex+3:], "```")
+
+	if closingIndex == -1 {
+		// remove the unmatched opening ticks
+		description = description[:openingIndex] + description[openingIndex+3:]
+		return description, openingIndex, nil
+	}
+	closingIndex += openingIndex + 3
+
+	return removeUnclosedFence(description, closingIndex+3)
 }
