@@ -381,7 +381,8 @@ jobs:
     # appearing in the rendered title of the job name. See: unit test.
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
-    # alow jobs to fail if the platform contains windows
+    if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
+    # allow jobs to fail if the platform contains windows
     strategy:
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
     uses: ./.github/workflows/ci-run-test.yml
@@ -407,7 +408,7 @@ jobs:
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
     if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
-    # alow jobs to fail if the platform contains windows
+    # allow jobs to fail if the platform contains windows
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
