@@ -284,6 +284,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
+        attach_debugger: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -313,6 +314,7 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -407,6 +409,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         import_file: Optional[str] = None,
+        attach_debugger: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -435,6 +438,7 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -686,12 +690,12 @@ class Stack:
     ) -> ImportResult:
         """
         Imports resources into the stack.
-        
+
         :param message: Message to associate with the import operation.
         :param resources: The resources to import.
-        :param nameTable: 
+        :param nameTable:
             The name table maps language names to parent and provider URNs.
-            These names are used in the generated definitions, 
+            These names are used in the generated definitions,
             and should match the corresponding declarations
             in the source program. This table is required if any parents or providers are \
             specified by the resources to import.
@@ -1027,6 +1031,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
     suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
+    attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
 
     if message:
         extra_args.extend(["--message", message])
@@ -1070,6 +1075,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--suppress-progress"])
     if continue_on_error:
         extra_args.extend(["--continue-on-error"])
+    if attach_debugger:
+        extra_args.extend(["--attach-debugger"])
     return extra_args
 
 
