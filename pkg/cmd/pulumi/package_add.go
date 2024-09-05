@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -228,10 +229,19 @@ func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 		// Assume pip if no packagemanager is specified
 		pipInstructions()
 	}
+
+	pyInfo, ok := pkg.Language["python"].(python.PackageInfo)
+	var importName string
+	if ok && pyInfo.PackageName != "" {
+		importName = pyInfo.PackageName
+	} else {
+		importName = strings.ReplaceAll(pkg.Name, "-", "_")
+	}
+
 	fmt.Println()
 	fmt.Println("You can then import the SDK in your Python code with:")
 	fmt.Println()
-	fmt.Printf("  import pulumi_%s as %s\n", pkg.Name, pkg.Name)
+	fmt.Printf("  import pulumi_%s as %s\n", importName, importName)
 	fmt.Println()
 	return nil
 }
