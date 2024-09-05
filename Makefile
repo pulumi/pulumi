@@ -121,6 +121,9 @@ test_fast:: build get_schemas
 
 test_all:: test_pkg test_integration
 
+test_lifecycle:
+	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest
+
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
 test_codegen_%: get_schemas
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN}/${lang}/...
