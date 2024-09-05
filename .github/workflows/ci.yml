@@ -384,6 +384,7 @@ jobs:
     if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
     # allow jobs to fail if the platform contains windows
     strategy:
+      fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
