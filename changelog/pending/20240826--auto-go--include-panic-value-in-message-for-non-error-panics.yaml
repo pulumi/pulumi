@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Include panic value in message for non-error panics

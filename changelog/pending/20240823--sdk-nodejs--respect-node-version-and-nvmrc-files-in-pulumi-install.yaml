@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Respect .node-version and .nvmrc files in `pulumi install`
