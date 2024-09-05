@@ -124,5 +124,6 @@ well as discussing how they are verified and tested.
 /docs/architecture/providers
 /docs/architecture/mlcs
 /docs/architecture/plugins
+/pkg/codegen/README
 /docs/architecture/testing/README
 :::
