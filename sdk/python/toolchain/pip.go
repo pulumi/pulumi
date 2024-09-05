@@ -323,7 +323,7 @@ func NewVirtualEnvError(dir, fullPath string) error {
 	}
 
 	commandsText := fmt.Sprintf("    1. %s -m venv %s\n", pythonBin, fullPath) +
-		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel\n", venvPythonBin) +
+		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel debugpy\n", venvPythonBin) +
 		fmt.Sprintf("    3. %s -m pip install -r requirements.txt\n", venvPythonBin)
 
 	return fmt.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
@@ -446,11 +446,10 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 		return nil
 	}
 
-	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
+	printmsg("Updating pip, setuptools, wheel, and debugpy in virtual environment...")
 
 	// activate virtual environment
-
-	err := runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
+	err := runPipInstall("updating pip, setuptools, wheel, and debugpy", "--upgrade", "pip", "setuptools", "wheel", "debugpy")
 	if err != nil {
 		return err
 	}
