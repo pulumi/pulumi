@@ -449,7 +449,9 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	printmsg("Updating pip, setuptools, wheel, and debugpy in virtual environment...")
 
 	// activate virtual environment
-	err := runPipInstall("updating pip, setuptools, wheel, and debugpy", "--upgrade", "pip", "setuptools", "wheel", "debugpy")
+	err := runPipInstall(
+		"updating pip, setuptools, wheel, and debugpy",
+		"--upgrade", "pip", "setuptools", "wheel", "debugpy")
 	if err != nil {
 		return err
 	}
