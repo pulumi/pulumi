@@ -1276,9 +1276,8 @@ func TestDebuggerAttach(t *testing.T) {
 		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
 		e.RunCommand("pulumi", "stack", "init", "debugger-test")
 		e.RunCommand("pulumi", "stack", "select", "debugger-test")
-		out, err := e.RunCommand("pulumi", "preview", "--attach-debugger",
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-		fmt.Println(out, err)
 	}()
 
 	// Wait for the debugging event
@@ -1288,21 +1287,14 @@ outer:
 	for i := 0; i < 50; i++ {
 		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
 		require.NoError(t, err)
-		fmt.Println("events", events)
 		for _, event := range events {
 			if event.StartDebuggingEvent != nil {
-				fmt.Println("found debug event")
 				debugEvent = event.StartDebuggingEvent
 				break outer
 			}
 		}
-		fmt.Println("sleeping")
 		time.Sleep(wait)
 		wait *= 2
-	}
-	if debugEvent == nil {
-		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
-		t.Fatalf("Failed to find debugging event in event log, %v, %v", events, err)
 	}
 	require.NotNil(t, debugEvent)
 
