@@ -22,11 +22,11 @@ In order to determine what actions to take in order to arrive at the desired,
 the engine *diffs* the desired state of the resource against the current state
 as recorded in the [state snapshot](state-snapshots):
 
-* If there is no current state, the engine will call the provider's
-  [](pulumirpc.ResourceProvider.Create) method to create a new resource.
-* If there is a current state, the engine will call the provider's
-  [](pulumirpc.ResourceProvider.Diff) method to determine whether the resource
-  is unchanged, requires updating, or must be replaced in some manner.
+* If there is no current state, the engine will attempt to create a new
+  resource.
+* If there is a current state, the engine will [diff](step-generation-diff) the
+  current state with the desired state to determine whether the resource is
+  unchanged, requires updating, or must be replaced in some manner.
 
 When the appropriate actions have been determined, the engine will invoke the
 relevant provider methods to carry them out. After the actions complete, the
@@ -59,8 +59,9 @@ responsible for resolving [default providers](default-providers) and
   resource monitor will dispatch an appropriate
   [](pulumirpc.ResourceProvider.Construct) call to the MLC's provider and await
   the result.
-* If the request does *not* register an MLC, the resource monitor will emit a
-  `RegisterResourceEvent` and await a response.
+* If the request does *not* register an MLC (a so-called *custom resource*,
+  although this is in reality the default type of resource), the resource
+  monitor will emit a `RegisterResourceEvent` and await a response.
 * When a result is received (either in response to a
   [](pulumirpc.ResourceProvider.Construct) call or a `RegisterResourceEvent`),
   the resource monitor will marshal the result back into the gRPC wire format
