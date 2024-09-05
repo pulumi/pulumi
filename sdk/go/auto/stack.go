@@ -280,6 +280,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.ImportFile != "" {
 		sharedArgs = append(sharedArgs, "--import-file="+preOpts.ImportFile)
 	}
+	if preOpts.AttachDebugger {
+		sharedArgs = append(sharedArgs, "--attach-debugger")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -413,6 +416,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.ContinueOnError {
 		sharedArgs = append(sharedArgs, "--continue-on-error")
+	}
+	if upOpts.AttachDebugger {
+		sharedArgs = append(sharedArgs, "--attach-debugger")
 	}
 
 	// Apply the remote args, if needed.

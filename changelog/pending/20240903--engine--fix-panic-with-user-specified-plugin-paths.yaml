@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix panic with user specified plugin paths

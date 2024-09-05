@@ -178,6 +178,10 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
 		if err := snapshot.VerifyIntegrity(); err != nil {
+			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead())
+			}
+
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}

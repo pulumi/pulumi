@@ -300,9 +300,24 @@ func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resourc
 type SnapshotIntegrityError struct {
 	// The underlying error that caused this integrity error, if applicable.
 	Err error
+
+	// The operation which caused the error. Defaults to SnapshotIntegrityWrite.
+	Op SnapshotIntegrityOperation
+
 	// The stack trace at the point the error was raised.
 	Stack []byte
 }
+
+// The set of operations alongside which snapshot integrity checks can be
+// performed.
+type SnapshotIntegrityOperation int
+
+const (
+	// Snapshot integrity checks were performed at write time.
+	SnapshotIntegrityWrite SnapshotIntegrityOperation = 0
+	// Snapshot integrity checks were performed at read time.
+	SnapshotIntegrityRead SnapshotIntegrityOperation = 1
+)
 
 // Creates a new snapshot integrity error with a message produced by the given
 // format string and arguments. Supports wrapping errors with %w. Snapshot
@@ -310,7 +325,11 @@ type SnapshotIntegrityError struct {
 // detected with a snapshot (e.g. missing or out-of-order dependencies, or
 // unparseable data).
 func SnapshotIntegrityErrorf(format string, args ...interface{}) error {
-	return &SnapshotIntegrityError{Err: fmt.Errorf(format, args...), Stack: debug.Stack()}
+	return &SnapshotIntegrityError{
+		Err:   fmt.Errorf(format, args...),
+		Op:    SnapshotIntegrityWrite,
+		Stack: debug.Stack(),
+	}
 }
 
 func (s *SnapshotIntegrityError) Error() string {
@@ -323,6 +342,16 @@ func (s *SnapshotIntegrityError) Error() string {
 
 func (s *SnapshotIntegrityError) Unwrap() error {
 	return s.Err
+}
+
+// Returns a copy of the given snapshot integrity error with the operation set to
+// SnapshotIntegrityRead.
+func (s *SnapshotIntegrityError) ForRead() *SnapshotIntegrityError {
+	return &SnapshotIntegrityError{
+		Err:   s.Err,
+		Op:    SnapshotIntegrityRead,
+		Stack: s.Stack,
+	}
 }
 
 // Returns a tuple in which the second element is true if and only if any error

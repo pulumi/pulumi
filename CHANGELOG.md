@@ -1,5 +1,70 @@
 # Changelog
 
+## 3.131.0 (2024-09-04)
+
+
+### Features
+
+- [cli] Include all engine events in the event-log
+  [#17101](https://github.com/pulumi/pulumi/pull/17101)
+
+- [pkg] Added `NewCachedLoader` for caching schema loads.
+  [#17118](https://github.com/pulumi/pulumi/pull/17118)
+
+- [yaml] Update yaml to v1.10
+  [#17154](https://github.com/pulumi/pulumi/pull/17154)
+
+- [auto/go] Include panic value in message for non-error panics
+  [#17066](https://github.com/pulumi/pulumi/pull/17066)
+
+- [auto/nodejs] Add LocalWorkspace.install method for Nodejs
+  [#17134](https://github.com/pulumi/pulumi/pull/17134)
+
+- [auto/python] Add LocalWorkspace.install method
+  [#17086](https://github.com/pulumi/pulumi/pull/17086)
+
+- [cli/{display,plugin}] Render download and install progress as part of system messages during Pulumi operations
+  [#17019](https://github.com/pulumi/pulumi/pull/17019)
+
+- [cli/state] Allow moving resources when there's already a provider with an identical URN in the destination stack, if the inputs match
+  [#17076](https://github.com/pulumi/pulumi/pull/17076)
+
+- [sdk/nodejs] Respect .node-version and .nvmrc files in `pulumi install`
+  [#17060](https://github.com/pulumi/pulumi/pull/17060)
+
+
+### Bug Fixes
+
+- [engine] Propagate deleted parents of untargeted resources
+  [#17117](https://github.com/pulumi/pulumi/pull/17117)
+
+- [engine] Fix a snapshot integrity issue caused by deleteBeforeReplace and failed create operations
+  [#17146](https://github.com/pulumi/pulumi/pull/17146)
+
+- [engine] Fix panic with user specified plugin paths
+  [#17141](https://github.com/pulumi/pulumi/pull/17141)
+
+- [sdk] Use int32 in Go interfaces that map to protobufs using int32
+  [#17068](https://github.com/pulumi/pulumi/pull/17068)
+
+- [cli/display] Improve rendering of update diffs in some circumstances.
+  [#17029](https://github.com/pulumi/pulumi/pull/17029)
+
+
+### Miscellaneous
+
+- [ci] Run CI with Go 1.22 and 1.23
+  [#17137](https://github.com/pulumi/pulumi/pull/17137)
+
+- [cli] Update go.mod to use 1.21
+  [#17140](https://github.com/pulumi/pulumi/pull/17140)
+
+- [pkg] Remove dependency on automation api in deployment settings tests
+  [#17071](https://github.com/pulumi/pulumi/pull/17071)
+
+- [sdk] Remove unused resource.NewUniqueHexV2
+  [#17067](https://github.com/pulumi/pulumi/pull/17067)
+
 ## 3.130.0 (2024-08-23)
 
 

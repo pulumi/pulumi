@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display,plugin
-  description: Render download and install progress as part of system messages during Pulumi operations
