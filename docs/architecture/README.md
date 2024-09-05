@@ -121,5 +121,7 @@ well as discussing how they are verified and tested.
 :titlesonly:
 
 /docs/architecture/deployment-execution/README
+/docs/architecture/providers
 /docs/architecture/mlcs
+/docs/architecture/plugins
 :::
