@@ -218,6 +218,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.continueOnError) {
                 args.push("--continue-on-error");
             }
+            if (opts.attachDebugger) {
+                args.push("--attach-debugger");
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -353,6 +356,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.importFile) {
                 args.push("--import-file", opts.importFile);
+            }
+            if (opts.attachDebugger) {
+                args.push("--attach-debugger");
             }
             applyGlobalOpts(opts, args);
         }
@@ -1322,6 +1328,11 @@ export interface UpOptions extends GlobalOpts {
      * Continue the operation to completion even if errors occur.
      */
     continueOnError?: boolean;
+
+    /**
+     * Run the process under a debugger, and pause until a debugger is attached.
+     */
+    attachDebugger?: boolean;
 }
 
 /**
@@ -1402,6 +1413,11 @@ export interface PreviewOptions extends GlobalOpts {
      * Plan specifies the path where the update plan should be saved.
      */
     plan?: string;
+
+    /**
+     * Run the process under a debugger, and pause until a debugger is attached.
+     */
+    attachDebugger?: boolean;
 }
 
 /**
