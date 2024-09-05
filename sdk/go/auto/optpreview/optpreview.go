@@ -143,6 +143,13 @@ func ImportFile(path string) Option {
 	})
 }
 
+// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+func AttachDebugger() Option {
+	return optionFunc(func(opts *Options) {
+		opts.AttachDebugger = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -193,6 +200,8 @@ type Options struct {
 	SuppressOutputs bool
 	// Save any creates seen during the preview into an import file to use with pulumi import
 	ImportFile string
+	// Run the process under a debugger, and pause until a debugger is attached
+	AttachDebugger bool
 }
 
 type optionFunc func(*Options)

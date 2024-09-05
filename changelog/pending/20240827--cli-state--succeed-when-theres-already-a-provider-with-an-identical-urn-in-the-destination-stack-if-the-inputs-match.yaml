@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Allow moving resources when there's already a provider with an identical URN in the destination stack, if the inputs match
