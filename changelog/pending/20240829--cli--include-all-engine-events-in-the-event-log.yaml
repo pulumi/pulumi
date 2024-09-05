@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Include all engine events in the event-log
