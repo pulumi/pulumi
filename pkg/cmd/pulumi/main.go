@@ -35,7 +35,7 @@ func panicHandler(finished *bool) {
 		fmt.Fprintln(os.Stderr, "================================================================================")
 		fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a fatal error. This is a bug!")
 		fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
-		fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
+		fmt.Fprintln(os.Stderr, "Please provide all of the text below in your report.")
 		fmt.Fprintln(os.Stderr, "================================================================================")
 		fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
 		fmt.Fprintf(os.Stderr, "Go Version:       %s\n", runtime.Version())
