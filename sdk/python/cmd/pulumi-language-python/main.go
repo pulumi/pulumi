@@ -816,7 +816,6 @@ func (e *NotInstalledError) Error() string {
 }
 
 func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptions) error {
-	// If the typechecker is not installed, tell the user to install it.
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
