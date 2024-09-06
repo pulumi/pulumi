@@ -37,7 +37,7 @@ import (
 
 type testPluginHost struct {
 	t             *testing.T
-	provider      func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
 	closeProvider func(provider plugin.Provider) error
 }
 
@@ -76,8 +76,8 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	return host.provider(pkg, version)
+func (host *testPluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+	return host.provider(descriptor)
 }
 
 func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
@@ -185,14 +185,14 @@ type providerLoader struct {
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
 		t: t,
-		provider: func(pkg tokens.Package, ver *semver.Version) (plugin.Provider, error) {
+		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
-				if l.pkg != pkg {
+				if string(l.pkg) != descriptor.Name {
 					continue
 				}
 
-				if ver != nil && l.version.LT(*ver) {
+				if descriptor.Version != nil && l.version.LT(*descriptor.Version) {
 					continue
 				}
 				if best == nil || l.version.GT(best.version) {

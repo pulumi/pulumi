@@ -296,7 +296,17 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		return builtins, nil
 	}
 
-	provider, err := host.Provider(pkg, version)
+	descriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              string(pkg),
+			Version:           version,
+			PluginDownloadURL: downloadURL,
+			Checksums:         checksums,
+		},
+	}
+
+	provider, err := host.Provider(descriptor)
 	if err == nil {
 		return provider, nil
 	}
@@ -317,25 +327,17 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		return nil, err
 	}
 
-	pluginSpec := workspace.PluginSpec{
-		Kind:              apitype.ResourcePlugin,
-		Name:              string(pkg),
-		Version:           version,
-		PluginDownloadURL: downloadURL,
-		Checksums:         checksums,
-	}
-
 	log := func(sev diag.Severity, msg string) {
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(pkg, version)
+	return host.Provider(descriptor)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
