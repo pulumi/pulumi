@@ -52,6 +52,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -278,6 +279,21 @@ func newLanguageHost(
 		tracing:       tracing,
 		forceTsc:      forceTsc,
 	}
+}
+
+func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
 }
 
 func compatibleVersions(a, b semver.Version) (bool, string) {
@@ -578,6 +594,12 @@ func getPluginVersion(info packageJSON) (string, error) {
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(closer)
+
 	// Make a connection to the real monitor that we will forward messages to.
 	conn, err := grpc.Dial(
 		req.GetMonitorAddress(),
@@ -648,7 +670,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	go func() {
 		defer close(responseChannel)
 		responseChannel <- host.execNodejs(
-			ctx, req, nodeBin, runPath,
+			ctx, req, engineClient, nodeBin, runPath,
 			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
 	}()
 
@@ -674,7 +696,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
-	nodeBin, runPath, address, pipesDirectory string,
+	engineClient pulumirpc.EngineClient, nodeBin, runPath, address, pipesDirectory string,
 ) *pulumirpc.RunResponse {
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	args := host.constructArguments(req, runPath, address, pipesDirectory)
@@ -709,6 +731,11 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
+	if req.GetAttachDebugger() {
+		nodeargs = append(nodeargs, "--inspect-brk")
+		// suppress the console output "Debugger listening on..."
+		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
+	}
 	nodeargs = append(nodeargs, args...)
 
 	if logging.V(5) {
@@ -740,7 +767,34 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		opentracing.Tag{Key: "args", Value: nodeargs})
 	defer tracingSpan.Finish()
 
-	if err := cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":             "Pulumi: Program (Node.js)",
+				"type":             "node",
+				"request":          "attach",
+				"processId":        cmd.Process.Pid,
+				"continueOnAttach": true,
+				"skipFiles":        []interface{}{"<node_internals>/**"},
+			})
+			if err != nil {
+				return err
+			}
+			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+				Config:  debugConfig,
+				Message: fmt.Sprintf("on process id %d", cmd.Process.Pid),
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
 		// process writes using console.out and console.err synchronously, but it does not process writes using
 		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
