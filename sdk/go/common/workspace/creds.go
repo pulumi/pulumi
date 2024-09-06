@@ -174,6 +174,14 @@ func GetStoredCredentials() (Credentials, error) {
 		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
 	}
 
+	// If the file is empty, we can act as if it doesn't exist rather than trying
+	// (and failing) to deserialize its contents. This allows us to recover from
+	// situations where a write to the file was interrupted or it was otherwise
+	// clobbered.
+	if len(c) == 0 {
+		return Credentials{}, nil
+	}
+
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
 		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please re-run "+
