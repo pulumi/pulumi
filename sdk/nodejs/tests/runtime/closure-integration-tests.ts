@@ -95,14 +95,11 @@ async function run(typescriptVersion: string, nodeTypesVersion: string) {
 
 async function main() {
     for (const [ts, typesNode] of [
-        ["~3.8.3", "^17"], // Latest 3.8.x, this is the default version.
-        // TODO https://github.com/pulumi/pulumi/issues/17135
-        // Pin to 20.16.2 instead of using ^20 until https://github.com/DefinitelyTyped/DefinitelyTyped/discussions/70432
-        // is resolved.
-        ["<4.8.0", "20.16.2"], // Before 4.8.0, the typescript API we use has some breaking changes in 4.8.0.
-        ["^4.9.5", "20.16.2"], // Latest 4.x.x
-        ["<5.2.0", "20.16.2"], // Awaiter changed slightly in 5.2.0 https://github.com/microsoft/TypeScript/pull/56296
-        ["^5.2.0", "20.16.2"], // Latest 5.x.x
+        ["~3.8.3", "ts3.8"], // Latest 3.8.x, this is the default version.
+        ["<4.8.0", "ts4.7"], // Before 4.8.0, the typescript API we use has some breaking changes in 4.8.0.
+        ["^4.9.5", "ts4.9"], // Latest 4.x.x
+        ["<5.2.0", "ts5.1"], // Awaiter changed slightly in 5.2.0 https://github.com/microsoft/TypeScript/pull/56296
+        ["^5.2.0", "latest"], // Latest 5.x.x
     ]) {
         await run(ts, typesNode);
     }
