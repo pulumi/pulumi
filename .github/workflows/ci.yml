@@ -57,7 +57,7 @@ on:
         type: number
     secrets:
       PULUMI_BOT_TOKEN:
-        required: true
+        required: false
         description: "GitHub access token, required to mitigate GitHub rate limits"
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
