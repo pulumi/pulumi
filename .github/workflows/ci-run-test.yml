@@ -170,6 +170,9 @@ jobs:
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
+      - name: Install delve
+        run: |
+          go install github.com/go-delve/delve/cmd/dlv@latest
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v5
         with:
