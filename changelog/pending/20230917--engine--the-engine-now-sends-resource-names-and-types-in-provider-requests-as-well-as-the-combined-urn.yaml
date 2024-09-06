@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: engine
-  description: The engine now sends resource names and types in provider requests, as well as the combined URN
+  description: Send resource names and types in provider requests from the engine, in addition to the combined URN
