@@ -137,6 +137,14 @@ html_theme_options = {
     # Enable margin notes
     # (https://sphinx-book-theme.readthedocs.io/en/stable/content/content-blocks.html#sidenotes-and-marginnotes).
     "use_sidenotes": True,
+    # Enable linking to GitHub page sources and editing files directly in the
+    # browser.
+    "repository_provider": "github",
+    "repository_url": "https://github.com/pulumi/pulumi",
+    "repository_branch": "master",
+    "use_source_button": True,
+    "use_edit_page_button": True,
+    "use_issues_button": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
