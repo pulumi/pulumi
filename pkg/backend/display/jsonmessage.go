@@ -56,15 +56,19 @@ func makeActionProgress(id string, action string) Progress {
 
 // Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
 func (jm *Progress) Display(out io.Writer, termInfo terminal.Info) {
-	var endl string
+	var emitCr bool
+
 	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
 		termInfo.ClearLine(out)
-		endl = "\r"
-		fmt.Fprint(out, endl)
+		emitCr = true
+		termInfo.CarriageReturn(out)
 	}
 
 	if jm.Action != "" && termInfo != nil {
-		fmt.Fprintf(out, "%s%s", jm.Action, endl)
+		fmt.Fprint(out, jm.Action)
+		if emitCr {
+			termInfo.CarriageReturn(out)
+		}
 	} else {
 		var msg string
 		if jm.Action != "" {
@@ -73,7 +77,11 @@ func (jm *Progress) Display(out io.Writer, termInfo terminal.Info) {
 			msg = jm.Message
 		}
 
-		fmt.Fprintf(out, "%s%s\n", msg, endl)
+		fmt.Fprint(out, msg)
+		if emitCr {
+			termInfo.CarriageReturn(out)
+		}
+		fmt.Fprint(out, "\n")
 	}
 }
 

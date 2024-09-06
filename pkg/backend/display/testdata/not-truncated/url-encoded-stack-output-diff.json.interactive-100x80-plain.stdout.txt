@@ -1,18 +1,0 @@
-View in Browser (Ctrl+O): link
-
-<%hide-cursor%>     Type                 Name                  Status     Info<%clear-to-end%>
-     pulumi:pulumi:Stack  urlencodedoutput-dev             1 message<%clear-to-end%>
-<%clear-to-end%>
-Diagnostics:
-  pulumi:pulumi:Stack (urlencodedoutput-dev):
-    Configuration:
-
-Outputs:
-  ~ path: "%2F" => "%2f"
-
-Resources:
-    1 unchanged
-
-Duration: 1s
-
-<%show-cursor%>

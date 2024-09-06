@@ -1,3 +1,17 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package terminal
 
 import (
@@ -20,6 +34,7 @@ type Terminal interface {
 
 	ClearLine()
 	ClearEnd()
+	CarriageReturn()
 	CursorUp(count int)
 	CursorDown(count int)
 	HideCursor()
@@ -39,6 +54,8 @@ type terminal struct {
 	out io.Writer
 	in  cancelreader.CancelReader
 }
+
+var _ Terminal = &terminal{}
 
 func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	type fileLike interface {
@@ -141,6 +158,10 @@ func (t *terminal) ClearLine() {
 
 func (t *terminal) ClearEnd() {
 	t.info.ClearEnd(t.out)
+}
+
+func (t *terminal) CarriageReturn() {
+	t.info.CarriageReturn(t.out)
 }
 
 func (t *terminal) CursorUp(count int) {

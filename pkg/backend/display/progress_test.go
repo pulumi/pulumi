@@ -154,13 +154,8 @@ func TestProgressEvents(t *testing.T) {
 					t.Run("plain", func(t *testing.T) {
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
-						opts.Color = colors.Never
-						opts.RenderOnDirty = false
 						opts.ShowResourceChanges = true
-						opts.IsInteractive = true
-						opts.ShowResourceChanges = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
-						opts.IsInteractive = true
+						testSimpleRenderer(t, path, accept, suffix, opts, width, height)
 					})
 				})
 			}
@@ -221,13 +216,8 @@ func BenchmarkProgressEvents(t *testing.B) {
 						for i := 0; i < t.N; i++ {
 							suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 							opts := defaultOpts()
-							opts.Color = colors.Never
-							opts.RenderOnDirty = false
 							opts.ShowResourceChanges = true
-							opts.IsInteractive = true
-							opts.ShowResourceChanges = true
-							testProgressEvents(t, path, false, suffix, opts, width, height, true)
-							opts.IsInteractive = true
+							testSimpleRenderer(t, path, false, suffix, opts, width, height)
 						}
 					})
 				})
@@ -377,4 +367,61 @@ func TestProgressPolicyPacks(t *testing.T) {
 	<-doneChannel
 
 	assert.Contains(t, stdout.String(), "Loading policy packs...")
+}
+
+func testSimpleRenderer(
+	t testing.TB,
+	path string,
+	accept bool,
+	suffix string,
+	testOpts Options,
+	width, height int,
+) {
+	events, err := loadEvents(path)
+	require.NoError(t, err)
+
+	fileName := path + suffix + ".txt"
+	var expectedStdout []byte
+	if !accept {
+		expectedStdout, err = os.ReadFile(fileName)
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+
+	opts := testOpts
+	opts.Stdout = &stdout
+
+	go RenderProgressEvents(
+		"test",
+		"update",
+		tokens.MustParseStackName("stack"),
+		"project",
+		"link",
+		eventChannel,
+		doneChannel,
+		opts,
+		false,
+		width,
+		height,
+	)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if _, ok := t.(*testing.B); ok {
+		// Benchmark mode: don't check the output.
+		return
+	}
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+	} else {
+		err = os.WriteFile(fileName, stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
 }

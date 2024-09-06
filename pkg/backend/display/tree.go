@@ -357,7 +357,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 
 	// Re-home the cursor.
-	r.print("\r")
+	r.term.CarriageReturn()
 	if r.rewind > 0 {
 		r.term.CursorUp(r.rewind)
 	}
