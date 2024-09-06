@@ -137,11 +137,10 @@ func TestListPackages(t *testing.T) {
 
 			packages, err := tc.ListPackages(context.Background(), false)
 			require.NoError(t, err)
-			require.Len(t, packages, 4)
-			require.Equal(t, "debugpy", packages[0].Name)
-			require.Equal(t, "pip", packages[1].Name)
-			require.Equal(t, "setuptools", packages[2].Name)
-			require.Equal(t, "wheel", packages[3].Name)
+			require.Len(t, packages, 3)
+			require.Equal(t, "pip", packages[0].Name)
+			require.Equal(t, "setuptools", packages[1].Name)
+			require.Equal(t, "wheel", packages[2].Name)
 		})
 
 		t.Run("non-empty/"+Name(opts.Toolchain), func(t *testing.T) {
@@ -158,12 +157,11 @@ func TestListPackages(t *testing.T) {
 				return packages[i].Name < packages[j].Name
 			})
 			require.NoError(t, err)
-			require.Len(t, packages, 5)
-			require.Equal(t, "debugpy", packages[0].Name)
-			require.Equal(t, "pip", packages[1].Name)
-			require.Equal(t, "pulumi_random", packages[2].Name)
-			require.Equal(t, "setuptools", packages[3].Name)
-			require.Equal(t, "wheel", packages[4].Name)
+			require.Len(t, packages, 4)
+			require.Equal(t, "pip", packages[0].Name)
+			require.Equal(t, "pulumi_random", packages[1].Name)
+			require.Equal(t, "setuptools", packages[2].Name)
+			require.Equal(t, "wheel", packages[3].Name)
 		})
 	}
 }
@@ -322,7 +320,6 @@ python = "^3.8"
 pip = "*"
 setuptools = "*"
 wheel = "*"
-debugpy = "*"
 `)
 	err = f.Close()
 	require.NoError(t, err)

@@ -703,7 +703,15 @@ func selectPort() (int, error) {
 }
 
 // debugCommand produces python program args to launch a python file with debugpy.
-func debugCommand() ([]string, *debugger, error) {
+func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
+	err := checkForPackage(ctx, "debugpy", opts)
+	if err != nil {
+		var installError *NotInstalledError
+		if errors.As(err, &installError) {
+			return nil, nil, fmt.Errorf("debugpy is not installed. %s", installError.InstallMessage)
+		}
+		return nil, nil, err
+	}
 	logDir, err := os.MkdirTemp("", "pulumi-python-debugpy-")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
@@ -799,6 +807,42 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 	return nil
 }
 
+type NotInstalledError struct {
+	InstallMessage string
+}
+
+func (e *NotInstalledError) Error() string {
+	return e.InstallMessage
+}
+
+func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptions) error {
+	// If the typechecker is not installed, tell the user to install it.
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return err
+	}
+	packages, err := tc.ListPackages(ctx, true)
+	if err != nil {
+		return err
+	}
+	idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == pkg })
+	if idx < 0 {
+		installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", pkg)
+		if opts.Toolchain != toolchain.Poetry {
+			pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
+			if runtime.GOOS == "windows" {
+				pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
+			}
+			installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", pkg, pipCommand)
+		}
+		//revive:disable:error-strings // This error message is user facing.
+		return &NotInstalledError{
+			InstallMessage: installCommand,
+		}
+	}
+	return nil
+}
+
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	engineClient, closer, err := host.connectToEngine()
@@ -817,7 +861,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	args := []string{}
 	var dbg *debugger
 	if req.GetAttachDebugger() {
-		args, dbg, err = debugCommand()
+		args, dbg, err = debugCommand(ctx, opts)
 		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
@@ -899,28 +943,14 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
-		// If the typechecker is not installed, tell the user to install it.
-		tc, err := toolchain.ResolveToolchain(opts)
+		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
-			return nil, err
-		}
-		packages, err := tc.ListPackages(ctx, true)
-		if err != nil {
-			return nil, err
-		}
-		idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == typechecker })
-		if idx < 0 {
-			installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", typechecker)
-			if opts.Toolchain != toolchain.Poetry {
-				pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
-				if runtime.GOOS == "windows" {
-					pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
-				}
-				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
+			var installError *NotInstalledError
+			if errors.As(err, &installError) {
+				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
+					typechecker, typechecker, installError.InstallMessage)
 			}
-			//revive:disable:error-strings // This error message is user facing.
-			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
-				typechecker, typechecker, installCommand)
+			return nil, err
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
