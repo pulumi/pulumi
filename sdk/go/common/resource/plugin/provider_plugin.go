@@ -358,6 +358,12 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
@@ -379,6 +385,8 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(req.URN),
+		Name: req.URN.Name(),
+		Type: req.URN.Type().String(),
 		Olds: molds,
 		News: mnews,
 	})
@@ -458,6 +466,12 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffConfigResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
 		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
@@ -488,6 +502,8 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(req.URN),
+		Name:          req.URN.Name(),
+		Type:          req.URN.Type().String(),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -790,6 +806,12 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
@@ -827,6 +849,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
+		Name:       req.URN.Name(),
+		Type:       req.URN.Type().String(),
 		Olds:       molds,
 		News:       mnews,
 		RandomSeed: req.RandomSeed,
@@ -871,6 +895,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	contract.Assertf(req.URN != "", "Diff requires a URN")
 	contract.Assertf(req.ID != "", "Diff requires an ID")
 	contract.Assertf(req.OldInputs != nil, "Diff requires old input properties")
@@ -934,6 +964,8 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(req.ID),
 		Urn:           string(req.URN),
+		Name:          req.URN.Name(),
+		Type:          req.URN.Type().String(),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -976,6 +1008,12 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
 func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	contract.Assertf(req.URN != "", "Create requires a URN")
 	contract.Assertf(req.Properties != nil, "Create requires properties")
 
@@ -1031,6 +1069,8 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
 		Urn:        string(req.URN),
+		Name:       req.URN.Name(),
+		Type:       req.URN.Type().String(),
 		Properties: mprops,
 		Timeout:    req.Timeout,
 		Preview:    req.Preview,
@@ -1082,6 +1122,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
 func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	contract.Assertf(req.URN != "", "Read URN was empty")
 	contract.Assertf(req.ID != "", "Read ID was empty")
 
@@ -1136,6 +1182,8 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(req.ID),
 		Urn:        string(req.URN),
+		Name:       req.URN.Name(),
+		Type:       req.URN.Type().String(),
 		Properties: mstate,
 		Inputs:     minputs,
 	})
@@ -1204,6 +1252,12 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	contract.Assertf(req.URN != "", "Update requires a URN")
 	contract.Assertf(req.ID != "", "Update requires an ID")
 	contract.Assertf(req.OldInputs != nil, "Update requires old inputs")
@@ -1281,6 +1335,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(req.ID),
 		Urn:           string(req.URN),
+		Name:          req.URN.Name(),
+		Type:          req.URN.Type().String(),
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
 		Timeout:       req.Timeout,
@@ -1324,6 +1380,12 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 
 // Delete tears down an existing resource.
 func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
 	contract.Assertf(req.URN != "", "Delete requires a URN")
 	contract.Assertf(req.ID != "", "Delete requires an ID")
 
@@ -1366,6 +1428,8 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(req.ID),
 		Urn:        string(req.URN),
+		Name:       req.URN.Name(),
+		Type:       req.URN.Type().String(),
 		Properties: moutputs,
 		Timeout:    req.Timeout,
 		OldInputs:  minputs,

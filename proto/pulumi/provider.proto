@@ -249,6 +249,9 @@ message CheckRequest {
     reserved "sequenceNumber";
 
     bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
+
+    string name = 6; // the Pulumi name for this resource.
+    string type = 7; // the Pulumi type for this resource.
 }
 
 message CheckResponse {
@@ -271,6 +274,8 @@ message DiffRequest {
 
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
     google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
+    string name = 7; // the Pulumi name for this resource.
+    string type = 8; // the Pulumi type for this resource.
 }
 
 message PropertyDiff {
@@ -342,6 +347,8 @@ message CreateRequest {
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
     double timeout = 3;                    // the create request timeout represented in seconds.
     bool preview = 4;                      // true if this is a preview and the provider should not actually create the resource.
+    string name = 5; // the Pulumi name for this resource.
+    string type = 6; // the Pulumi type for this resource.
 }
 
 message CreateResponse {
@@ -356,6 +363,8 @@ message ReadRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current state (sufficiently complete to identify the resource).
     google.protobuf.Struct inputs = 4;     // the current inputs, if any (only populated during refresh).
+    string name = 5; // the Pulumi name for this resource.
+    string type = 6; // the Pulumi type for this resource.
 }
 
 message ReadResponse {
@@ -378,6 +387,8 @@ message UpdateRequest {
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
     google.protobuf.Struct old_inputs = 8; // the old input values of the resource to diff.
+    string name = 9; // the Pulumi name for this resource.
+    string type = 10; // the Pulumi type for this resource.
 }
 
 message UpdateResponse {
@@ -390,6 +401,8 @@ message DeleteRequest {
     google.protobuf.Struct properties = 3; // the current properties on the resource.
     double timeout = 4;                    // the delete request timeout represented in seconds.
     google.protobuf.Struct old_inputs = 5; // the old input values of the resource to delete.
+    string name = 6; // the Pulumi name for this resource.
+    string type = 7; // the Pulumi type for this resource.
 }
 
 message ConstructRequest {

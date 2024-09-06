@@ -498,6 +498,10 @@ export class CheckRequest extends jspb.Message {
     getRandomseed_asU8(): Uint8Array;
     getRandomseed_asB64(): string;
     setRandomseed(value: Uint8Array | string): CheckRequest;
+    getName(): string;
+    setName(value: string): CheckRequest;
+    getType(): string;
+    setType(value: string): CheckRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
@@ -515,6 +519,8 @@ export namespace CheckRequest {
         olds?: google_protobuf_struct_pb.Struct.AsObject,
         news?: google_protobuf_struct_pb.Struct.AsObject,
         randomseed: Uint8Array | string,
+        name: string,
+        type: string,
     }
 }
 
@@ -593,6 +599,10 @@ export class DiffRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): DiffRequest;
+    getName(): string;
+    setName(value: string): DiffRequest;
+    getType(): string;
+    setType(value: string): DiffRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DiffRequest.AsObject;
@@ -612,6 +622,8 @@ export namespace DiffRequest {
         news?: google_protobuf_struct_pb.Struct.AsObject,
         ignorechangesList: Array<string>,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -713,6 +725,10 @@ export class CreateRequest extends jspb.Message {
     setTimeout(value: number): CreateRequest;
     getPreview(): boolean;
     setPreview(value: boolean): CreateRequest;
+    getName(): string;
+    setName(value: string): CreateRequest;
+    getType(): string;
+    setType(value: string): CreateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateRequest.AsObject;
@@ -730,6 +746,8 @@ export namespace CreateRequest {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         timeout: number,
         preview: boolean,
+        name: string,
+        type: string,
     }
 }
 
@@ -774,6 +792,10 @@ export class ReadRequest extends jspb.Message {
     clearInputs(): void;
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ReadRequest;
+    getName(): string;
+    setName(value: string): ReadRequest;
+    getType(): string;
+    setType(value: string): ReadRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadRequest.AsObject;
@@ -791,6 +813,8 @@ export namespace ReadRequest {
         urn: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -854,6 +878,10 @@ export class UpdateRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): UpdateRequest;
+    getName(): string;
+    setName(value: string): UpdateRequest;
+    getType(): string;
+    setType(value: string): UpdateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateRequest.AsObject;
@@ -875,6 +903,8 @@ export namespace UpdateRequest {
         ignorechangesList: Array<string>,
         preview: boolean,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -918,6 +948,10 @@ export class DeleteRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): DeleteRequest;
+    getName(): string;
+    setName(value: string): DeleteRequest;
+    getType(): string;
+    setType(value: string): DeleteRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeleteRequest.AsObject;
@@ -936,6 +970,8 @@ export namespace DeleteRequest {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         timeout: number,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 

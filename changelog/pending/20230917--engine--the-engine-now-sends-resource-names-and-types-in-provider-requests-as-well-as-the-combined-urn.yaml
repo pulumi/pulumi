@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Send resource names and types in provider requests from the engine, in addition to the combined URN
