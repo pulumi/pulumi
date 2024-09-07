@@ -147,6 +147,14 @@ Here's some examples of what we're trying to avoid:
 - Adds a feature
 - Feature now does something
 
+### Downloading Pulumi from contributed pull requests
+
+Artifacts built during pull request workflows can be downloaded by running the following command:
+
+```sh
+curl -fsSL https://get.pulumi.com | sh -s -- --version pr#NUMBER
+```
+
 ### Pulumi employees
 
 Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Tests can run directly without approval for PRs based on branches rather than forks.
