@@ -152,7 +152,7 @@ Here's some examples of what we're trying to avoid:
 Artifacts built during pull request workflows can be downloaded by running the following command:
 
 ```sh
-curl -fsSL https://get.pulumi.com | sh -s -- --version pr#NUMBER
+curl -fsSL https://get.pulumi.com | sh -s -- --version pr#<number>
 ```
 
 ### Pulumi employees
