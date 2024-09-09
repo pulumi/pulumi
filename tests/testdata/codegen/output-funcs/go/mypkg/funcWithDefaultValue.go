@@ -47,14 +47,20 @@ type FuncWithDefaultValueResult struct {
 
 func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (FuncWithDefaultValueResult, error) {
+		ApplyT(func(v interface{}) (FuncWithDefaultValueResultOutput, error) {
 			args := v.(FuncWithDefaultValueArgs)
-			r, err := FuncWithDefaultValue(ctx, &args, opts...)
-			var s FuncWithDefaultValueResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv FuncWithDefaultValueResult
+			secret, err := ctx.InvokePackageRaw("mypkg::funcWithDefaultValue", args.Defaults(), &rv, "", opts...)
+			if err != nil {
+				return FuncWithDefaultValueResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(FuncWithDefaultValueResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(FuncWithDefaultValueResultOutput), nil
+			}
+			return output, nil
 		}).(FuncWithDefaultValueResultOutput)
 }
 

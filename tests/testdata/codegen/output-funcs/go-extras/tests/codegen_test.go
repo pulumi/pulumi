@@ -70,7 +70,12 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		outputs := map[string]interface{}{
 			"keys": result.Keys,
 		}
-		return resource.NewPropertyMapFromMap(outputs), nil
+		invokeResponse := resource.NewPropertyMapFromMap(outputs)
+		// turn every field into a secret
+		for k, v := range invokeResponse {
+			invokeResponse[k] = resource.MakeSecret(v)
+		}
+		return invokeResponse, nil
 
 	case "mypkg::funcWithDefaultValue",
 		"mypkg::funcWithAllOptionalInputs",
