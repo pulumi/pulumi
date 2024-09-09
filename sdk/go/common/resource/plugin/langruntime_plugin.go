@@ -24,7 +24,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -168,12 +167,12 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		if v := info.GetVersion(); v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
+				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
 			}
 			version = &sv
 		}
 		if !apitype.IsPluginKind(info.Kind) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
+			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
 			Name:              info.Name,

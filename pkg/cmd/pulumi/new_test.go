@@ -18,13 +18,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -869,7 +869,7 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				}, nil
 
 			default:
-				return nil, errors.Errorf("invalid stack reference %q", s)
+				return nil, fmt.Errorf("invalid stack reference %q", s)
 			}
 		},
 	}
