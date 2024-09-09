@@ -73,11 +73,7 @@ jobs:
       # codegen tests take quite a while to run.
       # Run them only if ci/test is set,
       # or if one of the codegen files changed.
-      test-codegen: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
-          (needs.inspect.outputs.test-codegen == 'true')
-        }}
+      test-codegen: true
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
