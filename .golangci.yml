@@ -64,7 +64,7 @@ linters-settings:
   goheader:
     values:
       regexp:
-        COPYRIGHT_YEARS: \d{4}-\d{4}
+        COPYRIGHT_YEARS: (\d{4}-)?\d{4}
         WHITESPACE: \s*
     template: |-
       Copyright {{ COPYRIGHT_YEARS }}, Pulumi Corporation.
