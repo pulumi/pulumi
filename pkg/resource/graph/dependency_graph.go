@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
 
 package graph
 
@@ -92,10 +92,10 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	return dependents
 }
 
-// OnlyDependsOn returns a slice containing all resources that directly or indirectly
-// depend upon *only* the given resource.  Resources that also depend on another resource with
-// the same URN will not be included in the returned slice.  The returned slice is guaranteed
-// to be in topological order with respect to the snapshot dependency graph.
+// OnlyDependsOn returns a slice containing all resources that directly or indirectly depend upon *only* the specific ID
+// for the given resources URN. Resources that also depend on another resource with the same URN, but a different ID,
+// will not be included in the returned slice. The returned slice is guaranteed to be in topological order with respect
+// to the snapshot dependency graph.
 //
 // The time complexity of OnlyDependsOn is linear with respect to the number of resources.
 func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State {
