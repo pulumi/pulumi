@@ -14,7 +14,7 @@ import (
 
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 )
 
 func newLoginCmd(esc *escCommand) *cobra.Command {
@@ -141,7 +141,7 @@ func (esc *escCommand) checkBackendURL(url string) error {
 	case isInvalidSelfHostedURL(url):
 		return fmt.Errorf("%s is not a valid self-hosted backend, "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
-	case filestate.IsFileStateBackendURL(url):
+	case diy.IsDIYBackendURL(url):
 		return fmt.Errorf("%s does not support Pulumi ESC.", url)
 	default:
 		return nil
