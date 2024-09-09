@@ -448,7 +448,7 @@ jobs:
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
-    needs: [unit-test, integration-test, acceptance-test-macos]
+    needs: [unit-test, integration-test]
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:

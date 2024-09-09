@@ -91,8 +91,7 @@ jobs:
           && 'macos-latest windows-latest'
           || 'windows-latest'
         }}
-      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
-      enable-coverage: false
+      enable-coverage: true
     secrets: inherit
 
   performance-gate:
