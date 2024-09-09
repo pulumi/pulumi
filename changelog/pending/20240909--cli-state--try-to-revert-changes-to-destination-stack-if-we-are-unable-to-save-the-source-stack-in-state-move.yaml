@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/state
+  description: Try to revert changes to destination stack if we are unable to save the source stack in state move

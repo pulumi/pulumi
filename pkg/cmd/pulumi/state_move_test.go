@@ -1266,7 +1266,7 @@ Successfully moved resources from organization/test/sourceStack to organization/
 		destSnapshot.Resources[2].Parent)
 }
 
-func TestMoveLockedBackendShowsDeleteCommands(t *testing.T) {
+func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
@@ -1328,7 +1328,27 @@ func TestMoveLockedBackendShowsDeleteCommands(t *testing.T) {
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	//nolint:lll
-	assert.ErrorContains(t, err, "Please remove the resources from the source stack manually the following commands:\n"+
-		"    pulumi state delete --stack organization/test/sourceStack 'urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2'\n"+
-		"    pulumi state delete --stack organization/test/sourceStack 'urn:pulumi:sourceStack::test::d:e:f$a:b:c::name'")
+	assert.ErrorContains(t, err, "None of the resources have been moved.  Please fix the error and try again")
+
+	sourceStack, err = b.GetStack(ctx, sourceStack.Ref())
+	require.NoError(t, err)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destStack.Ref())
+	require.NoError(t, err)
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	assert.Len(t, destSnapshot.Resources, 0)
+
+	require.Len(t, sourceSnapshot.Resources, 4)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
+		sourceSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
+		sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name"),
+		sourceSnapshot.Resources[2].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2"),
+		sourceSnapshot.Resources[3].URN)
 }
