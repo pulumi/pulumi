@@ -132,7 +132,7 @@ jobs:
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
           overwrite: true
-          retention-days: 1
+          retention-days: 7
           path: |
             goreleaser/*.tar.gz
             goreleaser/*.zip
