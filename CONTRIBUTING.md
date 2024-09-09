@@ -149,7 +149,7 @@ Here's some examples of what we're trying to avoid:
 
 ### Downloading Pulumi from contributed pull requests
 
-Artifacts built during pull request workflows can be downloaded by running the following command (note that the artifacts expire 7 days after CI has been run)::
+Artifacts built during pull request workflows can be downloaded by running the following command (note that the artifacts expire 7 days after CI has been run):
 
 ```sh
 curl -fsSL https://get.pulumi.com | sh -s -- --version pr#<number>
