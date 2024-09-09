@@ -155,7 +155,7 @@ func nonInteractiveCurrentBackend(
 	}
 
 	if diy.IsDIYBackendURL(url) {
-		return diy.New(ctx, cmdutil.Diag(), url, project)
+		return diy.Login(ctx, cmdutil.Diag(), url, project)
 	}
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
@@ -179,7 +179,7 @@ func currentBackend(
 	}
 
 	if diy.IsDIYBackendURL(url) {
-		return diy.New(ctx, cmdutil.Diag(), url, project)
+		return diy.Login(ctx, cmdutil.Diag(), url, project)
 	}
 
 	return loginToCloud(ctx, url, project, pkgWorkspace.GetCloudInsecure(ws, url), opts)
