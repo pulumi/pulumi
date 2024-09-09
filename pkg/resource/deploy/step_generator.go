@@ -927,6 +927,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then we should emit a SameStep for it.
 		if !isTargeted {
+			originalOld := old
+
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 			// We need to check that we have the provider for this resource.
@@ -950,12 +952,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 					if providerResource == nil {
 						return nil, fmt.Errorf("could not find provider %v in old state", ref)
 					}
-					// Return a more friendly error to the user explaining this isn't supported.
-					return nil, fmt.Errorf("provider %s for resource %s has not been registered yet, this is "+
-						"due to a change of providers mixed with --target. "+
-						"Change your program back to the original providers", ref, urn)
+					// Warn that we're going to update the provider field for this resource even though it
+					// isn't targeted. This won't have any runtime effect but does change the state.
+					sg.deployment.Diag().Warningf(diag.GetUntargetedProviderWarning(urn), ref, urn)
+					// Copy the old state (we can't mutate it because the snapshot system might be using it) and set the
+					// provider to the new provider.
+					old = old.Copy()
+					old.Provider = new.Provider
 				}
 			}
+			topLevelOld := old
 
 			// When emitting a SameStep for an untargeted resource, we must also check
 			// for dependencies of the resource that may have been both deleted and
@@ -1102,7 +1108,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 					}
 				}
 
-				rootStep := NewSameStep(sg.deployment, event, old, old)
+				// Note the snapshot system works on pointers so we have to pass the original old state here. `old` may
+				// be a new copy of the old state so we could update the provider field.
+				oold := old
+				if old == topLevelOld {
+					oold = originalOld
+				}
+				rootStep := NewSameStep(sg.deployment, event, oold, old)
 				steps = append(steps, rootStep)
 				return steps, nil
 			}

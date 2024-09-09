@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Providers can be updated in targeted runs of `up`

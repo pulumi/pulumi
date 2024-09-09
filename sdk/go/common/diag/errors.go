@@ -90,3 +90,11 @@ func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
 		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
 	)
 }
+
+func GetUntargetedProviderWarning(urn resource.URN) *Diag {
+	return newError(urn, 2017,
+		"provider %s for resource %s has not been registered yet, this is "+
+			"due to a change of providers mixed with --target. "+
+			"It's state will be updated to the new provider despite not being targeted.",
+	)
+}

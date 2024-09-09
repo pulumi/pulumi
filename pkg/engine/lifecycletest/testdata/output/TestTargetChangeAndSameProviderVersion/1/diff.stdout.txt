@@ -1,17 +1,28 @@
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=ca379186-ea68-4f27-8997-62df96d088ea]
+<{%reset%}>    [id=fca07abc-0128-4c75-af7b-68adef8b0ae7]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:index:typA: (update)
-<{%reset%}>    [id=1cd36d20-7c41-4173-a036-030674ba6c24]
+<{%reset%}>    [id=13772cce-744b-4619-a994-02fbab77503a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:typA::target]
 <{%reset%}><{%fg 2%}>  + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgB: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default_2_0_0]
-<{%reset%}><{%fg 2%}>    version: <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%reset%}>  pkgB:index:typA: (same)
+<{%reset%}>    [id=9535f073-6af2-4eb4-8ed6-18ec1f1fbe17]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated1]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::1e5d4075-c31f-469d-a812-311acf0d5794<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgB::default_2_0_0::25527976-ecae-4db6-9a2d-cf487e0f4330<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgB: (same)
+<{%reset%}>    [id=1e5d4075-c31f-469d-a812-311acf0d5794]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0]
+<{%reset%}><{%reset%}><{%reset%}>  pkgB:index:typA: (same)
+<{%reset%}>    [id=0ece57a8-1541-46dc-86b0-71cfaee7f7ef]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgB:index:typA::unrelated2]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::1e5d4075-c31f-469d-a812-311acf0d5794]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
-    1 unchanged
+    3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

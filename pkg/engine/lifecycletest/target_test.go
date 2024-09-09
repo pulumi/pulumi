@@ -2201,7 +2201,9 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 }
 
 func TestTargetChangeProviderVersion(t *testing.T) {
-	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704
+	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704. It has been updated while
+	// fixing https://github.com/pulumi/pulumi/issues/15732 to allow the provider to be updated even though the resource
+	// wasn't targeted. Originally this test asserted that was an error.
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -2260,14 +2262,21 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 		}),
 	}
 	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
-	assert.ErrorContains(t, err,
-		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
+	assert.NoError(t, err)
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
 	assert.Equal(t, 6, len(snap.Resources))
+	// unrelated will have been updated to the new B provider
+	unrelated := snap.Resources[4]
+	assert.Equal(t, "unrelated", unrelated.URN.Name())
+	assert.True(t,
+		strings.HasPrefix(unrelated.Provider, "urn:pulumi:test::test::pulumi:providers:pkgB::default_2_0_0::"),
+		"Expected provider to be updated to 2.0.0, got %s", unrelated.Provider)
 }
 
 func TestTargetChangeAndSameProviderVersion(t *testing.T) {
-	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704
+	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704. It has been updated while
+	// fixing https://github.com/pulumi/pulumi/issues/15732 to allow the provider to be updated even though the resource
+	// wasn't targeted. Originally this test asserted that was an error.
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -2333,11 +2342,22 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 		}),
 	}
 	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
-	assert.ErrorContains(t, err,
-		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated1 has not been registered yet")
+	assert.NoError(t, err)
 	// Check we have 7 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2, new
 	// provider B)
 	assert.Equal(t, 7, len(snap.Resources))
+	// unrelated1 will have been updated to the new provider
+	unrelated1 := snap.Resources[4]
+	assert.Equal(t, "unrelated1", unrelated1.URN.Name())
+	assert.True(t,
+		strings.HasPrefix(unrelated1.Provider, "urn:pulumi:test::test::pulumi:providers:pkgB::default_2_0_0::"),
+		"Expected provider to be updated to 2.0.0, got %s", unrelated1.Provider)
+	// unrelated2 should still reference the old provider
+	unrelated2 := snap.Resources[6]
+	assert.Equal(t, "unrelated2", unrelated2.URN.Name())
+	assert.True(t,
+		strings.HasPrefix(unrelated2.Provider, "urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::"),
+		"Expected provider to be updated to 1.0.0, got %s", unrelated2.Provider)
 }
 
 // Tests that resources which are modified (e.g. omitted from a program) but not
