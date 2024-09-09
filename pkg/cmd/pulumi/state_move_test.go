@@ -1267,6 +1267,8 @@ Successfully moved resources from organization/test/sourceStack to organization/
 }
 
 func TestMoveLockedBackendShowsDeleteCommands(t *testing.T) {
+	t.Parallel()
+
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
@@ -1319,6 +1321,8 @@ func TestMoveLockedBackendShowsDeleteCommands(t *testing.T) {
 	}
 
 	lockingB, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
 	err = lockingB.Lock(ctx, sourceStack.Ref())
 	assert.NoError(t, err)
 
