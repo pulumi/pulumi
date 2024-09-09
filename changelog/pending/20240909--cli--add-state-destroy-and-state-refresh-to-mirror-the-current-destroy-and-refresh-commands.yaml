@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `state destroy` and `state refresh` to mirror the current `destroy` and `refresh` commands
