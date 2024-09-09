@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add a top level `run` function easily allowing the use of async, and starting pulumi programs directly from python.

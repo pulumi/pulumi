@@ -1454,3 +1454,44 @@ func TestConfigGetterOverloads(t *testing.T) {
 	// Run a preview. This will typecheck the program and fail if typechecking has errors.
 	e.RunCommand("pulumi", "preview")
 }
+
+// Integration test for `run`
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestRunPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "run"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, "hello", stack.Outputs["export"])
+		},
+	})
+
+	// Run the test again but _this_ time just use python instead of pulumi
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("python/run")
+
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python", "env", "src")
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", sdkPath)
+
+	// Run up
+	e.RunCommand(pythonBin, ".", "up", "--yes")
+	// Check the stack output
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
+	assert.Equal(t, "{\n  \"export\": \"hello\"\n}\n", stdout)
+}
