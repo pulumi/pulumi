@@ -35,7 +35,7 @@ type LoginManager interface {
 		setCurrent bool,
 	) (Backend, error)
 
-	// Login returns the current logged in backend instance for the given url, or starts the login process for that url.
+	// Login starts the login process for the given URL. If there is already a logged-in backend, this is returned as-is.
 	Login(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
