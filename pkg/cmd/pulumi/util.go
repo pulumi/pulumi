@@ -185,7 +185,8 @@ func nonInteractiveCurrentBackend(
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, true /*setCurrent*/)
+	// Only set current if we don't currently have a cloud URL set.
+	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "")
 }
 
 func currentBackend(
@@ -201,7 +202,8 @@ func currentBackend(
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, true /*setCurrent*/, opts.Color)
+	// Only set current if we don't currently have a cloud URL set.
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
 }
 
 func createSecretsManager(
