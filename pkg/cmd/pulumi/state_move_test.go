@@ -1329,6 +1329,6 @@ func TestMoveLockedBackendShowsDeleteCommands(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	//nolint:lll
 	assert.ErrorContains(t, err, "Please remove the resources from the source stack manually the following commands:\n"+
-		"    pulumi state delete --stack organization/test/sourceStack 'urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2'"+
+		"    pulumi state delete --stack organization/test/sourceStack 'urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2'\n"+
 		"    pulumi state delete --stack organization/test/sourceStack 'urn:pulumi:sourceStack::test::d:e:f$a:b:c::name'")
 }
