@@ -153,6 +153,9 @@ func (f *lm) Login(
 	color colors.Colorization,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
+		if setCurrent {
+			return diy.Login(ctx, sink, url, project)
+		}
 		return diy.New(ctx, sink, url, project)
 	}
 
