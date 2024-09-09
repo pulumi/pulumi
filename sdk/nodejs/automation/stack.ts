@@ -1480,6 +1480,11 @@ export interface DestroyOptions extends GlobalOpts {
     message?: string;
 
     /**
+     * Refresh the state of the stack's resources against the cloud provider before running destroy.
+     */
+    refresh?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
