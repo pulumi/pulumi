@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows
+// +build !windows
+
 package toolchain
 
 // This is to trigger a workaround for https://github.com/golang/go/issues/42919
