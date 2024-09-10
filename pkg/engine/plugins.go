@@ -159,6 +159,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 			continue
 		}
 		pkg := providers.GetProviderPackage(urn.Type())
+
+		name, err := providers.GetProviderName(pkg, res.Inputs)
+		if err != nil {
+			return set, err
+		}
 		version, err := providers.GetProviderVersion(res.Inputs)
 		if err != nil {
 			return set, err
@@ -171,10 +176,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
+			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", name, version, urn)
 		set.Add(workspace.PluginSpec{
-			Name:              pkg.String(),
+			Name:              name.String(),
 			Kind:              apitype.ResourcePlugin,
 			Version:           version,
 			PluginDownloadURL: downloadURL,

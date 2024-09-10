@@ -225,27 +225,6 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	})
 }
 
-// RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
-func RunInstallPlugins(
-	proj *workspace.Project,
-	pwd string,
-	main string,
-	target *deploy.Target,
-	plugctx *plugin.Context,
-) error {
-	_, _, err := installPlugins(
-		context.Background(),
-		proj,
-		pwd,
-		main,
-		target,
-		nil, /*opts*/
-		plugctx,
-		true, /*returnInstallErrors*/
-	)
-	return err
-}
-
 func installPlugins(
 	ctx context.Context,
 	proj *workspace.Project,
