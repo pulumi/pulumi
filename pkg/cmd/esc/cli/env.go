@@ -19,6 +19,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type ambiguousIdentifierError struct {
+	legacyRef environmentRef
+	ref       environmentRef
+}
+
+func (e ambiguousIdentifierError) Error() string {
+	return fmt.Sprintf(
+		"ambiguous path provided\n\nEnvironments found at both '%s' and '%s'.\nPlease specify the full path as <org-name>/<project-name>/<env-name>",
+		e.ref.String(),
+		e.legacyRef.String(),
+	)
+}
+
 type envCommand struct {
 	esc *escCommand
 
@@ -51,6 +64,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&env.envNameFlag, "env", "", "The name of the environment to operate on.")
 
 	cmd.AddCommand(newEnvInitCmd(env))
+	cmd.AddCommand(newEnvCloneCmd(env))
 	cmd.AddCommand(newEnvEditCmd(env))
 	cmd.AddCommand(newEnvGetCmd(env))
 	cmd.AddCommand(newEnvDiffCmd(env))
@@ -71,6 +85,7 @@ type environmentRef struct {
 	envName     string
 	version     string
 
+	isUsingLegacyID  bool
 	hasAmbiguousPath bool
 }
 
@@ -98,6 +113,7 @@ func (cmd *envCommand) parseRef(refStr string) environmentRef {
 	hasAmbiguousPath := false
 	orgName = cmd.esc.account.DefaultOrg
 	projectName = client.DefaultProject
+	isUsingLegacyID := false
 
 	parts := strings.Split(refStr, "/")
 
@@ -105,6 +121,8 @@ func (cmd *envCommand) parseRef(refStr string) environmentRef {
 	case l == 1:
 		// <environment-name>
 		envNameAndVersion = parts[0]
+
+		isUsingLegacyID = true
 	case l == 2:
 		// <project-name>/<env-name> or <org-name>/<env-name>
 		// We assume the former, and this will be disambiguated later.
@@ -129,6 +147,7 @@ func (cmd *envCommand) parseRef(refStr string) environmentRef {
 		projectName:      projectName,
 		envName:          envName,
 		version:          version,
+		isUsingLegacyID:  isUsingLegacyID,
 		hasAmbiguousPath: hasAmbiguousPath,
 	}
 }
@@ -193,6 +212,7 @@ func (cmd *envCommand) getNewEnvRef(
 		projectName:      client.DefaultProject,
 		envName:          ref.envName,
 		version:          ref.version,
+		isUsingLegacyID:  true,
 		hasAmbiguousPath: ref.hasAmbiguousPath,
 	}
 
@@ -255,6 +275,7 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 		projectName:      client.DefaultProject,
 		envName:          ref.envName,
 		version:          ref.version,
+		isUsingLegacyID:  true,
 		hasAmbiguousPath: ref.hasAmbiguousPath,
 	}
 
@@ -267,11 +288,10 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 
 	// Require unambiguous path if both paths exist
 	if exists && existsLegacyPath {
-		return ref, fmt.Errorf(
-			"ambiguous path provided\n\nEnvironments found at both '%s' and '%s'.\nPlease specify the full path as <org-name>/<project-name>/<env-name>",
-			ref.String(),
-			legacyRef.String(),
-		)
+		return ref, ambiguousIdentifierError{
+			legacyRef: legacyRef,
+			ref:       ref,
+		}
 	}
 
 	if existsLegacyPath {

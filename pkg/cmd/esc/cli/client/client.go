@@ -81,8 +81,12 @@ type Client interface {
 
 	// Deprecated: Use CreateEnvironmentWithProject instead
 	CreateEnvironment(ctx context.Context, orgName, envName string) error
+
 	// CreateEnvironment creates an environment named projectName/envName in orgName.
 	CreateEnvironmentWithProject(ctx context.Context, orgName, projectName, envName string) error
+
+	// CloneEnvironment clones an source environment into a new destination environment.
+	CloneEnvironment(ctx context.Context, orgName, srcEnvProject, srcEnvName string, destEnv CloneEnvironmentRequest) error
 
 	// GetEnvironment returns the YAML + ETag for the environment envName in org orgName. If decrypt is
 	// true, any { fn::secret: { ciphertext: "..." } } constructs in the definition will be decrypted and
@@ -467,6 +471,15 @@ func (pc *client) CreateEnvironmentWithProject(ctx context.Context, orgName, pro
 
 	path := fmt.Sprintf("/api/esc/environments/%v", orgName)
 	return pc.restCall(ctx, http.MethodPost, path, nil, req, nil)
+}
+
+func (pc *client) CloneEnvironment(
+	ctx context.Context,
+	orgName, srcEnvProject, srcEnvName string,
+	destEnv CloneEnvironmentRequest,
+) error {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/clone", orgName, srcEnvProject, srcEnvName)
+	return pc.restCall(ctx, http.MethodPost, path, nil, destEnv, nil)
 }
 
 func (pc *client) GetEnvironment(

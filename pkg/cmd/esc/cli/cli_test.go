@@ -523,6 +523,39 @@ func (c *testPulumiClient) CreateEnvironmentWithProject(ctx context.Context, org
 	return nil
 }
 
+func (c *testPulumiClient) CloneEnvironment(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	destEnv client.CloneEnvironmentRequest,
+) error {
+	srcEnvName := path.Join(orgName, projectName, envName)
+	srcEnv, ok := c.environments[srcEnvName]
+	if !ok {
+		return errors.New("source env not found")
+	}
+	if destEnv.Project == "" {
+		destEnv.Project = projectName
+	}
+	destEnvName := path.Join(orgName, destEnv.Project, destEnv.Name)
+	if _, ok := c.environments[destEnvName]; ok {
+		return errors.New("already exists")
+	}
+	testDestEnv := &testEnvironment{
+		revisions: []*testEnvironmentRevision{srcEnv.revisions[len(srcEnv.revisions)-1]},
+	}
+	if destEnv.PreserveHistory {
+		testDestEnv.revisions = srcEnv.revisions
+	}
+	if destEnv.PreserveEnvironmentTags {
+		testDestEnv.tags = srcEnv.tags
+	}
+	if destEnv.PreserveRevisionTags {
+		testDestEnv.revisionTags = srcEnv.revisionTags
+	}
+	c.environments[destEnvName] = testDestEnv
+	return nil
+}
+
 func (c *testPulumiClient) GetEnvironment(
 	ctx context.Context,
 	orgName string,

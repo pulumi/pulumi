@@ -1,0 +1,164 @@
+run: |
+  esc env clone default/src dest
+  esc env get default/dest
+  esc env version history default/dest --utc
+  esc env tag ls default/dest --utc
+  esc env clone default/src project/env
+  esc env get project/env
+  esc env clone default/src project/preserve --preserve-history --preserve-access --preserve-rev-tags --preserve-env-tags
+  esc env version history project/preserve --utc
+  esc env tag ls project/preserve --utc
+environments:
+  test-user/default/a: {}
+  test-user/default/src:
+    revisions:
+      - yaml:
+          values: {}
+      - yaml:
+          values:
+            string: hello, world!
+        tags:
+          - stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+    tags:
+      team: pulumi
+stdout: |
+  > esc env clone default/src dest
+  Environment test-user/default/src cloned into test-user/default/dest.
+  > esc env get default/dest
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "secret": "[secret]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+    secret:
+      fn::secret:
+        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+  ```
+
+  > esc env version history default/dest --utc
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env tag ls default/dest --utc
+  > esc env clone default/src project/env
+  Environment test-user/default/src cloned into test-user/project/env.
+  > esc env get project/env
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "secret": "[secret]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+    secret:
+      fn::secret:
+        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+  ```
+
+  > esc env clone default/src project/preserve --preserve-history --preserve-access --preserve-rev-tags --preserve-env-tags
+  Environment test-user/default/src cloned into test-user/project/preserve.
+  > esc env version history project/preserve --utc
+  revision 4
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3 (tag: stable)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env tag ls project/preserve --utc
+  Name: team
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+stderr: |
+  > esc env clone default/src dest
+  > esc env get default/dest
+  > esc env version history default/dest --utc
+  > esc env tag ls default/dest --utc
+  > esc env clone default/src project/env
+  > esc env get project/env
+  > esc env clone default/src project/preserve --preserve-history --preserve-access --preserve-rev-tags --preserve-env-tags
+  > esc env version history project/preserve --utc
+  > esc env tag ls project/preserve --utc

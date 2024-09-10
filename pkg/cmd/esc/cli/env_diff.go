@@ -51,7 +51,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				baseRef.version = "latest"
 			}
 
-			compareRef := environmentRef{baseRef.orgName, baseRef.projectName, baseRef.envName, "latest", baseRef.hasAmbiguousPath}
+			compareRef := environmentRef{baseRef.orgName, baseRef.projectName, baseRef.envName, "latest", baseRef.isUsingLegacyID, baseRef.hasAmbiguousPath}
 			if len(args) != 0 {
 				compareRef, err = env.getExistingEnvRefWithRelative(ctx, args[0], &baseRef)
 				if err != nil {

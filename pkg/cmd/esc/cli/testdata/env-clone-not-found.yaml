@@ -1,0 +1,38 @@
+run: |
+  esc env clone not/found dest
+error: exit status 1
+environments:
+  test-user/default/a: {}
+  test-user/default/src:
+    revisions:
+      - yaml:
+          values: {}
+      - yaml:
+          values:
+            string: hello, world!
+        tags:
+          - stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+    tags:
+      team: pulumi
+stdout: |
+  > esc env clone not/found dest
+stderr: |
+  > esc env clone not/found dest
+  Error: cloning environment: source env not found
