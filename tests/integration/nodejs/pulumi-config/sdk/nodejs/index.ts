@@ -10,11 +10,6 @@ export const doEcho: typeof import("./doEcho").doEcho = null as any;
 export const doEchoOutput: typeof import("./doEcho").doEchoOutput = null as any;
 utilities.lazyLoad(exports, ["doEcho","doEchoOutput"], () => require("./doEcho"));
 
-export { DoMultiEchoResult } from "./doMultiEcho";
-export const doMultiEcho: typeof import("./doMultiEcho").doMultiEcho = null as any;
-export const doMultiEchoOutput: typeof import("./doMultiEcho").doMultiEchoOutput = null as any;
-utilities.lazyLoad(exports, ["doMultiEcho","doMultiEchoOutput"], () => require("./doMultiEcho"));
-
 export * from "./echo";
 import { Echo } from "./echo";
 
@@ -48,26 +43,26 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "pkg:index:Echo":
+            case "testprovider:index:Echo":
                 return new Echo(name, <any>undefined, { urn })
-            case "pkg:index:FailsOnCreate":
+            case "testprovider:index:FailsOnCreate":
                 return new FailsOnCreate(name, <any>undefined, { urn })
-            case "pkg:index:FailsOnDelete":
+            case "testprovider:index:FailsOnDelete":
                 return new FailsOnDelete(name, <any>undefined, { urn })
-            case "pkg:index:PulumiConfig":
+            case "testprovider:index:PulumiConfig":
                 return new PulumiConfig(name, <any>undefined, { urn })
-            case "pkg:index:Random":
+            case "testprovider:index:Random":
                 return new Random(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("pkg", "index", _module)
-pulumi.runtime.registerResourcePackage("pkg", {
+pulumi.runtime.registerResourceModule("testprovider", "index", _module)
+pulumi.runtime.registerResourcePackage("testprovider", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
-        if (type !== "pulumi:providers:pkg") {
+        if (type !== "pulumi:providers:testprovider") {
             throw new Error(`unknown provider type ${type}`);
         }
         return new Provider(name, <any>undefined, { urn });

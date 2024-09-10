@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1844,10 +1844,84 @@ func TestRegression12301Node(t *testing.T) {
 	})
 }
 
-// Tests provider config is passed through to provider processes.
+// Tests provider config is passed through correctly to normal (side-by-side)
+// provider processes. Providers receive configuration which is namespaced to
+// their package through the `PULUMI_CONFIG` environment variable. Keys are
+// stripped of the provider package name prefix, so e.g. the `pulumi-aws`
+// provider will receive a `region` key rather than `aws:region`.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestPulumiConfig(t *testing.T) {
+func TestPulumiConfigNormalProviders(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	e.CWD, err = filepath.Abs("nodejs/pulumi-config")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("nodejs", "pulumi-config", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "--language", "nodejs", "--local")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "pulumi-config"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		NoParallel: true,
+		PrePrepareProject: func(project *engine.Projinfo) error {
+			// Patch up the local SDK's package.json so its pulumi dependency points
+			// to the local core SDK.
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			if err != nil {
+				return err
+			}
+			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
+
+			fmt.Println("coreSDK", coreSDK)
+			fmt.Println("packagejson", packageJSON)
+
+			data, err := os.ReadFile(packageJSON)
+			if err != nil {
+				return err
+			}
+			var pkgJSON map[string]interface{}
+			err = json.Unmarshal(data, &pkgJSON)
+			if err != nil {
+				return err
+			}
+			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps["@pulumi/pulumi"] = "file:" + coreSDK
+			data, err = json.MarshalIndent(pkgJSON, "", "  ")
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(packageJSON, data, 0o600)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Config: map[string]string{
+			"testprovider:value": "testing123",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Len(t, stack.Outputs, 1)
+			assert.Contains(t, stack.Outputs, "rv")
+			assert.Equal(t, "testing123", stack.Outputs["rv"].(string))
+		},
+	})
+}
+
+// Tests provider config is passed through correctly to dynamic provider
+// processes. Dynamic providers should receive all configuration through the
+// `PULUMI_CONFIG` environment variable (and thus be able to access this through
+// the relevant SDK's configuration mechanism).
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPulumiConfigDynamicProviders(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
 		Dependencies: []string{"@pulumi/pulumi"},

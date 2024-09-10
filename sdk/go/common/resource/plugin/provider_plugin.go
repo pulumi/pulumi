@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,12 +50,26 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+// The package name for the NodeJS dynamic provider. This is used both to handle buggy behaviour that previous
+// versions of this provider implemented, and to enable some unfortunate hacks to support various
+// dynamic-provider-specific features going forward.
+const nodejsDynamicProviderPackage = "pulumi-nodejs"
+
 // The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling
 // providers.MakeProviderType(tokens.Package("pulumi-nodejs")), but does not depend on the providers package
 // (a direct dependency would cause a cyclic import issue.
 //
 // This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
-const nodejsDynamicProviderType = "pulumi:providers:pulumi-nodejs"
+const nodejsDynamicProviderType = "pulumi:providers:" + nodejsDynamicProviderPackage
+
+// The package name for the Python dynamic provider. This is used to enable some unfortunate hacks to support various
+// dynamic-provider-specific features going forward.
+const pythonDynamicProviderPackage = "pulumi-python"
+
+// Returns true if and only if the given package refers to a dynamic provider.
+func isDynamicProvider(pkg tokens.Package) bool {
+	return pkg == tokens.Package(nodejsDynamicProviderPackage) || pkg == tokens.Package(pythonDynamicProviderPackage)
+}
 
 // The `Type()` for the Kubernetes provider.  Logically, this is the same as calling
 // providers.MakeProviderType(tokens.Package("kubernetes")), but does not depend on the providers package

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ const (
 
 var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
+	Version:     version,
 	Description: "A test provider.",
 	DisplayName: "testprovider",
 
@@ -58,7 +59,9 @@ var providerSchema = pschema.PackageSpec{
 	Types:     map[string]pschema.ComplexTypeSpec{},
 	Resources: map[string]pschema.ResourceSpec{},
 	Functions: map[string]pschema.FunctionSpec{},
-	Language:  map[string]pschema.RawMessage{},
+	Language: map[string]pschema.RawMessage{
+		"nodejs": pschema.RawMessage([]byte(`{"respectSchemaVersion": true}`)),
+	},
 }
 
 // Minimal set of methods to implement a basic provider.
@@ -77,6 +80,7 @@ var testProviders = func() map[string]testProvider {
 	ep := &echoProvider{}
 
 	testProviders := map[string]testProvider{
+		"testprovider:index:PulumiConfig":      &pulumiConfigProvider{},
 		"testprovider:index:Random":            &randomProvider{},
 		"testprovider:index:Echo":              ep,
 		"testprovider:index:Echo/doEchoMethod": ep,
