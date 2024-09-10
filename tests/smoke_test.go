@@ -290,6 +290,34 @@ func TestPackageGetSchema(t *testing.T) {
 }
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
+func TestPackageGetMappingToFile(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+	removeRandomFromLocalPlugins := func() {
+		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+	}
+
+	// Make sure the random provider is not installed locally
+	// So that we can test the `package get-mapping` command works if the plugin
+	// is not installed locally on first run.
+	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	if strings.Contains(out, "random  resource") {
+		removeRandomFromLocalPlugins()
+	}
+
+	stdout, result := e.RunCommand("pulumi",
+		"package", "get-mapping", "terraform", "random@4.13.0",
+		"--out", "mapping.json")
+	require.Empty(t, stdout)
+	require.Contains(t, result, "random@4.13.0 maps to provider random")
+	contents, err := os.ReadFile(filepath.Join(e.RootPath, "mapping.json"))
+	require.NoError(t, err, "Reading the generated tf mapping from file should work")
+	require.NotNil(t, contents, "mapping contents should be non-empty")
+}
+
+//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -307,11 +335,9 @@ func TestPackageGetMapping(t *testing.T) {
 		removeRandomFromLocalPlugins()
 	}
 
-	result, _ := e.RunCommand("pulumi", "package", "get-mapping", "terraform", "random@4.13.0", "--out", "mapping.json")
+	schema, result := e.RunCommand("pulumi", "package", "get-mapping", "terraform", "random@4.13.0")
 	require.Contains(t, result, "random@4.13.0 maps to provider random")
-	contents, err := os.ReadFile(filepath.Join(e.RootPath, "mapping.json"))
-	require.NoError(t, err, "Reading the generated tf mapping from file should work")
-	require.NotNil(t, contents, "mapping contents should be non-empty")
+	require.NotEmpty(t, schema, "mapping contents should be non-empty")
 }
 
 // Quick sanity tests for each downstream language to check that import works.
