@@ -74,6 +74,6 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	if err != nil || len(diags) != 0 {
 		return nil, convertESCDiags(diags), err
 	}
-	env, err := b.escClient.GetOpenEnvironmentWithProject(ctx, org, "project", "yaml", id)
+	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
 }
