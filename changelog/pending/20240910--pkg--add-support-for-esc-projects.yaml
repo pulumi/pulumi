@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: Add support for ESC Projects
