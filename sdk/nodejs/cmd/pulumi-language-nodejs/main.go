@@ -1267,7 +1267,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 			return nil, err
 		}
 	} else if os.IsNotExist(err) {
-		return nil, fmt.Errorf("BINGO YOU WIN!!! could not find either %s or %s", yarnFile, npmFile)
+		return nil, fmt.Errorf("could not find either %s or %s", yarnFile, npmFile)
 	} else {
 		return nil, fmt.Errorf("could not get node dependency data: %w", err)
 	}
