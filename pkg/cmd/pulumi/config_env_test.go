@@ -69,6 +69,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	createEnvironment func(
 		ctx context.Context,
 		org string,
+		project string,
 		name string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error),
@@ -202,6 +203,7 @@ func newConfigEnvCmdForInitTest(
 		func(
 			ctx context.Context,
 			org string,
+			project string,
 			name string,
 			yaml []byte,
 		) (apitype.EnvironmentDiagnostics, error) {
@@ -209,7 +211,7 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, envs, &esc.ExecContext{})
+			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -226,7 +228,7 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, envs, &esc.ExecContext{})
+			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},
