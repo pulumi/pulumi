@@ -1222,9 +1222,38 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
-	yarnFile := filepath.Join(req.Info.ProgramDirectory, "yarn.lock")
-	npmFile := filepath.Join(req.Info.ProgramDirectory, "package-lock.json")
-	packageFile := filepath.Join(req.Info.ProgramDirectory, "package.json")
+	packagePathCheck := func (path string) bool {
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			// Missing files and directories can't be markup files.
+			return false
+		}
+		name := info.Name()
+		return name == "package.json"
+	}
+	packagePath, err := fsutil.WalkUp(req.Info.ProgramDirectory, packagePathCheck, nil)
+	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// users can run pulumi with unreadable root directories.
+	var perr *fs.PathError
+	if errors.As(err, &perr) {
+		if errors.Is(perr.Err, fs.ErrPermission) {
+			err = nil
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate package.json file: %w", err)
+	}
+
+	if packagePath == "" {
+		return nil, fmt.Errorf(
+			"no package.json file found (searching upwards from %s)", req.Info.ProgramDirectory)
+	}
+
+	packagePath = filepath.Dir(packagePath)
+
+	yarnFile := filepath.Join(packagePath, "yarn.lock")
+	npmFile := filepath.Join(packagePath, "package-lock.json")
+	packageFile := filepath.Join(packagePath, "package.json")
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
@@ -1238,7 +1267,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 			return nil, err
 		}
 	} else if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find either %s or %s", yarnFile, npmFile)
+		return nil, fmt.Errorf("BINGO YOU WIN!!! could not find either %s or %s", yarnFile, npmFile)
 	} else {
 		return nil, fmt.Errorf("could not get node dependency data: %w", err)
 	}
