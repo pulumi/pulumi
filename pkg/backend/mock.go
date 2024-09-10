@@ -430,7 +430,8 @@ type MockEnvironmentsBackend struct {
 	CreateEnvironmentF func(
 		ctx context.Context,
 		org string,
-		name string,
+		projectName string,
+		envName string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error)
 
@@ -451,11 +452,12 @@ type MockEnvironmentsBackend struct {
 func (be *MockEnvironmentsBackend) CreateEnvironment(
 	ctx context.Context,
 	org string,
-	name string,
+	projectName string,
+	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
 	if be.CreateEnvironmentF != nil {
-		return be.CreateEnvironmentF(ctx, org, name, yaml)
+		return be.CreateEnvironmentF(ctx, org, projectName, envName, yaml)
 	}
 	panic("not implemented")
 }

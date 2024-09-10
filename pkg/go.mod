@@ -89,7 +89,7 @@ require (
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.9.1
+	github.com/pulumi/esc v0.9.2-0.20240910221656-328d3204100f
 	github.com/pulumi/pulumi-java/pkg v0.14.0
 	github.com/pulumi/pulumi-yaml v1.10.0
 	github.com/segmentio/encoding v0.3.5

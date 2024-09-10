@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
@@ -58,7 +59,7 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&impl.envName, "env", "",
-		`The name of the environment to create. Defaults to "<project name>-<stack name>"`)
+		`The name of the environment to create. Defaults to "<project name>/<stack name>"`)
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,
 		"Show secret values in plaintext instead of ciphertext")
@@ -117,11 +118,20 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	orgName := stack.(interface{ OrgName() string }).OrgName()
 
-	if cmd.envName == "" {
-		cmd.envName = fmt.Sprintf("%v-%v", project.Name, stack.Ref().Name())
+	// Parse given environment name
+	// Try to split the given envName into project/env
+	// Default to the stack's project and name if the environment project and/or name are not provided
+	envProject := project.Name.String()
+	envName := stack.Ref().Name().String()
+	first, second, found := strings.Cut(cmd.envName, "/")
+	if found {
+		envProject = first
+		envName = second
+	} else if first != "" {
+		envName = first
 	}
 
-	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v for stack %v...\n", cmd.envName, stack.Ref().Name())
+	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
 	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
 	if err != nil {
@@ -133,12 +143,12 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	yaml, err := cmd.renderEnvironmentDefinition(ctx, cmd.envName, crypter, config, cmd.showSecrets)
+	yaml, err := cmd.renderEnvironmentDefinition(ctx, envName, crypter, config, cmd.showSecrets)
 	if err != nil {
 		return err
 	}
 
-	preview, err := cmd.renderPreview(ctx, envBackend, orgName, cmd.envName, yaml, cmd.showSecrets)
+	preview, err := cmd.renderPreview(ctx, envBackend, orgName, envName, yaml, cmd.showSecrets)
 	if err != nil {
 		return err
 	}
@@ -155,13 +165,13 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	}
 
 	if !cmd.showSecrets {
-		yaml, err = eval.DecryptSecrets(ctx, cmd.envName, yaml, crypter)
+		yaml, err = eval.DecryptSecrets(ctx, envName, yaml, crypter)
 		if err != nil {
 			return err
 		}
 	}
 
-	diags, err := envBackend.CreateEnvironment(ctx, orgName, cmd.envName, yaml)
+	diags, err := envBackend.CreateEnvironment(ctx, orgName, envProject, envName, yaml)
 	if err != nil {
 		return fmt.Errorf("creating environment: %w", err)
 	}
@@ -169,7 +179,8 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("internal error creating environment: %w", diags)
 	}
 
-	projectStack.Environment = projectStack.Environment.Append(cmd.envName)
+	fullName := fmt.Sprintf("%s/%s", envProject, envName)
+	projectStack.Environment = projectStack.Environment.Append(fullName)
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
