@@ -460,7 +460,7 @@ None of the resources have been moved, it is safe to try again`, err)
 			return fmt.Errorf(`failed to save source snapshot: %w
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
-source stack.  Please remove the resources from the source stack manually the following commands:%v
+source stack.  Please remove the resources from the source stack manually using the following commands:%v
 '`, err, deleteCommands)
 		}
 		return fmt.Errorf(`failed to save source snapshot: %w
