@@ -626,7 +626,7 @@ func GetRequiredPlugins(
 		if err != nil {
 			return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 		}
-		// Query the language runtime plugin for it's version.
+		// Query the language runtime plugin for its version.
 		langInfo, err := lang.GetPluginInfo()
 		if err != nil {
 			// Don't error if this fails, just warn and return the version as unknown.
