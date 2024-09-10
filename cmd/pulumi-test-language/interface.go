@@ -301,7 +301,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
 
-	languageClient := plugin.NewLanguageRuntimeClient(pctx, req.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
+	languageClient := plugin.NewLanguageRuntimeClient(
+		pctx, req.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// Setup the artifacts directory
 	err = os.MkdirAll(filepath.Join(req.TemporaryDirectory, "artifacts"), 0o755)
@@ -418,7 +419,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
 
-	languageClient := plugin.NewLanguageRuntimeClient(pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
+	languageClient := plugin.NewLanguageRuntimeClient(
+		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
 	providers := make(map[string]plugin.Provider)
