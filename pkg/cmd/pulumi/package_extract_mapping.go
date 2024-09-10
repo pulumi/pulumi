@@ -33,6 +33,7 @@ func newExtractMappingCommand() *cobra.Command {
 		Long: `Get the mapping information for a given key from a package.
 
 <schema_source> can be a package name or the path to a plugin binary.`,
+		Hidden: !hasDebugCommands(),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]

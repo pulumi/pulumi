@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Mark `pulumi package get-mapping` as a debug command
