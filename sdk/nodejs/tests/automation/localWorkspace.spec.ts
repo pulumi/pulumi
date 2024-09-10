@@ -1450,7 +1450,9 @@ describe("LocalWorkspace", () => {
 
     it("sends SIGINT when aborted", async () => {
         const controller = new AbortController();
-        controller.abort();
+        new Promise(async () => {
+            setTimeout(() => controller.abort(), 100);
+        });
         const program = async () => {
             await new Promise((f) => setTimeout(f, 60000));
             return {};
@@ -1466,7 +1468,8 @@ describe("LocalWorkspace", () => {
             });
             assert.fail("expected canceled preview to throw");
         } catch (err) {
-            assert.strictEqual(err.toString(), "Error: ...");
+            assert.match(err.toString(), /stderr: Command was killed with SIGINT/);
+            assert.match(err.toString(), /CommandError: code: -2/);
         }
 
         await stack.workspace.removeStack(stackName);
