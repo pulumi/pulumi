@@ -21,7 +21,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var format string
 
 	cmd := &cobra.Command{
-		Use:   "open [<org-name>/]<environment-name>[@<version>] [property path]",
+		Use:   "open [<org-name>/][<project-name>/]<environment-name>[@<version>] [property path]",
 		Args:  cobra.MaximumNArgs(2),
 		Short: "Open the environment with the given name.",
 		Long: "Open the environment with the given name and return the result\n" +
@@ -36,7 +36,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := envcmd.getEnvRef(args)
+			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -164,13 +164,13 @@ func (env *envCommand) openEnvironment(
 	ref environmentRef,
 	duration time.Duration,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
-	envID, diags, err := env.esc.client.OpenEnvironment(ctx, ref.orgName, ref.envName, ref.version, duration)
+	envID, diags, err := env.esc.client.OpenEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, duration)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(diags) != 0 {
 		return nil, diags, err
 	}
-	open, err := env.esc.client.GetOpenEnvironment(ctx, ref.orgName, ref.envName, envID)
+	open, err := env.esc.client.GetOpenEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, envID)
 	return open, nil, err
 }

@@ -12,9 +12,9 @@ run: |
   esc env version tag rm test@initial
   esc env version tag ls test --utc
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     revisions:
       - yaml:
           values: {}

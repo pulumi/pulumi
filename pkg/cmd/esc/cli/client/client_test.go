@@ -103,7 +103,7 @@ func TestListEnvironments(t *testing.T) {
 
 		expectedToken := "next-token"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "", r.URL.Query().Get("continuationToken"))
 			assert.Equal(t, "", r.URL.Query().Get("organization"))
 
@@ -129,7 +129,7 @@ func TestListEnvironments(t *testing.T) {
 
 		expectedToken := "next-token"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "", r.URL.Query().Get("continuationToken"))
 			assert.Equal(t, org, r.URL.Query().Get("organization"))
 
@@ -149,7 +149,7 @@ func TestListEnvironments(t *testing.T) {
 	t.Run("token", func(t *testing.T) {
 		token := "next-token"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, token, r.URL.Query().Get("continuationToken"))
 			assert.Equal(t, "", r.URL.Query().Get("organization"))
 
@@ -166,15 +166,15 @@ func TestListEnvironments(t *testing.T) {
 
 func TestCreateEnvironment(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		err := client.CreateEnvironment(context.Background(), "test-org", "test-env")
+		err := client.CreateEnvironmentWithProject(context.Background(), "test-org", "test-project", "test-env")
 		assert.NoError(t, err)
 	})
 
 	t.Run("Conflict", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -183,7 +183,7 @@ func TestCreateEnvironment(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
-		err := client.CreateEnvironment(context.Background(), "test-org", "test-env")
+		err := client.CreateEnvironmentWithProject(context.Background(), "test-org", "test-project", "test-env")
 		assert.ErrorContains(t, err, "conflict")
 	})
 
@@ -194,14 +194,14 @@ func TestGetEnvironment(t *testing.T) {
 		expectedYAML := []byte("arbitrary content")
 		expectedTag := "new-tag"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-project", "test-env", "", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -212,14 +212,14 @@ func TestGetEnvironment(t *testing.T) {
 		expectedYAML := []byte("arbitrary content")
 		expectedTag := "new-tag"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/versions/42", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/versions/42", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-project", "test-env", "42", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -232,14 +232,14 @@ func TestGetEnvironment(t *testing.T) {
 
 		mux, client := newTestServer(t)
 
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/versions/stable", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/api/esc/environments/test-org/test-project/test-env/versions/stable", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "stable", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-project", "test-env", "stable", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -250,14 +250,14 @@ func TestGetEnvironment(t *testing.T) {
 		expectedYAML := []byte("arbitrary content")
 		expectedTag := "new-tag"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/decrypt", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/decrypt", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", true)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-project", "test-env", "", true)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -265,7 +265,7 @@ func TestGetEnvironment(t *testing.T) {
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -275,7 +275,7 @@ func TestGetEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, _, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
+		_, _, _, err := client.GetEnvironment(context.Background(), "test-org", "test-project", "test-env", "", false)
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -285,7 +285,7 @@ func TestUpdateEnvironment(t *testing.T) {
 		yaml := []byte("new definition")
 		tag := "old tag"
 
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, tag, r.Header.Get("ETag"))
 
 			body, err := io.ReadAll(r.Body)
@@ -296,7 +296,7 @@ func TestUpdateEnvironment(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", yaml, tag)
+		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-project", "test-env", yaml, tag)
 		require.NoError(t, err)
 		assert.Equal(t, 1, revision)
 		assert.Len(t, diags, 0)
@@ -322,7 +322,7 @@ func TestUpdateEnvironment(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
@@ -333,14 +333,14 @@ func TestUpdateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", nil, "")
+		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-project", "test-env", nil, "")
 		require.Equal(t, 0, revision)
 		require.NoError(t, err)
 		assert.Equal(t, expected, diags)
 	})
 
 	t.Run("Conflict", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -349,7 +349,7 @@ func TestUpdateEnvironment(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
-		_, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", nil, "")
+		_, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-project", "test-env", nil, "")
 		require.Equal(t, 0, revision)
 		assert.ErrorContains(t, err, "conflict")
 	})
@@ -357,10 +357,10 @@ func TestUpdateEnvironment(t *testing.T) {
 
 func TestDeleteEnvironment(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
-		client := newTestClient(t, http.MethodDelete, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodDelete, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		err := client.DeleteEnvironment(context.Background(), "test-org", "test-env")
+		err := client.DeleteEnvironment(context.Background(), "test-org", "test-project", "test-env")
 		assert.NoError(t, err)
 	})
 }
@@ -370,14 +370,14 @@ func TestOpenEnvironment(t *testing.T) {
 		const expectedID = "open-id"
 		duration := 2 * time.Hour
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
 			require.NoError(t, err)
 		})
 
-		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-env", "", duration)
+		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-project", "test-env", "", duration)
 		require.NoError(t, err)
 		assert.Equal(t, expectedID, id)
 		assert.Empty(t, diags)
@@ -387,14 +387,14 @@ func TestOpenEnvironment(t *testing.T) {
 		const expectedID = "open-id"
 		duration := 2 * time.Hour
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/versions/42/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/versions/42/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
 			require.NoError(t, err)
 		})
 
-		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-env", "42", duration)
+		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-project", "test-env", "42", duration)
 		require.NoError(t, err)
 		assert.Equal(t, expectedID, id)
 		assert.Empty(t, diags)
@@ -406,14 +406,14 @@ func TestOpenEnvironment(t *testing.T) {
 
 		mux, client := newTestServer(t)
 
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/versions/stable/open", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/api/esc/environments/test-org/test-project/test-env/versions/stable/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
 			require.NoError(t, err)
 		})
 
-		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-env", "stable", duration)
+		id, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-project", "test-env", "stable", duration)
 		require.NoError(t, err)
 		assert.Equal(t, expectedID, id)
 		assert.Empty(t, diags)
@@ -439,7 +439,7 @@ func TestOpenEnvironment(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/open", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
@@ -450,13 +450,13 @@ func TestOpenEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-env", "", 2*time.Hour)
+		_, diags, err := client.OpenEnvironment(context.Background(), "test-org", "test-project", "test-env", "", 2*time.Hour)
 		require.NoError(t, err)
 		assert.Equal(t, expected, diags)
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/open", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -466,7 +466,7 @@ func TestOpenEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, err := client.OpenEnvironment(context.Background(), "test-org", "test-env", "", 2*time.Hour)
+		_, _, err := client.OpenEnvironment(context.Background(), "test-org", "test-project", "test-env", "", 2*time.Hour)
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -481,7 +481,7 @@ func TestCheckYAMLEnvironment(t *testing.T) {
 			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/yaml/check", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/yaml/check", func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			assert.Equal(t, yaml, body)
@@ -518,7 +518,7 @@ func TestCheckYAMLEnvironment(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/yaml/check", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/yaml/check", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
@@ -542,7 +542,7 @@ func TestOpenYAMLEnvironment(t *testing.T) {
 		const expectedID = "open-id"
 		duration := 2 * time.Hour
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/yaml/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/yaml/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			body, err := io.ReadAll(r.Body)
@@ -581,7 +581,7 @@ func TestOpenYAMLEnvironment(t *testing.T) {
 			},
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/yaml/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/yaml/open", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 
 			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
@@ -607,18 +607,18 @@ func TestGetOpenEnvironment(t *testing.T) {
 			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
 		}
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
 			err := json.NewEncoder(w).Encode(expected)
 			require.NoError(t, err)
 		})
 
-		env, err := client.GetOpenEnvironment(context.Background(), "test-org", "test-env", "session")
+		env, err := client.GetOpenEnvironmentWithProject(context.Background(), "test-org", "test-project", "test-env", "session")
 		require.NoError(t, err)
 		assert.Equal(t, expected, env)
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -628,7 +628,7 @@ func TestGetOpenEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.GetOpenEnvironment(context.Background(), "test-org", "test-env", "session")
+		_, err := client.GetOpenEnvironmentWithProject(context.Background(), "test-org", "test-project", "test-env", "session")
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -638,20 +638,20 @@ func TestGetOpenProperty(t *testing.T) {
 		property := `foo[0].baz["qux"]`
 		expected := esc.NewValue("bar")
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, property, r.URL.Query().Get("property"))
 
 			err := json.NewEncoder(w).Encode(expected)
 			require.NoError(t, err)
 		})
 
-		val, err := client.GetOpenProperty(context.Background(), "test-org", "test-env", "session", property)
+		val, err := client.GetOpenProperty(context.Background(), "test-org", "test-project", "test-env", "session", property)
 		require.NoError(t, err)
 		assert.Equal(t, &expected, val)
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -661,7 +661,7 @@ func TestGetOpenProperty(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.GetOpenProperty(context.Background(), "test-org", "test-env", "session", "foo")
+		_, err := client.GetOpenProperty(context.Background(), "test-org", "test-project", "test-env", "session", "foo")
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -680,12 +680,12 @@ func TestGetEnvironmentTag(t *testing.T) {
 			EditorName:  "pulumipus",
 		}
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
 			err := json.NewEncoder(w).Encode(expectedTag)
 			require.NoError(t, err)
 		})
 
-		tag, err := client.GetEnvironmentTag(context.Background(), "test-org", "test-env", "owner")
+		tag, err := client.GetEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner")
 
 		require.NoError(t, err)
 		assert.Equal(t, expectedTag.ID, tag.ID)
@@ -698,7 +698,7 @@ func TestGetEnvironmentTag(t *testing.T) {
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -708,7 +708,7 @@ func TestGetEnvironmentTag(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.GetEnvironmentTag(context.Background(), "test-org", "test-env", "owner")
+		_, err := client.GetEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner")
 		assert.ErrorContains(t, err, http.StatusText(http.StatusNotFound))
 	})
 }
@@ -736,7 +736,7 @@ func TestListEnvironmentTags(t *testing.T) {
 			NextToken: "16",
 		}
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, after, r.URL.Query().Get("after"))
 			assert.Equal(t, fmt.Sprint(count), r.URL.Query().Get("count"))
 
@@ -744,7 +744,7 @@ func TestListEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		val, next, err := client.ListEnvironmentTags(context.Background(), "test-org", "test-env", ListEnvironmentTagsOptions{
+		val, next, err := client.ListEnvironmentTags(context.Background(), "test-org", "test-project", "test-env", ListEnvironmentTagsOptions{
 			After: after,
 			Count: &count,
 		})
@@ -763,7 +763,7 @@ func TestListEnvironmentTags(t *testing.T) {
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -773,7 +773,7 @@ func TestListEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, err := client.ListEnvironmentTags(context.Background(), "test-org", "test-env", ListEnvironmentTagsOptions{})
+		_, _, err := client.ListEnvironmentTags(context.Background(), "test-org", "test-project", "test-env", ListEnvironmentTagsOptions{})
 		assert.ErrorContains(t, err, http.StatusText(http.StatusNotFound))
 	})
 }
@@ -792,12 +792,12 @@ func TestCreateEnvironmentTags(t *testing.T) {
 			EditorName:  "pulumipus",
 		}
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
 			err := json.NewEncoder(w).Encode(expectedTag)
 			require.NoError(t, err)
 		})
 
-		val, err := client.CreateEnvironmentTag(context.Background(), "test-org", "test-env", "owner", "pulumi")
+		val, err := client.CreateEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner", "pulumi")
 		require.NoError(t, err)
 		assert.Equal(t, expectedTag.ID, val.ID)
 		assert.Equal(t, expectedTag.Created.UTC(), val.Created.UTC())
@@ -809,7 +809,7 @@ func TestCreateEnvironmentTags(t *testing.T) {
 	})
 
 	t.Run("Bad request", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/tags", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -819,7 +819,7 @@ func TestCreateEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.CreateEnvironmentTag(context.Background(), "test-org", "test-env", "owner", "pulumi")
+		_, err := client.CreateEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner", "pulumi")
 		assert.ErrorContains(t, err, http.StatusText(http.StatusBadRequest))
 	})
 }
@@ -847,7 +847,7 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 			EditorName:  "pulumipus",
 		}
 
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			expectedBodyJSON, err := json.Marshal(expectedBody)
@@ -858,7 +858,7 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		val, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-env", "owner", "pulumi", "", "pulumipus")
+		val, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner", "pulumi", "", "pulumipus")
 		require.NoError(t, err)
 		assert.Equal(t, expectedTag.ID, val.ID)
 		assert.Equal(t, expectedTag.Created.UTC(), val.Created.UTC())
@@ -891,7 +891,7 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 			EditorName:  "pulumipus",
 		}
 
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			expectedBodyJSON, err := json.Marshal(expectedBody)
@@ -902,7 +902,7 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		val, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-env", "owner", "pulumi", "team", "")
+		val, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner", "pulumi", "team", "")
 		require.NoError(t, err)
 		assert.Equal(t, expectedTag.ID, val.ID)
 		assert.Equal(t, expectedTag.Created.UTC(), val.Created.UTC())
@@ -914,7 +914,7 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPatch, "/api/preview/environments/test-org/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env/tags/owner", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -924,23 +924,23 @@ func TestUpdateEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-env", "owner", "pulumi", "team", "")
+		_, err := client.UpdateEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "owner", "pulumi", "team", "")
 		assert.ErrorContains(t, err, http.StatusText(http.StatusNotFound))
 	})
 }
 
 func TestDeleteEnvironmentTags(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
-		client := newTestClient(t, http.MethodDelete, "/api/preview/environments/test-org/test-env/tags/tagName", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodDelete, "/api/esc/environments/test-org/test-project/test-env/tags/tagName", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		err := client.DeleteEnvironmentTag(context.Background(), "test-org", "test-env", "tagName")
+		err := client.DeleteEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "tagName")
 		require.NoError(t, err)
 	})
 
 	t.Run("Not found", func(t *testing.T) {
-		client := newTestClient(t, http.MethodDelete, "/api/preview/environments/test-org/test-env/tags/tagName", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodDelete, "/api/esc/environments/test-org/test-project/test-env/tags/tagName", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
@@ -950,7 +950,7 @@ func TestDeleteEnvironmentTags(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		err := client.DeleteEnvironmentTag(context.Background(), "test-org", "test-env", "tagName")
+		err := client.DeleteEnvironmentTag(context.Background(), "test-org", "test-project", "test-env", "tagName")
 		assert.ErrorContains(t, err, http.StatusText(http.StatusNotFound))
 	})
 }

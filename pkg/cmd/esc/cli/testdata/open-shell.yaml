@@ -1,6 +1,6 @@
 run: esc open test --format shell
 environments:
-  test-user/test:
+  test-user/default/test:
     imports:
       - test-2
     values:
@@ -14,7 +14,7 @@ environments:
       files:
         BOOL_FILE: ${yup}
         NUM_FILE: ${pi}
-  test-user/test-2:
+  test-user/default/test-2:
     values:
       foo: baz
       hello: world

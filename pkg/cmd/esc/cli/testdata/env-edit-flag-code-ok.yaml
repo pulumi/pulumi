@@ -7,7 +7,7 @@ process:
       if [[ "$1" -ne "-w" ]]; then exit 1; fi
       echo -e "values:\n  foo: baz\n" >$2
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       foo: bar
 stdout: |+

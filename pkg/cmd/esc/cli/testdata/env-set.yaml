@@ -17,7 +17,7 @@ run: |
   esc env set test 'imports[1]' test3 && esc env get test
 stdout: |+
   > esc env init test
-  Environment created.
+  Environment created: test-user/default/test
   > esc env set test foo.bar.baz qux
   > esc env get test
   # Value
@@ -397,7 +397,7 @@ stdout: |+
   ```
 
   > esc env init test2
-  Environment created.
+  Environment created: test-user/default/test2
   > esc env set test imports[0] test2
   > esc env get test
   # Value
@@ -445,7 +445,7 @@ stdout: |+
   ```
 
   > esc env init test3
-  Environment created.
+  Environment created: test-user/default/test3
   > esc env set test imports[1] test3
   > esc env get test
   # Value

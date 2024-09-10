@@ -5,7 +5,7 @@ run: |
   esc env edit test -f=def.yaml
   esc env get test
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       foo: bar
 stdout: |+

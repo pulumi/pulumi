@@ -18,7 +18,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "history [<org-name>/]<environment-name>[@<version>]",
+		Use:   "history [<org-name>/][<project-name>/]<environment-name>[@<version>]",
 		Short: "Show revision history.",
 		Long: "Show revision history\n" +
 			"\n" +
@@ -33,7 +33,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -41,7 +41,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 
 			before := 0
 			if ref.version != "" {
-				rev, err := env.esc.client.GetRevisionNumber(ctx, ref.orgName, ref.envName, ref.version)
+				rev, err := env.esc.client.GetRevisionNumber(ctx, ref.orgName, ref.projectName, ref.envName, ref.version)
 				if err != nil {
 					return err
 				}
@@ -57,7 +57,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 						Before: &before,
 						Count:  &count,
 					}
-					revisions, err := env.esc.client.ListEnvironmentRevisions(ctx, ref.orgName, ref.envName, options)
+					revisions, err := env.esc.client.ListEnvironmentRevisions(ctx, ref.orgName, ref.projectName, ref.envName, options)
 					if err != nil {
 						return err
 					}

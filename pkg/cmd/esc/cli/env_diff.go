@@ -23,7 +23,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 	diff := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "diff [<org-name>/]<environment-name>[@<version>] [[[org-name/]<environment-name>]@<version>]",
+		Use:   "diff [<org-name>/][<project-name>/]<environment-name>[@<version>] [[[org-name/][<project-name>/]<environment-name>]@<version>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Show changes between versions.",
 		Long: "Show changes between versions\n" +
@@ -43,7 +43,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			baseRef, args, err := env.getEnvRef(args)
+			baseRef, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -51,9 +51,12 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				baseRef.version = "latest"
 			}
 
-			compareRef := environmentRef{baseRef.orgName, baseRef.envName, "latest"}
+			compareRef := environmentRef{baseRef.orgName, baseRef.projectName, baseRef.envName, "latest", baseRef.hasAmbiguousPath}
 			if len(args) != 0 {
-				compareRef = env.getRelativeEnvRef(args[0], &baseRef)
+				compareRef, err = env.getExistingEnvRefWithRelative(ctx, args[0], &baseRef)
+				if err != nil {
+					return err
+				}
 			}
 
 			var path resource.PropertyPath

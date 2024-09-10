@@ -11,14 +11,14 @@ run: |
   esc env rm test 'open["fn::open::test"].foo' && esc env get test
   esc env rm test open && esc env get test
 environments:
-  test-user/a:
+  test-user/default/a:
     values:
       object: {hello: esc, goodbye: world}
-  test-user/b:
+  test-user/default/b:
     values:
       string: foo
       object: {goodbye: all}
-  test-user/test:
+  test-user/default/test:
     imports:
       - a
       - b

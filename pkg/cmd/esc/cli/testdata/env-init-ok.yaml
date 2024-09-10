@@ -8,11 +8,11 @@ run: |
   esc env get test-file
 stdout: |+
   > esc env init test-env
-  Environment created.
+  Environment created: test-user/default/test-env
   > esc env get test-env
 
   > esc env init test-stdin -f=-
-  Environment created.
+  Environment created: test-user/default/test-stdin
   > esc env get test-stdin
   # Value
   ```json
@@ -27,7 +27,7 @@ stdout: |+
   ```
 
   > esc env init test-file -f def.yaml
-  Environment created.
+  Environment created: test-user/default/test-file
   > esc env get test-file
   # Value
   ```json

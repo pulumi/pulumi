@@ -34,7 +34,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	edit := &envEditCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "edit [<org-name>/]<environment-name>",
+		Use:   "edit [<org-name>/][<project-name>/]<environment-name>",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Edit an environment definition",
 		Long: "Edit an environment definition\n" +
@@ -53,7 +53,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := edit.env.getEnvRef(args)
+			ref, args, err := edit.env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return fmt.Errorf("reading environment definition: %w", err)
 				}
 
-				diags, err := edit.env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, yaml, "")
+				diags, err := edit.env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, yaml, "")
 				if err != nil {
 					return fmt.Errorf("updating environment definition: %w", err)
 				}
@@ -91,7 +91,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			yaml, tag, _, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", showSecrets)
+			yaml, tag, _, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -112,7 +112,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				diags, err = edit.env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
+				diags, err = edit.env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, newYAML, tag)
 				if err != nil {
 					return fmt.Errorf("updating environment definition: %w", err)
 				}

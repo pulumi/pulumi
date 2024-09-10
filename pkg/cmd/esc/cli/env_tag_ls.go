@@ -20,7 +20,7 @@ func newEnvTagLsCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "ls [<org-name>/]<environment-name>",
+		Use:   "ls [<org-name>/][<project-name>/]<environment-name>",
 		Short: "List environment tags.",
 		Long: "List environment tags\n" +
 			"\n" +
@@ -34,7 +34,7 @@ func newEnvTagLsCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, _, err := env.getEnvRef(args)
+			ref, _, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -53,7 +53,7 @@ func newEnvTagLsCmd(env *envCommand) *cobra.Command {
 						After: after,
 						Count: &count,
 					}
-					tags, next, err := env.esc.client.ListEnvironmentTags(ctx, ref.orgName, ref.envName, options)
+					tags, next, err := env.esc.client.ListEnvironmentTags(ctx, ref.orgName, ref.projectName, ref.envName, options)
 					if err != nil {
 						return err
 					}

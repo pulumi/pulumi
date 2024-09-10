@@ -11,14 +11,14 @@ run: |
   esc env get test --value string object.goodbye
   esc env get test --value string open
 environments:
-  test-user/a:
+  test-user/default/a:
     values:
       object: {hello: esc, goodbye: world}
-  test-user/b:
+  test-user/default/b:
     values:
       string: foo
       object: {goodbye: all}
-  test-user/test:
+  test-user/default/test:
     imports:
       - a
       - b

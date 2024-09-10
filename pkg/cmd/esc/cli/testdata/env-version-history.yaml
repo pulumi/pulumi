@@ -7,9 +7,9 @@ run: |
   esc env version history test@3 --utc
   esc env version history test@4 --utc
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     revisions:
       - yaml:
           values: {}

@@ -17,7 +17,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "tag [<org-name>/]<environment-name> <name> <value>",
+		Use:   "tag [<org-name>/][<project-name>/]<environment-name> <name> <value>",
 		Args:  cobra.ExactArgs(3),
 		Short: "Manage environment tags",
 		Long: "Manage environment tags\n" +
@@ -33,7 +33,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 				return errors.New("environment tag value cannot be empty")
 			}
 
-			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.envName, name)
+			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, name)
 			if err != nil && !client.IsNotFound(err) {
 				return err
 			}
@@ -63,7 +63,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				t, err := env.esc.client.UpdateEnvironmentTag(ctx, ref.orgName, ref.envName, tag.Name, tag.Value, tag.Name, value)
+				t, err := env.esc.client.UpdateEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, tag.Name, tag.Value, tag.Name, value)
 				if err == nil {
 					printTag(env.esc.stdout, st, t, utcFlag(utc))
 					return nil
@@ -71,7 +71,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			t, err := env.esc.client.CreateEnvironmentTag(ctx, ref.orgName, ref.envName, name, value)
+			t, err := env.esc.client.CreateEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, name, value)
 			if err != nil {
 				return err
 			}

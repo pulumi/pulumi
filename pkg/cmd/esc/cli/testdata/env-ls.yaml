@@ -1,16 +1,16 @@
 run: esc env ls
 environments:
-  test-org-2/env: true
-  test-org/env: true
-  test-org/env-2: true
-  test-user/env: true
-  test-user/env-2: true
+  test-org-2/default/env: true
+  test-org/default/env: true
+  test-org/default/env-2: true
+  test-user/default/env: true
+  test-user/default/env-2: true
 stdout: |
   > esc env ls
-  env
-  env-2
-  test-org/env
-  test-org/env-2
-  test-org-2/env
+  default/env
+  default/env-2
+  test-org/default/env
+  test-org/default/env-2
+  test-org-2/default/env
 stderr: |
   > esc env ls

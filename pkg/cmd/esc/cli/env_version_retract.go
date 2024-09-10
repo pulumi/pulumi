@@ -14,7 +14,7 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 	var reason string
 
 	cmd := &cobra.Command{
-		Use:   "retract [<org-name>/]<environment-name>@<version>",
+		Use:   "retract [<org-name>/][<project-name>/]<environment-name>@<version>",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Retract a specific revision of an environment",
 		Long: "Retract a specific revision of an environment\n" +
@@ -36,7 +36,7 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -47,10 +47,15 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 
 			var replacementRevision *int
 			if replacement != "" {
-				replacementRef := env.getRelativeEnvRef(replacement, &ref)
+				replacementRef, err := env.getExistingEnvRefWithRelative(ctx, replacement, &ref)
+				if err != nil {
+					return err
+				}
+
 				rev, err := env.esc.client.GetRevisionNumber(
 					ctx,
 					replacementRef.orgName,
+					replacementRef.projectName,
 					replacementRef.envName,
 					replacementRef.version,
 				)
@@ -60,7 +65,7 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 				replacementRevision = &rev
 			}
 
-			return env.esc.client.RetractEnvironmentRevision(ctx, ref.orgName, ref.envName, ref.version, replacementRevision, reason)
+			return env.esc.client.RetractEnvironmentRevision(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, replacementRevision, reason)
 		},
 	}
 

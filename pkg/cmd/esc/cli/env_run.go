@@ -100,7 +100,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
 
 	cmd := &cobra.Command{
-		Use:   "run [<org-name>/]<environment-name> [flags] -- [command]",
+		Use:   "run [<org-name>/][<project-name>/]<environment-name> [flags] -- [command]",
 		Args:  cobra.ArbitraryArgs,
 		Short: "Open the environment with the given name and run a command.",
 		Long: fmt.Sprintf("Open the environment with the given name and run a command\n"+
@@ -130,7 +130,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := envcmd.getEnvRef(args)
+			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}

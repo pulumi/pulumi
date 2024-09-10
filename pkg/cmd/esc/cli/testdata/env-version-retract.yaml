@@ -7,7 +7,7 @@ run: |
   esc env version retract test@4
   esc env version history test --utc
 environments:
-  test-user/test:
+  test-user/default/test:
     revisions:
       - yaml:
           values:

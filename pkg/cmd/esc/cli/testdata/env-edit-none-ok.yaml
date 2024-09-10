@@ -6,7 +6,7 @@ process:
     vi: |
       echo -e "values:\n  foo: baz\n" >$1
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       foo: bar
 stdout: |+

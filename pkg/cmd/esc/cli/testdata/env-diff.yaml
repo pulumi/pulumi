@@ -14,9 +14,9 @@ run: |
   esc env diff test@stable --format dotenv
   esc env diff test@stable --format shell
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     revisions:
       - yaml:
           values:
@@ -45,7 +45,7 @@ environments:
             environmentVariables:
               FOO: baz
               BAR: qux
-  test-user/test-v2:
+  test-user/default/test-v2:
     revisions:
       - yaml:
           values:
@@ -70,8 +70,8 @@ stdout: |
   > esc env diff test@stable
   # Value
   ```diff
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -99,8 +99,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1,4 +1,19 @@
   +imports:
   +  - a
@@ -128,8 +128,8 @@ stdout: |
   > esc env diff test@1
   # Value
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@latest
+  --- test-user/default/test@1
+  +++ test-user/default/test@latest
   @@ -1 +1,19 @@
   +{
   +  "array": [
@@ -155,8 +155,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@latest
+  --- test-user/default/test@1
+  +++ test-user/default/test@latest
   @@ -1 +1,19 @@
   +imports:
   +  - a
@@ -182,8 +182,8 @@ stdout: |
   > esc env diff test@2
   # Value
   ```diff
-  --- test-user/test@2
-  +++ test-user/test@latest
+  --- test-user/default/test@2
+  +++ test-user/default/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -211,8 +211,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@2
-  +++ test-user/test@latest
+  --- test-user/default/test@2
+  +++ test-user/default/test@latest
   @@ -1,4 +1,19 @@
   +imports:
   +  - a
@@ -241,8 +241,8 @@ stdout: |
   > esc env diff test@1 @2
   # Value
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@2
+  --- test-user/default/test@1
+  +++ test-user/default/test@2
   @@ -1 +1,6 @@
   +{
   +  "environmentVariables": {
@@ -255,8 +255,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@2
+  --- test-user/default/test@1
+  +++ test-user/default/test@2
   @@ -1 +1,4 @@
   +values:
   +  string: hello, world!
@@ -267,8 +267,8 @@ stdout: |
   > esc env diff test@1 @stable
   # Value
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@stable
+  --- test-user/default/test@1
+  +++ test-user/default/test@stable
   @@ -1 +1,6 @@
   +{
   +  "environmentVariables": {
@@ -281,8 +281,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@1
-  +++ test-user/test@stable
+  --- test-user/default/test@1
+  +++ test-user/default/test@stable
   @@ -1 +1,4 @@
   +values:
   +  string: hello, world!
@@ -293,8 +293,8 @@ stdout: |
   > esc env diff test@stable test-v2@stable
   # Value
   ```diff
-  --- test-user/test@stable
-  +++ test-user/test-v2@stable
+  --- test-user/default/test@stable
+  +++ test-user/default/test-v2@stable
   @@ -2,5 +2,5 @@
      "environmentVariables": {
        "FOO": "bar"
@@ -307,8 +307,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@stable
-  +++ test-user/test-v2@stable
+  --- test-user/default/test@stable
+  +++ test-user/default/test-v2@stable
   @@ -1,4 +1,4 @@
    values:
   -  string: hello, world!
@@ -320,8 +320,8 @@ stdout: |
   > esc env diff test test-v2
   # Value
   ```diff
-  --- test-user/test@latest
-  +++ test-user/test-v2
+  --- test-user/default/test@latest
+  +++ test-user/default/test-v2
   @@ -1,19 +1,7 @@
    {
   -  "array": [
@@ -349,8 +349,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test-user/test@latest
-  +++ test-user/test-v2
+  --- test-user/default/test@latest
+  +++ test-user/default/test-v2
   @@ -3,17 +3,7 @@
      - b
    values:
@@ -374,8 +374,8 @@ stdout: |
 
   ```
   > esc env diff test@stable --format json
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -399,21 +399,21 @@ stdout: |
   +  "string": "esc"
    }
   > esc env diff test@stable --format string
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1 +1 @@
   -"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
   +"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
   > esc env diff test@stable --format dotenv
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1 +1,2 @@
   -FOO="bar"
   +BAR="qux"
   +FOO="baz"
   > esc env diff test@stable --format shell
-  --- test-user/test@stable
-  +++ test-user/test@latest
+  --- test-user/default/test@stable
+  +++ test-user/default/test@latest
   @@ -1 +1,2 @@
   -export FOO="bar"
   +export BAR="qux"

@@ -1,6 +1,6 @@
 run: esc open test --format json
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       object: {}
       missing: ${foo}

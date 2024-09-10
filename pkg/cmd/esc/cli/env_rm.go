@@ -19,7 +19,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rm [<org-name>/]<environment-name> [path]",
+		Use:   "rm [<org-name>/][<project-name>/]<environment-name> [path]",
 		Args:  cobra.MaximumNArgs(2),
 		Short: "Remove an environment or a value from an environment.",
 		Long: "Remove an environment or a value from an environment\n" +
@@ -38,7 +38,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 
 			// Are we removing the entire environment?
 			if len(args) == 0 {
-				envSlug := fmt.Sprintf("%v/%v", ref.orgName, ref.envName)
+				envSlug := fmt.Sprintf("%v/%v/%v", ref.orgName, ref.projectName, ref.envName)
 
 				// Ensure the user really wants to do this.
 				prompt := fmt.Sprintf("This will permanently remove the %q environment!", envSlug)
@@ -56,7 +56,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 					return errors.New("confirmation declined")
 				}
 
-				err = env.esc.client.DeleteEnvironment(ctx, ref.orgName, ref.envName)
+				err = env.esc.client.DeleteEnvironment(ctx, ref.orgName, ref.projectName, ref.envName)
 				if err != nil {
 					return err
 				}
@@ -72,7 +72,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("invalid path: %w", err)
 			}
 
-			def, tag, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", false)
+			def, tag, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -98,7 +98,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
+			diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, newYAML, tag)
 			if err != nil {
 				return fmt.Errorf("updating environment definition: %w", err)
 			}

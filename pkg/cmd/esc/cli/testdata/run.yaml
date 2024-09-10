@@ -17,7 +17,7 @@ process:
       source $FILE
       echo "secret: $F_SECRET, plain: $F_PLAIN"
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       secret: {"fn::secret": "hunter2"}
       plain: plaintext

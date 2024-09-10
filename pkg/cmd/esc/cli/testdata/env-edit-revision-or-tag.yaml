@@ -7,7 +7,7 @@ process:
     my-editor: |
       echo -e "\n" >$1
 environments:
-  test-user/test:
+  test-user/default/test:
     values:
       foo: bar
 stdout: |

@@ -11,7 +11,7 @@ import (
 
 func newEnvTagRmCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rm [<org-name>/]<environment-name> <tag-name>",
+		Use:   "rm [<org-name>/][<project-name>/]<environment-name> <tag-name>",
 		Short: "Remove an environment tag.",
 		Long: "Remove an environment tag\n" +
 			"\n" +
@@ -25,7 +25,7 @@ func newEnvTagRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, _, err := env.getEnvRef(args)
+			ref, _, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -35,7 +35,7 @@ func newEnvTagRmCmd(env *envCommand) *cobra.Command {
 
 			tagIdentifier := args[1]
 
-			if err := env.esc.client.DeleteEnvironmentTag(ctx, ref.orgName, ref.envName, tagIdentifier); err != nil {
+			if err := env.esc.client.DeleteEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, tagIdentifier); err != nil {
 				return err
 			}
 

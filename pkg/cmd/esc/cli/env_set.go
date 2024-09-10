@@ -21,7 +21,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var plaintext bool
 
 	cmd := &cobra.Command{
-		Use:   "set [<org-name>/]<environment-name> <path> <value>",
+		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
 		Args:  cobra.RangeArgs(2, 3),
 		Short: "Set a value within an environment.",
 		Long: "Set a value within an environment\n" +
@@ -37,7 +37,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				yamlValue = *yamlValue.Content[0]
 			}
 
-			def, tag, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", false)
+			def, tag, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -129,7 +129,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
+			diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, newYAML, tag)
 			if err != nil {
 				return fmt.Errorf("updating environment definition: %w", err)
 			}

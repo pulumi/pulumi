@@ -3,14 +3,14 @@ run: |
   esc env get test 'imports[0]'
   esc env get test 'imports[1]'
 environments:
-  test-user/a:
+  test-user/default/a:
     values:
       object: {hello: esc, goodbye: world}
-  test-user/b:
+  test-user/default/b:
     values:
       string: foo
       object: {goodbye: all}
-  test-user/test:
+  test-user/default/test:
     imports:
       - a
       - b

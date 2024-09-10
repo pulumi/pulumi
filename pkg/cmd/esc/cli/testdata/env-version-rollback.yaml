@@ -4,9 +4,9 @@ run: |
   esc env version rollback test@2
 error: exit status 1
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     revisions:
       - yaml:
           imports:

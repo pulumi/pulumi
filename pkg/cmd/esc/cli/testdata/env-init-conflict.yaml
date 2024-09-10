@@ -1,7 +1,7 @@
 run: esc env init dup
 error: exit status 1
 environments:
-  test-user/dup: arbitrary
+  test-user/default/dup: arbitrary
 stdout: |
   > esc env init dup
 stderr: |

@@ -2,9 +2,9 @@ run: |
   esc env get test --value=shell
   esc env get test --value=shell --show-secrets
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     imports:
       - a
       - b

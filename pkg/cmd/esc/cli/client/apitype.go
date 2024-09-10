@@ -127,6 +127,7 @@ type ListEnvironmentRevisionTagsResponse struct {
 }
 type OrgEnvironment struct {
 	Organization string `json:"organization,omitempty"`
+	Project      string `json:"project,omitempty"`
 	Name         string `json:"name,omitempty"`
 }
 

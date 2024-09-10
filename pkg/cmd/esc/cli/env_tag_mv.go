@@ -14,7 +14,7 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "mv [<org-name>/]<environment-name> <name> <new-name>",
+		Use:   "mv [<org-name>/][<project-name>/]<environment-name> <name> <new-name>",
 		Args:  cobra.ExactArgs(3),
 		Short: "Move an environment tag",
 		Long: "Move an environment tag\n" +
@@ -29,7 +29,7 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -46,7 +46,7 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 				return errors.New("environment tag value cannot be empty")
 			}
 
-			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.envName, name)
+			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, name)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 				return nil
 			}
 
-			t, err := env.esc.client.UpdateEnvironmentTag(ctx, ref.orgName, ref.envName, tag.Name, tag.Value, newName, tag.Value)
+			t, err := env.esc.client.UpdateEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, tag.Name, tag.Value, newName, tag.Value)
 			if err != nil {
 				return err
 			}

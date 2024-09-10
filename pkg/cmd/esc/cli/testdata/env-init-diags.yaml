@@ -4,7 +4,7 @@ run: |
 error: exit status 1
 stdout: |
   > esc env init test-stdin -f=-
-  Environment created.
+  Environment created: test-user/default/test-stdin
 stderr: |
   > esc env init test-stdin -f=-
   Error: unknown property "bar"

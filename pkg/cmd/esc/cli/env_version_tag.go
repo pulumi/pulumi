@@ -15,7 +15,7 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "tag [<org-name>/]<environment-name>@<tag> [@<version>]",
+		Use:   "tag [<org-name>/][<project-name>/]<environment-name>@<tag> [@<version>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Manage tagged versions",
 		Long: "Manage tagged versions\n" +
@@ -34,7 +34,7 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -44,27 +44,27 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 
 			var revision int
 			if len(args) == 0 {
-				latest, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, "latest")
+				latest, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.projectName, ref.envName, "latest")
 				if err != nil {
 					return err
 				}
 				revision = latest.Revision
 			} else {
 				version, _ := strings.CutPrefix(args[0], "@")
-				revision, err = env.esc.client.GetRevisionNumber(ctx, ref.orgName, ref.envName, version)
+				revision, err = env.esc.client.GetRevisionNumber(ctx, ref.orgName, ref.projectName, ref.envName, version)
 				if err != nil {
 					return err
 				}
 			}
 
-			err = env.esc.client.UpdateEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version, &revision)
+			err = env.esc.client.UpdateEnvironmentRevisionTag(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, &revision)
 			if err == nil {
 				return err
 			}
 			if !client.IsNotFound(err) {
 				return err
 			}
-			return env.esc.client.CreateEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version, &revision)
+			return env.esc.client.CreateEnvironmentRevisionTag(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, &revision)
 		},
 	}
 

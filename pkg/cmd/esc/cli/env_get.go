@@ -37,7 +37,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	get := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "get [<org-name>/]<environment-name>[@<version>] <path>",
+		Use:   "get [<org-name>/][<project-name>/]<environment-name>[@<version>] <path>",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Get a value within an environment.",
 		Long: "Get a value within an environment\n" +
@@ -53,7 +53,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ func (get *envGetCommand) writeValue(
 	format string,
 	showSecrets bool,
 ) error {
-	def, _, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, ref.version, showSecrets)
+	def, _, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting environment definition: %w", err)
 	}
@@ -216,7 +216,7 @@ func (get *envGetCommand) getEnvironment(
 	path resource.PropertyPath,
 	showSecrets bool,
 ) (*envGetTemplateData, error) {
-	def, _, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, ref.version, showSecrets)
+	def, _, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, showSecrets)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment definition: %w", err)
 	}

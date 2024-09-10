@@ -1,11 +1,11 @@
 run: esc open test --format string
 environments:
-  test-user/test:
+  test-user/default/test:
     imports:
       - test-2
     values:
       foo: bar
-  test-user/test-2:
+  test-user/default/test-2:
     values:
       foo: baz
       hello: world

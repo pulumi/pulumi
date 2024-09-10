@@ -13,7 +13,7 @@ import (
 
 func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rollback [<org-name>/]<environment-name>@<version>",
+		Use:   "rollback [<org-name>/][<project-name>/]<environment-name>@<version>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Roll back to a specific version",
 		Long: "Roll back to a specific version\n" +
@@ -29,7 +29,7 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -38,11 +38,11 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			}
 			_ = args
 
-			yaml, _, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, ref.version, false)
+			yaml, _, _, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, ref.version, false)
 			if err != nil {
 				return err
 			}
-			diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, yaml, "")
+			diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, yaml, "")
 			if err != nil {
 				return err
 			}

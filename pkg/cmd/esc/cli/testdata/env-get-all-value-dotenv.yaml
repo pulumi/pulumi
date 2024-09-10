@@ -2,9 +2,9 @@ run: |
   esc env get test --value=dotenv
   esc env get test --value=dotenv --show-secrets
 environments:
-  test-user/a: {}
-  test-user/b: {}
-  test-user/test:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
     imports:
       - a
       - b

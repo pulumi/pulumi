@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -65,15 +66,19 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 }
 
 type environmentRef struct {
-	orgName string
-	envName string
-	version string
+	orgName     string
+	projectName string
+	envName     string
+	version     string
+
+	hasAmbiguousPath bool
 }
 
 func (r *environmentRef) String() string {
-	s := r.envName
+	s := fmt.Sprintf("%s/%s", r.projectName, r.envName)
+
 	if r.orgName != "" {
-		s = fmt.Sprintf("%s/%s", r.orgName, r.envName)
+		s = fmt.Sprintf("%s/%s", r.orgName, s)
 	}
 	if r.version != "" {
 		s = fmt.Sprintf("%s@%s", s, r.version)
@@ -81,10 +86,31 @@ func (r *environmentRef) String() string {
 	return s
 }
 
-func (cmd *envCommand) getRelativeEnvRef(refStr string, rel *environmentRef) environmentRef {
-	orgName, envNameAndVersion, hasOrgName := strings.Cut(refStr, "/")
-	if !hasOrgName {
-		orgName, envNameAndVersion = cmd.esc.account.DefaultOrg, orgName
+func (cmd *envCommand) parseRef(refStr string) environmentRef {
+	var orgName, projectName, envNameAndVersion string
+
+	hasAmbiguousPath := false
+	orgName = cmd.esc.account.DefaultOrg
+	projectName = client.DefaultProject
+
+	parts := strings.Split(refStr, "/")
+
+	switch l := len(parts); {
+	case l == 1:
+		// <environment-name>
+		envNameAndVersion = parts[0]
+	case l == 2:
+		// <project-name>/<env-name> or <org-name>/<env-name>
+		// We assume the former, and this will be disambiguated later.
+		projectName = parts[0]
+		envNameAndVersion = parts[1]
+
+		hasAmbiguousPath = true
+	case l >= 3:
+		// <org-name>/<project-name>/<environment-name>
+		orgName = parts[0]
+		projectName = parts[1]
+		envNameAndVersion = strings.Join(parts[2:], "")
 	}
 
 	envName, version, hasSep := strings.Cut(envNameAndVersion, "@")
@@ -92,14 +118,35 @@ func (cmd *envCommand) getRelativeEnvRef(refStr string, rel *environmentRef) env
 		envName, version, _ = strings.Cut(envNameAndVersion, ":")
 	}
 
-	if rel != nil && envName == "" && version != "" {
-		orgName, envName = rel.orgName, rel.envName
+	return environmentRef{
+		orgName:          orgName,
+		projectName:      projectName,
+		envName:          envName,
+		version:          version,
+		hasAmbiguousPath: hasAmbiguousPath,
 	}
-
-	return environmentRef{orgName, envName, version}
 }
 
-func (cmd *envCommand) getEnvRef(args []string) (ref environmentRef, rest []string, err error) {
+// getEnvRef returns an environment reference corresponding to the given ref string
+// If a non-nil environmentRef is provided, default to its values if only a sole version is specified
+func (cmd *envCommand) getEnvRef(refString string, rel *environmentRef) environmentRef {
+	envRef := cmd.parseRef(refString)
+
+	if rel != nil && envRef.envName == "" && envRef.version != "" {
+		envRef.orgName = rel.orgName
+		envRef.projectName = rel.projectName
+		envRef.envName = rel.envName
+	}
+
+	return envRef
+}
+
+// Get an environment reference when creating a new environment
+// If the given path is ambiguous, we need to make additional API calls to disambiguate
+func (cmd *envCommand) getNewEnvRef(
+	ctx context.Context,
+	args []string,
+) (environmentRef, []string, error) {
 	if cmd.envNameFlag == "" {
 		if len(args) == 0 {
 			return environmentRef{}, nil, fmt.Errorf("no environment name specified")
@@ -107,7 +154,109 @@ func (cmd *envCommand) getEnvRef(args []string) (ref environmentRef, rest []stri
 		cmd.envNameFlag, args = args[0], args[1:]
 	}
 
-	return cmd.getRelativeEnvRef(cmd.envNameFlag, nil), args, nil
+	ref := cmd.getEnvRef(cmd.envNameFlag, nil)
+
+	if !ref.hasAmbiguousPath {
+		return ref, args, nil
+	}
+
+	// Check if project at <org-name>/<project-name> exists. Assume not if listing environments errors
+	allEnvs, _ := cmd.listEnvironments(ctx, "")
+	existsProject := false
+	for _, e := range allEnvs {
+		if strings.EqualFold(e.Project, ref.projectName) {
+			existsProject = true
+			break
+		}
+	}
+
+	// Check if user is part of the organization from legacy path pattern <org-name>/default/<environment-name>
+	legacyRef := environmentRef{
+		orgName:          ref.projectName,
+		projectName:      client.DefaultProject,
+		envName:          ref.envName,
+		version:          ref.version,
+		hasAmbiguousPath: ref.hasAmbiguousPath,
+	}
+
+	existsLegacyPath := false
+	_, orgs, _, _ := cmd.esc.client.GetPulumiAccountDetails(ctx)
+	for _, org := range orgs {
+		if strings.EqualFold(legacyRef.orgName, org) {
+			existsLegacyPath = true
+			break
+		}
+	}
+
+	if !existsProject && existsLegacyPath {
+		return legacyRef, args, nil
+	}
+
+	return ref, args, nil
+}
+
+// Get an environment reference for an existing environment
+// If the given path is ambiguous, we need to make additional API calls to disambiguate
+func (cmd *envCommand) getExistingEnvRef(
+	ctx context.Context,
+	args []string,
+) (environmentRef, []string, error) {
+	if cmd.envNameFlag == "" {
+		if len(args) == 0 {
+			return environmentRef{}, nil, fmt.Errorf("no environment name specified")
+		}
+		cmd.envNameFlag, args = args[0], args[1:]
+	}
+
+	envRef, err := cmd.getExistingEnvRefWithRelative(ctx, cmd.envNameFlag, nil)
+
+	return envRef, args, err
+}
+
+func (cmd *envCommand) getExistingEnvRefWithRelative(
+	ctx context.Context,
+	refString string,
+	rel *environmentRef,
+) (environmentRef, error) {
+	ref := cmd.getEnvRef(refString, rel)
+
+	if !ref.hasAmbiguousPath {
+		return ref, nil
+	}
+
+	// Check <org-name>/<project-name>/<environment-name>
+	exists, _ := cmd.esc.client.EnvironmentExists(ctx, ref.orgName, ref.projectName, ref.envName)
+
+	// Check legacy path <org-name>/default/<environment-name>
+	legacyRef := environmentRef{
+		orgName:          ref.projectName,
+		projectName:      client.DefaultProject,
+		envName:          ref.envName,
+		version:          ref.version,
+		hasAmbiguousPath: ref.hasAmbiguousPath,
+	}
+
+	existsLegacyPath, _ := cmd.esc.client.EnvironmentExists(
+		ctx,
+		legacyRef.orgName,
+		legacyRef.projectName,
+		legacyRef.envName,
+	)
+
+	// Require unambiguous path if both paths exist
+	if exists && existsLegacyPath {
+		return ref, fmt.Errorf(
+			"ambiguous path provided\n\nEnvironments found at both '%s' and '%s'.\nPlease specify the full path as <org-name>/<project-name>/<env-name>",
+			ref.String(),
+			legacyRef.String(),
+		)
+	}
+
+	if existsLegacyPath {
+		return legacyRef, nil
+	}
+
+	return ref, nil
 }
 
 func sortEnvironmentDiagnostics(diags []client.EnvironmentDiagnostic) {

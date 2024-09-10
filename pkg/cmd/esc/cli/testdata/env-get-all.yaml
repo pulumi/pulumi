@@ -7,13 +7,13 @@ run: |
   esc env get test@3
   esc env get test@latest --show-secrets
 environments:
-  test-user/a: {}
-  test-user/b:
+  test-user/default/a: {}
+  test-user/default/b:
     values:
       baseSecret:
         fn::secret:
           ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-  test-user/test:
+  test-user/default/test:
     revisions:
       - yaml:
           values:

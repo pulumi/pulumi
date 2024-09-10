@@ -20,7 +20,7 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "version [<org-name>/]<environment-name>@<version>",
+		Use:   "version [<org-name>/][<project-name>/]<environment-name>@<version>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Manage versions",
 		Long: "Manage versions\n" +
@@ -37,7 +37,7 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -52,13 +52,13 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				rev, err := env.esc.client.GetEnvironmentRevision(ctx, ref.orgName, ref.envName, int(revisionNumber))
+				rev, err := env.esc.client.GetEnvironmentRevision(ctx, ref.orgName, ref.projectName, ref.envName, int(revisionNumber))
 				if err != nil {
 					return err
 				}
 				printRevision(env.esc.stdout, st, *rev, utcFlag(utc))
 			} else {
-				tag, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version)
+				tag, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.projectName, ref.envName, ref.version)
 				if err != nil {
 					return err
 				}

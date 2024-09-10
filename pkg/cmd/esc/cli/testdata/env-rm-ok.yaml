@@ -1,8 +1,8 @@
 run: esc env rm dup -y
 environments:
-  test-user/dup: arbitrary
+  test-user/default/dup: arbitrary
 stdout: |
   > esc env rm dup -y
-  Environment "test-user/dup" has been removed!
+  Environment "test-user/default/dup" has been removed!
 stderr: |
   > esc env rm dup -y

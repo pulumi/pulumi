@@ -14,7 +14,7 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "get [<org-name>/]<environment-name> <name>",
+		Use:   "get [<org-name>/][<project-name>/]<environment-name> <name>",
 		Args:  cobra.ExactArgs(2),
 		Short: "Get an environment tag",
 		Long: "Get an environment tag\n" +
@@ -28,7 +28,7 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getEnvRef(args)
+			ref, args, err := env.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -42,7 +42,7 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 				return errors.New("environment tag name cannot be empty")
 			}
 
-			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.envName, name)
+			tag, err := env.esc.client.GetEnvironmentTag(ctx, ref.orgName, ref.projectName, ref.envName, name)
 			if err != nil {
 				return err
 			}
