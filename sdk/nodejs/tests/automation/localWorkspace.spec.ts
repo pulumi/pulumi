@@ -105,6 +105,19 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     });
 
+    it("create/select/remove LocalWorkspace stack -- local non-dev-shm", async () => {
+        const projectName = "node_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create(withTemporaryFileBackendTmp({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        await ws.createStack(stackName);
+        await ws.selectStack(stackName);
+        await ws.removeStack(stackName);
+    });
+
     it(`create/select/createOrSelect Stack`, async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
@@ -1342,6 +1355,7 @@ function withTemporaryFileBackend(opts?: LocalWorkspaceOptions): LocalWorkspaceO
 
     return withTestConfigPassphrase({
         ...opts,
+        pulumiHome: tmpDir.name,
         projectSettings: {
             // We are obliged to provide a name and runtime if we provide project
             // settings, so we do so, but we spread in the provided project settings
@@ -1351,6 +1365,31 @@ function withTemporaryFileBackend(opts?: LocalWorkspaceOptions): LocalWorkspaceO
 
             ...opts?.projectSettings,
             backend,
+        },
+    });
+}
+
+function withTemporaryFileBackendTmp(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
+    const tmpDir = tmp.dirSync({
+        tmpdir: "/tmp",
+        prefix: "nodejs-tests-automation-",
+        unsafeCleanup: true,
+    });
+
+    const backend = { url: `file://${tmpDir.name}` };
+
+    return withTestConfigPassphrase({
+        ...opts,
+        pulumiHome: tmpDir.name,
+        projectSettings: {
+            // We are obliged to provide a name and runtime if we provide project
+            // settings, so we do so, but we spread in the provided project settings
+            // afterwards so that the caller can override them if need be.
+            name: "node_test",
+            runtime: "nodejs",
+
+            ...opts?.projectSettings,
+            backend: backend,
         },
     });
 }
