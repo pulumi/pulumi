@@ -1225,7 +1225,6 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	packagePathCheck := func (path string) bool {
 		info, err := os.Stat(path)
 		if err != nil || info.IsDir() {
-			// Missing files and directories can't be markup files.
 			return false
 		}
 		name := info.Name()
