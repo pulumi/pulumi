@@ -1,0 +1,3 @@
+name: pulumi-go-run
+description: A Go program that tests that `Run` can be run by python and pulumi.
+runtime: go

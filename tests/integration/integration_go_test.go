@@ -1362,3 +1362,41 @@ outer:
 	// Make sure the program finished successfully.
 	wg.Wait()
 }
+
+// Integration test for `run`
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestRunGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "run"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, "hello", stack.Outputs["export"])
+		},
+	})
+
+	// Run the test again but _this_ time just use Go instead of pulumi
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("go/run")
+
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk")
+	e.RunCommand("go", "mod", "edit", "-replace", fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdkPath))
+	e.RunCommand("go", "mod", "tidy")
+
+	// Run up
+	e.RunCommand("go", "run", ".", "up", "--yes")
+	// Check the stack output
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
+	assert.Equal(t, "{\n  \"export\": \"hello\"\n}\n", stdout)
+}

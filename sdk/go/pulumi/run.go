@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"slices"
 	"strconv"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -41,13 +43,16 @@ type RunOption func(*RunInfo)
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
+	loggedError := false
 	logError := func(ctx *Context, programErr error) {
 		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
 			programErr), nil)
-		contract.IgnoreError(logErr)
+		if logErr == nil {
+			loggedError = true
+		}
 	}
 
-	err := runErrInner(body, logError, opts...)
+	err := runErrInner(body, nil, logError, opts...)
 	if err == nil {
 		return
 	}
@@ -56,21 +61,87 @@ func Run(body RunFunc, opts ...RunOption) {
 		printRequiredPlugins()
 	}
 
-	os.Exit(constant.ExitStatusLoggedError)
+	if loggedError {
+		os.Exit(constant.ExitStatusLoggedError)
+	}
+
+	fmt.Printf("error: %v\n", err)
+	os.Exit(1)
+}
+
+// RunAuto executes the body of a Pulumi program, granting it access to a deployment context that it may use
+// to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using
+// gRPC, or spawns a Pulumi engine process if ran directly. If the program fails, the process will be
+// terminated and the function will not return.
+func RunAuto(body RunFunc, args []string, opts ...RunOption) {
+	loggedError := false
+	logError := func(ctx *Context, programErr error) {
+		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
+			programErr), nil)
+		if logErr == nil {
+			loggedError = true
+		}
+	}
+
+	err := runErrInner(body, args, logError, opts...)
+	if err == nil {
+		return
+	}
+
+	if err == ErrPlugins {
+		printRequiredPlugins()
+	}
+
+	if loggedError {
+		os.Exit(constant.ExitStatusLoggedError)
+	}
+
+	fmt.Printf("error: %v\n", err)
+	os.Exit(1)
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 func RunErr(body RunFunc, opts ...RunOption) error {
-	return runErrInner(body, func(*Context, error) {}, opts...)
+	return runErrInner(body, nil, func(*Context, error) {}, opts...)
 }
 
-func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption) error {
+func runErrInner(body RunFunc, args []string, logError func(*Context, error), opts ...RunOption) error {
 	// Parse the info out of environment variables.  This is a lame contract with the caller, but helps to keep
 	// boilerplate to a minimum in the average Pulumi Go program.
 	info := getEnvInfo()
 	if info.getPlugins {
 		return ErrPlugins
+	}
+
+	if info.MonitorAddr == "" {
+		// Check if we have a monitor attached, start a language server and tell the user to connect to it.
+		srv, address, err := StartLanguageRuntimeServer(body)
+		if err != nil {
+			return err
+		}
+		defer srv.Close()
+
+		if args == nil {
+			args = os.Args[1:]
+		}
+
+		// splice arg in before any -- arguments
+		arg := fmt.Sprintf("--client=%s", address)
+		idx := slices.Index(args, "--")
+		if idx == -1 {
+			args = append(args, arg)
+		} else {
+			args = slices.Insert(args, idx, arg)
+		}
+
+		// Run pulumi with the new args
+		cmd := exec.Command("pulumi", args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+		err = cmd.Run()
+		return err
 	}
 
 	for _, o := range opts {
