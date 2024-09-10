@@ -1222,7 +1222,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
-	packagePathCheck := func (path string) bool {
+	packagePathCheck := func(path string) bool {
 		info, err := os.Stat(path)
 		if err != nil || info.IsDir() {
 			return false
