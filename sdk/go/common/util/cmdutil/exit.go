@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -31,34 +30,7 @@ import (
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
 func DetailedError(err error) string {
-	msg := errorMessage(err)
-	hasstack := false
-	for {
-		if stackerr, ok := err.(interface {
-			StackTrace() errors.StackTrace
-		}); ok {
-			msg += "\n"
-			if hasstack {
-				msg += "CAUSED BY...\n"
-			}
-			hasstack = true
-
-			// Append the stack trace.
-			for _, f := range stackerr.StackTrace() {
-				msg += fmt.Sprintf("%+v\n", f)
-			}
-
-			// Keep going up the causer chain, if any.
-			cause := errors.Cause(err)
-			if cause == err || cause == nil {
-				break
-			}
-			err = cause
-		} else {
-			break
-		}
-	}
-	return msg
+	return errorMessage(err)
 }
 
 // runPostCommandHooks runs any post-hooks present on the given cobra.Command. This logic is copied directly from
