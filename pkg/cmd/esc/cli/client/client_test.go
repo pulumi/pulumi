@@ -633,6 +633,40 @@ func TestGetOpenEnvironment(t *testing.T) {
 	})
 }
 
+func TestGetAnonymousOpenEnvironment(t *testing.T) {
+	t.Run("OK", func(t *testing.T) {
+		expected := &esc.Environment{
+			Exprs:      map[string]esc.Expr{"foo": {Literal: "bar"}},
+			Properties: map[string]esc.Value{"foo": esc.NewValue("bar")},
+			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
+		}
+
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/yaml/open/session", func(w http.ResponseWriter, r *http.Request) {
+			err := json.NewEncoder(w).Encode(expected)
+			require.NoError(t, err)
+		})
+
+		env, err := client.GetAnonymousOpenEnvironment(context.Background(), "test-org", "session")
+		require.NoError(t, err)
+		assert.Equal(t, expected, env)
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/yaml/open/session", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    404,
+				Message: "not found",
+			})
+			require.NoError(t, err)
+		})
+
+		_, err := client.GetAnonymousOpenEnvironment(context.Background(), "test-org", "session")
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
 func TestGetOpenProperty(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		property := `foo[0].baz["qux"]`
@@ -662,6 +696,39 @@ func TestGetOpenProperty(t *testing.T) {
 		})
 
 		_, err := client.GetOpenProperty(context.Background(), "test-org", "test-project", "test-env", "session", "foo")
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
+func TestGetAnonymousOpenProperty(t *testing.T) {
+	t.Run("OK", func(t *testing.T) {
+		property := `foo[0].baz["qux"]`
+		expected := esc.NewValue("bar")
+
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/yaml/open/session", func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, property, r.URL.Query().Get("property"))
+
+			err := json.NewEncoder(w).Encode(expected)
+			require.NoError(t, err)
+		})
+
+		val, err := client.GetAnonymousOpenProperty(context.Background(), "test-org", "session", property)
+		require.NoError(t, err)
+		assert.Equal(t, &expected, val)
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/yaml/open/session", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    404,
+				Message: "not found",
+			})
+			require.NoError(t, err)
+		})
+
+		_, err := client.GetAnonymousOpenProperty(context.Background(), "test-org", "session", "foo")
 		assert.ErrorContains(t, err, "not found")
 	})
 }

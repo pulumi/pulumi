@@ -180,6 +180,10 @@ type Client interface {
 	// environment envName and org orgName.
 	GetOpenEnvironmentWithProject(ctx context.Context, orgName, projectName, envName, openEnvID string) (*esc.Environment, error)
 
+	// GetAnonymousOpenEnvironment returns the AST, values, and schema for the open environment with ID openEnvID in
+	// an anonymous environment.
+	GetAnonymousOpenEnvironment(ctx context.Context, orgName, openEnvID string) (*esc.Environment, error)
+
 	// GetOpenProperty returns the value of a single property in the open environment with ID openEnvID in
 	// environment envName and org orgName.
 	//
@@ -191,6 +195,10 @@ type Client interface {
 	//     environmentVariables["AWS_ACCESS_KEY_ID"]
 	//
 	GetOpenProperty(ctx context.Context, orgName, projectName, envName, openEnvID, property string) (*esc.Value, error)
+
+	// GetOpenProperty returns the value of a single property in the open environment with ID openEnvID in
+	// an anonymous environment.
+	GetAnonymousOpenProperty(ctx context.Context, orgName, openEnvID, property string) (*esc.Value, error)
 
 	// ListEnvironmentTags lists the tags for the given environment.
 	ListEnvironmentTags(
@@ -677,6 +685,16 @@ func (pc *client) GetOpenEnvironmentWithProject(ctx context.Context, orgName, pr
 	return &resp, nil
 }
 
+func (pc *client) GetAnonymousOpenEnvironment(ctx context.Context, orgName, openSessionID string) (*esc.Environment, error) {
+	var resp esc.Environment
+	path := fmt.Sprintf("/api/esc/environments/%s/yaml/open/%s", orgName, openSessionID)
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 func (pc *client) GetOpenProperty(ctx context.Context, orgName, projectName, envName, openSessionID, property string) (*esc.Value, error) {
 	queryObj := struct {
 		Property string `url:"property"`
@@ -686,6 +704,22 @@ func (pc *client) GetOpenProperty(ctx context.Context, orgName, projectName, env
 
 	var resp esc.Value
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/open/%v", orgName, projectName, envName, openSessionID)
+	err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) GetAnonymousOpenProperty(ctx context.Context, orgName, openSessionID, property string) (*esc.Value, error) {
+	queryObj := struct {
+		Property string `url:"property"`
+	}{
+		Property: property,
+	}
+
+	var resp esc.Value
+	path := fmt.Sprintf("/api/esc/environments/%s/yaml/open/%s", orgName, openSessionID)
 	err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp)
 	if err != nil {
 		return nil, err

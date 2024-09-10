@@ -670,7 +670,15 @@ func (c *testPulumiClient) GetOpenEnvironmentWithProject(ctx context.Context, or
 	return env, nil
 }
 
+func (c *testPulumiClient) GetAnonymousOpenEnvironment(ctx context.Context, orgName, openEnvID string) (*esc.Environment, error) {
+	return c.GetOpenEnvironmentWithProject(ctx, orgName, "project", "yaml", openEnvID)
+}
+
 func (c *testPulumiClient) GetOpenProperty(ctx context.Context, orgName, projectName, envName, openEnvID, property string) (*esc.Value, error) {
+	return nil, errors.New("NYI")
+}
+
+func (c *testPulumiClient) GetAnonymousOpenProperty(ctx context.Context, orgName, openEnvID, property string) (*esc.Value, error) {
 	return nil, errors.New("NYI")
 }
 
