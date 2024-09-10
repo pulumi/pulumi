@@ -1268,6 +1268,8 @@ Successfully moved resources from organization/test/sourceStack to organization/
 
 // TODO: Add a test checking the error text for when the reverting to the original destination state fails.
 // See https://github.com/pulumi/pulumi/pull/17208/files#diff-cbb48e4e8470d1946c5073f9d6ece05f454b340cc66ca4d9fbf7901e0a8b5c47L1330
+//
+//nolint:lll // The link is too long
 func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	t.Parallel()
 

@@ -281,7 +281,8 @@ func (cmd *stateMoveCmd) Run(
 	}
 	sourceSnapshot.Resources = sourceSnapshot.Resources[:i]
 
-	// Save a copy of the destination snapshot so we can restore it if saving the source snapshot with the deleted resources fails.
+	// Save a copy of the destination snapshot so we can restore it if saving the source snapshot with the
+	// deleted resources fails.
 	originalDestResources := destSnapshot.Resources
 
 	// Create a root stack if there is none
@@ -461,11 +462,10 @@ None of the resources have been moved, it is safe to try again`, err)
 The resources being moved have already been appended to the destination stack, but will still also be in the
 source stack.  Please remove the resources from the source stack manually the following commands:%v
 '`, err, deleteCommands)
-		} else {
-			return fmt.Errorf(`failed to save source snapshot: %w
+		}
+		return fmt.Errorf(`failed to save source snapshot: %w
 
 None of the resources have been moved.  Please fix the error and try again`, err)
-		}
 	}
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
