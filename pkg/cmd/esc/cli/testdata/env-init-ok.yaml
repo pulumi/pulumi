@@ -1,19 +1,19 @@
 run: |
-  esc env init test-env
-  esc env get test-env
-  echo '{"values":{"foo":"bar"}}' | esc env init test-stdin -f=-
-  esc env get test-stdin
+  esc env init default/test-env
+  esc env get default/test-env
+  echo '{"values":{"foo":"bar"}}' | esc env init default/test-stdin -f=-
+  esc env get default/test-stdin
   echo '{"values":{"foo":"bar"}}' >def.yaml
-  esc env init test-file -f def.yaml
-  esc env get test-file
+  esc env init default/test-file -f def.yaml
+  esc env get default/test-file
 stdout: |+
-  > esc env init test-env
+  > esc env init default/test-env
   Environment created: test-user/default/test-env
-  > esc env get test-env
+  > esc env get default/test-env
 
-  > esc env init test-stdin -f=-
+  > esc env init default/test-stdin -f=-
   Environment created: test-user/default/test-stdin
-  > esc env get test-stdin
+  > esc env get default/test-stdin
   # Value
   ```json
   {
@@ -26,9 +26,9 @@ stdout: |+
 
   ```
 
-  > esc env init test-file -f def.yaml
+  > esc env init default/test-file -f def.yaml
   Environment created: test-user/default/test-file
-  > esc env get test-file
+  > esc env get default/test-file
   # Value
   ```json
   {
@@ -42,9 +42,9 @@ stdout: |+
   ```
 
 stderr: |
-  > esc env init test-env
-  > esc env get test-env
-  > esc env init test-stdin -f=-
-  > esc env get test-stdin
-  > esc env init test-file -f def.yaml
-  > esc env get test-file
+  > esc env init default/test-env
+  > esc env get default/test-env
+  > esc env init default/test-stdin -f=-
+  > esc env get default/test-stdin
+  > esc env init default/test-file -f def.yaml
+  > esc env get default/test-file

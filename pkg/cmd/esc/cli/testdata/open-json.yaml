@@ -1,10 +1,10 @@
 run: |
-  esc open test --format json
-  esc open test@stable
-  esc open test@latest
-  esc open test@1
-  esc open test@2
-  esc open test@3
+  esc open default/test --format json
+  esc open default/test@stable
+  esc open default/test@latest
+  esc open default/test@1
+  esc open default/test@2
+  esc open default/test@3
 environments:
   test-user/default/test:
     revisions:
@@ -23,34 +23,34 @@ environments:
       foo: baz
       hello: world
 stdout: |
-  > esc open test --format json
+  > esc open default/test --format json
   {
     "foo": "bar",
     "hello": "world"
   }
-  > esc open test@stable
+  > esc open default/test@stable
   {
     "foo": "bar"
   }
-  > esc open test@latest
+  > esc open default/test@latest
   {
     "foo": "bar",
     "hello": "world"
   }
-  > esc open test@1
-  > esc open test@2
+  > esc open default/test@1
+  > esc open default/test@2
   {
     "foo": "bar"
   }
-  > esc open test@3
+  > esc open default/test@3
   {
     "foo": "bar",
     "hello": "world"
   }
 stderr: |
-  > esc open test --format json
-  > esc open test@stable
-  > esc open test@latest
-  > esc open test@1
-  > esc open test@2
-  > esc open test@3
+  > esc open default/test --format json
+  > esc open default/test@stable
+  > esc open default/test@latest
+  > esc open default/test@1
+  > esc open default/test@2
+  > esc open default/test@3

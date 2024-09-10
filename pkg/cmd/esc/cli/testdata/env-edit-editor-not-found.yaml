@@ -1,10 +1,10 @@
-run: esc env edit test
+run: esc env edit default/test
 error: exit status 1
 process:
   environ:
     EDITOR: my-editor
 stdout: |
-  > esc env edit test
+  > esc env edit default/test
 stderr: |
-  > esc env edit test
+  > esc env edit default/test
   Error: finding "my-editor" on path: command not found

@@ -1,4 +1,4 @@
-# This is a regression test for #100 that aims to capture issues logging in when no existing Pulumi
+# This is a regression default/test for #100 that aims to capture issues logging in when no existing Pulumi
 # credentials exist.
 run: |
   esc logout --all

@@ -1,4 +1,4 @@
-run: esc open test --format detailed
+run: esc open default/test --format detailed
 environments:
   test-user/default/test:
     imports:
@@ -10,7 +10,7 @@ environments:
       foo: baz
       hello: world
 stdout: |
-  > esc open test --format detailed
+  > esc open default/test --format detailed
   {
     "value": {
       "foo": {
@@ -84,4 +84,4 @@ stdout: |
     }
   }
 stderr: |
-  > esc open test --format detailed
+  > esc open default/test --format detailed

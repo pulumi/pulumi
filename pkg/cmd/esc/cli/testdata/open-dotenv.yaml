@@ -1,4 +1,4 @@
-run: esc open test --format dotenv
+run: esc open default/test --format dotenv
 environments:
   test-user/default/test:
     imports:
@@ -23,7 +23,7 @@ environments:
       files:
         FILE: bar
 stdout: |
-  > esc open test --format dotenv
+  > esc open default/test --format dotenv
   BOOL="true"
   FOO="bar"
   HELLO="world"
@@ -32,4 +32,4 @@ stdout: |
   FILE="temp/esc-temp-1"
   NUM_FILE="temp/esc-temp-2"
 stderr: |
-  > esc open test --format dotenv
+  > esc open default/test --format dotenv

@@ -1,4 +1,4 @@
-run: esc open test --format yaml
+run: esc open default/test --format yaml
 environments:
   test-user/default/test:
     imports:
@@ -10,8 +10,8 @@ environments:
       foo: baz
       hello: world
 stdout: |
-  > esc open test --format yaml
+  > esc open default/test --format yaml
   foo: bar
   hello: world
 stderr: |
-  > esc open test --format yaml
+  > esc open default/test --format yaml

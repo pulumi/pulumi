@@ -1,7 +1,7 @@
 run: |
-  esc env version rollback test@stable
-  esc env get test
-  esc env version rollback test@2
+  esc env version rollback default/test@stable
+  esc env get default/test
+  esc env version rollback default/test@2
 error: exit status 1
 environments:
   test-user/default/a: {}
@@ -35,9 +35,9 @@ environments:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |
-  > esc env version rollback test@stable
+  > esc env version rollback default/test@stable
   Environment updated.
-  > esc env get test
+  > esc env get default/test
   # Value
   ```json
   {
@@ -51,11 +51,11 @@ stdout: |
 
   ```
 
-  > esc env version rollback test@2
+  > esc env version rollback default/test@2
 stderr: |
-  > esc env version rollback test@stable
-  > esc env get test
-  > esc env version rollback test@2
+  > esc env version rollback default/test@stable
+  > esc env get default/test
+  > esc env version rollback default/test@2
   Error: not found
 
     on test line 2:

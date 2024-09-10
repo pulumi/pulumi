@@ -1,7 +1,7 @@
-run: esc open test --format=flat
+run: esc open default/test --format=flat
 error: exit status 1
 stdout: |
-  > esc open test --format=flat
+  > esc open default/test --format=flat
 stderr: |
-  > esc open test --format=flat
+  > esc open default/test --format=flat
   Error: unknown output format "flat"

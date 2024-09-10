@@ -1,4 +1,4 @@
-run: esc open test --format shell
+run: esc open default/test --format shell
 environments:
   test-user/default/test:
     imports:
@@ -23,7 +23,7 @@ environments:
       files:
         FILE: bar
 stdout: |
-  > esc open test --format shell
+  > esc open default/test --format shell
   export BOOL="true"
   export FOO="bar"
   export HELLO="world"
@@ -32,4 +32,4 @@ stdout: |
   export FILE="temp/esc-temp-1"
   export NUM_FILE="temp/esc-temp-2"
 stderr: |
-  > esc open test --format shell
+  > esc open default/test --format shell

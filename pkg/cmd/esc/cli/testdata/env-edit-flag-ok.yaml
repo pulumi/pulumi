@@ -1,6 +1,6 @@
 run: |
-  esc env edit test --editor my-editor
-  esc env get test
+  esc env edit default/test --editor my-editor
+  esc env get default/test
 process:
   commands:
     my-editor: |
@@ -10,9 +10,9 @@ environments:
     values:
       foo: bar
 stdout: |+
-  > esc env edit test --editor my-editor
+  > esc env edit default/test --editor my-editor
   Environment updated.
-  > esc env get test
+  > esc env get default/test
   # Value
   ```json
   {
@@ -27,5 +27,5 @@ stdout: |+
   ```
 
 stderr: |
-  > esc env edit test --editor my-editor
-  > esc env get test
+  > esc env edit default/test --editor my-editor
+  > esc env get default/test

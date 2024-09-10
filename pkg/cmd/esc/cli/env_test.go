@@ -19,37 +19,40 @@ func TestGetEnvRef(t *testing.T) {
 	t.Run("1 identifier", func(t *testing.T) {
 		refString := "abc@v1"
 
-		ref := cmd.getEnvRef(refString, nil)
+		ref, isRelative := cmd.getEnvRef(refString, nil)
 
 		assert.Equal(t, ref.orgName, defaultOrg)
 		assert.Equal(t, ref.projectName, client.DefaultProject)
 		assert.Equal(t, ref.envName, "abc")
 		assert.Equal(t, ref.version, "v1")
 		assert.Equal(t, ref.hasAmbiguousPath, false)
+		assert.Equal(t, isRelative, false)
 	})
 
 	t.Run("2 identifiers", func(t *testing.T) {
 		refString := "a/b@v1"
 
-		ref := cmd.getEnvRef(refString, nil)
+		ref, isRelative := cmd.getEnvRef(refString, nil)
 
 		assert.Equal(t, ref.orgName, defaultOrg)
 		assert.Equal(t, ref.projectName, "a")
 		assert.Equal(t, ref.envName, "b")
 		assert.Equal(t, ref.version, "v1")
 		assert.Equal(t, ref.hasAmbiguousPath, true)
+		assert.Equal(t, isRelative, false)
 	})
 
 	t.Run("3 identifiers", func(t *testing.T) {
 		refString := "a/b/c@v1"
 
-		ref := cmd.getEnvRef(refString, nil)
+		ref, isRelative := cmd.getEnvRef(refString, nil)
 
 		assert.Equal(t, ref.orgName, "a")
 		assert.Equal(t, ref.projectName, "b")
 		assert.Equal(t, ref.envName, "c")
 		assert.Equal(t, ref.version, "v1")
 		assert.Equal(t, ref.hasAmbiguousPath, false)
+		assert.Equal(t, isRelative, false)
 	})
 
 	t.Run("with relative env", func(t *testing.T) {
@@ -61,11 +64,12 @@ func TestGetEnvRef(t *testing.T) {
 			version:     "rel-version",
 		}
 
-		ref := cmd.getEnvRef(refString, rel)
+		ref, isRelative := cmd.getEnvRef(refString, rel)
 
 		assert.Equal(t, ref.orgName, "rel-org")
 		assert.Equal(t, ref.projectName, "rel-project")
 		assert.Equal(t, ref.envName, "rel-env")
 		assert.Equal(t, ref.version, "v1")
+		assert.Equal(t, isRelative, true)
 	})
 }

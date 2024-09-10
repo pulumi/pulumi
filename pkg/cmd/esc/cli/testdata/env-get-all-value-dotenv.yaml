@@ -1,6 +1,6 @@
 run: |
-  esc env get test --value=dotenv
-  esc env get test --value=dotenv --show-secrets
+  esc env get default/test --value=dotenv
+  esc env get default/test --value=dotenv --show-secrets
 environments:
   test-user/default/a: {}
   test-user/default/b: {}
@@ -31,7 +31,7 @@ environments:
       files:
         FILE: ${string}
 stdout: |
-  > esc env get test --value=dotenv
+  > esc env get default/test --value=dotenv
   BOOLEAN="true"
   NULLV=""
   NUMBER="3.14"
@@ -39,7 +39,7 @@ stdout: |
   SECRET="[secret]"
   STRING="esc"
   FILE="[unknown]"
-  > esc env get test --value=dotenv --show-secrets
+  > esc env get default/test --value=dotenv --show-secrets
   BOOLEAN="true"
   NULLV=""
   NUMBER="3.14"
@@ -48,5 +48,5 @@ stdout: |
   STRING="esc"
   FILE="[unknown]"
 stderr: |
-  > esc env get test --value=dotenv
-  > esc env get test --value=dotenv --show-secrets
+  > esc env get default/test --value=dotenv
+  > esc env get default/test --value=dotenv --show-secrets

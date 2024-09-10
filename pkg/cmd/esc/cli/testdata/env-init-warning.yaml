@@ -1,0 +1,9 @@
+run: |
+  esc env init test-env
+stdout: |+
+  > esc env init test-env
+  Environment created: test-user/default/test-env
+stderr: |
+  > esc env init test-env
+  Warning: Referring to an environment name ('test-env') without a project is deprecated.
+  Please use 'test-user/default/test-env' or 'default/test-env' instead.

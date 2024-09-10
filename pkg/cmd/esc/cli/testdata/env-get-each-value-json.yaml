@@ -1,15 +1,15 @@
 run: |
-  esc env get test --value json null
-  esc env get test --value json boolean
-  esc env get test --value json number
-  esc env get test --value json string
-  esc env get test --value json array
-  esc env get test --value json 'array[0]'
-  esc env get test --value json 'array[1]'
-  esc env get test --value json object
-  esc env get test --value json object.hello
-  esc env get test --value json object.goodbye
-  esc env get test --value json open
+  esc env get default/test --value json null
+  esc env get default/test --value json boolean
+  esc env get default/test --value json number
+  esc env get default/test --value json string
+  esc env get default/test --value json array
+  esc env get default/test --value json 'array[0]'
+  esc env get default/test --value json 'array[1]'
+  esc env get default/test --value json object
+  esc env get default/test --value json object.hello
+  esc env get default/test --value json object.goodbye
+  esc env get default/test --value json open
 environments:
   test-user/default/a:
     values:
@@ -33,43 +33,43 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
-  > esc env get test --value json null
+  > esc env get default/test --value json null
   null
-  > esc env get test --value json boolean
+  > esc env get default/test --value json boolean
   true
-  > esc env get test --value json number
+  > esc env get default/test --value json number
   42
-  > esc env get test --value json string
+  > esc env get default/test --value json string
   "esc"
-  > esc env get test --value json array
+  > esc env get default/test --value json array
   [
     "hello",
     "world"
   ]
-  > esc env get test --value json array[0]
+  > esc env get default/test --value json array[0]
   "hello"
-  > esc env get test --value json array[1]
+  > esc env get default/test --value json array[1]
   "world"
-  > esc env get test --value json object
+  > esc env get default/test --value json object
   {
     "goodbye": "all",
     "hello": "world"
   }
-  > esc env get test --value json object.hello
+  > esc env get default/test --value json object.hello
   "world"
-  > esc env get test --value json object.goodbye
+  > esc env get default/test --value json object.goodbye
   "all"
-  > esc env get test --value json open
+  > esc env get default/test --value json open
   "[unknown]"
 stderr: |
-  > esc env get test --value json null
-  > esc env get test --value json boolean
-  > esc env get test --value json number
-  > esc env get test --value json string
-  > esc env get test --value json array
-  > esc env get test --value json array[0]
-  > esc env get test --value json array[1]
-  > esc env get test --value json object
-  > esc env get test --value json object.hello
-  > esc env get test --value json object.goodbye
-  > esc env get test --value json open
+  > esc env get default/test --value json null
+  > esc env get default/test --value json boolean
+  > esc env get default/test --value json number
+  > esc env get default/test --value json string
+  > esc env get default/test --value json array
+  > esc env get default/test --value json array[0]
+  > esc env get default/test --value json array[1]
+  > esc env get default/test --value json object
+  > esc env get default/test --value json object.hello
+  > esc env get default/test --value json object.goodbye
+  > esc env get default/test --value json open

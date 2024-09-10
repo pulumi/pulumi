@@ -1,11 +1,11 @@
 run: |
-  esc env version history test --utc
-  esc env version retract test@2 --reason "plaintext secret" --replace-with @3
-  esc env version history test --utc
-  esc env version retract test@3 --reason "test retraction" --replace-with @latest
-  esc env version history test --utc
-  esc env version retract test@4
-  esc env version history test --utc
+  esc env version history default/test --utc
+  esc env version retract default/test@2 --reason "plaintext secret" --replace-with @3
+  esc env version history default/test --utc
+  esc env version retract default/test@3 --reason "test retraction" --replace-with @latest
+  esc env version history default/test --utc
+  esc env version retract default/test@4
+  esc env version history default/test --utc
 environments:
   test-user/default/test:
     revisions:
@@ -22,7 +22,7 @@ environments:
           vaues:
             goodbye: cruel world
 stdout: |+
-  > esc env version history test --utc
+  > esc env version history default/test --utc
   revision 5
   Author: Test Tester <test-tester>
   Date:   1970-01-01 05:00:00 +0000 UTC
@@ -43,8 +43,8 @@ stdout: |+
   Author: Test Tester <test-tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env version retract test@2 --reason plaintext secret --replace-with @3
-  > esc env version history test --utc
+  > esc env version retract default/test@2 --reason plaintext secret --replace-with @3
+  > esc env version history default/test --utc
   revision 5
   Author: Test Tester <test-tester>
   Date:   1970-01-01 05:00:00 +0000 UTC
@@ -69,8 +69,8 @@ stdout: |+
   Author: Test Tester <test-tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env version retract test@3 --reason test retraction --replace-with @latest
-  > esc env version history test --utc
+  > esc env version retract default/test@3 --reason test retraction --replace-with @latest
+  > esc env version history default/test --utc
   revision 5
   Author: Test Tester <test-tester>
   Date:   1970-01-01 05:00:00 +0000 UTC
@@ -99,8 +99,8 @@ stdout: |+
   Author: Test Tester <test-tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env version retract test@4
-  > esc env version history test --utc
+  > esc env version retract default/test@4
+  > esc env version history default/test --utc
   revision 5
   Author: Test Tester <test-tester>
   Date:   1970-01-01 05:00:00 +0000 UTC
@@ -132,10 +132,10 @@ stdout: |+
   Date:   1970-01-01 01:00:00 +0000 UTC
 
 stderr: |
-  > esc env version history test --utc
-  > esc env version retract test@2 --reason plaintext secret --replace-with @3
-  > esc env version history test --utc
-  > esc env version retract test@3 --reason test retraction --replace-with @latest
-  > esc env version history test --utc
-  > esc env version retract test@4
-  > esc env version history test --utc
+  > esc env version history default/test --utc
+  > esc env version retract default/test@2 --reason plaintext secret --replace-with @3
+  > esc env version history default/test --utc
+  > esc env version retract default/test@3 --reason test retraction --replace-with @latest
+  > esc env version history default/test --utc
+  > esc env version retract default/test@4
+  > esc env version history default/test --utc

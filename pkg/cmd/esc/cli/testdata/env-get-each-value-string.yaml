@@ -1,15 +1,15 @@
 run: |
-  echo \"$(esc env get test --value string null)\"
-  esc env get test --value string boolean
-  esc env get test --value string number
-  esc env get test --value string string
-  esc env get test --value string array
-  esc env get test --value string 'array[0]'
-  esc env get test --value string 'array[1]'
-  esc env get test --value string object
-  esc env get test --value string object.hello
-  esc env get test --value string object.goodbye
-  esc env get test --value string open
+  echo \"$(esc env get default/test --value string null)\"
+  esc env get default/test --value string boolean
+  esc env get default/test --value string number
+  esc env get default/test --value string string
+  esc env get default/test --value string array
+  esc env get default/test --value string 'array[0]'
+  esc env get default/test --value string 'array[1]'
+  esc env get default/test --value string object
+  esc env get default/test --value string object.hello
+  esc env get default/test --value string object.goodbye
+  esc env get default/test --value string open
 environments:
   test-user/default/a:
     values:
@@ -33,36 +33,36 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
-  "> esc env get test --value string null"
-  > esc env get test --value string boolean
+  "> esc env get default/test --value string null"
+  > esc env get default/test --value string boolean
   true
-  > esc env get test --value string number
+  > esc env get default/test --value string number
   42
-  > esc env get test --value string string
+  > esc env get default/test --value string string
   esc
-  > esc env get test --value string array
+  > esc env get default/test --value string array
   "hello","world"
-  > esc env get test --value string array[0]
+  > esc env get default/test --value string array[0]
   hello
-  > esc env get test --value string array[1]
+  > esc env get default/test --value string array[1]
   world
-  > esc env get test --value string object
+  > esc env get default/test --value string object
   "goodbye"="all","hello"="world"
-  > esc env get test --value string object.hello
+  > esc env get default/test --value string object.hello
   world
-  > esc env get test --value string object.goodbye
+  > esc env get default/test --value string object.goodbye
   all
-  > esc env get test --value string open
+  > esc env get default/test --value string open
   [unknown]
 stderr: |
-  > esc env get test --value string null
-  > esc env get test --value string boolean
-  > esc env get test --value string number
-  > esc env get test --value string string
-  > esc env get test --value string array
-  > esc env get test --value string array[0]
-  > esc env get test --value string array[1]
-  > esc env get test --value string object
-  > esc env get test --value string object.hello
-  > esc env get test --value string object.goodbye
-  > esc env get test --value string open
+  > esc env get default/test --value string null
+  > esc env get default/test --value string boolean
+  > esc env get default/test --value string number
+  > esc env get default/test --value string string
+  > esc env get default/test --value string array
+  > esc env get default/test --value string array[0]
+  > esc env get default/test --value string array[1]
+  > esc env get default/test --value string object
+  > esc env get default/test --value string object.hello
+  > esc env get default/test --value string object.goodbye
+  > esc env get default/test --value string open

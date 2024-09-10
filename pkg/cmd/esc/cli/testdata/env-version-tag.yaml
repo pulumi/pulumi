@@ -1,16 +1,16 @@
 run: |
-  esc env version tag test@stable 2
-  esc env version test@stable --utc
-  esc env version tag test@stable 3
-  esc env version test@stable --utc
-  esc env version tag test@stable
-  esc env version test@stable --utc
-  esc env version test@latest --utc
-  esc env version tag ls test --utc
-  esc env version tag test@initial 1
-  esc env version tag ls test --utc
-  esc env version tag rm test@initial
-  esc env version tag ls test --utc
+  esc env version tag default/test@stable 2
+  esc env version default/test@stable --utc
+  esc env version tag default/test@stable 3
+  esc env version default/test@stable --utc
+  esc env version tag default/test@stable
+  esc env version default/test@stable --utc
+  esc env version default/test@latest --utc
+  esc env version tag ls default/test --utc
+  esc env version tag default/test@initial 1
+  esc env version tag ls default/test --utc
+  esc env version tag rm default/test@initial
+  esc env version tag ls default/test --utc
 environments:
   test-user/default/a: {}
   test-user/default/b: {}
@@ -39,26 +39,26 @@ environments:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |+
-  > esc env version tag test@stable 2
-  > esc env version test@stable --utc
+  > esc env version tag default/test@stable 2
+  > esc env version default/test@stable --utc
   stable
   Revision 2
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
-  > esc env version tag test@stable 3
-  > esc env version test@stable --utc
+  > esc env version tag default/test@stable 3
+  > esc env version default/test@stable --utc
   stable
   Revision 3
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
-  > esc env version tag test@stable
-  > esc env version test@stable --utc
+  > esc env version tag default/test@stable
+  > esc env version default/test@stable --utc
   stable
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
-  > esc env version test@latest --utc
+  > esc env version default/test@latest --utc
   latest
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
-  > esc env version tag ls test --utc
+  > esc env version tag ls default/test --utc
   latest
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
@@ -67,8 +67,8 @@ stdout: |+
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
 
-  > esc env version tag test@initial 1
-  > esc env version tag ls test --utc
+  > esc env version tag default/test@initial 1
+  > esc env version tag ls default/test --utc
   initial
   Revision 1
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
@@ -81,8 +81,8 @@ stdout: |+
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
 
-  > esc env version tag rm test@initial
-  > esc env version tag ls test --utc
+  > esc env version tag rm default/test@initial
+  > esc env version tag ls default/test --utc
   latest
   Revision 4
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
@@ -92,15 +92,15 @@ stdout: |+
   Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
 
 stderr: |
-  > esc env version tag test@stable 2
-  > esc env version test@stable --utc
-  > esc env version tag test@stable 3
-  > esc env version test@stable --utc
-  > esc env version tag test@stable
-  > esc env version test@stable --utc
-  > esc env version test@latest --utc
-  > esc env version tag ls test --utc
-  > esc env version tag test@initial 1
-  > esc env version tag ls test --utc
-  > esc env version tag rm test@initial
-  > esc env version tag ls test --utc
+  > esc env version tag default/test@stable 2
+  > esc env version default/test@stable --utc
+  > esc env version tag default/test@stable 3
+  > esc env version default/test@stable --utc
+  > esc env version tag default/test@stable
+  > esc env version default/test@stable --utc
+  > esc env version default/test@latest --utc
+  > esc env version tag ls default/test --utc
+  > esc env version tag default/test@initial 1
+  > esc env version tag ls default/test --utc
+  > esc env version tag rm default/test@initial
+  > esc env version tag ls default/test --utc

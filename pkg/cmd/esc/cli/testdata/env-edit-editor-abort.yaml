@@ -1,4 +1,4 @@
-run: esc env edit test
+run: esc env edit default/test
 process:
   environ:
     EDITOR: my-editor
@@ -10,7 +10,7 @@ environments:
     values:
       foo: bar
 stdout: |
-  > esc env edit test
+  > esc env edit default/test
 stderr: |
-  > esc env edit test
+  > esc env edit default/test
   Aborting edit due to empty definition.

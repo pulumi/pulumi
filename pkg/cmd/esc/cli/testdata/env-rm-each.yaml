@@ -1,15 +1,15 @@
 run: |
-  esc env rm test null && esc env get test
-  esc env rm test boolean && esc env get test
-  esc env rm test number && esc env get test
-  esc env rm test string && esc env get test
-  esc env rm test 'array[1]' && esc env get test
-  esc env rm test 'array[0]' && esc env get test
-  esc env rm test array && esc env get test
-  esc env rm test object.hello && esc env get test
-  esc env rm test object && esc env get test
-  esc env rm test 'open["fn::open::test"].foo' && esc env get test
-  esc env rm test open && esc env get test
+  esc env rm default/test null && esc env get default/test
+  esc env rm default/test boolean && esc env get default/test
+  esc env rm default/test number && esc env get default/test
+  esc env rm default/test string && esc env get default/test
+  esc env rm default/test 'array[1]' && esc env get default/test
+  esc env rm default/test 'array[0]' && esc env get default/test
+  esc env rm default/test array && esc env get default/test
+  esc env rm default/test object.hello && esc env get default/test
+  esc env rm default/test object && esc env get default/test
+  esc env rm default/test 'open["fn::open::test"].foo' && esc env get default/test
+  esc env rm default/test open && esc env get default/test
 environments:
   test-user/default/a:
     values:
@@ -35,8 +35,8 @@ environments:
           foo: bar
           baz: qux
 stdout: |+
-  > esc env rm test null
-  > esc env get test
+  > esc env rm default/test null
+  > esc env get default/test
   # Value
   ```json
   {
@@ -72,8 +72,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test boolean
-  > esc env get test
+  > esc env rm default/test boolean
+  > esc env get default/test
   # Value
   ```json
   {
@@ -107,8 +107,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test number
-  > esc env get test
+  > esc env rm default/test number
+  > esc env get default/test
   # Value
   ```json
   {
@@ -140,8 +140,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test string
-  > esc env get test
+  > esc env rm default/test string
+  > esc env get default/test
   # Value
   ```json
   {
@@ -172,8 +172,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test array[1]
-  > esc env get test
+  > esc env rm default/test array[1]
+  > esc env get default/test
   # Value
   ```json
   {
@@ -203,8 +203,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test array[0]
-  > esc env get test
+  > esc env rm default/test array[0]
+  > esc env get default/test
   # Value
   ```json
   {
@@ -232,8 +232,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test array
-  > esc env get test
+  > esc env rm default/test array
+  > esc env get default/test
   # Value
   ```json
   {
@@ -259,8 +259,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test object.hello
-  > esc env get test
+  > esc env rm default/test object.hello
+  > esc env get default/test
   # Value
   ```json
   {
@@ -286,8 +286,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test object
-  > esc env get test
+  > esc env rm default/test object
+  > esc env get default/test
   # Value
   ```json
   {
@@ -312,8 +312,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test open["fn::open::test"].foo
-  > esc env get test
+  > esc env rm default/test open["fn::open::test"].foo
+  > esc env get default/test
   # Value
   ```json
   {
@@ -337,8 +337,8 @@ stdout: |+
 
   ```
 
-  > esc env rm test open
-  > esc env get test
+  > esc env rm default/test open
+  > esc env get default/test
   # Value
   ```json
   {
@@ -359,25 +359,25 @@ stdout: |+
   ```
 
 stderr: |
-  > esc env rm test null
-  > esc env get test
-  > esc env rm test boolean
-  > esc env get test
-  > esc env rm test number
-  > esc env get test
-  > esc env rm test string
-  > esc env get test
-  > esc env rm test array[1]
-  > esc env get test
-  > esc env rm test array[0]
-  > esc env get test
-  > esc env rm test array
-  > esc env get test
-  > esc env rm test object.hello
-  > esc env get test
-  > esc env rm test object
-  > esc env get test
-  > esc env rm test open["fn::open::test"].foo
-  > esc env get test
-  > esc env rm test open
-  > esc env get test
+  > esc env rm default/test null
+  > esc env get default/test
+  > esc env rm default/test boolean
+  > esc env get default/test
+  > esc env rm default/test number
+  > esc env get default/test
+  > esc env rm default/test string
+  > esc env get default/test
+  > esc env rm default/test array[1]
+  > esc env get default/test
+  > esc env rm default/test array[0]
+  > esc env get default/test
+  > esc env rm default/test array
+  > esc env get default/test
+  > esc env rm default/test object.hello
+  > esc env get default/test
+  > esc env rm default/test object
+  > esc env get default/test
+  > esc env rm default/test open["fn::open::test"].foo
+  > esc env get default/test
+  > esc env rm default/test open
+  > esc env get default/test

@@ -1,4 +1,4 @@
-run: esc open test --format string
+run: esc open default/test --format string
 environments:
   test-user/default/test:
     imports:
@@ -10,7 +10,7 @@ environments:
       foo: baz
       hello: world
 stdout: |
-  > esc open test --format string
+  > esc open default/test --format string
   "foo"="bar","hello"="world"
 stderr: |
-  > esc open test --format string
+  > esc open default/test --format string

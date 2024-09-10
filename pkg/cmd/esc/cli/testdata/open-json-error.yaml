@@ -1,4 +1,4 @@
-run: esc open test --format json
+run: esc open default/test --format json
 environments:
   test-user/default/test:
     values:
@@ -6,8 +6,8 @@ environments:
       missing: ${foo}
       invalid: {'fn::toBase64': "${object}"}
 stdout: |
-  > esc open test --format json
+  > esc open default/test --format json
 stderr: |
-  > esc open test --format json
+  > esc open default/test --format json
   test:3:16: unknown property "foo"
   test:4:31: expected string, got object

@@ -1,6 +1,6 @@
 run: |
-  esc env get test --value=shell
-  esc env get test --value=shell --show-secrets
+  esc env get default/test --value=shell
+  esc env get default/test --value=shell --show-secrets
 environments:
   test-user/default/a: {}
   test-user/default/b: {}
@@ -31,7 +31,7 @@ environments:
       files:
         FILE: ${string}
 stdout: |
-  > esc env get test --value=shell
+  > esc env get default/test --value=shell
   export BOOLEAN="true"
   export NULLV=""
   export NUMBER="3.14"
@@ -39,7 +39,7 @@ stdout: |
   export SECRET="[secret]"
   export STRING="esc"
   export FILE="[unknown]"
-  > esc env get test --value=shell --show-secrets
+  > esc env get default/test --value=shell --show-secrets
   export BOOLEAN="true"
   export NULLV=""
   export NUMBER="3.14"
@@ -48,5 +48,5 @@ stdout: |
   export STRING="esc"
   export FILE="[unknown]"
 stderr: |
-  > esc env get test --value=shell
-  > esc env get test --value=shell --show-secrets
+  > esc env get default/test --value=shell
+  > esc env get default/test --value=shell --show-secrets

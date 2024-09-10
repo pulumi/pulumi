@@ -1,15 +1,15 @@
 run: |
-  esc env get test --value detailed null
-  esc env get test --value detailed boolean
-  esc env get test --value detailed number
-  esc env get test --value detailed string
-  esc env get test --value detailed array
-  esc env get test --value detailed 'array[0]'
-  esc env get test --value detailed 'array[1]'
-  esc env get test --value detailed object
-  esc env get test --value detailed object.hello
-  esc env get test --value detailed object.goodbye
-  esc env get test --value detailed open
+  esc env get default/test --value detailed null
+  esc env get default/test --value detailed boolean
+  esc env get default/test --value detailed number
+  esc env get default/test --value detailed string
+  esc env get default/test --value detailed array
+  esc env get default/test --value detailed 'array[0]'
+  esc env get default/test --value detailed 'array[1]'
+  esc env get default/test --value detailed object
+  esc env get default/test --value detailed object.hello
+  esc env get default/test --value detailed object.goodbye
+  esc env get default/test --value detailed open
 environments:
   test-user/default/a:
     values:
@@ -33,7 +33,7 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
-  > esc env get test --value detailed null
+  > esc env get default/test --value detailed null
   {
     "trace": {
       "def": {
@@ -51,7 +51,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed boolean
+  > esc env get default/test --value detailed boolean
   {
     "value": true,
     "trace": {
@@ -70,7 +70,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed number
+  > esc env get default/test --value detailed number
   {
     "value": 42,
     "trace": {
@@ -89,7 +89,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed string
+  > esc env get default/test --value detailed string
   {
     "value": "esc",
     "trace": {
@@ -126,7 +126,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed array
+  > esc env get default/test --value detailed array
   {
     "value": [
       {
@@ -182,7 +182,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed array[0]
+  > esc env get default/test --value detailed array[0]
   {
     "value": "hello",
     "trace": {
@@ -201,7 +201,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed array[1]
+  > esc env get default/test --value detailed array[1]
   {
     "value": "world",
     "trace": {
@@ -220,7 +220,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed object
+  > esc env get default/test --value detailed object
   {
     "value": {
       "goodbye": {
@@ -440,7 +440,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed object.hello
+  > esc env get default/test --value detailed object.hello
   {
     "value": "world",
     "trace": {
@@ -477,7 +477,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed object.goodbye
+  > esc env get default/test --value detailed object.goodbye
   {
     "value": "all",
     "trace": {
@@ -514,7 +514,7 @@ stdout: |
       }
     }
   }
-  > esc env get test --value detailed open
+  > esc env get default/test --value detailed open
   {
     "unknown": true,
     "trace": {
@@ -534,14 +534,14 @@ stdout: |
     }
   }
 stderr: |
-  > esc env get test --value detailed null
-  > esc env get test --value detailed boolean
-  > esc env get test --value detailed number
-  > esc env get test --value detailed string
-  > esc env get test --value detailed array
-  > esc env get test --value detailed array[0]
-  > esc env get test --value detailed array[1]
-  > esc env get test --value detailed object
-  > esc env get test --value detailed object.hello
-  > esc env get test --value detailed object.goodbye
-  > esc env get test --value detailed open
+  > esc env get default/test --value detailed null
+  > esc env get default/test --value detailed boolean
+  > esc env get default/test --value detailed number
+  > esc env get default/test --value detailed string
+  > esc env get default/test --value detailed array
+  > esc env get default/test --value detailed array[0]
+  > esc env get default/test --value detailed array[1]
+  > esc env get default/test --value detailed object
+  > esc env get default/test --value detailed object.hello
+  > esc env get default/test --value detailed object.goodbye
+  > esc env get default/test --value detailed open

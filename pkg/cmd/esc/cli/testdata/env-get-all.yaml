@@ -1,11 +1,11 @@
 run: |
-  esc env get test
-  esc env get test@latest
-  esc env get test@stable
-  esc env get test@1
-  esc env get test@2
-  esc env get test@3
-  esc env get test@latest --show-secrets
+  esc env get default/test
+  esc env get default/test@latest
+  esc env get default/test@stable
+  esc env get default/test@1
+  esc env get default/test@2
+  esc env get default/test@3
+  esc env get default/test@latest --show-secrets
 environments:
   test-user/default/a: {}
   test-user/default/b:
@@ -38,7 +38,7 @@ environments:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |+
-  > esc env get test
+  > esc env get default/test
   # Value
   ```json
   {
@@ -79,7 +79,7 @@ stdout: |+
 
   ```
 
-  > esc env get test@latest
+  > esc env get default/test@latest
   # Value
   ```json
   {
@@ -120,7 +120,7 @@ stdout: |+
 
   ```
 
-  > esc env get test@stable
+  > esc env get default/test@stable
   # Value
   ```json
   {
@@ -134,9 +134,9 @@ stdout: |+
 
   ```
 
-  > esc env get test@1
+  > esc env get default/test@1
 
-  > esc env get test@2
+  > esc env get default/test@2
   # Value
   ```json
   {
@@ -150,7 +150,7 @@ stdout: |+
 
   ```
 
-  > esc env get test@3
+  > esc env get default/test@3
   # Value
   ```json
   {
@@ -191,7 +191,7 @@ stdout: |+
 
   ```
 
-  > esc env get test@latest --show-secrets
+  > esc env get default/test@latest --show-secrets
   # Value
   ```json
   {
@@ -232,10 +232,10 @@ stdout: |+
   ```
 
 stderr: |
-  > esc env get test
-  > esc env get test@latest
-  > esc env get test@stable
-  > esc env get test@1
-  > esc env get test@2
-  > esc env get test@3
-  > esc env get test@latest --show-secrets
+  > esc env get default/test
+  > esc env get default/test@latest
+  > esc env get default/test@stable
+  > esc env get default/test@1
+  > esc env get default/test@2
+  > esc env get default/test@3
+  > esc env get default/test@latest --show-secrets
