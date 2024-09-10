@@ -104,7 +104,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, ws, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, ws, DefaultLoginManager, cmd.stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}

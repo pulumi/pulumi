@@ -129,7 +129,7 @@ func initializeDeploymentSettingsCmd(
 		return nil, err
 	}
 
-	be, err := currentBackend(ctx, ws, project, displayOpts)
+	be, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func initializeDeploymentSettingsCmd(
 			be.Name())
 	}
 
-	s, err := requireStack(ctx, ws, stack, stackOfferNew|stackSetCurrent, displayOpts)
+	s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, displayOpts)
 	if err != nil {
 		return nil, err
 	}

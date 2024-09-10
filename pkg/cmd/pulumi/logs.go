@@ -68,7 +68,7 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

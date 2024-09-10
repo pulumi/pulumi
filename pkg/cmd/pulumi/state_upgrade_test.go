@@ -109,7 +109,7 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	var called bool
 	cmd := stateUpgradeCmd{
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
@@ -134,7 +134,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 	var called bool
 	cmd := stateUpgradeCmd{
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
@@ -159,7 +159,7 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 
 	cmd := stateUpgradeCmd{
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &stubDIYBackend{
 				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
@@ -183,7 +183,7 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	cmd := stateUpgradeCmd{
 		Stdout: &stdout,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{}, nil
 		},
@@ -201,7 +201,7 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 	giveErr := errors.New("great sadness")
 	cmd := stateUpgradeCmd{
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return nil, giveErr
 		},

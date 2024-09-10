@@ -92,7 +92,7 @@ func newWatchCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return err
 			}

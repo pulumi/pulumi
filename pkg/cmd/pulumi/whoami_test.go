@@ -34,7 +34,7 @@ func TestWhoAmICmd_default(t *testing.T) {
 	cmd := whoAmICmd{
 		Stdout: &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -58,7 +58,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -89,7 +89,7 @@ func TestWhoAmICmd_json(t *testing.T) {
 		jsonOut: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -120,7 +120,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -155,7 +155,7 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		jsonOut: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -190,7 +190,7 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {

@@ -73,14 +73,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, ws, sourceStackName, stackLoadOnly, display.Options{
+			sourceStack, err := requireStack(ctx, ws, DefaultLoginManager, sourceStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, ws, destStackName, stackLoadOnly, display.Options{
+			destStack, err := requireStack(ctx, ws, DefaultLoginManager, destStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
