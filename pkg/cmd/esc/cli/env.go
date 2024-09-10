@@ -197,7 +197,7 @@ func (cmd *envCommand) getNewEnvRef(
 	}
 
 	// Check if project at <org-name>/<project-name> exists. Assume not if listing environments errors
-	allEnvs, _ := cmd.listEnvironments(ctx, "")
+	allEnvs, _ := cmd.listEnvironments(ctx, "", "")
 	existsProject := false
 	for _, e := range allEnvs {
 		if strings.EqualFold(e.Project, ref.projectName) {

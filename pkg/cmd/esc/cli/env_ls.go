@@ -13,7 +13,10 @@ import (
 )
 
 func newEnvLsCmd(env *envCommand) *cobra.Command {
-	var orgFilter string
+	var (
+		orgFilter     string
+		projectFilter string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "ls",
@@ -30,7 +33,7 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			allEnvs, err := env.listEnvironments(ctx, orgFilter)
+			allEnvs, err := env.listEnvironments(ctx, orgFilter, projectFilter)
 			if err != nil {
 				return err
 			}
@@ -55,12 +58,14 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&orgFilter, "organization", "o", "", "Filter returned stacks to those in a specific organization")
+		&orgFilter, "organization", "o", "", "Filter returned environments to those in a specific organization")
+	cmd.PersistentFlags().StringVarP(
+		&projectFilter, "project", "p", "", "Filter returned environments to those in a specific project")
 
 	return cmd
 }
 
-func (env *envCommand) listEnvironments(ctx context.Context, orgFilter string) ([]client.OrgEnvironment, error) {
+func (env *envCommand) listEnvironments(ctx context.Context, orgFilter, projectFilter string) ([]client.OrgEnvironment, error) {
 	user := env.esc.account.Username
 	continuationToken, allEnvs := "", []client.OrgEnvironment(nil)
 	for {
@@ -71,6 +76,9 @@ func (env *envCommand) listEnvironments(ctx context.Context, orgFilter string) (
 		for _, e := range envs {
 			if e.Organization == user {
 				e.Organization = ""
+			}
+			if projectFilter != "" && e.Project != projectFilter {
+				continue
 			}
 			allEnvs = append(allEnvs, e)
 		}
