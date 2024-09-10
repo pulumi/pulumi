@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -37,6 +38,7 @@ import (
 )
 
 type testHost struct {
+	stderr      *bytes.Buffer
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
@@ -52,7 +54,12 @@ func (h *testHost) ServerAddr() string {
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	panic("not implemented")
+	prefix := ""
+	if urn != "" {
+		prefix = fmt.Sprintf(" %s: ", urn)
+	}
+	_, err := fmt.Fprintf(h.stderr, "[%s]%s\n", prefix, msg)
+	contract.IgnoreError(err)
 }
 
 func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
