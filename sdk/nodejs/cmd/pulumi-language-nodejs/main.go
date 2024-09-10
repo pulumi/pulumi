@@ -1256,12 +1256,12 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(req.Info.ProgramDirectory, yarnFile)
+		result, err = parseYarnLockFile(packagePath, yarnFile)
 		if err != nil {
 			return nil, err
 		}
 	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(req.Info.ProgramDirectory, npmFile)
+		result, err = parseNpmLockFile(packagePath, npmFile)
 		if err != nil {
 			return nil, err
 		}
