@@ -166,7 +166,7 @@ func TestListEnvironments(t *testing.T) {
 
 func TestCreateEnvironment(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
 		err := client.CreateEnvironmentWithProject(context.Background(), "test-org", "test-project", "test-env")
@@ -174,7 +174,7 @@ func TestCreateEnvironment(t *testing.T) {
 	})
 
 	t.Run("Conflict", func(t *testing.T) {
-		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
 
 			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{

@@ -449,8 +449,16 @@ func (pc *client) CreateEnvironment(ctx context.Context, orgName, envName string
 
 // CreateEnvironmentWithProject creates an environment named envName in org orgName and project projectName.
 func (pc *client) CreateEnvironmentWithProject(ctx context.Context, orgName, projectName, envName string) error {
-	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v", orgName, projectName, envName)
-	return pc.restCall(ctx, http.MethodPost, path, nil, nil, nil)
+	req := struct {
+		Project string `json:"project"`
+		Name    string `json:"name"`
+	}{
+		Project: projectName,
+		Name:    envName,
+	}
+
+	path := fmt.Sprintf("/api/esc/environments/%v", orgName)
+	return pc.restCall(ctx, http.MethodPost, path, nil, req, nil)
 }
 
 func (pc *client) GetEnvironment(
@@ -841,8 +849,8 @@ func (pc *client) CreateEnvironmentRevisionTag(
 	tagName string,
 	revision *int,
 ) error {
-	req := CreateEnvironmentRevisionTagRequest{Revision: revision}
-	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/versions/tags/%v", orgName, projectName, envName, tagName)
+	req := CreateEnvironmentRevisionTagRequest{Name: tagName, Revision: revision}
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/versions/tags", orgName, projectName, envName)
 	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 }
 

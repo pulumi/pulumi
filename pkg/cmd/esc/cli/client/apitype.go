@@ -78,7 +78,8 @@ type EnvironmentRevision struct {
 }
 
 type CreateEnvironmentRevisionTagRequest struct {
-	Revision *int `json:"revision,omitempty"`
+	Name     string `json:"name"`
+	Revision *int   `json:"revision,omitempty"`
 }
 
 type UpdateEnvironmentRevisionTagRequest struct {
