@@ -1280,9 +1280,9 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
-	isCopilotEnabled, err := b.Client().IsCopilotEnabledForOrg(ctx, stackID.Owner)
-	if !isCopilotEnabled || err != nil {
-		// This overrides the user's preference stated by PULUMI_SHOW_COPILOT_LINK, so issue a
+	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
+	if !isCopilotEnabled {
+		// If this overrides user's preference stated by PULUMI_SHOW_COPILOT_LINK, issue a
 		// verbosity level 7 warning to ease diagnosing why the link isn't showing up.
 		if env.ShowCopilotLink.Value() {
 			userName, _, _, err := b.CurrentUser()

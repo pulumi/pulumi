@@ -97,6 +97,8 @@ type UpdateProgramResponse struct {
 
 	// Messages is a list of messages that should be displayed to the user.
 	Messages []Message `json:"messages,omitempty"`
+
+	AISettings OrganizationAISettings `json:"aiSettings,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.

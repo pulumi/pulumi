@@ -589,8 +589,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 type CreateUpdateDetails struct {
-	Messages         []apitype.Message
-	RequiredPolicies []apitype.RequiredPolicy
+	Messages                    []apitype.Message
+	RequiredPolicies            []apitype.RequiredPolicy
+	IsCopilotIntegrationEnabled bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -665,8 +666,9 @@ func (pc *Client) CreateUpdate(
 			UpdateKind:      kind,
 			UpdateID:        updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:         updateResponse.Messages,
-			RequiredPolicies: updateResponse.RequiredPolicies,
+			Messages:                    updateResponse.Messages,
+			RequiredPolicies:            updateResponse.RequiredPolicies,
+			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
@@ -1238,10 +1240,6 @@ func getPulumiOrgSearchPath(baseURL string, orgName string) string {
 	return fmt.Sprintf("%s/%s/resources", baseURL, url.PathEscape(orgName))
 }
 
-func getOrgAISettingsPath(orgName string) string {
-	return fmt.Sprintf("/api/orgs/%s/aisettings", url.PathEscape(orgName))
-}
-
 // Pulumi Cloud Search Functions
 func (pc *Client) GetSearchQueryResults(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, baseURL string,
@@ -1267,17 +1265,6 @@ func (pc *Client) GetNaturalLanguageQueryResults(
 		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
 	return &resp, nil
-}
-
-func (pc *Client) IsCopilotEnabledForOrg(
-	ctx context.Context, orgName string,
-) (bool, error) {
-	var resp apitype.OrganizationAISettings
-	err := pc.restCall(ctx, http.MethodGet, getOrgAISettingsPath(orgName), nil, nil, &resp)
-	if err != nil {
-		return false, fmt.Errorf("unable to query service if Copilot is enabled: %w", err)
-	}
-	return resp.CopilotIsEnabled, nil
 }
 
 func is404(err error) bool {
