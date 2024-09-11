@@ -86,6 +86,10 @@ type Message struct {
 	Message string `json:"message"`
 }
 
+type AISettingsForUpdate struct {
+	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+}
+
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
@@ -98,7 +102,7 @@ type UpdateProgramResponse struct {
 	// Messages is a list of messages that should be displayed to the user.
 	Messages []Message `json:"messages,omitempty"`
 
-	AISettings OrganizationAISettings `json:"aiSettings,omitempty"`
+	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
