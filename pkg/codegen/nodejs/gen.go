@@ -1218,6 +1218,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 
 		argsType := title(name) + suffix
 		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argsType)
+
+		if !plain && len(fun.Inputs.Properties) == 0 {
+			// for empty/unit args on output-versioned invokes, don't generate an empty argument
+			argsig = ""
+		}
 	}
 
 	funReturnType := mod.functionReturnType(fun)
@@ -1260,7 +1265,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	}
 
 	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs {
+	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
