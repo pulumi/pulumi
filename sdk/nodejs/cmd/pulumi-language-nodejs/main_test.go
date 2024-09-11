@@ -379,7 +379,7 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	err := os.Mkdir(dir, 0o755)
 	require.NoError(t, err)
 
-	for i, _ := range files {
+	for i := range files {
 		files[i].path = filepath.Join(dir, files[i].path)
 	}
 
