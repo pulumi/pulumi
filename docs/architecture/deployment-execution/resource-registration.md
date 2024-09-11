@@ -46,8 +46,8 @@ The *resource monitor* (largely represented by `resmon` in the codebase; see
 channel between language hosts and the engine. There is a single resource
 monitor per deployment. Aside from being a marshalling and unmarshalling layer
 between the engine and its gRPC boundary, the resource monitor is also
-responsible for resolving [default providers](default-providers) and
-[multi-language components](mlcs), responding to
+responsible for resolving [default providers](default-providers) and [component
+providers](component-providers), responding to
 [](pulumirpc.RegisterResourceRequest)s as follows:
 
 * The request is unmarshalled from the gRPC wire format into an engine-internal
@@ -55,13 +55,13 @@ responsible for resolving [default providers](default-providers) and
 * If the request lacks a `provider` reference, the resource monitor will resolve
   a [default provider](default-providers) for the resource's package and
   version.
-* If the request registers a [multi-language component (MLC)](mlcs), the
+* If the request registers a [remote component](component-providers), the
   resource monitor will dispatch an appropriate
-  [](pulumirpc.ResourceProvider.Construct) call to the MLC's provider and await
-  the result.
-* If the request does *not* register an MLC (a so-called *custom resource*,
-  although this is in reality the default type of resource), the resource
-  monitor will emit a `RegisterResourceEvent` and await a response.
+  [](pulumirpc.ResourceProvider.Construct) call to the component provider and
+  await the result.
+* If the request does *not* register a remote component (a so-called *custom
+  resource*, although this is in reality the default type of resource), the
+  resource monitor will emit a `RegisterResourceEvent` and await a response.
 * When a result is received (either in response to a
   [](pulumirpc.ResourceProvider.Construct) call or a `RegisterResourceEvent`),
   the resource monitor will marshal the result back into the gRPC wire format
