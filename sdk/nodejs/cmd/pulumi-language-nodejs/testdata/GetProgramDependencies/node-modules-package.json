@@ -1,0 +1,78 @@
+{
+  "name": "random",
+  "version": "5.1.0",
+  "description": "Seedable random number generator supporting many common distributions.",
+  "repository": "transitive-bullshit/random",
+  "author": "Travis Fischer <travis@transitivebullsh.it>",
+  "license": "MIT",
+  "type": "module",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@fisch0920/eslint-config": "^1.4.0",
+    "@total-typescript/ts-reset": "^0.6.1",
+    "@types/node": "^22.5.2",
+    "@types/seedrandom": "^3.0.2",
+    "del-cli": "^5.0.0",
+    "eslint": "^8.57.0",
+    "husky": "^9.1.5",
+    "lint-staged": "^15.2.10",
+    "np": "^10.0.7",
+    "npm-run-all2": "^6.2.2",
+    "prettier": "^3.3.3",
+    "seedrandom": "^3.0.5",
+    "tsup": "^8.2.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.0.5"
+  },
+  "keywords": [
+    "random",
+    "number",
+    "generator",
+    "rng",
+    "prng",
+    "stats",
+    "d3-random",
+    "probability",
+    "seedrandom",
+    "distribution",
+    "pseudorandom",
+    "uniform",
+    "normal",
+    "gaussian",
+    "lognormal",
+    "poisson",
+    "exponential",
+    "irwinhall",
+    "bates"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prebuild": "run-s clean",
+    "predev": "run-s clean",
+    "clean": "del dist",
+    "pretest": "run-s build",
+    "test": "run-s test:*",
+    "test:lint": "eslint .",
+    "test:prettier": "prettier '**/*.{js,jsx,ts,tsx}' --check",
+    "test:typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
+  }
+}
