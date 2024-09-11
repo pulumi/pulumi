@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.132.0 (2024-09-11)
+
+
+### Features
+
+- [cli/state] Show the full set of delete commands necessary to remove resources from the source stack, if writing to it fails
+  [#17205](https://github.com/pulumi/pulumi/pull/17205)
+
+- [cli/state] Try to revert changes to destination stack if we are unable to save the source stack in state move
+  [#17208](https://github.com/pulumi/pulumi/pull/17208)
+
+- [engine] Send resource names and types in provider requests from the engine, in addition to the combined URN
+  [#17177](https://github.com/pulumi/pulumi/pull/17177)
+
+- [pkg] Add support for ESC Projects
+  [#17226](https://github.com/pulumi/pulumi/pull/17226)
+
+- [sdk/dotnet] Update dotnet to 3.67.0
+  [#17223](https://github.com/pulumi/pulumi/pull/17223)
+
+- [sdkgen/go] Allow output-versioned invokes to resolve and maintain secrets
+  [#17132](https://github.com/pulumi/pulumi/pull/17132)
+
+
+### Bug Fixes
+
+- [cli] Recover from zero-byte `credentials.json` files
+  [#17186](https://github.com/pulumi/pulumi/pull/17186)
+
+- [cli] Using PULUMI_BACKEND_URL no longer updates credentials.json
+  [#17199](https://github.com/pulumi/pulumi/pull/17199)
+
+- [engine] Fix parameterized providers not downloading correctly when found from state
+  [#17218](https://github.com/pulumi/pulumi/pull/17218)
+
+- [cli/about] Fix language plugins always having unknown version in about
+  [#17216](https://github.com/pulumi/pulumi/pull/17216)
+
+- [cli/display] Fix deletes not being show in `refresh` when using json output
+  [#16851](https://github.com/pulumi/pulumi/pull/16851)
+
+- [cli/display] Hide unnecessary rows in non-interactive mode
+  [#17188](https://github.com/pulumi/pulumi/pull/17188)
+
+- [sdkgen/python] Correctly case Python package names in `package add` link instructions
+  [#17178](https://github.com/pulumi/pulumi/pull/17178)
+
 ## 3.131.0 (2024-09-04)
 
 

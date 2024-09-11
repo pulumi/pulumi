@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/about
-  description: Fix language plugins always having unknown version in about

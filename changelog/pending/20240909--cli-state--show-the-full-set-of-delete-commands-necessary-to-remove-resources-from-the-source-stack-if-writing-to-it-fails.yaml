@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Show the full set of delete commands necessary to remove resources from the source stack, if writing to it fails
