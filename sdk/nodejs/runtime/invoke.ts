@@ -81,7 +81,7 @@ export function invoke(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
-    return invokeAsync(tok, props, opts, packageRef).then(response => {
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
         // ignore secrets for plain invoke
         const { result } = response;
         return result;
@@ -89,9 +89,9 @@ export function invoke(
 }
 
 /**
-* Similar to the plain `invoke` but returns the response as an output, maintaining
-* secrets of the response, if any.
-*/
+ * Similar to the plain `invoke` but returns the response as an output, maintaining
+ * secrets of the response, if any.
+ */
 export function invokeOutput<T>(
     tok: string,
     props: Inputs,
@@ -101,14 +101,16 @@ export function invokeOutput<T>(
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
     // assume that responses from invoke are always known
     const isKnown = true;
-    invokeAsync(tok, props, opts, packageRef).then(response => {
-        const { result, containsSecrets } = response;
-        resolve(<T>result, isKnown, containsSecrets, [], undefined)
-    }).catch(err => {
-        resolve(<any>undefined, isKnown, false, [], err)
-    });
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, containsSecrets } = response;
+            resolve(<T>result, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, isKnown, false, [], err);
+        });
 
-    return output
+    return output;
 }
 
 function extractSingleValue(result: Inputs | undefined): any {
@@ -132,7 +134,7 @@ export function invokeSingle(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
-    return invokeAsync(tok, props, opts, packageRef).then(response => {
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
         // ignore secrets for plain invoke
         const { result } = response;
         return extractSingleValue(result);
@@ -152,15 +154,17 @@ export function invokeSingleOutput<T>(
     const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
     // assume that responses from invoke are always known
     const isKnown = true;
-    invokeAsync(tok, props, opts, packageRef).then(response => {
-        const { result, containsSecrets } = response;
-        const value = extractSingleValue(result)
-        resolve(<T>value, isKnown, containsSecrets, [], undefined)
-    }).catch(err => {
-        resolve(<any>undefined, isKnown, false, [], err)
-    });
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, containsSecrets } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, isKnown, false, [], err);
+        });
 
-    return output
+    return output;
 }
 
 export async function streamInvoke(
@@ -330,9 +334,9 @@ function getProvider(tok: string, opts: InvokeOptions) {
 function deserializeResponse(
     tok: string,
     resp: { getFailuresList(): Array<providerproto.CheckFailure>; getReturn(): gstruct.Struct | undefined },
-): { 
-    result: Inputs | undefined, 
-    containsSecrets: boolean 
+): {
+    result: Inputs | undefined;
+    containsSecrets: boolean;
 } {
     const failures = resp.getFailuresList();
     if (failures?.length) {
@@ -353,11 +357,11 @@ function deserializeResponse(
     if (result === undefined) {
         return {
             result,
-            containsSecrets
+            containsSecrets,
         };
     }
 
-    const properties =  deserializeProperties(result)
+    const properties = deserializeProperties(result);
     // Keep track of whether we need to mark the resulting output a secret.
     // and unwrap each individual value if it is a secret.
     for (const key of Object.keys(properties)) {
@@ -367,7 +371,7 @@ function deserializeResponse(
 
     return {
         result: properties,
-        containsSecrets
+        containsSecrets,
     };
 }
 
