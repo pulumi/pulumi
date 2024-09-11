@@ -53,6 +53,7 @@ func newStackHistoryCmd() *cobra.Command {
 This command displays data about previous updates for a stack.`,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -76,7 +77,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
-				crypter, needsSave, err := getStackDecrypter(s, ps)
+				crypter, needsSave, err := ssml.getDecrypter(ctx, s, ps)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}

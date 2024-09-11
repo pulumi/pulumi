@@ -88,6 +88,9 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		cmd.secretsProvider = stack.DefaultSecretsProvider
 	}
 
+	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.
+	ssml := stackSecretsManagerLoader{}
+
 	ws := pkgWorkspace.Instance
 
 	opts := display.Options{
@@ -117,7 +120,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Build decrypter based on the existing secrets provider
 	var decrypter config.Decrypter
 	if currentProjectStack.Config.HasSecureValue() {
-		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
+		dec, needsSave, decerr := ssml.getDecrypter(ctx, currentStack, currentProjectStack)
 		if decerr != nil {
 			return decerr
 		}
@@ -142,10 +145,19 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Fixup the checkpoint
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
 	return migrateOldConfigAndCheckpointToNewSecretsProvider(
-		ctx, cmd.secretsProvider, project, currentStack, currentProjectStack, decrypter)
+		ctx,
+		ssml,
+		cmd.secretsProvider,
+		project,
+		currentStack,
+		currentProjectStack,
+		decrypter,
+	)
 }
 
-func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+func migrateOldConfigAndCheckpointToNewSecretsProvider(
+	ctx context.Context,
+	ssml stackSecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
@@ -158,7 +170,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Get the newly created secrets manager for the stack
-	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack, nil)
+	newSecretsManager, needsSave, err := ssml.getSecretsManager(ctx, currentStack, reloadedProjectStack)
 	if err != nil {
 		return err
 	}

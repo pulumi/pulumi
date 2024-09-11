@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -23,26 +24,37 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func getStackEncrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Encrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps, nil)
-	if err != nil {
-		return nil, false, err
-	}
-
-	enc, err := sm.Encrypter()
-	if err != nil {
-		return nil, needsSave, err
-	}
-	return enc, needsSave, nil
+// A stackSecretsManagerLoader provides methods for loading secrets managers and
+// their encrypters and decrypters for a given stack and project stack. A loader
+// encapsulates the logic for determining which secrets manager to use based on
+// a given configuration, such as whether or not to fallback to the stack state
+// if there is no secrets manager configured in the project stack.
+type stackSecretsManagerLoader struct {
+	// True if the loader should fallback to the stack state if there is no
+	// secrets manager configured in the project stack.
+	FallbackToState bool
 }
 
-func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps, nil)
+// Creates a new stack secrets manager loader from the environment.
+func newStackSecretsManagerLoaderFromEnv() stackSecretsManagerLoader {
+	return stackSecretsManagerLoader{
+		FallbackToState: env.FallbackToStateSecretsManager.Value(),
+	}
+}
+
+// Returns a decrypter for the given stack and project stack.
+func (l *stackSecretsManagerLoader) getDecrypter(
+	ctx context.Context,
+	s backend.Stack,
+	ps *workspace.ProjectStack,
+) (config.Decrypter, bool, error) {
+	sm, needsSave, err := l.getSecretsManager(ctx, s, ps)
 	if err != nil {
 		return nil, false, err
 	}
@@ -54,8 +66,29 @@ func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decr
 	return dec, needsSave, nil
 }
 
-func getStackSecretsManager(
-	s backend.Stack, ps *workspace.ProjectStack, fallbackManager secrets.Manager,
+// Returns an encrypter for the given stack and project stack.
+func (l *stackSecretsManagerLoader) getEncrypter(
+	ctx context.Context,
+	s backend.Stack,
+	ps *workspace.ProjectStack,
+) (config.Encrypter, bool, error) {
+	sm, needsSave, err := l.getSecretsManager(ctx, s, ps)
+	if err != nil {
+		return nil, false, err
+	}
+
+	enc, err := sm.Encrypter()
+	if err != nil {
+		return nil, needsSave, err
+	}
+	return enc, needsSave, nil
+}
+
+// Returns a secrets manager for the given stack and project stack.
+func (l *stackSecretsManagerLoader) getSecretsManager(
+	ctx context.Context,
+	s backend.Stack,
+	ps *workspace.ProjectStack,
 ) (secrets.Manager, bool, error) {
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
@@ -63,11 +96,36 @@ func getStackSecretsManager(
 	var err error
 	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 		sm, err = cloud.NewCloudSecretsManager(
-			ps, ps.SecretsProvider, false /* rotateSecretsProvider */)
+			ps,
+			ps.SecretsProvider,
+			false, /* rotateSecretsProvider */
+		)
 	} else if ps.EncryptionSalt != "" {
 		sm, err = passphrase.NewPromptingPassphraseSecretsManager(
-			ps, false /* rotateSecretsProvider */)
+			ps,
+			false, /* rotateSecretsProvider */
+		)
 	} else {
+		var fallbackManager secrets.Manager
+
+		// If the loader has been configured to fallback to the stack state, we will
+		// attempt to use the current snapshot secrets manager, if there is one.
+		// This ensures that in cases where stack configuration is missing (or is
+		// present but missing secrets provider configuration), we will keep using
+		// what is already specified in the snapshot, rather than creating a new
+		// default secrets manager which differs from what the user has previously
+		// specified.
+		if l.FallbackToState {
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			if err != nil {
+				return nil, false, err
+			}
+
+			if snap != nil {
+				fallbackManager = snap.SecretsManager
+			}
+		}
+
 		if fallbackManager != nil {
 			sm = fallbackManager
 

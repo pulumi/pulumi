@@ -652,6 +652,8 @@ func newImportCmd() *cobra.Command {
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			ssml := newStackSecretsManagerLoaderFromEnv()
+
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get working directory: %w", err)
@@ -910,7 +912,7 @@ func newImportCmd() *cobra.Command {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

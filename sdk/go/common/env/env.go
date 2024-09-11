@@ -97,6 +97,9 @@ var BackendURL = env.String("BACKEND_URL",
 var ShowCopilotLink = env.Bool("SHOW_COPILOT_LINK",
 	"Show the 'explainFailure' link to Copilot in the CLI output.")
 
+var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //

@@ -200,7 +200,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 		return nil, nil, err
 	}
 
-	decrypter, needsSave, err := getStackDecrypter(stack, ps)
+	decrypter, needsSave, err := cmd.parent.ssml.getDecrypter(ctx, stack, ps)
 	if err != nil {
 		return nil, nil, err
 	}

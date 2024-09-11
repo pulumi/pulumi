@@ -115,6 +115,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
+	ssml := newStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Try to read the current project
@@ -205,7 +206,14 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// copy the config from the old to the new
-		requiresSaving, err := copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+		requiresSaving, err := copyEntireConfigMap(
+			ctx,
+			ssml,
+			copyStack,
+			copyProjectStack,
+			newStack,
+			newProjectStack,
+		)
 		if err != nil {
 			return err
 		}

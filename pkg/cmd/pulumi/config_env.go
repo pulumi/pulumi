@@ -65,7 +65,8 @@ type configEnvCmd struct {
 	interactive bool
 	color       colors.Colorization
 
-	ws pkgWorkspace.Context
+	ssml stackSecretsManagerLoader
+	ws   pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
@@ -86,6 +87,8 @@ type configEnvCmd struct {
 func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
+
+	cmd.ssml = newStackSecretsManagerLoaderFromEnv()
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
@@ -171,7 +174,17 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return err
 	}
 
-	if err := listConfig(ctx, cmd.stdout, project, *stack, projectStack, showSecrets, false, false); err != nil {
+	if err := listConfig(
+		ctx,
+		cmd.ssml,
+		cmd.stdout,
+		project,
+		*stack,
+		projectStack,
+		showSecrets,
+		false, /*jsonOut*/
+		false, /*openEnvironment*/
+	); err != nil {
 		return err
 	}
 
