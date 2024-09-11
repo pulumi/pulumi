@@ -12,7 +12,6 @@ import * as utilities from "./utilities";
  * API Version: 2020-12-01-preview.
  */
 export function listConfigurations(args: ListConfigurationsArgs, opts?: pulumi.InvokeOptions): Promise<ListConfigurationsResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("myedgeorder::listConfigurations", {
         "configurationFilters": args.configurationFilters,
@@ -54,7 +53,12 @@ export interface ListConfigurationsResult {
  * API Version: 2020-12-01-preview.
  */
 export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListConfigurationsResult> {
-    return pulumi.output(args).apply((a: any) => listConfigurations(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("myedgeorder::listConfigurations", {
+        "configurationFilters": args.configurationFilters,
+        "customerSubscriptionDetails": args.customerSubscriptionDetails,
+        "skipToken": args.skipToken,
+    }, opts);
 }
 
 export interface ListConfigurationsOutputArgs {

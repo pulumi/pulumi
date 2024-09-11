@@ -1165,27 +1165,34 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 // the result of invokes to be a dictionary.
 //
 // We use invoke for functions with object return types and invokeSingle for everything else.
-func runtimeInvokeFunction(fun *schema.Function) string {
+func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
+	functionName := "invoke"
 	switch fun.ReturnType.(type) {
 	// If the function has no return type, it is a void function.
 	case nil:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is also a normal invoke function.
 	// because the deserialization can handle it
 	case *schema.MapType:
-		return "invoke"
+		functionName = "invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle
 		// which expects an object with a single property to be returned
 		// then unwraps the value from that property
-		return "invokeSingle"
+		functionName = "invokeSingle"
 	}
+
+	if plain {
+		return functionName
+	}
+
+	return functionName + "Output"
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
 	info := functionFileInfo{functionName: name}
 
@@ -1204,30 +1211,50 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		if argsOptional {
 			optFlag = "?"
 		}
-		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
+		suffix := "Args"
+		if !plain {
+			suffix = "OutputArgs"
+		}
+
+		argsType := title(name) + suffix
+		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argsType)
 	}
 
 	funReturnType := mod.functionReturnType(fun)
 
-	fmt.Fprintf(w, "export function %s(", name)
+	fullFunctionName := name
+	if !plain {
+		fullFunctionName += "Output"
+		info.functionOutputVersionName = fullFunctionName
+	}
+
+	fmt.Fprintf(w, "export function %s(", fullFunctionName)
 	if fun.MultiArgumentInputs {
 		for _, prop := range fun.Inputs.Properties {
-			if prop.IsRequired() {
-				fmt.Fprintf(w, "%s: ", prop.Name)
-				fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
-			} else {
-				fmt.Fprintf(w, "%s?: ", prop.Name)
-				// since we already applied the '?' to the type, we can simplify
-				// the optional-ness of the type
-				propType := prop.Type.(*schema.OptionalType)
-				fmt.Fprintf(w, "%s, ", mod.typeString(propType.ElementType, false, nil))
+			propertyType := codegen.UnwrapType(prop.Type)
+			isInput := false
+			if !plain {
+				isInput = true
+				propertyType = &schema.InputType{ElementType: prop.Type}
 			}
+			fmt.Fprintf(w, "%s", prop.Name)
+			if prop.IsRequired() {
+				fmt.Fprintf(w, ": ")
+			} else {
+				fmt.Fprintf(w, "?: ")
+			}
+			fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
 		}
 	} else {
 		fmt.Fprintf(w, "%s", argsig)
 	}
 
-	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): Promise<%s> {\n", funReturnType)
+	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+	if !plain {
+		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+	}
+
+	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): %s {\n", returnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
@@ -1237,10 +1264,9 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
-	fmt.Fprint(w, "\n")
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-	invokeCall := runtimeInvokeFunction(fun)
+	invokeCall := runtimeInvokeFunction(fun, plain)
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
 	if fun.Inputs != nil {
@@ -1280,26 +1306,67 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
-		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
-			return info, err
-		}
 		info.functionArgsInterfaceName = argsInterfaceName
-	}
+		properties := fun.Inputs.Properties
+		if !plain {
+			argsInterfaceName = title(name) + "OutputArgs"
+			properties = fun.Inputs.InputShape.Properties
+			info.functionOutputVersionArgsInterfaceName = argsInterfaceName
+		} else {
+			info.functionArgsInterfaceName = argsInterfaceName
+		}
 
-	// if the return type is an inline object definition (not a reference), emit it.
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-			fmt.Fprintf(w, "\n")
-			resultInterfaceName := title(name) + "Result"
-			if err := mod.genPlainType(w, resultInterfaceName,
-				objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+		if len(properties) == 0 {
+			if plain {
+				// if there are no properties, generate an empty interface for plain invokes
+				// we would like to remove this, but it would be a breaking change
+				if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
+					return info, err
+				}
+			}
+
+			// this avoids generating an export for the interface that doesn't exist
+			info.functionOutputVersionArgsInterfaceName = ""
+		} else {
+			if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
 				return info, err
 			}
+		}
+	}
+
+	resultInterfaceName := title(name) + "Result"
+	// if the return type is an inline object definition (not a reference), emit it.
+	// only emit the plain result type T since output-versioned invokes will use Output<T> for the non-plain variant
+	if fun.ReturnType != nil {
+		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+			if plain {
+				fmt.Fprintf(w, "\n")
+				if err := mod.genPlainType(w, resultInterfaceName,
+					objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+					return info, err
+				}
+			}
+
 			info.functionResultInterfaceName = resultInterfaceName
 		}
 	}
 
-	return mod.genFunctionOutputVersion(w, fun, info)
+	return info, nil
+}
+
+func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+	plainFunctionInfo, err := mod.genFunctionDefinition(w, fun, true /* plain */)
+	if err != nil {
+		return functionFileInfo{}, err
+	}
+
+	if fun.ReturnType == nil {
+		// no need to generate the output-versioned invoke
+		return plainFunctionInfo, nil
+	}
+
+	// generate output-versioned invoke
+	return mod.genFunctionDefinition(w, fun, false /* plain */)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {

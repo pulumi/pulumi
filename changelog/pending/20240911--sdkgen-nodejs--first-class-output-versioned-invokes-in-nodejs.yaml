@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/nodejs
+  description: Add first-class output-versioned invokes for NodeJS

@@ -8,7 +8,6 @@ import * as utilities from "./utilities";
 
 export function getCustomDbRoles(args?: GetCustomDbRolesArgs, opts?: pulumi.InvokeOptions): Promise<GetCustomDbRolesResult> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mongodbatlas::getCustomDbRoles", {
     }, opts);
@@ -20,6 +19,10 @@ export interface GetCustomDbRolesArgs {
 export interface GetCustomDbRolesResult {
     readonly result?: outputs.GetCustomDbRolesResult;
 }
-export function getCustomDbRolesOutput(opts?: pulumi.InvokeOptions): pulumi.Output<GetCustomDbRolesResult> {
-    return pulumi.output(getCustomDbRoles(opts))
+export function getCustomDbRolesOutput(args?: GetCustomDbRolesOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetCustomDbRolesResult> {
+    args = args || {};
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mongodbatlas::getCustomDbRoles", {
+    }, opts);
 }
+
