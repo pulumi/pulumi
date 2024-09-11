@@ -1289,7 +1289,8 @@ func (b *cloudBackend) createAndStartUpdate(
 			if err != nil {
 				userName = "unknown"
 			}
-			logging.V(7).Infof("Copilot in org '%s' is not enabled for user '%s', link to Copilot in diagnostics will not be shown",
+			logging.V(7).Infof(
+				"Copilot in org '%s' is not enabled for user '%s', link to Copilot in diagnostics will not be shown",
 				stackID.Owner, userName)
 		}
 		op.Opts.Display.ShowLinkToCopilot = false
