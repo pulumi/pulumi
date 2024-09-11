@@ -1228,7 +1228,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 			return false
 		}
 		name := info.Name()
-		return name == "package.json"
+		return name == "yarn.lock" || name == "package-lock.json"
 	}
 	packagePath, err := fsutil.WalkUp(req.Info.ProgramDirectory, packagePathCheck, nil)
 	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
@@ -1240,12 +1240,12 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to locate package.json file: %w", err)
+		return nil, fmt.Errorf("failed to locate package-lock.json or yarn.lock file: %w", err)
 	}
 
 	if packagePath == "" {
 		return nil, fmt.Errorf(
-			"no package.json file found (searching upwards from %s)", req.Info.ProgramDirectory)
+			"no package-lock.json or yarn.lock file found (searching upwards from %s)", req.Info.ProgramDirectory)
 	}
 
 	packagePath = filepath.Dir(packagePath)

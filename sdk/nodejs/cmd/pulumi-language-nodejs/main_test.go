@@ -423,7 +423,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package.json file found (searching upwards from")
+		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
 	})
 
 	t.Run("package.json-in-project-root-no-lock-files", func(t *testing.T) {
@@ -450,7 +450,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "could not find either")
+		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
 	})
 
 	t.Run("package.json-in-project-root-with-yarn.lock", func(t *testing.T) {
