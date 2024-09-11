@@ -615,7 +615,6 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Equal(t, 1, len(resp.Dependencies))
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
-
 	})
 
 	t.Run("package.json-in-parent-with-package-lock.json", func(t *testing.T) {
