@@ -1283,22 +1283,13 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			}
 
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
-				if codegen.IsNOptionalInput(p.Type) {
+				if codegen.IsNOptionalInput(p.Type) || !plain {
 					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
 				} else {
 					body = fmt.Sprintf("%s(%s)", name, body)
 				}
 
-				var typeCast string
-				if !plain {
-					// if the defaults function return an object, say MyType with default values
-					// it won't be automatically compatible with the non-plain version MyTypeArgs
-					// even though technically MyType is a subset of MyTypeArgs so here we tell the compiler
-					// that it's fine to cast MyType to MyTypeArgs
-					typeCast = "<any>"
-				}
-
-				body = fmt.Sprintf("args.%s ? %s%s : undefined", p.Name, typeCast, body)
+				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
 			}
 			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
