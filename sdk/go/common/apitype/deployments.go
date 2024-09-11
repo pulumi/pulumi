@@ -356,6 +356,10 @@ type secretWorkflowValue struct {
 	Ciphertext string `json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
 }
 
+type OrganizationAISettings struct {
+	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+}
+
 func (v SecretValue) MarshalJSON() ([]byte, error) {
 	switch {
 	case len(v.Ciphertext) != 0:

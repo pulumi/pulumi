@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -535,6 +536,7 @@ func newUpCmd() *cobra.Command {
 			// For now, 'explainFailure' link to Copilot in the CLI output
 			// requires env var PULUMI_SHOW_COPILOT_LINK to be set to true
 			opts.Display.ShowLinkToCopilot = env.ShowCopilotLink.Value()
+			logging.V(7).Infof("ShowLinkToCopilot=%v", opts.Display.ShowLinkToCopilot)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(ctx, ws, DefaultLoginManager, args[0], opts, cmd)

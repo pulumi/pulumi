@@ -715,6 +715,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
+		display.println("")
 	}
 
 	return hasError
