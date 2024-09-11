@@ -578,14 +578,14 @@ func TestGetProgramDependencies(t *testing.T) {
 
 	t.Run("package.json-in-root-with-package-lock.json", func(t *testing.T) {
 		t.Parallel()
-		packageJson := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package.json"))
-		packageLockJson := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package-lock.json"))
-		nodeModulesPackageJson := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "node-modules-package.json"))
+		p := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package.json"))
+		pl := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package-lock.json"))
+		nmp := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "node-modules-package.json"))
 
 		files := []filePathAndContents{
 			{
 				path:    "package.json",
-				content: packageJson,
+				content: p,
 			},
 			{
 				path:    "Pulumi.yaml",
@@ -593,11 +593,11 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 			{
 				path:    "package-lock.json",
-				content: packageLockJson,
+				content: pl,
 			},
 			{
 				path:    filepath.Join("node_modules", "random", "package.json"),
-				content: nodeModulesPackageJson,
+				content: nmp,
 			},
 		}
 
