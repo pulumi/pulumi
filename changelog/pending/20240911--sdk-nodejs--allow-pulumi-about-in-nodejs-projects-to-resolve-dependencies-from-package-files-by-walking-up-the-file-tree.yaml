@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Allow 'pulumi about' in nodejs projects to resolve dependencies from package files by walking up the file tree 
