@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix closure serialization when using the Pulumi SDK inside anonymous functions
