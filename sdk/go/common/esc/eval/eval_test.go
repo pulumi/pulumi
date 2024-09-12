@@ -23,8 +23,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/pgavlin/fx"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
@@ -110,6 +113,19 @@ func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value,
 	return esc.NewValue(inputs), nil
 }
 
+type benchProvider struct {
+	delay time.Duration
+}
+
+func (benchProvider) Schema() (*schema.Schema, *schema.Schema) {
+	return schema.Always(), schema.Always()
+}
+
+func (p benchProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	time.Sleep(p.delay)
+	return esc.NewValue(p.delay.String()), nil
+}
+
 type testProvider struct{}
 
 func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
@@ -120,9 +136,11 @@ func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, conte
 	return esc.NewValue(inputs), nil
 }
 
-type testProviders struct{}
+type testProviders struct {
+	benchDelay time.Duration
+}
 
-func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provider, error) {
+func (tp testProviders) LoadProvider(ctx context.Context, name string) (esc.Provider, error) {
 	switch name {
 	case "error":
 		return errorProvider{}, nil
@@ -130,6 +148,8 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 		return testSchemaProvider{}, nil
 	case "test":
 		return testProvider{}, nil
+	case "bench":
+		return benchProvider{delay: tp.benchDelay}, nil
 	}
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
@@ -142,6 +162,48 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 	bytes, err := os.ReadFile(filepath.Join(e.root, name+".yaml"))
 	if err != nil {
 		return nil, nil, err
+	}
+	return bytes, rot128{}, nil
+}
+
+type benchEnvironments struct {
+	defs  map[string][]byte
+	delay time.Duration
+}
+
+func newBenchEnvironments(root string, delay time.Duration) (*benchEnvironments, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+
+	defs, err := fx.TryMap(fx.Map(
+		fx.FMap(fx.IterSlice(entries), func(e os.DirEntry) (fx.Pair[string, string], bool) {
+			name, ok := strings.CutSuffix(e.Name(), ".yaml")
+			return fx.NewPair(name, filepath.Join(root, e.Name())), ok
+		}),
+		func(namepath fx.Pair[string, string]) fx.Result[fx.Pair[string, []byte]] {
+			name, path := namepath.Unpack()
+			bytes, err := os.ReadFile(path)
+			if err != nil {
+				return fx.Err[fx.Pair[string, []byte]](err)
+			}
+			return fx.OK(fx.NewPair(name, bytes))
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &benchEnvironments{defs, delay}, nil
+}
+
+func (e *benchEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error) {
+	time.Sleep(e.delay)
+
+	bytes, ok := e.defs[name]
+	if !ok {
+		return nil, nil, os.ErrNotExist
 	}
 	return bytes, rot128{}, nil
 }
@@ -200,6 +262,10 @@ func TestEval(t *testing.T) {
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)
 	for _, e := range entries {
+		if e.Name() == "bench" {
+			continue
+		}
+
 		t.Run(e.Name(), func(t *testing.T) {
 			basePath := filepath.Join(path, e.Name())
 			envPath := filepath.Join(basePath, "env.yaml")
@@ -327,4 +393,52 @@ func TestEval(t *testing.T) {
 			assert.Equal(t, expected.Eval, actual)
 		})
 	}
+}
+
+func benchmarkEval(b *testing.B, openDelay, loadDelay time.Duration) {
+	basePath := filepath.Join("testdata", "eval", "bench")
+	envPath := filepath.Join(basePath, "env.yaml")
+
+	envBytes, err := os.ReadFile(envPath)
+	require.NoError(b, err)
+
+	envs, err := newBenchEnvironments(basePath, loadDelay)
+	require.NoError(b, err)
+
+	for i := 0; i < b.N; i++ {
+		execContext, err := esc.NewExecContext(map[string]esc.Value{
+			"pulumi": esc.NewValue(map[string]esc.Value{
+				"user": esc.NewValue(map[string]esc.Value{
+					"id": esc.NewValue("USER_123"),
+				}),
+			}),
+		})
+		require.NoError(b, err)
+
+		environmentName := "bench"
+
+		env, loadDiags, err := LoadYAMLBytes(environmentName, envBytes)
+		require.NoError(b, err)
+		require.Empty(b, loadDiags)
+
+		_, evalDiags := EvalEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{benchDelay: openDelay},
+			envs, execContext)
+		require.Empty(b, evalDiags)
+	}
+}
+
+func BenchmarkEval(b *testing.B) {
+	benchmarkEval(b, 0, 0)
+}
+
+func BenchmarkEvalOpen(b *testing.B) {
+	benchmarkEval(b, 10*time.Millisecond, 0)
+}
+
+func BenchmarkEvalEnvLoad(b *testing.B) {
+	benchmarkEval(b, 0, 10*time.Millisecond)
+}
+
+func BenchmarkEvalAll(b *testing.B) {
+	benchmarkEval(b, 10*time.Millisecond, 10*time.Millisecond)
 }
