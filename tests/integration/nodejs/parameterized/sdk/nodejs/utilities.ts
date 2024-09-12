@@ -4,8 +4,8 @@
 import * as resproto from "@pulumi/pulumi/proto/resource_pb";
 import * as mutex from "async-mutex";
 
-import * as runtime from "@pulumi/pulumi/runtime";
 import * as pulumi from "@pulumi/pulumi";
+import * as runtime from "@pulumi/pulumi/runtime";
 
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {
@@ -101,7 +101,7 @@ var _packageRef : undefined | string = undefined;
 export async function getPackage() : Promise<string | undefined> {
 	if (_packageRef === undefined) {
 		if (!runtime.supportsPackageReferences()) {
-			throw new Error("The Pulumi CLI does not support package references. Please update the Pulumi CLI");
+			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
 		}
 
 		await _packageLock.acquire();

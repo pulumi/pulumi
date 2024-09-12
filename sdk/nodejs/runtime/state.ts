@@ -188,7 +188,7 @@ export interface Store {
      * Tells us if the resource monitor we are connected to is able to support
      * package references and parameterized providers.
      */
-    supportsPackageReferences: boolean;
+    supportsParameterization: boolean;
 
     /**
      * The callback service running for this deployment. This registers
@@ -211,6 +211,8 @@ export interface Store {
  * @internal
  */
 export class LocalStore implements Store {
+    supportsParameterization: boolean;
+    callbacks?: ICallbackServer | undefined;
     settings = {
         options: {
             organization: process.env[nodeEnvKeys.organization],

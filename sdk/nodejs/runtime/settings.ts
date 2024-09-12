@@ -249,7 +249,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
         store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
         store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
-        store.supportsPackageReferences = await monitorSupportsFeature(monitorRef, "packageReferences");
+        store.supportsParameterization = await monitorSupportsFeature(monitorRef, "parameterization");
     }
 }
 

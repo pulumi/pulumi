@@ -2889,7 +2889,7 @@ var _packageRef : undefined | string = undefined;
 export async function getPackage() : Promise<string | undefined> {
 	if (_packageRef === undefined) {
 		if (!runtime.supportsPackageReferences()) {
-			throw new Error("The Pulumi CLI does not support package references. Please update the Pulumi CLI");
+			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
 		}
 
 		await _packageLock.acquire();

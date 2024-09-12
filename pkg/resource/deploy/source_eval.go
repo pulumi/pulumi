@@ -951,8 +951,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "invokeTransforms":
 		hasSupport = true
-	case "packageReferences":
-		// N.B This serves a dual purpose of also indicating that parameterized providers are supported.
+	case "parameterization":
+		// N.B This serves a dual purpose of also indicating that package references are supported.
 		hasSupport = true
 	}
 

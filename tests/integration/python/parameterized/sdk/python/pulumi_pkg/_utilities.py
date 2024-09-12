@@ -348,9 +348,8 @@ async def get_package():
 							parameterization=parameterization,
 						))
 					_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
+	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
 	if _package_ref is None:
-		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
+		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
-	

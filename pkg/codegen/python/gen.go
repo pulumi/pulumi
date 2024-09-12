@@ -540,7 +540,7 @@ _package_ref = ...
 async def get_package():
 	global _package_ref
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_invoke_transforms():
+		if pulumi.runtime.settings._sync_monitor_supports_package_references():
 			async with _package_lock:
 				if _package_ref is ...:
 					monitor = pulumi.runtime.settings.get_monitor()
@@ -557,10 +557,10 @@ async def get_package():
 							parameterization=parameterization,
 						))
 					_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
+	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
 	if _package_ref is None:
-		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
+		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
 			pkg.Name, param, pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version)
@@ -3403,12 +3403,12 @@ var MinimumValidParameterizationSDKVersion = ">=3.132,<4.0.0"
 // a valid value.
 // This function returns an error if the provided Pulumi version fails to
 // validate.
-func ensureValidPulumiVersion(paramaterised bool, requires map[string]string) (map[string]string, error) {
+func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 
 	miniumumVersion := MinimumValidSDKVersion
-	if paramaterised {
+	if parameterized {
 		miniumumVersion = MinimumValidParameterizationSDKVersion
 	}
 

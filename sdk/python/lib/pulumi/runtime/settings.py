@@ -338,6 +338,11 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
         return False
     return SETTINGS.feature_support["invokeTransforms"]
 
+def _sync_monitor_supports_parameterization() -> bool:
+    if "parameterization" not in SETTINGS.feature_support:
+        return False
+    return SETTINGS.feature_support["parameterization"]
+
 
 def reset_options(
     project: Optional[str] = None,
@@ -392,5 +397,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),
-        monitor_supports_feature("packageReferences"),
+        monitor_supports_feature("parameterization"),
     )
