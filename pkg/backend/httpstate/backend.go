@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -1276,6 +1277,23 @@ func (b *cloudBackend) createAndStartUpdate(
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+	}
+
+	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
+	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
+	if !isCopilotEnabled {
+		// If this overrides user's preference stated by PULUMI_SHOW_COPILOT_LINK, issue a
+		// verbosity level 7 warning to ease diagnosing why the link isn't showing up.
+		if env.ShowCopilotLink.Value() {
+			userName, _, _, err := b.CurrentUser()
+			if err != nil {
+				userName = "unknown"
+			}
+			logging.V(7).Infof(
+				"Copilot in org '%s' is not enabled for user '%s', link to Copilot in diagnostics will not be shown",
+				stackID.Owner, userName)
+		}
+		op.Opts.Display.ShowLinkToCopilot = false
 	}
 
 	return update, updateMetadata{
