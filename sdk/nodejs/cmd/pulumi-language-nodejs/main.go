@@ -1233,12 +1233,10 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	packagePath, err := fsutil.WalkUp(req.Info.ProgramDirectory, packagePathCheck, nil)
 	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
 	// users can run pulumi with unreadable root directories.
-	var perr *fs.PathError
-	if errors.As(err, &perr) {
-		if errors.Is(perr.Err, fs.ErrPermission) {
-			err = nil
-		}
+	if errors.Is(err, fs.ErrPermission) {
+		err = nil
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate package-lock.json or yarn.lock file: %w", err)
 	}

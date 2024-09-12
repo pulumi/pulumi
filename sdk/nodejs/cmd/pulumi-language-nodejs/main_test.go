@@ -379,11 +379,8 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	err := os.Mkdir(dir, 0o755)
 	require.NoError(t, err)
 
-	for i := range files {
-		files[i].path = filepath.Join(dir, files[i].path)
-	}
-
 	for _, file := range files {
+		file.path = filepath.Join(dir, file.path)
 		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
 		require.NoError(t, err)
 		err = os.WriteFile(file.path, []byte(file.content), 0o600)
@@ -392,28 +389,18 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	return dir
 }
 
-func readFileToString(filePath string) string {
-	fileBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		panic(err)
-	}
-	return string(fileBytes)
-}
-
 func TestGetProgramDependencies(t *testing.T) {
 	t.Parallel()
 
-	t.Run("no-package.json-no-lock-files", func(t *testing.T) {
+	t.Run("With no package.json, no lock files", func(t *testing.T) {
 		t.Parallel()
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "Pulumi.yaml",
 				content: `name: test`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
@@ -426,10 +413,10 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
 	})
 
-	t.Run("package.json-in-project-root-no-lock-files", func(t *testing.T) {
+	t.Run("With package.json in project root, no lock files", func(t *testing.T) {
 		t.Parallel()
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
 				content: `{ "name": "@pulumi/baz", "dependencies": { "@pulumi/pulumi": "^3.113.0" } }`,
@@ -438,9 +425,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				path:    "Pulumi.yaml",
 				content: `name: test`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
@@ -453,10 +438,10 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
 	})
 
-	t.Run("package.json-in-project-root-with-yarn.lock", func(t *testing.T) {
+	t.Run("With package.json and yarn.lock in project root", func(t *testing.T) {
 		t.Parallel()
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
 				content: `{ "name": "@pulumi/baz", "dependencies": { "@pulumi/pulumi": "^3.113.0" } }`,
@@ -476,9 +461,7 @@ func TestGetProgramDependencies(t *testing.T) {
     "@logdna/tail-file" "^2.0.6"
     "@npmcli/arborist" "^7.3.1"`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
@@ -494,10 +477,10 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Equal(t, resp.Dependencies[0].Version, "3.131.0")
 	})
 
-	t.Run("package.json-in-parent-with-yarn.lock", func(t *testing.T) {
+	t.Run("With package.json and yarn.lock in parent dir", func(t *testing.T) {
 		t.Parallel()
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
 				content: `{ "name": "@pulumi/baz", "dependencies": { "@pulumi/pulumi": "^3.113.0" } }`,
@@ -517,15 +500,14 @@ func TestGetProgramDependencies(t *testing.T) {
     "@logdna/tail-file" "^2.0.6"
     "@npmcli/arborist" "^7.3.1"`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
+		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: filepath.Join(testDir, "subdir"),
+			Program: subdir,
 			Info: &pulumirpc.ProgramInfo{
-				RootDirectory:    filepath.Join(testDir, "subdir"),
-				ProgramDirectory: filepath.Join(testDir, "subdir"),
+				RootDirectory:    subdir,
+				ProgramDirectory: subdir,
 				EntryPoint:       ".",
 			},
 		})
@@ -535,10 +517,10 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Equal(t, resp.Dependencies[0].Version, "3.131.0")
 	})
 
-	t.Run("package.json-in-project-root-with-yarn.lock", func(t *testing.T) {
+	t.Run("With package.json and yarn.lock in project root", func(t *testing.T) {
 		t.Parallel()
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
 				content: `{ "name": "@pulumi/baz", "dependencies": { "@pulumi/pulumi": "^3.113.0" } }`,
@@ -558,9 +540,7 @@ func TestGetProgramDependencies(t *testing.T) {
     "@logdna/tail-file" "^2.0.6"
     "@npmcli/arborist" "^7.3.1"`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
@@ -576,32 +556,46 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Equal(t, resp.Dependencies[0].Version, "3.131.0")
 	})
 
-	t.Run("package.json-in-root-with-package-lock.json", func(t *testing.T) {
+	t.Run("With package.json and package-lock.json in project root", func(t *testing.T) {
 		t.Parallel()
-		p := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package.json"))
-		pl := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package-lock.json"))
-		nmp := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "node-modules-package.json"))
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
-				content: p,
+				content: `{ "dependencies": { "random": "^5.1.0" } }`,
 			},
 			{
 				path:    "Pulumi.yaml",
 				content: `name: test`,
 			},
 			{
-				path:    "package-lock.json",
-				content: pl,
+				path: "package-lock.json",
+				content: `{
+  "name": "pulumi-repos",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "dependencies": {
+        "random": "^5.1.0"
+      }
+    },
+    "node_modules/random": {
+      "version": "5.1.0",
+      "resolved": "https://registry.npmjs.org/random/-/random-5.1.0.tgz",
+      "integrity": "sha512-0NGG4HMW9sTstLbignEDasSQJlCGkNQZICIWStZ+h4SzSJfZXpecGKV7qL0AOKcIT8XX9pJ49uZnvI0n/Y+vWA==",
+      "engines": {
+        "node": ">=18"
+      }
+    }
+  }
+}`,
 			},
 			{
 				path:    filepath.Join("node_modules", "random", "package.json"),
-				content: nmp,
+				content: `{ "name": "random", "version": "5.1.0", "type": "module" }`,
 			},
-		}
-
-		testDir := setupFiles(t, files)
+		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
@@ -617,38 +611,54 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
 
-	t.Run("package.json-in-parent-with-package-lock.json", func(t *testing.T) {
+	t.Run("With package.json and package-lock.json in parent dir", func(t *testing.T) {
 		t.Parallel()
-		p := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package.json"))
-		pl := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "package-lock.json"))
-		nmp := readFileToString(filepath.Join("testdata", "GetProgramDependencies", "node-modules-package.json"))
 
-		files := []filePathAndContents{
+		testDir := setupFiles(t, []filePathAndContents{
 			{
 				path:    "package.json",
-				content: p,
+				content: `{ "dependencies": { "random": "^5.1.0" } }`,
 			},
 			{
 				path:    filepath.Join("subdir", "Pulumi.yaml"),
 				content: `name: test`,
 			},
 			{
-				path:    "package-lock.json",
-				content: pl,
+				path: "package-lock.json",
+				content: `{
+  "name": "pulumi-repos",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "dependencies": {
+        "random": "^5.1.0"
+      }
+    },
+    "node_modules/random": {
+      "version": "5.1.0",
+      "resolved": "https://registry.npmjs.org/random/-/random-5.1.0.tgz",
+      "integrity": "sha512-0NGG4HMW9sTstLbignEDasSQJlCGkNQZICIWStZ+h4SzSJfZXpecGKV7qL0AOKcIT8XX9pJ49uZnvI0n/Y+vWA==",
+      "engines": {
+        "node": ">=18"
+      }
+    }
+  }
+}`,
 			},
 			{
 				path:    filepath.Join("node_modules", "random", "package.json"),
-				content: nmp,
+				content: `{ "name": "random", "version": "5.1.0", "type": "module" }`,
 			},
-		}
+		})
 
-		testDir := setupFiles(t, files)
+		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: filepath.Join(testDir, "subdir"),
+			Program: subdir,
 			Info: &pulumirpc.ProgramInfo{
-				RootDirectory:    filepath.Join(testDir, "subdir"),
-				ProgramDirectory: filepath.Join(testDir, "subdir"),
+				RootDirectory:    subdir,
+				ProgramDirectory: subdir,
 				EntryPoint:       ".",
 			},
 		})
