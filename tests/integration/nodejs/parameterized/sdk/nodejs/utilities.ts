@@ -100,7 +100,7 @@ const _packageLock = new mutex.Mutex();
 var _packageRef : undefined | string = undefined;
 export async function getPackage() : Promise<string | undefined> {
 	if (_packageRef === undefined) {
-		if (!runtime.supportsPackageReferences()) {
+		if (!runtime.supportsParameterization()) {
 			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
 		}
 

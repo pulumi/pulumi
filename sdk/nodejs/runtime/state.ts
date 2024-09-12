@@ -250,7 +250,7 @@ export class LocalStore implements Store {
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
-    supportsPackageReferences = false;
+    supportsParameterization = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
 }

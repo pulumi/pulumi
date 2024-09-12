@@ -7,7 +7,7 @@
         "postinstall": "node ./scripts/postinstall.js"
     },
     "dependencies": {
-        "@pulumi/pulumi": "^3.132.0",
+        "@pulumi/pulumi": "^3.133.0",
         "async-mutex": "^0.5.0"
     },
     "devDependencies": {

@@ -152,7 +152,7 @@ export function resetOptions(
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
-    store.supportsPackageReferences = false;
+    store.supportsParameterization = false;
     store.callbacks = undefined;
 }
 
@@ -601,10 +601,10 @@ export function rpcKeepAlive(): () => void {
 }
 
 /**
- * Returns if the engine supports package references.
+ * Returns if the engine supports parameterization and package references.
  */
-export function supportsPackageReferences(): boolean {
-    return getStore().supportsPackageReferences;
+export function supportsParameterization(): boolean {
+    return getStore().supportsParameterization;
 }
 
 /**

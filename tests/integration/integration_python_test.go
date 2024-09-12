@@ -1400,10 +1400,10 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParameterizedPython(t *testing.T) {
-	// TODO: Unskip this test after 3.132 is released. Python codegen for parameterized providers will try to
-	// refer to release 3.132, but until we actually release that version pip will fail that this constraint
+	// TODO: Unskip this test after 3.133 is released. Python codegen for parameterized providers will try to
+	// refer to release 3.133, but until we actually release that version pip will fail that this constraint
 	// can't be met.
-	t.Skip("This needs to skip until 3.132.0 is released due to how pip resoloution works")
+	t.Skip("This needs to skip until 3.133.0 is released due to how pip resoloution works")
 
 	e := ptesting.NewEnvironment(t)
 

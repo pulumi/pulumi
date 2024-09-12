@@ -49,7 +49,7 @@ const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion string = "^3.42.0"
 	// The minimum version of @pulumi/pulumi that supports parameterization.
-	MinimumValidParameterizationSDKVersion string = "^3.132.0"
+	MinimumValidParameterizationSDKVersion string = "^3.133.0"
 	MinimumTypescriptVersion               string = "^4.3.5"
 	MinimumNodeTypesVersion                string = "^14"
 )
@@ -2888,7 +2888,7 @@ const _packageLock = new mutex.Mutex();
 var _packageRef : undefined | string = undefined;
 export async function getPackage() : Promise<string | undefined> {
 	if (_packageRef === undefined) {
-		if (!runtime.supportsPackageReferences()) {
+		if (!runtime.supportsParameterization()) {
 			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
 		}
 
