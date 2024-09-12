@@ -35,14 +35,20 @@ type FuncWithSecretsResult struct {
 
 func FuncWithSecretsOutput(ctx *pulumi.Context, args FuncWithSecretsOutputArgs, opts ...pulumi.InvokeOption) FuncWithSecretsResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (FuncWithSecretsResult, error) {
+		ApplyT(func(v interface{}) (FuncWithSecretsResultOutput, error) {
 			args := v.(FuncWithSecretsArgs)
-			r, err := FuncWithSecrets(ctx, &args, opts...)
-			var s FuncWithSecretsResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv FuncWithSecretsResult
+			secret, err := ctx.InvokePackageRaw("mypkg::funcWithSecrets", args, &rv, "", opts...)
+			if err != nil {
+				return FuncWithSecretsResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(FuncWithSecretsResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(FuncWithSecretsResultOutput), nil
+			}
+			return output, nil
 		}).(FuncWithSecretsResultOutput)
 }
 

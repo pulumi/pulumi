@@ -168,7 +168,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return err
 			}

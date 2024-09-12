@@ -41,14 +41,20 @@ type GetBastionShareableLinkResult struct {
 
 func GetBastionShareableLinkOutput(ctx *pulumi.Context, args GetBastionShareableLinkOutputArgs, opts ...pulumi.InvokeOption) GetBastionShareableLinkResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (GetBastionShareableLinkResult, error) {
+		ApplyT(func(v interface{}) (GetBastionShareableLinkResultOutput, error) {
 			args := v.(GetBastionShareableLinkArgs)
-			r, err := GetBastionShareableLink(ctx, &args, opts...)
-			var s GetBastionShareableLinkResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv GetBastionShareableLinkResult
+			secret, err := ctx.InvokePackageRaw("mypkg::getBastionShareableLink", args, &rv, "", opts...)
+			if err != nil {
+				return GetBastionShareableLinkResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(GetBastionShareableLinkResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(GetBastionShareableLinkResultOutput), nil
+			}
+			return output, nil
 		}).(GetBastionShareableLinkResultOutput)
 }
 

@@ -77,7 +77,8 @@ type stackOutputCmd struct {
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
 	requireStack func(
-		ctx context.Context, ws pkgWorkspace.Context, name string, lopt stackLoadOption, opts display.Options,
+		ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+		name string, lopt stackLoadOption, opts display.Options,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -119,7 +120,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Fetch the current stack and its output properties.
-	s, err := requireStack(ctx, cmd.ws, cmd.stackName, stackLoadOnly, opts)
+	s, err := requireStack(ctx, cmd.ws, DefaultLoginManager, cmd.stackName, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}

@@ -70,6 +70,7 @@ type configEnvCmd struct {
 	requireStack func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
+		lm backend.LoginManager,
 		stackName string,
 		lopt stackLoadOption,
 		opts display.Options,
@@ -96,7 +97,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, cmd.ws, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.ws, DefaultLoginManager, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -143,7 +144,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 			}, nil)
 		} else {
 			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
-				"Try adding one with `pulumi config env add [envName]`.\n")
+				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
 		}
 
 	}

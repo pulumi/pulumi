@@ -34,14 +34,20 @@ type FuncWithListParamResult struct {
 
 func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (FuncWithListParamResult, error) {
+		ApplyT(func(v interface{}) (FuncWithListParamResultOutput, error) {
 			args := v.(FuncWithListParamArgs)
-			r, err := FuncWithListParam(ctx, &args, opts...)
-			var s FuncWithListParamResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv FuncWithListParamResult
+			secret, err := ctx.InvokePackageRaw("mypkg::funcWithListParam", args, &rv, "", opts...)
+			if err != nil {
+				return FuncWithListParamResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(FuncWithListParamResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(FuncWithListParamResultOutput), nil
+			}
+			return output, nil
 		}).(FuncWithListParamResultOutput)
 }
 

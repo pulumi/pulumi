@@ -236,7 +236,8 @@ type EnvironmentsBackend interface {
 	CreateEnvironment(
 		ctx context.Context,
 		org string,
-		name string,
+		projectName string,
+		envName string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error)
 

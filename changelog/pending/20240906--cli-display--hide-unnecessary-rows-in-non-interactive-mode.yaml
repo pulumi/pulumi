@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Hide unnecessary rows in non-interactive mode

@@ -37,7 +37,7 @@ func newPolicyDisableCmd() *cobra.Command {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			var err error
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], loginToCloud)
+			policyPack, err := requirePolicyPack(ctx, cliArgs[0], DefaultLoginManager)
 			if err != nil {
 				return err
 			}

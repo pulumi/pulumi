@@ -98,7 +98,7 @@ type stackInitCmd struct {
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
 	currentBackend func(
-		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 
@@ -123,7 +123,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, project, opts)
+	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(ctx, ws, cmd.stackToCopy, stackLoadOnly, opts)
+		copyStack, err := requireStack(ctx, ws, DefaultLoginManager, cmd.stackToCopy, stackLoadOnly, opts)
 		if err != nil {
 			return err
 		}

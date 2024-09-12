@@ -255,7 +255,9 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind: apitype.LanguagePlugin,
 	}
 
-	plugInfo.Path = h.plug.Bin
+	if h.plug != nil {
+		plugInfo.Path = h.plug.Bin
+	}
 
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {

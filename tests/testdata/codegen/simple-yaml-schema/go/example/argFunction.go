@@ -31,14 +31,20 @@ type ArgFunctionResult struct {
 
 func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (ArgFunctionResult, error) {
+		ApplyT(func(v interface{}) (ArgFunctionResultOutput, error) {
 			args := v.(ArgFunctionArgs)
-			r, err := ArgFunction(ctx, &args, opts...)
-			var s ArgFunctionResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv ArgFunctionResult
+			secret, err := ctx.InvokePackageRaw("example::argFunction", args, &rv, "", opts...)
+			if err != nil {
+				return ArgFunctionResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(ArgFunctionResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(ArgFunctionResultOutput), nil
+			}
+			return output, nil
 		}).(ArgFunctionResultOutput)
 }
 

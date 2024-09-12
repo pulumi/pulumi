@@ -45,14 +45,20 @@ type GetIntegrationRuntimeObjectMetadatumResult struct {
 
 func GetIntegrationRuntimeObjectMetadatumOutput(ctx *pulumi.Context, args GetIntegrationRuntimeObjectMetadatumOutputArgs, opts ...pulumi.InvokeOption) GetIntegrationRuntimeObjectMetadatumResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (GetIntegrationRuntimeObjectMetadatumResult, error) {
+		ApplyT(func(v interface{}) (GetIntegrationRuntimeObjectMetadatumResultOutput, error) {
 			args := v.(GetIntegrationRuntimeObjectMetadatumArgs)
-			r, err := GetIntegrationRuntimeObjectMetadatum(ctx, &args, opts...)
-			var s GetIntegrationRuntimeObjectMetadatumResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv GetIntegrationRuntimeObjectMetadatumResult
+			secret, err := ctx.InvokePackageRaw("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, "", opts...)
+			if err != nil {
+				return GetIntegrationRuntimeObjectMetadatumResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(GetIntegrationRuntimeObjectMetadatumResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(GetIntegrationRuntimeObjectMetadatumResultOutput), nil
+			}
+			return output, nil
 		}).(GetIntegrationRuntimeObjectMetadatumResultOutput)
 }
 

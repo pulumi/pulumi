@@ -362,7 +362,7 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackOfferNew, displayOpts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, displayOpts)
 			if err != nil {
 				return err
 			}

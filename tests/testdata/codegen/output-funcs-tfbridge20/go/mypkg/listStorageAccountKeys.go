@@ -40,14 +40,20 @@ type ListStorageAccountKeysResult struct {
 
 func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
+		ApplyT(func(v interface{}) (ListStorageAccountKeysResultOutput, error) {
 			args := v.(ListStorageAccountKeysArgs)
-			r, err := ListStorageAccountKeys(ctx, &args, opts...)
-			var s ListStorageAccountKeysResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv ListStorageAccountKeysResult
+			secret, err := ctx.InvokePackageRaw("mypkg::listStorageAccountKeys", args, &rv, "", opts...)
+			if err != nil {
+				return ListStorageAccountKeysResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(ListStorageAccountKeysResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(ListStorageAccountKeysResultOutput), nil
+			}
+			return output, nil
 		}).(ListStorageAccountKeysResultOutput)
 }
 
