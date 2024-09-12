@@ -335,7 +335,22 @@ func (l *pluginLoader) loadSchemaBytes(
 func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
-	provider, err := l.host.Provider(tokens.Package(descriptor.Name), descriptor.Version)
+	wsDescriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:              descriptor.Name,
+			Version:           descriptor.Version,
+			PluginDownloadURL: descriptor.DownloadURL,
+		},
+	}
+	if descriptor.Parameterization != nil {
+		wsDescriptor.Parameterization = &workspace.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
+		}
+	}
+
+	provider, err := l.host.Provider(wsDescriptor)
 	if err != nil {
 		return nil, nil, err
 	}

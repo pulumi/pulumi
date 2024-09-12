@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -160,9 +159,9 @@ func TestLoadParameterized(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-			assert.Equal(t, tokens.Package("terraform-provider"), pkg)
-			assert.Equal(t, semver.MustParse("1.0.0"), *version)
+		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+			assert.Equal(t, "terraform-provider", descriptor.Name)
+			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
 		},
 		ResolvePluginF: func(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
