@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Support `pulumi.Config` in dynamic providers
