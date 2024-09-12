@@ -18,7 +18,6 @@ import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import {
     getResource,
-    pkgFromType,
     readResource,
     registerResource,
     registerResourceOutputs,
@@ -1499,4 +1498,17 @@ export function parseResourceReference(ref: string): [string, string] {
     const urn = ref.slice(0, lastSep);
     const id = ref.slice(lastSep + 2);
     return [urn, id];
+}
+
+/**
+ * Extracts the package from the type token of the form "pkg:module:member".
+ *
+ * @internal
+ */
+export function pkgFromType(type: string): string | undefined {
+    const parts = type.split(":");
+    if (parts.length === 3) {
+        return parts[0];
+    }
+    return undefined;
 }
