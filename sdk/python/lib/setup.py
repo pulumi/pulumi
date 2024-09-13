@@ -48,6 +48,7 @@ setup(name='pulumi',
           'dill~=0.3',
           'six~=1.12',
           'semver~=2.13',
-          'pyyaml~=6.0'
+          'pyyaml~=6.0',
+          'debugpy~=1.8.5'
       ],
       zip_safe=False)
