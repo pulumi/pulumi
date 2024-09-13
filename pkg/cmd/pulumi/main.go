@@ -15,12 +15,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // panicHandler displays an emergency error message to the user and a stack trace to
@@ -52,8 +54,7 @@ func main() {
 	finished := new(bool)
 	defer panicHandler(finished)
 
-	if err := NewPulumiCmd().Execute(); err != nil {
-		os.Exit(1)
-	}
+	cmd := NewPulumiCmd()
+	cmdutil.Execute(context.Background(), cmd)
 	*finished = true
 }

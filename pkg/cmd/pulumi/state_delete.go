@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -28,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newStateDeleteCommand() *cobra.Command {
+func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Command {
 	var force bool // Force deletion of protected resources
 	var stack string
 	var yes bool
@@ -52,9 +53,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
 		Args:    cmdutil.MaximumNArgs(1),
 
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			yes = yes || skipConfirmations()
 			var urn resource.URN
 			if len(args) == 0 {
@@ -75,7 +75,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			showPrompt := !yes
 
 			err := runStateEdit(
-				ctx, ws, DefaultLoginManager, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+				ctx, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 					var handleProtected func(*resource.State) error
 					if force {
 						handleProtected = func(res *resource.State) error {
@@ -107,7 +107,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			}
 			fmt.Println("Resource deleted")
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(
