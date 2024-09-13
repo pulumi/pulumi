@@ -26,13 +26,10 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -181,36 +178,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(descriptor)
-		if err != nil {
-			// There is an executable with the same name, so suggest that
-			if info, statErr := os.Stat(descriptor.Name); statErr == nil && isExecutable(info) {
-				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-			}
-
-			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-			var missingError *workspace.MissingError
-			if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
-				return nil, err
-			}
-
-			log := func(sev diag.Severity, msg string) {
-				host.Log(sev, "", msg, 0)
-			}
-
-			_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
-			if err != nil {
-				return nil, err
-			}
-
-			p, err := host.Provider(descriptor)
-			if err != nil {
-				return nil, err
-			}
-
-			return p, nil
-		}
-		return provider, nil
+		return host.Provider(descriptor)
 	}
 
 	// We were given a path to a binary or folder, so invoke that.
