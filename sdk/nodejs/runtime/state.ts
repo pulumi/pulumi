@@ -211,8 +211,6 @@ export interface Store {
  * @internal
  */
 export class LocalStore implements Store {
-    supportsParameterization: boolean;
-    callbacks?: ICallbackServer | undefined;
     settings = {
         options: {
             organization: process.env[nodeEnvKeys.organization],
