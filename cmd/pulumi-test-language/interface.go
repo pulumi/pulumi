@@ -310,11 +310,14 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("create artifacts directory: %w", err)
 	}
 
-	// Build the core SDK, use a slightly odd version so we can test dependencies later.
-	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
-	if err != nil {
-		return nil, fmt.Errorf("pack core SDK: %w", err)
+	var coreArtifact string
+	if req.CoreSdkDirectory != "" {
+		// Build the core SDK, use a slightly odd version so we can test dependencies later.
+		coreArtifact, err = languageClient.Pack(
+			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		if err != nil {
+			return nil, fmt.Errorf("pack core SDK: %w", err)
+		}
 	}
 
 	edits := []replacement{}
@@ -511,8 +514,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
-	localDependencies := map[string]string{
-		"pulumi": token.CoreArtifact,
+	localDependencies := map[string]string{}
+	if token.CoreArtifact != "" {
+		localDependencies["pulumi"] = token.CoreArtifact
 	}
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
