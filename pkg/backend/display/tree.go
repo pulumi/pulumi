@@ -46,6 +46,7 @@ type treeRenderer struct {
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
 
 	treeTableRows         []string
+	sames                 int
 	systemMessages        []string
 	statusMessage         string
 	statusMessageDeadline time.Time
@@ -174,6 +175,14 @@ func (r *treeRenderer) render(termWidth int) {
 	for _, row := range treeTableRows {
 		rendered := renderRow(row, maxColumnLengths)
 		r.treeTableRows = append(r.treeTableRows, rendered)
+	}
+
+	// If we are not explicitly showing unchanged resources, we'll display a
+	// count.
+	if !r.opts.ShowSameResources {
+		r.sames = len(r.display.sames)
+	} else {
+		r.sames = 0
 	}
 
 	// Convert system events into lines.
@@ -383,6 +392,16 @@ func (r *treeRenderer) frame(locked, done bool) {
 		if strings.HasSuffix(treeTableFooter, "\n") {
 			lineCount++
 		}
+	}
+
+	// Render the count of any unchanged resources if there are any and we aren't
+	// done (at which point we'll have a summary displaying the final count
+	// alongside other statistics).
+	if !done && r.sames != 0 {
+		r.overln("")
+		r.overln(r.clampLine(colors.SpecHeadline+"Resources:"+colors.Reset, termWidth))
+		r.overln(r.clampLine(colors.BrightBlack+fmt.Sprintf("    %d unchanged", r.sames)+colors.Reset, termWidth))
+		lineCount += 3
 	}
 
 	// Render the system messages.

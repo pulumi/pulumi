@@ -110,6 +110,15 @@ type ProgressDisplay struct {
 	// The urn of the stack.
 	stackUrn resource.URN
 
+	// The set of observed unchanged (same) resources we've seen. In the event
+	// that we've not been explicitly asked to show unchanged resources
+	// (ShowSameResources), we'll use this to show just a count of the number of
+	// unchanged resources. This can be useful to indicate that we are still
+	// making progress in the event that there are a large number of unchanged
+	// resources (which otherwise would result in no visible change to the
+	// display).
+	sames map[resource.URN]bool
+
 	// Whether or not we've seen outputs for the stack yet.
 	seenStackOutputs bool
 
@@ -253,6 +262,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		renderer:              renderer,
 		stack:                 stack,
 		proj:                  proj,
+		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
 		suffixColumn:          int(statusColumn),
 		suffixesArray:         []string{"", ".", "..", "..."},
@@ -315,6 +325,7 @@ func RenderProgressEvents(
 		renderer:              renderer,
 		stack:                 stack,
 		proj:                  proj,
+		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
 		suffixColumn:          int(statusColumn),
 		suffixesArray:         []string{"", ".", "..", "..."},
@@ -1144,6 +1155,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		row.SetStep(step)
 		row.AddOutputStep(step)
+
+		if step.Op == deploy.OpSame {
+			display.sames[step.URN] = true
+		}
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
