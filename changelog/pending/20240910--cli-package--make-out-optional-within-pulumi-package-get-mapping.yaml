@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Make --out optional within `pulumi package get-mapping`
