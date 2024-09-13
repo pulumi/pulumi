@@ -601,7 +601,7 @@ export function rpcKeepAlive(): () => void {
 }
 
 /**
- * Returns if the engine supports parameterization and package references.
+ * Returns if the engine supports package references and parameterized providers.
  */
 export function supportsParameterization(): boolean {
     return getStore().supportsParameterization;

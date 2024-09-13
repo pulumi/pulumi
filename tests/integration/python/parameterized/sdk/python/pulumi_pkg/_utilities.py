@@ -331,7 +331,7 @@ _package_ref = ...
 async def get_package():
 	global _package_ref
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_invoke_transforms():
+		if pulumi.runtime.settings._sync_monitor_supports_package_references():
 			async with _package_lock:
 				if _package_ref is ...:
 					monitor = pulumi.runtime.settings.get_monitor()

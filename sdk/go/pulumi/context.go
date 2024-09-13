@@ -68,7 +68,7 @@ type contextState struct {
 	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
 	supportsTransforms       bool       // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
-	supportsParameterization bool       // if package references and parameterized providers are supported by pulumi
+	supportsParameterization bool       // true if package references and parameterized providers are supported by pulumi
 	rpcs                     int        // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.

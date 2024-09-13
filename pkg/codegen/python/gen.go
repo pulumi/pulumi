@@ -3407,21 +3407,21 @@ func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (m
 	deps := map[string]string{}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 
-	miniumumVersion := MinimumValidSDKVersion
+	minimumVersion := MinimumValidSDKVersion
 	if parameterized {
-		miniumumVersion = MinimumValidParameterizationSDKVersion
+		minimumVersion = MinimumValidParameterizationSDKVersion
 	}
 
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": miniumumVersion,
+			"pulumi": minimumVersion,
 		}
 		return result, nil
 	}
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = miniumumVersion
+		deps["pulumi"] = minimumVersion
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.
