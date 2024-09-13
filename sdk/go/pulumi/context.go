@@ -68,6 +68,7 @@ type contextState struct {
 	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
 	supportsTransforms       bool       // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
+	supportsParameterization bool       // true if package references and parameterized providers are supported by pulumi
 	rpcs                     int        // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
@@ -169,6 +170,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsParameterization, err := supportsFeature("parameterization")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -182,6 +188,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsAliasSpecs:       supportsAliasSpecs,
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
+		supportsParameterization: supportsParameterization,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -1508,6 +1515,9 @@ func (ctx *Context) RegisterPackageRemoteComponentResource(
 func (ctx *Context) RegisterPackage(
 	in *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
+	if !ctx.state.supportsParameterization {
+		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
+	}
 	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 

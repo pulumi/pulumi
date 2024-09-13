@@ -152,6 +152,7 @@ export function resetOptions(
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
+    store.supportsParameterization = false;
     store.callbacks = undefined;
 }
 
@@ -248,6 +249,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
         store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
         store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
+        store.supportsParameterization = await monitorSupportsFeature(monitorRef, "parameterization");
     }
 }
 
@@ -596,6 +598,13 @@ export function rpcKeepAlive(): () => void {
     );
     localStore.settings.rpcDone = localStore.settings.rpcDone.then(() => donePromise);
     return done!;
+}
+
+/**
+ * Returns if the engine supports package references and parameterized providers.
+ */
+export function supportsParameterization(): boolean {
+    return getStore().supportsParameterization;
 }
 
 /**
