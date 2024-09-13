@@ -338,6 +338,7 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
         return False
     return SETTINGS.feature_support["invokeTransforms"]
 
+
 def _sync_monitor_supports_parameterization() -> bool:
     if "parameterization" not in SETTINGS.feature_support:
         return False
