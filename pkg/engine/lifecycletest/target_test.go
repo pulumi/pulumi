@@ -3406,10 +3406,15 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 	})
 }
 
+// This test is a regression test for https://github.com/pulumi/pulumi/issues/14254. This was "fixed" by
+// https://github.com/pulumi/pulumi/pull/15716 but we didn't notice. This test is to ensure that the issue stays fixed
+// because we _almost_ regressed it in https://github.com/pulumi/pulumi/pull/17245.
+//
+// The test checks that if a resource has an explicit provider and we then run an update that changes the resource to
+// use the default provider _but DON'T_ target it that we preserve its explicit provider reference in state. We do NOT
+// want to change state to refer to the default provider as that can then cause provider replace diffs in a later
+// update.
 func TestUntargetedProviderChange(t *testing.T) {
-	// This test is a regression test for https://github.com/pulumi/pulumi/issues/14254. This was "fixed" by
-	// https://github.com/pulumi/pulumi/pull/15716 but we didn't notice. This test is to ensure that the issue
-	// stays fixed because we _almost_ regressed it in https://github.com/pulumi/pulumi/pull/17245.
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -3486,7 +3491,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
 	assert.Equal(t, 6, len(snap.Resources))
-	// unrelated shouldn't have had it's provider changed
+	// unrelated shouldn't have had its provider changed
 	unrelated = snap.Resources[5]
 	assert.Equal(t, "unrelated", unrelated.URN.Name())
 	assert.Equal(t, providerRef, unrelated.Provider)
