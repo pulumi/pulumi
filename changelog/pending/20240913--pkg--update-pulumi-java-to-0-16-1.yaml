@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: Update pulumi-java to 0.16.1
