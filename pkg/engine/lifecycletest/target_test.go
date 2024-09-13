@@ -3448,7 +3448,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 			if provID == "" {
 				provID = providers.UnknownID
 			}
-			provider, err = providers.NewReference(resp.URN, resp.ID)
+			provider, err = providers.NewReference(resp.URN, provID)
 			assert.NoError(t, err)
 		}
 
