@@ -250,7 +250,7 @@ func createSecretsManager(
 	}
 
 	// Handle if the configuration changed any of EncryptedKey, etc
-	if needsSaveProjectStackAfterSecretManger(stack, oldConfig, ps) {
+	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
 		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}

@@ -94,11 +94,11 @@ func getStackSecretsManager(
 	}
 
 	// Handle if the configuration changed any of EncryptedKey, etc
-	needsSave := needsSaveProjectStackAfterSecretManger(s, oldConfig, ps)
+	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
 	return stack.NewCachingSecretsManager(sm), needsSave, nil
 }
 
-func needsSaveProjectStackAfterSecretManger(stack backend.Stack,
+func needsSaveProjectStackAfterSecretManger(
 	old *workspace.ProjectStack, new *workspace.ProjectStack,
 ) bool {
 	// We should only save the ProjectStack at this point IF we have changed the
