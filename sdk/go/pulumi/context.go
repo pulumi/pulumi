@@ -242,7 +242,7 @@ func (ctx *Context) Close() error {
 
 // wait waits for all asynchronous work associated with this context to drain. RPCs may not be queued once wait
 // returns.
-func (ctx *Context) wait() error {
+func (ctx *Context) Wait() error {
 	// Wait for async work to flush.
 	ctx.state.join.Wait()
 

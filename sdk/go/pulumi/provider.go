@@ -155,7 +155,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
+	if err = pulumiCtx.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -812,7 +812,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	}
 
 	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
+	if err = pulumiCtx.Wait(); err != nil {
 		return nil, err
 	}
 

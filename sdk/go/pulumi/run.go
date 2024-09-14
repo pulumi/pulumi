@@ -128,7 +128,7 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 		result = multierror.Append(result, err)
 	}
 
-	if err = ctx.wait(); err != nil {
+	if err = ctx.Wait(); err != nil {
 		return err
 	}
 
