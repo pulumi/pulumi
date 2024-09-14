@@ -557,8 +557,8 @@ github.com/pulumi/esc v0.9.2-0.20240910221656-328d3204100f h1:0ZdVkYWt8zqyfDhjy7
 github.com/pulumi/esc v0.9.2-0.20240910221656-328d3204100f/go.mod h1:2Bfa+FWj/xl8CKqRTWbWgDX0SOD4opdQgvYSURTGK2c=
 github.com/pulumi/inflector v0.1.1 h1:dvlxlWtXwOJTUUtcYDvwnl6Mpg33prhK+7mzeF+SobA=
 github.com/pulumi/inflector v0.1.1/go.mod h1:HUFCjcPTz96YtTuUlwG3i3EZG4WlniBvR9bd+iJxCUY=
-github.com/pulumi/pulumi-java/pkg v0.14.0 h1:CKL7lLF81Fq6VRhA5TNFsSMnHraTNCUzIhqCzYX8Wzk=
-github.com/pulumi/pulumi-java/pkg v0.14.0/go.mod h1:VybuJMWJtJc9ZNbt1kcYH4TbpocMx9mEi7YWL2Co99c=
+github.com/pulumi/pulumi-java/pkg v0.16.1 h1:orHnDWFbpOERwaBLry9f+6nqPX7x0MsrIkaa5QDGAns=
+github.com/pulumi/pulumi-java/pkg v0.16.1/go.mod h1:QH0DihZkWYle9XFc+LJ76m4hUo+fA3RdyaM90pqOaSM=
 github.com/pulumi/pulumi-yaml v1.10.0 h1:djbgMJCxJBmYMr4kOpAXH5iauxGohYjEuTLfxD3NUUI=
 github.com/pulumi/pulumi-yaml v1.10.0/go.mod h1://lTvwHpgJ+WBKeMGiLrd/jinc4dl3eWV5LZ3G8iCfE=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=
