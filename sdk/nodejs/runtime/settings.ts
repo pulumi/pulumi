@@ -243,14 +243,14 @@ export async function awaitFeatureSupport(): Promise<void> {
     if (monitorRef !== undefined) {
         const store = getStore();
         const [
-            supportsSecrets,
-            supportsResourceReferences,
-            supportsOutputValues,
-            supportsDeletedWith,
-            supportsAliasSpecs,
-            supportsTransforms,
-            supportsInvokeTransforms,
-            supportsParameterization,
+            secrets,
+            resourceReferences,
+            outputValues,
+            deletedWith,
+            aliasSpecs,
+            transforms,
+            invokeTransforms,
+            parameterization,
         ] = await Promise.all(
             [
                 "secrets",
@@ -264,14 +264,14 @@ export async function awaitFeatureSupport(): Promise<void> {
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
-        store.supportsSecrets = supportsSecrets;
-        store.supportsResourceReferences = supportsResourceReferences;
-        store.supportsOutputValues = supportsOutputValues;
-        store.supportsDeletedWith = supportsDeletedWith;
-        store.supportsAliasSpecs = supportsAliasSpecs;
-        store.supportsTransforms = supportsTransforms;
-        store.supportsInvokeTransforms = supportsInvokeTransforms;
-        store.supportsParameterization = supportsParameterization;
+        store.supportsSecrets = secrets;
+        store.supportsResourceReferences = resourceReferences;
+        store.supportsOutputValues = outputValues;
+        store.supportsDeletedWith = deletedWith;
+        store.supportsAliasSpecs = aliasSpecs;
+        store.supportsTransforms = transforms;
+        store.supportsInvokeTransforms = invokeTransforms;
+        store.supportsParameterization = parameterization;
     }
 }
 
