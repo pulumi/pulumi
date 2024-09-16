@@ -624,7 +624,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
-	cmd.Flag("attach-debugger").Hidden = true
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
