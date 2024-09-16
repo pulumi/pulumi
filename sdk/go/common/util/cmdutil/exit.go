@@ -15,7 +15,6 @@
 package cmdutil
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -123,32 +122,6 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 
 			ExitError(msg)
 		}
-	}
-}
-
-// Execute runs the given command, handling any errors that occur.  This should be used at the top level
-// of a Pulumi command to ensure that any errors are handled correctly.
-func Execute(ctx context.Context, cmd *cobra.Command) {
-	err := cmd.ExecuteContext(ctx)
-	if err != nil {
-		// If we were asked to bail, that means we already printed out a message.  We just need
-		// to quit at this point (with an error code so no one thinks we succeeded).  Bailing
-		// always indicates a failure, just one we don't need to print a message for.
-		if result.IsBail(err) {
-			os.Exit(-1)
-			return
-		}
-
-		// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug logging it.
-		var msg string
-		if logging.LogToStderr {
-			msg = DetailedError(err)
-		} else {
-			msg = errorMessage(err)
-			logging.V(3).Info(DetailedError(err))
-		}
-
-		ExitError(msg)
 	}
 }
 

@@ -34,8 +34,8 @@ import (
 func TestStateDeleteNoArgs(t *testing.T) {
 	t.Parallel()
 
-	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &backend.MockLoginManager{})
-	err := cmd.Execute()
+	cmd := &stateDeleteCmd{}
+	err := cmd.Run(context.Background(), []string{}, &pkgWorkspace.MockContext{}, &backend.MockLoginManager{})
 	assert.ErrorContains(t, err, "Must supply <resource URN> unless pulumi is run interactively")
 }
 
@@ -53,9 +53,8 @@ func TestNoProject(t *testing.T) {
 			return mockBackend, nil
 		},
 	}
-	cmd := newStateDeleteCommand(ws, lm)
-	cmd.SetArgs([]string{`urn:pulumi:proj::stk::pkg:index:typ::res`})
-	err := cmd.Execute()
+	cmd := &stateDeleteCmd{}
+	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::res`}, ws, lm)
 	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
 }
 
@@ -102,9 +101,10 @@ func TestStateDeleteURN(t *testing.T) {
 		},
 	}
 
-	cmd := newStateDeleteCommand(ws, lm)
-	cmd.SetArgs([]string{`--stack=stk`, `urn:pulumi:proj::stk::pkg:index:typ::res`})
-	err := cmd.Execute()
+	cmd := &stateDeleteCmd{
+		stack: "stk",
+	}
+	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::res`}, ws, lm)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
