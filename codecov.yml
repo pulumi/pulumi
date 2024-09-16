@@ -4,6 +4,7 @@ coverage:
     # Project tracks and reports the project-level coverage.
     project:
       default:
+        base: auto
         informational: true
 
       # Pulumi core
