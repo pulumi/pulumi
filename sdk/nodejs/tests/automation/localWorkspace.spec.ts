@@ -1450,15 +1450,15 @@ describe("LocalWorkspace", () => {
 
     it("sends SIGINT when aborted", async () => {
         const controller = new AbortController();
-        new Promise((f) => setTimeout(f, 500)).then(() => controller.abort());
         const program = async () => {
-            await new Promise((f) => setTimeout(f, 600000));
+            await new Promise((f) => setTimeout(f, 60000));
             return {};
         };
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
+        new Promise((f) => setTimeout(f, 1000)).then(() => controller.abort());
         try {
             // pulumi preview
             const previewRes = await stack.preview({
