@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add an `--attach-debugger` flag for pulumi preview and pulumi up, that makes pulumi attach a debugger to the running program and allows attaching to it
