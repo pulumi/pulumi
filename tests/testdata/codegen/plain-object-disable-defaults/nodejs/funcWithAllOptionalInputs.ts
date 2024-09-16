@@ -11,7 +11,6 @@ import * as utilities from "./utilities";
  */
 export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithAllOptionalInputsResult> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithAllOptionalInputs", {
         "a": args.a ? inputs.helmReleaseSettingsProvideDefaults(args.a) : undefined,
@@ -37,7 +36,12 @@ export interface FuncWithAllOptionalInputsResult {
  * Check codegen of functions with all optional inputs.
  */
 export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithAllOptionalInputsResult> {
-    return pulumi.output(args).apply((a: any) => funcWithAllOptionalInputs(a, opts))
+    args = args || {};
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mypkg::funcWithAllOptionalInputs", {
+        "a": args.a ? pulumi.output(args.a).apply(inputs.helmReleaseSettingsProvideDefaults) : undefined,
+        "b": args.b,
+    }, opts);
 }
 
 export interface FuncWithAllOptionalInputsOutputArgs {

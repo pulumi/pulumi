@@ -8,7 +8,6 @@ import * as pulumiRandom from "@pulumi/random";
 
 export function argFunction(args?: ArgFunctionArgs, opts?: pulumi.InvokeOptions): Promise<ArgFunctionResult> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("example::argFunction", {
         "name": args.name,
@@ -23,7 +22,11 @@ export interface ArgFunctionResult {
     readonly age?: number;
 }
 export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ArgFunctionResult> {
-    return pulumi.output(args).apply((a: any) => argFunction(a, opts))
+    args = args || {};
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("example::argFunction", {
+        "name": args.name,
+    }, opts);
 }
 
 export interface ArgFunctionOutputArgs {

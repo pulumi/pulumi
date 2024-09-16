@@ -81,7 +81,46 @@ export function invoke(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
-    return invokeAsync(tok, props, opts, packageRef);
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
+        // ignore secrets for plain invoke
+        const { result } = response;
+        return result;
+    });
+}
+
+/**
+ * Similar to the plain `invoke` but returns the response as an output, maintaining
+ * secrets of the response, if any.
+ */
+export function invokeOutput<T>(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`invoke(${tok})`);
+    // assume that responses from invoke are always known
+    const isKnown = true;
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, containsSecrets } = response;
+            resolve(<T>result, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, isKnown, false, [], err);
+        });
+
+    return output;
+}
+
+function extractSingleValue(result: Inputs | undefined): any {
+    if (result === undefined) {
+        return result;
+    }
+    // assume outputs has at least one key
+    const keys = Object.keys(result);
+    // return the first key's value from the outputs
+    return result[keys[0]];
 }
 
 /*
@@ -95,12 +134,37 @@ export function invokeSingle(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
-    return invokeAsync(tok, props, opts, packageRef).then((outputs) => {
-        // assume outputs have a single key
-        const keys = Object.keys(outputs);
-        // return the first key's value from the outputs
-        return outputs[keys[0]];
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
+        // ignore secrets for plain invoke
+        const { result } = response;
+        return extractSingleValue(result);
     });
+}
+
+/**
+ * Similar to the plain `invokeSingle` but returns the response as an output, maintaining
+ * secrets of the response, if any.
+ */
+export function invokeSingleOutput<T>(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
+    // assume that responses from invoke are always known
+    const isKnown = true;
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, containsSecrets } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, isKnown, false, [], err);
+        });
+
+    return output;
 }
 
 export async function streamInvoke(
@@ -155,7 +219,10 @@ async function invokeAsync(
     props: Inputs,
     opts: InvokeOptions,
     packageRef?: Promise<string | undefined>,
-): Promise<any> {
+): Promise<{
+    result: Inputs | undefined;
+    containsSecrets: boolean;
+}> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -267,7 +334,10 @@ function getProvider(tok: string, opts: InvokeOptions) {
 function deserializeResponse(
     tok: string,
     resp: { getFailuresList(): Array<providerproto.CheckFailure>; getReturn(): gstruct.Struct | undefined },
-): Inputs | undefined {
+): {
+    result: Inputs | undefined;
+    containsSecrets: boolean;
+} {
     const failures = resp.getFailuresList();
     if (failures?.length) {
         let reasons = "";
@@ -282,8 +352,27 @@ function deserializeResponse(
         throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
     }
 
-    const ret = resp.getReturn();
-    return ret === undefined ? ret : deserializeProperties(ret);
+    let containsSecrets = false;
+    const result = resp.getReturn();
+    if (result === undefined) {
+        return {
+            result,
+            containsSecrets,
+        };
+    }
+
+    const properties = deserializeProperties(result);
+    // Keep track of whether we need to mark the resulting output a secret.
+    // and unwrap each individual value if it is a secret.
+    for (const key of Object.keys(properties)) {
+        containsSecrets = containsSecrets || isRpcSecret(properties[key]);
+        properties[key] = unwrapRpcSecret(properties[key]);
+    }
+
+    return {
+        result: properties,
+        containsSecrets,
+    };
 }
 
 /**
@@ -368,21 +457,8 @@ export function call<T>(
                 );
 
                 // Deserialize the response and resolve the output.
-                const deserialized = deserializeResponse(tok, resp);
-                let isSecret = false;
+                const { result, containsSecrets } = deserializeResponse(tok, resp);
                 const deps: Resource[] = [];
-
-                // Keep track of whether we need to mark the resulting output a secret.
-                // and unwrap each individual value.
-                if (deserialized !== undefined) {
-                    for (const k of Object.keys(deserialized)) {
-                        const v = deserialized[k];
-                        if (isRpcSecret(v)) {
-                            isSecret = true;
-                            deserialized[k] = unwrapRpcSecret(v);
-                        }
-                    }
-                }
 
                 // Combine the individual dependencies into a single set of dependency resources.
                 const rpcDeps = resp.getReturndependenciesMap();
@@ -401,7 +477,7 @@ export function call<T>(
                 // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
-                resolver(<any>deserialized, true, isSecret, deps);
+                resolver(<any>result, true, containsSecrets, deps);
             } catch (e) {
                 resolver(<any>undefined, true, false, undefined, e);
             } finally {
