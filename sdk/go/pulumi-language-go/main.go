@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -811,6 +812,10 @@ func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
 	contract.IgnoreClose(logFile)
 	args := []string{"--headless=true", "--api-version=2"}
 	args = append(args, "--log", "--log-dest", logFile.Name())
+	port, err := netutil.FindNextAvailablePort(57134)
+	if err == nil {
+		args = append(args, "--listen=127.0.0.1:"+strconv.Itoa(port))
+	}
 	args = append(args, "exec", bin)
 	dlvCmd := exec.Command(godlv, args...)
 	return dlvCmd, &debugger{Host: "127.0.0.1", LogDest: logFile.Name()}, nil
