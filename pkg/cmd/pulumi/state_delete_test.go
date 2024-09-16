@@ -111,3 +111,115 @@ func TestStateDeleteURN(t *testing.T) {
 		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"}}",
 		string(savedDeployment.Deployment))
 }
+
+func TestStateDeleteDependency(t *testing.T) {
+	t.Parallel()
+
+	mockStack := &backend.MockStack{
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{
+						URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
+					},
+					{
+						URN: "urn:pulumi:proj::stk::pkg:index:typ::dependee",
+						Dependencies: []resource.URN{
+							"urn:pulumi:proj::stk::pkg:index:typ::dependency",
+						},
+					},
+				},
+			}, nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &backend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := &stateDeleteCmd{
+		stack: "stk",
+	}
+	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::dependency`}, ws, lm)
+	assert.ErrorContains(t, err, "urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely deleted because the following resources depend on it:\n"+
+		" * \"dependee\"      (urn:pulumi:proj::stk::pkg:index:typ::dependee)")
+}
+
+func TestStateDeleteProtected(t *testing.T) {
+	t.Parallel()
+
+	var savedDeployment *apitype.UntypedDeployment
+	mockStack := &backend.MockStack{
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{
+						URN:     "urn:pulumi:proj::stk::pkg:index:typ::res",
+						Protect: true,
+					},
+				},
+			}, nil
+		},
+		ImportDeploymentF: func(_ context.Context, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &backend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := &stateDeleteCmd{
+		stack: "stk",
+	}
+	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::res`}, ws, lm)
+	assert.ErrorContains(t, err, "urn:pulumi:proj::stk::pkg:index:typ::res can't be safely deleted because it is protected.")
+	assert.Nil(t, savedDeployment)
+
+	cmd.force = true
+	err = cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::res`}, ws, lm)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, savedDeployment.Version)
+	assert.Equal(t,
+		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"}}",
+		string(savedDeployment.Deployment))
+}
