@@ -1450,9 +1450,9 @@ describe("LocalWorkspace", () => {
 
     it("sends SIGINT when aborted", async () => {
         const controller = new AbortController();
-        new Promise((f) => setTimeout(f, 1000)).then(() => controller.abort());
+        new Promise((f) => setTimeout(f, 500)).then(() => controller.abort());
         const program = async () => {
-            await new Promise((f) => setTimeout(f, 60000));
+            await new Promise((f) => setTimeout(f, 600000));
             return {};
         };
         const projectName = "inline_node";
