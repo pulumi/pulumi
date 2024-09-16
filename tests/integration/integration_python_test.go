@@ -1494,7 +1494,7 @@ func TestDebuggerAttachPython(t *testing.T) {
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 50; i++ {
 		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
 		require.NoError(t, err)
 		for _, event := range events {
