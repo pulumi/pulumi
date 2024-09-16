@@ -535,6 +535,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
             applyGlobalOpts(opts, args);
         }
 

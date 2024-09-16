@@ -973,6 +973,28 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(ws.pulumi_version)
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
+    def test_refresh(self):
+        ws = LocalWorkspace()
+
+        project_name = "testrefresh"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(stack_name, program=pulumi_program)
+
+        # pulumi up
+        stack.up()
+
+        # preview with refresh
+        pre_res = stack.preview(refresh=True)
+        self.assertRegexpMatches(pre_res.stdout, "refereshing")
+
+        # up with refresh
+        up_res = stack.up(refresh=True)
+        self.assertRegexpMatches(up_res.stdout, "refreshing")
+
+        # destroy with refresh
+        destroy_res = stack.destroy(refresh=True)
+        self.assertRegexpMatches(destroy_res.stdout, "refreshing")
+
     def test_pulumi_command(self):
         p = PulumiCommand()
         ws = LocalWorkspace(pulumi_command=p)
