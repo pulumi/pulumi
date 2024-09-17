@@ -27,18 +27,18 @@ import (
 )
 
 var testProviderSchema = schema.Object().
-	Properties(map[string]schema.Builder{
+	Properties(schema.BuilderMap{
 		"address": schema.String().
 			Description("The URL of the Vault server. Must contain a scheme and hostname, but no path."),
 		"jwt": schema.Object().
-			Properties(map[string]schema.Builder{
+			Properties(schema.BuilderMap{
 				"mount": schema.String().Description("The name of the authentication engine mount."),
 				"role":  schema.String().Description("The name of the role to use for login."),
 			}).
 			Required("role").
 			Description("Options for JWT login. JWT login uses an OIDC token issued by the Pulumi Cloud to generate an ephemeral token."),
 		"token": schema.Object().
-			Properties(map[string]schema.Builder{
+			Properties(schema.BuilderMap{
 				"displayName": schema.String().Description("The display name of the ephemeral token. Defaults to 'pulumi'."),
 				"token":       schema.String().Description("The parent token."),
 				"maxTtl": schema.String().

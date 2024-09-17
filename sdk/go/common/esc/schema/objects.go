@@ -30,11 +30,13 @@ func Object() *ObjectBuilder {
 	return &ObjectBuilder{}
 }
 
-func Record(m map[string]Builder) *ObjectBuilder {
-	names := maps.Keys(m)
+func Record(m MapBuilder) *ObjectBuilder {
+	props := m.Build()
+
+	names := maps.Keys(props)
 	sort.Strings(names)
 
-	return Object().Properties(m).Required(names...)
+	return Object().Properties(SchemaMap(props)).Required(names...)
 }
 
 func (b *ObjectBuilder) Defs(defs map[string]Builder) *ObjectBuilder {
@@ -53,11 +55,8 @@ func (b *ObjectBuilder) OneOf(oneOf ...Builder) *ObjectBuilder {
 	return buildOneOf(b, oneOf)
 }
 
-func (b *ObjectBuilder) Properties(m map[string]Builder) *ObjectBuilder {
-	b.s.Properties = make(map[string]*Schema, len(m))
-	for k, v := range m {
-		b.s.Properties[k] = v.Schema()
-	}
+func (b *ObjectBuilder) Properties(m MapBuilder) *ObjectBuilder {
+	b.s.Properties = m.Build()
 	return b
 }
 

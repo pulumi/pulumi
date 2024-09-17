@@ -360,7 +360,7 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// root.
 	properties := make(map[string]*expr, len(e.env.Values.GetEntries()))
 	e.root = &expr{
-		path: fmt.Sprintf("<%v>", e.name),
+		path: "<" + e.name + ">",
 		repr: &objectExpr{
 			node:       ast.Object(),
 			properties: properties,
@@ -402,7 +402,7 @@ func (e *evalContext) evaluateImports() {
 		e.evaluateImport(myImports, entry)
 	}
 
-	properties := make(map[string]schema.Builder, len(myImports))
+	properties := make(schema.SchemaMap, len(myImports))
 	for k, v := range myImports {
 		properties[k] = v.schema
 	}
@@ -582,7 +582,7 @@ func (e *evalContext) evaluateObject(x *expr, repr *objectExpr) *value {
 	keys := maps.Keys(repr.properties)
 	sort.Strings(keys)
 
-	object, properties := make(map[string]*value, len(keys)), make(map[string]schema.Builder, len(keys))
+	object, properties := make(map[string]*value, len(keys)), make(schema.SchemaMap, len(keys))
 	for _, k := range keys {
 		pv := e.evaluateExpr(repr.properties[k])
 		object[k], properties[k] = pv, pv.schema
@@ -921,7 +921,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 
 	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext)
 	if err != nil {
-		e.errorf(repr.syntax(), err.Error())
+		e.errorf(repr.syntax(), "%s", err.Error())
 		v.unknown = true
 		return v
 	}

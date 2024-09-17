@@ -127,7 +127,7 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 		kvp := obj.Index(i)
 
 		var v T
-		vname := fmt.Sprintf("%s.%s", name, kvp.Key.Value())
+		vname := name + "." + kvp.Key.Value()
 		vdiags := parseNode(vname, &v, kvp.Value)
 		diags.Extend(vdiags...)
 

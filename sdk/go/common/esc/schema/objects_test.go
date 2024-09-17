@@ -23,7 +23,7 @@ import (
 
 func TestObjects(t *testing.T) {
 	t.Run("record", func(t *testing.T) {
-		record := map[string]Builder{
+		record := BuilderMap{
 			"bool":   Boolean(),
 			"string": String(),
 		}
@@ -39,7 +39,7 @@ func TestObjects(t *testing.T) {
 	})
 
 	t.Run("defs", func(t *testing.T) {
-		defs := map[string]Builder{
+		defs := BuilderMap{
 			"bool": Boolean(),
 		}
 		s := Object().
@@ -89,7 +89,7 @@ func TestObjects(t *testing.T) {
 	})
 
 	t.Run("properties", func(t *testing.T) {
-		properties := map[string]Builder{
+		properties := BuilderMap{
 			"bool":   Boolean(),
 			"string": String(),
 		}

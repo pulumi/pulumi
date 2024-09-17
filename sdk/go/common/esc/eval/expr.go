@@ -185,8 +185,8 @@ func (x *expr) export(environment string) esc.Expr {
 			ex.Builtin = &esc.BuiltinExpr{
 				Name:      name,
 				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
-				ArgSchema: schema.Record(map[string]schema.Builder{
-					"provider": schema.String(),
+				ArgSchema: schema.Record(schema.SchemaMap{
+					"provider": schema.String().Schema(),
 					"inputs":   repr.inputSchema,
 				}).Schema(),
 				Arg: esc.Expr{

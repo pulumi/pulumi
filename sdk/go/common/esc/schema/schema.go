@@ -30,6 +30,26 @@ type Builder interface {
 	Schema() *Schema
 }
 
+type MapBuilder interface {
+	Build() map[string]*Schema
+}
+
+type BuilderMap map[string]Builder
+
+func (m BuilderMap) Build() map[string]*Schema {
+	s := make(map[string]*Schema, len(m))
+	for k, v := range m {
+		s[k] = v.Schema()
+	}
+	return s
+}
+
+type SchemaMap map[string]*Schema
+
+func (m SchemaMap) Build() map[string]*Schema {
+	return m
+}
+
 func Never() *Schema {
 	return &Schema{Never: true}
 }

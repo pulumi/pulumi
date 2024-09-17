@@ -478,7 +478,7 @@ func TestCheckYAMLEnvironment(t *testing.T) {
 		expected := &esc.Environment{
 			Exprs:      map[string]esc.Expr{"foo": {Literal: "bar"}},
 			Properties: map[string]esc.Value{"foo": esc.NewValue("bar")},
-			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
+			Schema:     schema.Record(schema.BuilderMap{"foo": schema.String().Const("bar")}).Schema(),
 		}
 
 		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/yaml/check", func(w http.ResponseWriter, r *http.Request) {
@@ -604,7 +604,7 @@ func TestGetOpenEnvironment(t *testing.T) {
 		expected := &esc.Environment{
 			Exprs:      map[string]esc.Expr{"foo": {Literal: "bar"}},
 			Properties: map[string]esc.Value{"foo": esc.NewValue("bar")},
-			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
+			Schema:     schema.Record(schema.BuilderMap{"foo": schema.String().Const("bar")}).Schema(),
 		}
 
 		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/test-project/test-env/open/session", func(w http.ResponseWriter, r *http.Request) {
@@ -638,7 +638,7 @@ func TestGetAnonymousOpenEnvironment(t *testing.T) {
 		expected := &esc.Environment{
 			Exprs:      map[string]esc.Expr{"foo": {Literal: "bar"}},
 			Properties: map[string]esc.Value{"foo": esc.NewValue("bar")},
-			Schema:     schema.Record(map[string]schema.Builder{"foo": schema.String().Const("bar")}).Schema(),
+			Schema:     schema.Record(schema.BuilderMap{"foo": schema.String().Const("bar")}).Schema(),
 		}
 
 		client := newTestClient(t, http.MethodGet, "/api/esc/environments/test-org/yaml/open/session", func(w http.ResponseWriter, r *http.Request) {

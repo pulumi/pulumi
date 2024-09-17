@@ -43,7 +43,7 @@ func accept() bool {
 type errorProvider struct{}
 
 func (errorProvider) Schema() (*schema.Schema, *schema.Schema) {
-	return schema.Record(map[string]schema.Builder{"why": schema.String()}).Schema(), schema.Always()
+	return schema.Record(schema.BuilderMap{"why": schema.String()}).Schema(), schema.Always()
 }
 
 func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
@@ -54,12 +54,12 @@ type testSchemaProvider struct{}
 
 func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 	s := schema.Object().
-		Defs(map[string]schema.Builder{
-			"defRecord": schema.Record(map[string]schema.Builder{
+		Defs(schema.BuilderMap{
+			"defRecord": schema.Record(schema.BuilderMap{
 				"baz": schema.String().Const("qux"),
 			}),
 		}).
-		Properties(map[string]schema.Builder{
+		Properties(schema.BuilderMap{
 			"null":    schema.Null(),
 			"boolean": schema.Boolean(),
 			"false":   schema.Boolean().Const(false),
@@ -71,7 +71,7 @@ func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 			"array":   schema.Array().Items(schema.Always()),
 			"tuple":   schema.Tuple(schema.String().Const("hello"), schema.String().Const("world")),
 			"map":     schema.Object().AdditionalProperties(schema.Always()),
-			"record": schema.Record(map[string]schema.Builder{
+			"record": schema.Record(schema.BuilderMap{
 				"foo": schema.String(),
 			}),
 			"anyOf": schema.AnyOf(schema.String(), schema.Number()),
@@ -87,7 +87,7 @@ func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 			"double":       schema.Tuple(schema.String(), schema.Number()),
 			"triple":       schema.Tuple(schema.String(), schema.Number(), schema.Boolean()),
 			"dependentReq": schema.Object().
-				Properties(map[string]schema.Builder{
+				Properties(schema.BuilderMap{
 					"foo": schema.String(),
 					"bar": schema.Number(),
 				}).DependentRequired(map[string][]string{"foo": {"bar"}}),

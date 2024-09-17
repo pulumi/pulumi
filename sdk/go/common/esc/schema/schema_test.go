@@ -111,7 +111,7 @@ func TestProperty(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		s := Object().
-			Properties(map[string]Builder{"a": String(), "b": Number()}).
+			Properties(BuilderMap{"a": String(), "b": Number()}).
 			AdditionalProperties(Boolean()).
 			Schema()
 
@@ -122,12 +122,12 @@ func TestProperty(t *testing.T) {
 
 	t.Run("anyOf", func(t *testing.T) {
 		a := Object().
-			Properties(map[string]Builder{"a": String(), "b": Number()}).
+			Properties(BuilderMap{"a": String(), "b": Number()}).
 			AdditionalProperties(Never()).
 			Schema()
 
 		b := Object().
-			Properties(map[string]Builder{"a": Number(), "b": Boolean()}).
+			Properties(BuilderMap{"a": Number(), "b": Boolean()}).
 			AdditionalProperties(Number()).
 			Schema()
 
@@ -141,12 +141,12 @@ func TestProperty(t *testing.T) {
 
 	t.Run("oneOf", func(t *testing.T) {
 		a := Object().
-			Properties(map[string]Builder{"a": String(), "b": Number()}).
+			Properties(BuilderMap{"a": String(), "b": Number()}).
 			AdditionalProperties(Never()).
 			Schema()
 
 		b := Object().
-			Properties(map[string]Builder{"a": Number(), "b": Boolean()}).
+			Properties(BuilderMap{"a": Number(), "b": Boolean()}).
 			AdditionalProperties(Number()).
 			Schema()
 

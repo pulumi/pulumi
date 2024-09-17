@@ -230,7 +230,7 @@ type SymbolExpr struct {
 func Symbol(accessors ...PropertyAccessor) *SymbolExpr {
 	property := &PropertyAccess{Accessors: accessors}
 	return &SymbolExpr{
-		exprNode: expr(syntax.String(fmt.Sprintf("${%v}", property))),
+		exprNode: expr(syntax.String("${" + property.String() + "}")),
 		Property: property,
 	}
 }
