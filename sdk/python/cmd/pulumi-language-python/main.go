@@ -84,6 +84,9 @@ const (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
+
+	// The preferred debug port.
+	preferredDebugPort = 58791
 )
 
 var (
@@ -707,7 +710,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
 	}
-	port, err := netutil.FindNextAvailablePort(58791)
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}

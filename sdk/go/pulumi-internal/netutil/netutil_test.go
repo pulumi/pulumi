@@ -27,7 +27,7 @@ func TestReturnsPortIfOpen(t *testing.T) {
 
 	port := 57134
 	if !isPortAvailable(port) {
-		t.Skip("port 8080 is not available")
+		t.Skip("port 57134 is not available")
 	}
 	p, err := FindNextAvailablePort(port)
 	require.NoError(t, err)
@@ -50,8 +50,8 @@ func TestReturnsNextPortIfNotAvailable(t *testing.T) {
 		t.Skip("port 58944 is not available")
 	}
 	// Open a listener on the port to make it unavailable.
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	require.NoError(t, err)
+	// Ignore the error.  If the port is already open that's also fine.
+	l, _ := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	defer l.Close()
 	availablePort, err := FindNextAvailablePort(port)
 	require.NoError(t, err)

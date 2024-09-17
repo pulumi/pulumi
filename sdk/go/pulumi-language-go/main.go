@@ -64,6 +64,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+const preferredDebugPort = 57134
+
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
@@ -812,7 +814,7 @@ func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
 	contract.IgnoreClose(logFile)
 	args := []string{"--headless=true", "--api-version=2"}
 	args = append(args, "--log", "--log-dest", logFile.Name())
-	port, err := netutil.FindNextAvailablePort(57134)
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
 	if err == nil {
 		args = append(args, "--listen=127.0.0.1:"+strconv.Itoa(port))
 	}
