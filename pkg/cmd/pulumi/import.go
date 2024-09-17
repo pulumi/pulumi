@@ -52,7 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
@@ -862,8 +861,6 @@ func newImportCmd() *cobra.Command {
 				programGenerator = wrapper(dotnet.GenerateProgram)
 			case "java":
 				programGenerator = wrapper(javagen.GenerateProgram)
-			case "yaml":
-				programGenerator = wrapper(yamlgen.GenerateProgram)
 			default:
 				programGenerator = func(
 					program *pcl.Program, loader schema.ReferenceLoader,
@@ -879,7 +876,7 @@ func newImportCmd() *cobra.Command {
 						return nil, nil, err
 					}
 					defer contract.IgnoreClose(pCtx.Host)
-					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+					programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
 					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 					if err != nil {
 						return nil, nil, err

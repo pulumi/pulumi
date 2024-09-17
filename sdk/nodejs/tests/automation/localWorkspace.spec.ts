@@ -691,7 +691,7 @@ describe("LocalWorkspace", () => {
         // Assert.
         await assert.rejects(stack.workspace.selectStack(stackName));
     });
-    it(`refreshes before preview`, async () => {
+    it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
         const program = async () => {
@@ -709,6 +709,12 @@ describe("LocalWorkspace", () => {
         const previewRes = await stack.preview({ userAgent, refresh });
         assert.match(previewRes.stdout, /refreshing/);
         assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
+
+        const upRes = await stack.up({ userAgent, refresh });
+        assert.match(upRes.stdout, /refreshing/);
+
+        const destroyRes = await stack.destroy({ userAgent, refresh });
+        assert.match(destroyRes.stdout, /refreshing/);
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {
@@ -1446,6 +1452,31 @@ describe("LocalWorkspace", () => {
         const ws = await LocalWorkspace.create({ pulumiCommand: mockCommand });
 
         assert.rejects(() => ws.install());
+    });
+
+    it("sends SIGINT when aborted", async () => {
+        const controller = new AbortController();
+        const program = async () => {
+            await new Promise((f) => setTimeout(f, 60000));
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        new Promise((f) => setTimeout(f, 1000)).then(() => controller.abort());
+        try {
+            // pulumi preview
+            const previewRes = await stack.preview({
+                signal: controller.signal,
+            });
+            assert.fail("expected canceled preview to throw");
+        } catch (err) {
+            assert.match(err.toString(), /stderr: Command was killed with SIGINT/);
+            assert.match(err.toString(), /CommandError: code: -2/);
+        }
+
+        await stack.workspace.removeStack(stackName);
     });
 });
 

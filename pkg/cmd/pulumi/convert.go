@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -290,8 +289,6 @@ func runConvert(
 			}, language)
 	case "java":
 		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
-	case "yaml":
-		projectGenerator = generatorWrapper(yamlgen.GenerateProject, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
@@ -305,7 +302,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
 			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return nil, err

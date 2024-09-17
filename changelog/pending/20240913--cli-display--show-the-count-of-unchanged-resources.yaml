@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Show the count of unchanged resources
