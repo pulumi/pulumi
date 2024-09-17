@@ -1,0 +1,6 @@
+name: pulumi-python-run
+description: A Python program that tests that `run` can be run by python and pulumi.
+runtime:
+  name: python
+  options:
+    virtualenv: venv
