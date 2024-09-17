@@ -3496,3 +3496,68 @@ func TestUntargetedProviderChange(t *testing.T) {
 	assert.Equal(t, "unrelated", unrelated.URN.Name())
 	assert.Equal(t, providerRef, unrelated.Provider)
 }
+
+func TestTargetFoo(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	beforeProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
+		assert.NoError(t, err)
+
+		resC, err := monitor.RegisterResource("pkgA:index:typA", "resC", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resD", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resC.URN},
+		})
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeProgramF, loaders...)
+	beforeOptions := TestUpdateOptions{T: t, HostF: beforeHostF}
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), beforeOptions, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	afterProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:index:typA", "resA-renamed", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
+		assert.NoError(t, err)
+
+		resC, err := monitor.RegisterResource("pkgA:index:typA", "resC", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resD", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resC.URN},
+		})
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterProgramF, loaders...)
+	afterOptions := TestUpdateOptions{T: t, HostF: afterHostF, UpdateOptions: UpdateOptions{
+		Targets: deploy.NewUrnTargets([]string{"**resD**"}),
+	}}
+
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), afterOptions, false, p.BackendClient, nil, "1")
+	assert.NoError(t, err)
+}
