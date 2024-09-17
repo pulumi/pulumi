@@ -1469,6 +1469,8 @@ func TestConfigGetterOverloads(t *testing.T) {
 	e.RunCommand("pulumi", "preview")
 }
 
+// Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
+// and finally that the program terminates successfully after the debugger is detached.
 func TestDebuggerAttachPython(t *testing.T) {
 	t.Parallel()
 
@@ -1485,9 +1487,8 @@ func TestDebuggerAttachPython(t *testing.T) {
 		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
 		e.RunCommand("pulumi", "stack", "init", "debugger-test")
 		e.RunCommand("pulumi", "stack", "select", "debugger-test")
-		out, err := e.RunCommand("pulumi", "preview", "--attach-debugger",
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-		fmt.Println(out, err)
 	}()
 
 	// Wait for the debugging event
@@ -1518,17 +1519,17 @@ outer:
 
 	reader := bufio.NewReader(conn)
 	resp, err := dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.OutputEvent{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.OutputEvent{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
 	// go-dap doesn't support this event, but we need to read it
 	// anyway.  We don't actually care that it's not supported,
 	// since we don't want to do anyting with it.
-	assert.ErrorContains(t, err, "Event event 'debugpySockets' is not supported (seq: 3)")
-	assert.Nil(t, resp)
+	require.ErrorContains(t, err, "Event event 'debugpySockets' is not supported (seq: 3)")
+	require.Nil(t, resp)
 
 	seq := 0
 	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
@@ -1542,57 +1543,52 @@ outer:
 			ColumnsStartAt1: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.InitializeResponse{}, resp)
 
 	json, err := json.Marshal(debugEvent.Config)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
 		Request:   newDAPRequest(seq, "attach"),
 		Arguments: json,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 
 	resp, err = dap.ReadProtocolMessage(reader)
 	// As above we don't care about the details of this event
-	assert.ErrorContains(t, err, "Event event 'debugpyWaitingForServer' is not supported (seq: 5)")
+	require.ErrorContains(t, err, "Event event 'debugpyWaitingForServer' is not supported (seq: 5)")
 	require.Nil(t, resp)
 
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.InitializedEvent{}, resp)
 
-	fmt.Println("after initialized event")
 	err = dap.WriteProtocolMessage(conn, &dap.ConfigurationDoneRequest{
 		Request: newDAPRequest(seq, "configurationDone"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.ConfigurationDoneResponse{}, resp)
 
-	fmt.Println("after configuration done")
-
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.AttachResponse{}, resp)
 
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.IsType(t, &dap.ProcessEvent{}, resp)
 
 	for {
 		resp, err = dap.ReadProtocolMessage(reader)
-		assert.NoError(t, err)
-		fmt.Println(resp)
+		require.NoError(t, err)
 		if reflect.TypeOf(resp) == reflect.TypeOf(&dap.TerminatedEvent{}) {
-			fmt.Println("got terminated event")
 			break
 		}
 		require.IsType(t, &dap.ThreadEvent{}, resp)
