@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs,python
-  description: Add StartDebuggingEvent to the automation API
