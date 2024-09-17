@@ -509,6 +509,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// Generate the aliases for this resource.
 	aliases := sg.generateAliases(goal)
+	// Log the aliases we're going to use to help with debugging aliasing issues.
+	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
 	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
 		// This resource is claiming to be X but we've already seen another resource claim that via aliases
@@ -556,6 +558,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				alias = []resource.Alias{{URN: urnOrAlias}}
 				// Save the alias actually being used so we can look it up later if anything has this as a parent
 				sg.aliases[urn] = urnOrAlias
+
+				// Log the alias we matched to help with debugging aliasing issues.
+				logging.V(7).Infof("Matched alias %v resolving to %v for resource %v", urnOrAlias, old.URN, urn)
 			}
 			break
 		}
