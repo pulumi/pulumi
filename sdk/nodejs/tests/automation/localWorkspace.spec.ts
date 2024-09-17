@@ -691,7 +691,7 @@ describe("LocalWorkspace", () => {
         // Assert.
         await assert.rejects(stack.workspace.selectStack(stackName));
     });
-    it(`refreshes before preview`, async () => {
+    it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
         const program = async () => {
@@ -709,6 +709,12 @@ describe("LocalWorkspace", () => {
         const previewRes = await stack.preview({ userAgent, refresh });
         assert.match(previewRes.stdout, /refreshing/);
         assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
+
+        const upRes = await stack.up({ userAgent, refresh });
+        assert.match(upRes.stdout, /refreshing/);
+
+        const destroyRes = await stack.destroy({ userAgent, refresh });
+        assert.match(destroyRes.stdout, /refreshing/);
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {

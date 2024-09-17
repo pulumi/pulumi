@@ -535,6 +535,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -1478,6 +1481,11 @@ export interface DestroyOptions extends GlobalOpts {
      * Optional message to associate with the operation.
      */
     message?: string;
+
+    /**
+     * Refresh the state of the stack's resources against the cloud provider before running destroy.
+     */
+    refresh?: boolean;
 
     /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
