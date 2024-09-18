@@ -32,7 +32,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -56,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"google.golang.org/grpc"
@@ -84,6 +84,9 @@ const (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
+
+	// The preferred debug port.  Chosen arbitrarily.
+	preferredDebugPort = 58791
 )
 
 var (
@@ -693,15 +696,6 @@ func determinePluginVersion(packageVersion string) (string, error) {
 	return result, nil
 }
 
-func selectPort() (int, error) {
-	l, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
-}
-
 // debugCommand produces python program args to launch a python file with debugpy.
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
 	err := checkForPackage(ctx, "debugpy", opts)
@@ -716,7 +710,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
 	}
-	port, err := selectPort()
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
