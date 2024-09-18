@@ -209,12 +209,12 @@ def _invoke(
 
     async def do_invoke() -> tuple[InvokeResult, Exception | None]:
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
-        if opts.parent is not None and opts.provider is None:
+        if opts is not None and opts.parent is not None and opts.provider is None:
             opts.provider = opts.parent.get_provider(tok)
 
         # Construct a provider reference from the given provider, if one was provided to us.
         provider_ref = None
-        if opts.provider is not None:
+        if opts is not None and opts.provider is not None:
             provider_urn = await opts.provider.urn.future()
             provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
             provider_ref = f"{provider_urn}::{provider_id}"
@@ -226,15 +226,15 @@ def _invoke(
             package_ref_str = await package_ref
             # If we have a package reference we can clear some of the invoke
             # options.
-            if package_ref_str is not None:
+            if package_ref_str is not None and opts is not None:
                 opts.plugin_download_url = None
                 opts.version = None
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, {})
-        version = opts.version or ""
-        plugin_download_url = opts.plugin_download_url or ""
+        version = opts.version or "" if opts is not None else ""
+        plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
         accept_resources = not (
             os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
         )
@@ -242,11 +242,11 @@ def _invoke(
         req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
             args=inputs,
-            provider=provider_ref,
+            provider=provider_ref or "",
             version=version,
             acceptResources=accept_resources,
             pluginDownloadURL=plugin_download_url,
-            packageRef=package_ref_str,
+            packageRef=package_ref_str or "",
         )
 
         def do_invoke():
@@ -260,10 +260,17 @@ def _invoke(
 
         # If the invoke failed, raise an error.
         if error is not None:
-            return None, Exception(f"invoke of {tok} failed: {error}")
+            return (
+                InvokeResult(None, is_secret=False),
+                Exception(f"invoke of {tok} failed: {error}"),
+            )
+
         if resp.failures:
-            return None, Exception(
-                f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
+            return (
+                InvokeResult(None, is_secret=False),
+                Exception(
+                    f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
+                ),
             )
 
         # Otherwise, return the output properties.
@@ -274,7 +281,7 @@ def _invoke(
         # Kubernetes SDK that can't handle empty dicts.
         if _requires_legacy_none_return_for_empty_struct(ret_obj, tok, version):
             log.debug(f"Returning None for empty result for invoke of {tok}")
-            return InvokeResult(None, is_secret=False), None
+            return InvokeResult(value=None, is_secret=False), None
 
         deserialized, is_secret = rpc.deserialize_properties_unwrap_secrets(ret_obj)
         # If typ is not None, call translate_output_properties to instantiate any output types.
@@ -304,6 +311,7 @@ def _invoke(
     fut = asyncio.ensure_future(do_rpc())
 
     if run_async:
+
         async def wait_for_fut():
             return await fut
 
