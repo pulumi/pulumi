@@ -762,7 +762,7 @@ def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
     """
     Returns True if the given protobuf struct contains any unknown values.
     """
-    for k, v in list(props_struct.items()):
+    for _, v in list(props_struct.items()):
         if v == UNKNOWN:
             return True
         if isinstance(v, struct_pb2.Struct):
