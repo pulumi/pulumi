@@ -774,9 +774,8 @@ def deserialize_properties_unwrap_secrets(
             if is_rpc_secret(v):
                 is_secret = True
                 output[k] = unwrap_rpc_secret(v)
-
         return (output, is_secret)
-    elif is_rpc_secret(output):
+    if is_rpc_secret(output):
         return (unwrap_rpc_secret(output), True)
     return (output, False)
 
