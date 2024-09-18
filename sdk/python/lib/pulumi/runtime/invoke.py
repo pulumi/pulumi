@@ -274,7 +274,7 @@ def _invoke(
         # Kubernetes SDK that can't handle empty dicts.
         if _requires_legacy_none_return_for_empty_struct(ret_obj, tok, version):
             log.debug(f"Returning None for empty result for invoke of {tok}")
-            return None, None
+            return InvokeResult(None, is_secret=False), None
 
         deserialized, is_secret = rpc.deserialize_properties_unwrap_secrets(ret_obj)
         # If typ is not None, call translate_output_properties to instantiate any output types.
@@ -285,7 +285,7 @@ def _invoke(
             )
 
         return (
-            (result, is_secret),
+            InvokeResult(result, is_secret),
             None,
         )
 
@@ -306,8 +306,7 @@ def _invoke(
             invoke_result, invoke_error = await fut
             if invoke_error is not None:
                 raise invoke_error
-            result, is_secret = invoke_result
-            return InvokeResult(result, is_secret)
+            return invoke_result
 
         return wait_for_fut()
 
@@ -316,8 +315,7 @@ def _invoke(
     invoke_result, invoke_error = _sync_await(fut)
     if invoke_error is not None:
         raise invoke_error
-    result, is_secret = invoke_result
-    return InvokeResult(result, is_secret)
+    return invoke_result
 
 
 def call(
