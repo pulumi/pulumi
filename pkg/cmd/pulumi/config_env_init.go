@@ -200,12 +200,12 @@ func (cmd *configEnvInitCmd) getStackConfig(
 		return nil, nil, err
 	}
 
-	decrypter, needsSave, err := getStackDecrypter(stack, ps)
+	decrypter, state, err := cmd.parent.ssml.getDecrypter(ctx, stack, ps)
 	if err != nil {
 		return nil, nil, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
-	if needsSave {
+	if state != stackSecretsManagerUnchanged {
 		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}
