@@ -250,7 +250,7 @@ func makeUntypedDeploymentTimestamp(
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
@@ -589,7 +589,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		rParent,
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{})
 	ctx = context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false)
@@ -715,7 +715,7 @@ func TestHtmlEscaping(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)

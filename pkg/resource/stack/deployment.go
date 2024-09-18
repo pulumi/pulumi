@@ -146,11 +146,21 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		}
 	}
 
+	metadata := apitype.SnapshotMetadataV1{}
+	if snap.Metadata.IntegrityErrorMetadata != nil {
+		metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: snap.Metadata.IntegrityErrorMetadata.Version,
+			Command: snap.Metadata.IntegrityErrorMetadata.Command,
+			Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+		}
+	}
+
 	return &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
+		Metadata:          metadata,
 	}, nil
 }
 
@@ -298,7 +308,16 @@ func DeserializeDeploymentV3(
 		ops = append(ops, desop)
 	}
 
-	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops), nil
+	metadata := deploy.SnapshotMetadata{}
+	if deployment.Metadata.IntegrityErrorMetadata != nil {
+		metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
+			Version: deployment.Metadata.IntegrityErrorMetadata.Version,
+			Command: deployment.Metadata.IntegrityErrorMetadata.Command,
+			Error:   deployment.Metadata.IntegrityErrorMetadata.Error,
+		}
+	}
+
+	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops, metadata), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
