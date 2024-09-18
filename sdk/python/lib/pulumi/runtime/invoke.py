@@ -207,7 +207,7 @@ def _invoke(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    async def do_invoke():
+    async def do_invoke() -> tuple[InvokeResult, Exception | None]:
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
         if opts.parent is not None and opts.provider is None:
             opts.provider = opts.parent.get_provider(tok)
@@ -296,26 +296,22 @@ def _invoke(
         # as errors from the data source itself, we return that as part of the returned tuple instead.
         if exn is not None:
             raise exn
-        return resp
+        invokeResult, error = resp
+        if error is not None:
+            raise error
+        return invokeResult
 
     fut = asyncio.ensure_future(do_rpc())
 
     if run_async:
-
         async def wait_for_fut():
-            invoke_result, invoke_error = await fut
-            if invoke_error is not None:
-                raise invoke_error
-            return invoke_result
+            return await fut
 
         return wait_for_fut()
 
     # Run the RPC callback asynchronously and then immediately await it.
     # If there was a semantic error, raise it now, otherwise return the resulting value.
-    invoke_result, invoke_error = _sync_await(fut)
-    if invoke_error is not None:
-        raise invoke_error
-    return invoke_result
+    return _sync_await(fut)
 
 
 def call(
