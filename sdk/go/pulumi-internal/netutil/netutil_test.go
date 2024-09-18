@@ -25,6 +25,7 @@ import (
 func TestReturnsPortIfOpen(t *testing.T) {
 	t.Parallel()
 
+	// "random" port for testing
 	port := 57134
 	if !isPortAvailable(port) {
 		t.Skip("port 57134 is not available")
@@ -45,6 +46,7 @@ func TestReturnsErrorIfPortNumberTooHigh(t *testing.T) {
 func TestReturnsNextPortIfNotAvailable(t *testing.T) {
 	t.Parallel()
 
+	// "random" port for testing
 	port := 58943
 	if !isPortAvailable(port + 1) {
 		t.Skip("port 58944 is not available")

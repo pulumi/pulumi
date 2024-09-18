@@ -64,6 +64,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+// The preferred debug port.  Chosen arbitrarily.
 const preferredDebugPort = 57134
 
 // This function takes a file target to specify where to compile to.

@@ -85,7 +85,7 @@ const (
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
 
-	// The preferred debug port.
+	// The preferred debug port.  Chosen arbitrarily.
 	preferredDebugPort = 58791
 )
 
