@@ -18,6 +18,7 @@ package diagtest
 
 import (
 	"testing"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -38,4 +39,27 @@ func LogSink(t testing.TB) diag.Sink {
 			Debug: true,
 		},
 	)
+}
+
+// Wraps a testing.TB and intercepts log messages.
+type FakeT struct {
+	testing.TB
+
+	Msgs     []string
+	Cleanups []func()
+}
+
+func (t *FakeT) Logf(msg string, args ...interface{}) {
+	t.Msgs = append(t.Msgs, fmt.Sprintf(msg, args...))
+}
+
+func (t *FakeT) Cleanup(f func()) {
+	t.Cleanups = append(t.Cleanups, f)
+}
+
+func (t *FakeT) RunCleanup() {
+	// cleanup functions are called in reverse order.
+	for i := len(t.Cleanups) - 1; i >= 0; i-- {
+		t.Cleanups[i]()
+	}
 }

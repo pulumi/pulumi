@@ -67,37 +67,14 @@ func TestLogSink(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			fakeT := fakeT{TB: t}
+			fakeT := FakeT{TB: t}
 			sink := LogSink(&fakeT)
 
 			tt.fn(sink, diag.Message("", "msg"))
-			fakeT.runCleanup()
+			fakeT.RunCleanup()
 
-			require.Len(t, fakeT.msgs, 1)
-			assert.Equal(t, tt.want, fakeT.msgs[0])
+			require.Len(t, fakeT.Msgs, 1)
+			assert.Equal(t, tt.want, fakeT.Msgs[0])
 		})
-	}
-}
-
-// Wraps a testing.TB and intercepts log messages.
-type fakeT struct {
-	testing.TB
-
-	msgs     []string
-	cleanups []func()
-}
-
-func (t *fakeT) Logf(msg string, args ...interface{}) {
-	t.msgs = append(t.msgs, fmt.Sprintf(msg, args...))
-}
-
-func (t *fakeT) Cleanup(f func()) {
-	t.cleanups = append(t.cleanups, f)
-}
-
-func (t *fakeT) runCleanup() {
-	// cleanup functions are called in reverse order.
-	for i := len(t.cleanups) - 1; i >= 0; i-- {
-		t.cleanups[i]()
 	}
 }

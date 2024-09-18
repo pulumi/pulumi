@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -27,7 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opentracing/opentracing-go/mocktracer"
 )
 
 func TestRawPrefix(t *testing.T) {
@@ -1192,6 +1196,72 @@ func TestImportStep(t *testing.T) {
 				assert.True(t, readCalled)
 				assert.True(t, checkCalled)
 			})
+		})
+		t.Run("resource input diff found", func(t *testing.T) {
+			t.Parallel()
+			var readCalled bool
+			var checkCalled bool
+			var diffCalled bool
+			fakeT := diagtest.FakeT{TB: t}
+			ctx, _ := plugin.NewContext(
+				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
+				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
+				nil,                 // the host that can be used to fetch providers.
+				nil,                 // configSource
+				t.TempDir(),         // the working directory to spawn all plugins in.
+				nil,                 // runtimeOptions
+				false,               // disableProviderPreview
+				mocktracer.New().StartSpan("root"),
+			)
+			s := &ImportStep{
+				deployment: &Deployment{
+					opts: &Options{
+						DryRun: true,
+					},
+					olds: map[resource.URN]*resource.State{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
+					ctx: ctx,
+				},
+				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:     "some-id",
+					Type:   "foo:bar:Bar",
+					Custom: true,
+				},
+				randomSeed: []byte{},
+				provider: &deploytest.Provider{
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+						readCalled = true
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								Outputs: resource.PropertyMap{},
+								Inputs:  resource.PropertyMap{},
+							},
+							Status: resource.StatusOK,
+						}, nil
+					},
+					CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
+						checkCalled = true
+						return plugin.CheckResponse{}, nil
+					},
+					DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
+						diffCalled = true
+						return plugin.DiffResponse{
+							Changes: plugin.DiffSome,
+							ChangedKeys: []resource.PropertyKey{
+								resource.PropertyKey("non-matching-input-1"), 
+								resource.PropertyKey("non-matching-input-2"),
+							},
+						}, nil
+					},
+				},
+			}
+			_, _, _ = s.Apply()
+			assert.True(t, readCalled)
+			assert.True(t, checkCalled)
+			assert.True(t, diffCalled)
+			assert.Equal(t, 1, len(fakeT.Msgs))
+			assert.True(t, strings.Contains(fakeT.Msgs[0], "[non-matching-input-1 non-matching-input-2]"))
 		})
 	})
 }
