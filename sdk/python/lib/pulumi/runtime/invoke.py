@@ -87,8 +87,9 @@ class InvokeResult:
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: Any, is_secret: bool):
         self.value = value
+        self.is_secret = is_secret
 
     # pylint: disable=using-constant-test
     def __await__(self):
@@ -114,6 +115,48 @@ def invoke(
     resolves when the invoke finishes.
     """
     return _invoke(tok, props, opts, typ, run_async=False, package_ref=package_ref)
+
+
+def invoke_output(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions] = None,
+    typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+) -> "Output[Any]":
+    """
+    invoke_output dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
+    can be a bag of computed values (Ts or Awaitable[T]s), and the result is an Output[T] that
+    resolves when the invoke finishes.
+    """
+
+    # Setup the futures for the output.
+    resolve_value: "asyncio.Future" = asyncio.Future()
+    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+
+    from .. import Output  # pylint: disable=import-outside-toplevel
+
+    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+
+    async def do_invoke_output() -> None:
+        try:
+            invoke_result = await _invoke(
+                tok, props, opts, typ, run_async=True, package_ref=package_ref
+            )
+            resolve_value.set_result(invoke_result.value)
+            resolve_is_known.set_result(True)
+            resolve_is_secret.set_result(invoke_result.is_secret)
+        except Exception as exn:
+            resolve_value.set_exception(exn)
+            resolve_is_known.set_exception(exn)
+            resolve_is_secret.set_exception(exn)
+        finally:
+            resolve_deps.set_result(set())
+
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_invoke_output)())
+    return out
 
 
 async def invoke_async(
@@ -148,7 +191,7 @@ def _invoke(
     typ: Optional[type],
     run_async: Literal[True],
     package_ref: Optional[Awaitable[Optional[str]]],
-) -> Coroutine[Any, Any, Any]: ...
+) -> Coroutine[Any, Any, InvokeResult]: ...
 def _invoke(
     tok: str,
     props: "Inputs",
@@ -233,14 +276,16 @@ def _invoke(
             log.debug(f"Returning None for empty result for invoke of {tok}")
             return None, None
 
-        deserialized = rpc.deserialize_properties(ret_obj)
+        deserialized, is_secret = rpc.deserialize_properties_unwrap_secrets(ret_obj)
         # If typ is not None, call translate_output_properties to instantiate any output types.
+        result = deserialized
+        if typ:
+            result = rpc.translate_output_properties(
+                deserialized, lambda prop: prop, typ
+            )
+
         return (
-            (
-                rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
-                if typ
-                else deserialized
-            ),
+            (result, is_secret),
             None,
         )
 
@@ -261,7 +306,8 @@ def _invoke(
             invoke_result, invoke_error = await fut
             if invoke_error is not None:
                 raise invoke_error
-            return invoke_result
+            result, is_secret = invoke_result
+            return InvokeResult(result, is_secret)
 
         return wait_for_fut()
 
@@ -270,7 +316,8 @@ def _invoke(
     invoke_result, invoke_error = _sync_await(fut)
     if invoke_error is not None:
         raise invoke_error
-    return InvokeResult(invoke_result)
+    result, is_secret = invoke_result
+    return InvokeResult(result, is_secret)
 
 
 def call(

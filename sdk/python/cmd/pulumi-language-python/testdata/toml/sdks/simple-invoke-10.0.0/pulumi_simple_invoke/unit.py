@@ -48,11 +48,12 @@ def unit(opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableUnitResult:
 
     return AwaitableUnitResult(
         result=pulumi.get(__ret__, 'result'))
-
-
-@_utilities.lift_output_func(unit)
 def unit_output(opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[UnitResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('simple-invoke:index:unit', __args__, opts=opts, typ=UnitResult)
+    return __ret__.apply(lambda __response__: UnitResult(
+        result=pulumi.get(__response__, 'result')))

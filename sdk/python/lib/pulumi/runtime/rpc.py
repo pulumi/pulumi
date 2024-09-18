@@ -758,6 +758,29 @@ def deserialize_properties(
     return output
 
 
+def deserialize_properties_unwrap_secrets(
+    props_struct: struct_pb2.Struct,
+    keep_unknowns: Optional[bool] = None,
+    keep_internal: Optional[bool] = None,
+) -> tuple[Any, bool]:
+    """
+    Similar to deserialize_properties except that it unwraps secrets and returns a boolean
+    indicating whether the resulting object contained a secret.
+    """
+    output = deserialize_properties(props_struct, keep_unknowns, keep_internal)
+    if isinstance(output, dict):
+        is_secret = False
+        for k, v in output.items():
+            if is_rpc_secret(v):
+                is_secret = True
+                output[k] = unwrap_rpc_secret(v)
+
+        return (output, is_secret)
+    elif is_rpc_secret(output):
+        return (unwrap_rpc_secret(output), True)
+    return (output, False)
+
+
 def deserialize_resource(
     ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None
 ) -> Union["Resource", str]:
