@@ -87,9 +87,10 @@ class InvokeResult:
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
     """
 
-    def __init__(self, value: Any, is_secret: bool):
+    def __init__(self, value: Any, is_secret: bool = False, is_known: bool = True):
         self.value = value
         self.is_secret = is_secret
+        self.is_known = is_known
 
     # pylint: disable=using-constant-test
     def __await__(self):
@@ -114,7 +115,9 @@ def invoke(
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
-    return _invoke(tok, props, opts, typ, run_async=False, package_ref=package_ref)
+    # Run the RPC callback asynchronously and then immediately await it.
+    awaitableInvokeResult = _invoke(tok, props, opts, typ, package_ref=package_ref)
+    return _sync_await(awaitableInvokeResult)
 
 
 def invoke_output(
@@ -142,12 +145,17 @@ def invoke_output(
 
     async def do_invoke_output() -> None:
         try:
-            invoke_result = await _invoke(
-                tok, props, opts, typ, run_async=True, package_ref=package_ref
+            invoke_result = await invoke_async(
+                tok, props, opts, typ, package_ref=package_ref
             )
-            resolve_value.set_result(invoke_result.value)
-            resolve_is_known.set_result(True)
-            resolve_is_secret.set_result(invoke_result.is_secret)
+
+            resolve_value.set_result(
+                invoke_result.value if invoke_result.is_known else None
+            )
+            resolve_is_known.set_result(invoke_result.is_known)
+            resolve_is_secret.set_result(
+                invoke_result.is_secret and invoke_result.is_known
+            )
         except Exception as exn:
             resolve_value.set_exception(exn)
             resolve_is_known.set_exception(exn)
@@ -165,41 +173,22 @@ async def invoke_async(
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
-) -> Any:
+) -> InvokeResult:
     """
     invoke_async dynamically asynchronously invokes the function, tok, which is offered by a provider plugin.
     the inputs can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
-    return await _invoke(tok, props, opts, typ, run_async=True, package_ref=package_ref)
+    return await _invoke(tok, props, opts, typ, package_ref=package_ref)
 
 
-@overload
 def _invoke(
     tok: str,
     props: "Inputs",
     opts: Optional[InvokeOptions],
     typ: Optional[type],
-    run_async: Literal[False],
     package_ref: Optional[Awaitable[Optional[str]]],
-) -> InvokeResult: ...
-@overload
-def _invoke(
-    tok: str,
-    props: "Inputs",
-    opts: Optional[InvokeOptions],
-    typ: Optional[type],
-    run_async: Literal[True],
-    package_ref: Optional[Awaitable[Optional[str]]],
-) -> Coroutine[Any, Any, InvokeResult]: ...
-def _invoke(
-    tok: str,
-    props: "Inputs",
-    opts: Optional[InvokeOptions],
-    typ: Optional[type],
-    run_async: bool,
-    package_ref: Optional[Awaitable[Optional[str]]],
-):
+) -> Awaitable[InvokeResult]:
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -232,7 +221,10 @@ def _invoke(
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, {})
+        inputs = await rpc.serialize_properties(props, {}, keep_output_values=True)
+        if rpc.struct_contains_unknowns(inputs):
+            return (InvokeResult(None, is_secret=False, is_known=False), None)
+
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
         accept_resources = not (
@@ -308,18 +300,10 @@ def _invoke(
             raise error
         return invokeResult
 
-    fut = asyncio.ensure_future(do_rpc())
+    async def wait_for_fut():
+        return await asyncio.ensure_future(do_rpc())
 
-    if run_async:
-
-        async def wait_for_fut():
-            return await fut
-
-        return wait_for_fut()
-
-    # Run the RPC callback asynchronously and then immediately await it.
-    # If there was a semantic error, raise it now, otherwise return the resulting value.
-    return _sync_await(fut)
+    return wait_for_fut()
 
 
 def call(

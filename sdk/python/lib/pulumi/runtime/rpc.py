@@ -758,6 +758,24 @@ def deserialize_properties(
     return output
 
 
+def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
+    """
+    Returns True if the given protobuf struct contains any unknown values.
+    """
+    for k, v in list(props_struct.items()):
+        if v == UNKNOWN:
+            return True
+        if isinstance(v, struct_pb2.Struct):
+            if struct_contains_unknowns(v):
+                return True
+        if isinstance(v, struct_pb2.ListValue):
+            for item in v:
+                if isinstance(item, struct_pb2.Struct):
+                    if struct_contains_unknowns(item):
+                        return True
+    return False
+
+
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,

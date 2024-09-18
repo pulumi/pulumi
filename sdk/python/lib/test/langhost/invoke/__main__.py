@@ -40,26 +40,26 @@ async def get_value2():
 
 
 def do_invoke():
-    value = invoke(
+    invokeResult = invoke(
         "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
-    ).value
-    return value["value"]
+    )
+
+    return invokeResult.value["value"]
 
 
 async def await_invoke():
     # awaiting InvokeResult X unwraps it and returns X.value
-    response = await invoke(
+    value = await invoke(
         "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
     )
-    return response["value"]
+    return value["value"]
 
 
 async def await_invoke_async():
-    # awaiting InvokeResult X unwraps it and returns X.value
-    response = await invoke_async(
+    invokeResult = await invoke_async(
         "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
     )
-    return response["value"]
+    return invokeResult.value["value"]
 
 
 res = MyResource("resourceA", do_invoke())
