@@ -4,14 +4,29 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from .. import _utilities
 
 __all__ = [
     'RequestArgs',
+    'RequestArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class RequestArgsDict(TypedDict):
+        url: NotRequired[pulumi.Input[str]]
+        content_body: NotRequired[pulumi.Input[str]]
+elif False:
+    RequestArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class RequestArgs:
