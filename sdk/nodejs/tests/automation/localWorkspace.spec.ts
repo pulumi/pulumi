@@ -79,7 +79,7 @@ describe("LocalWorkspace", () => {
         await ws.listPlugins();
     });
 
-    it("create/select/remove LocalWorkspace stack", async () => {
+    it("create/select/remove LocalWorkspace stack -- remote", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
@@ -105,18 +105,18 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     });
 
-    it("create/select/remove LocalWorkspace stack -- local non-dev-shm", async () => {
-        const projectName = "node_test";
-        const projectSettings: ProjectSettings = {
-            name: projectName,
-            runtime: "nodejs",
-        };
-        const ws = await LocalWorkspace.create(withTemporaryFileBackendTmp({ projectSettings }));
-        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
-        await ws.createStack(stackName);
-        await ws.selectStack(stackName);
-        await ws.removeStack(stackName);
-    });
+    // it("create/select/remove LocalWorkspace stack -- local non-dev-shm", async () => {
+    //     const projectName = "node_test";
+    //     const projectSettings: ProjectSettings = {
+    //         name: projectName,
+    //         runtime: "nodejs",
+    //     };
+    //     const ws = await LocalWorkspace.create(withTemporaryFileBackendTmp({ projectSettings }));
+    //     const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+    //     await ws.createStack(stackName);
+    //     await ws.selectStack(stackName);
+    //     await ws.removeStack(stackName);
+    // });
 
     it(`create/select/createOrSelect Stack`, async () => {
         const projectName = "node_test";

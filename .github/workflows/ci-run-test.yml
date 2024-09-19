@@ -116,6 +116,13 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
+      - name: install perf
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt update
+          sudo apt install -y linux-tools-common linux-tools-generic
+          echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+          echo 0 | sudo tee /proc/sys/kernel/kptr_restrict
       - name: Reduce Windows test parallelism
         if: ${{ runner.os == 'Windows' }}
         run: |
