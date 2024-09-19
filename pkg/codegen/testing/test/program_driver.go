@@ -441,6 +441,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests whether using inline invoke expressions works",
 		SkipCompile: codegen.NewStringSet("go"),
 	},
+	{
+		Directory:   "convert-aliased-imports",
+		Description: "Tests that overlapping import names are aliased appropriately in golang",
+		Skip:        codegen.NewStringSet("go"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
@@ -657,7 +662,8 @@ func TestProgramCodegen(
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", rootProgramPath)
 			}
 			opts = append(opts, pcl.DirPath(absoluteProgramPath))
-			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+			opts = append(opts, pcl.ComponentBinder(
+				pcl.ComponentProgramBinderFromFileSystem()))
 
 			program, diags, err := pcl.BindProgram(parser.Files, opts...)
 			if err != nil {
@@ -730,7 +736,8 @@ func TestProgramCodegen(
 					}
 				}
 			}
-			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
+			if !skipCompile && testcase.Check != nil &&
+				!tt.SkipCompile.Has(testcase.Language) {
 				extraPulumiPackages := codegen.NewStringSet()
 				collectExtraPulumiPackages(program, extraPulumiPackages)
 				testcase.Check(t, expectedFile, extraPulumiPackages)
