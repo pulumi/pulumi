@@ -304,7 +304,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
 		if isOut {
-			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache, g.importer.aliases)
 			if err != nil {
 				// We create a diag instead of panicking since panics are caught in go
 				// format expressions.
@@ -393,7 +393,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // Currently args type for output-versioned invokes are named
 // `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
 // this function to compensate.
-func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error) {
+func outputVersionFunctionArgTypeName(t model.Type, cache *Cache, aliases map[string]string) (string, error) {
 	schemaType, ok := pcl.GetSchemaForType(t)
 	if !ok {
 		return "", errors.New("No schema.Type type found for the given model.Type")
@@ -811,10 +811,18 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		return ""
 	}
 
+	packages := make(map[string]*GoPackageInfo)
+	for name := range g.packages {
+		pi, _ := g.getGoPackageInfo(name)
+		packages[name] = &pi
+	}
+
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		return (&pkgContext{
-			pkg:              (&schema.Package{Name: "main"}).Reference(),
-			externalPackages: g.externalCache,
+			pkg:                 (&schema.Package{Name: "main"}).Reference(),
+			externalPackages:    g.externalCache,
+			pkgImportAliases:    g.importer.aliases,
+			externalPackageInfo: packages,
 		}).argsType(schemaType)
 	}
 

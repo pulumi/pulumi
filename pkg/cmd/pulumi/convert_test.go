@@ -123,3 +123,37 @@ func TestProjectNameOverrides(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: "+name)
 }
+
+// Tests that test for when args are passed to an imported resource that need
+// to be aliased are called with the appropriate alias, see (pulumi/pulumi#9664)
+func TestAliasedImportsWorkInArgs(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs("convert_aliased_imports")
+	assert.NoError(t, err)
+
+	// Act.
+	err = runConvert(
+		env.Global(),
+		[]string{}, /*args*/
+		cwd,        /*cwd*/
+		[]string{}, /*mappings*/
+		"pcl",      /*from*/
+		"go",       /*language*/
+		outDir,
+		true, /*generateOnly*/
+		true, /*strict*/
+		"",
+	)
+	assert.NoError(t, err)
+
+	// Assert.
+	goBytes, err := os.ReadFile(filepath.Join(outDir, "main.go"))
+	assert.NoError(t, err)
+
+	goldBytes, err := os.ReadFile("convert_aliased_imports/gold/main.go.gold")
+	assert.NoError(t, err)
+	assert.Equal(t, string(goldBytes), string(goBytes))
+}

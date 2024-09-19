@@ -286,38 +286,38 @@ var componentResource = new Example.Component("componentResource", new()
 
 ```go
 example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-Bar: &.FooArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
-Baz: [].FooArgs{
-{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
-},
-D: 0,
-F: "string",
-Foo: &.FooArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
+	A: false,
+	C: 0,
+	E: "string",
+	B: false,
+	Bar: &example.FooArgs{
+		A: false,
+		C: 0,
+		E: "string",
+		B: false,
+		D: 0,
+		F: "string",
+	},
+	Baz: []example.FooArgs{
+		{
+			A: false,
+			C: 0,
+			E: "string",
+			B: false,
+			D: 0,
+			F: "string",
+		},
+	},
+	D: 0,
+	F: "string",
+	Foo: &example.FooArgs{
+		A: false,
+		C: 0,
+		E: "string",
+		B: false,
+		D: 0,
+		F: "string",
+	},
 })
 ```
 
