@@ -982,7 +982,7 @@ def translate_output_properties(
     typ: Optional[type] = None,
     transform_using_type_metadata: bool = False,
     path: Optional["_Path"] = None,
-    return_none_on_dict_type_mismatch: bool = False,
+    return_none_on_dict_or_list_type_mismatch: bool = False,
 ) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
@@ -1026,7 +1026,7 @@ def translate_output_properties(
             typ,
             transform_using_type_metadata,
             path,
-            return_none_on_dict_type_mismatch,
+            return_none_on_dict_or_list_type_mismatch,
         )
         return wrap_rpc_secret(result)
 
@@ -1060,7 +1060,7 @@ def translate_output_properties(
                         get_type(k),
                         transform_using_type_metadata,
                         _Path(k, parent=path),
-                        return_none_on_dict_type_mismatch,
+                        return_none_on_dict_or_list_type_mismatch,
                     )
                     for k, v in output.items()
                 }
@@ -1078,7 +1078,7 @@ def translate_output_properties(
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
                         translate = lambda k: k
-            elif return_none_on_dict_type_mismatch:
+            elif return_none_on_dict_or_list_type_mismatch:
                 return None
             else:
                 raise AssertionError(
@@ -1096,7 +1096,7 @@ def translate_output_properties(
                 get_type(k),
                 transform_using_type_metadata,
                 _Path(k, parent=path),
-                return_none_on_dict_type_mismatch,
+                return_none_on_dict_or_list_type_mismatch,
             )
             for k, v in output.items()
         }
@@ -1105,9 +1105,10 @@ def translate_output_properties(
         element_type = None
         if typ is not None:
             list_types = [list, List, Sequence, abc.Sequence]
-            if typ in list_types or get_origin(typ) in list_types:
+            origin = get_origin(typ)
+            if typ in list_types or origin in list_types:
                 element_type = _get_list_element_type(typ)
-            elif return_none_on_dict_type_mismatch:
+            elif return_none_on_dict_or_list_type_mismatch:
                 return None
             else:
                 raise AssertionError(
@@ -1125,7 +1126,7 @@ def translate_output_properties(
                 element_type,
                 transform_using_type_metadata,
                 _Path(str(i), parent=path),
-                return_none_on_dict_type_mismatch,
+                return_none_on_dict_or_list_type_mismatch,
             )
             for i, v in enumerate(output)
         ]
@@ -1276,7 +1277,7 @@ def resolve_outputs(
                     types.get(key),
                     transform_using_type_metadata,
                     path=_Path(translated_key, resource=f"{res._name}"),
-                    return_none_on_dict_type_mismatch=True,
+                    return_none_on_dict_or_list_type_mismatch=True,
                 )
 
     resolve_properties(resolvers, all_properties, translated_deps, custom)
