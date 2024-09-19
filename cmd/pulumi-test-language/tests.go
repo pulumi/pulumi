@@ -293,6 +293,43 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l1-output-map": {
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 4, "expected 4 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
+					assertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
+						"greeting": resource.NewStringProperty("Hello, world!"),
+						"farewell": resource.NewStringProperty("Goodbye, world!"),
+					}))
+					assertPropertyMapMember(l, outputs, "numbers", resource.NewObjectProperty(resource.PropertyMap{
+						"1": resource.NewNumberProperty(1),
+						"2": resource.NewNumberProperty(2),
+					}))
+					assertPropertyMapMember(l, outputs, "keys", resource.NewObjectProperty(resource.PropertyMap{
+						"my.key": resource.NewNumberProperty(1),
+						"my-key": resource.NewNumberProperty(2),
+						"my_key": resource.NewNumberProperty(3),
+						"MY_KEY": resource.NewNumberProperty(4),
+						"mykey":  resource.NewNumberProperty(5),
+						"MYKEY":  resource.NewNumberProperty(6),
+					}))
+				},
+			},
+		},
+	},
 	// ==========
 	// L2 (Tests using providers)
 	// ==========
