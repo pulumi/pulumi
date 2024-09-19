@@ -163,7 +163,7 @@ def invoke_output(
         finally:
             resolve_deps.set_result(set())
 
-    asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_invoke_output)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
 
 
