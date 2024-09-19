@@ -26,8 +26,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1201,11 +1201,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
-				nil,                 // the host that can be used to fetch providers.
-				nil,                 // configSource
-				t.TempDir(),         // the working directory to spawn all plugins in.
-				nil,                 // runtimeOptions
-				false,               // disableProviderPreview
+				nil,                      // the host that can be used to fetch providers.
+				nil,                      // configSource
+				t.TempDir(),              // the working directory to spawn all plugins in.
+				nil,                      // runtimeOptions
+				false,                    // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1215,7 +1215,7 @@ func TestImportStep(t *testing.T) {
 					},
 					olds: map[resource.URN]*resource.State{},
 					news: &gsync.Map[urn.URN, *resource.State]{},
-					ctx: ctx,
+					ctx:  ctx,
 				},
 				new: &resource.State{
 					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
@@ -1230,7 +1230,7 @@ func TestImportStep(t *testing.T) {
 						return plugin.DiffResponse{
 							Changes: plugin.DiffSome,
 							ChangedKeys: []resource.PropertyKey{
-								resource.PropertyKey("non-matching-input-1"), 
+								resource.PropertyKey("non-matching-input-1"),
 								resource.PropertyKey("non-matching-input-2"),
 							},
 						}, nil
@@ -1249,11 +1249,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
-				nil,                 // the host that can be used to fetch providers.
-				nil,                 // configSource
-				t.TempDir(),         // the working directory to spawn all plugins in.
-				nil,                 // runtimeOptions
-				false,               // disableProviderPreview
+				nil,                      // the host that can be used to fetch providers.
+				nil,                      // configSource
+				t.TempDir(),              // the working directory to spawn all plugins in.
+				nil,                      // runtimeOptions
+				false,                    // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1263,7 +1263,7 @@ func TestImportStep(t *testing.T) {
 					},
 					olds: map[resource.URN]*resource.State{},
 					news: &gsync.Map[urn.URN, *resource.State]{},
-					ctx: ctx,
+					ctx:  ctx,
 				},
 				new: &resource.State{
 					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
@@ -1272,7 +1272,7 @@ func TestImportStep(t *testing.T) {
 					Custom: true,
 				},
 				randomSeed: []byte{},
-				provider: &deploytest.Provider{},
+				provider:   &deploytest.Provider{},
 			}
 			_, _, err := s.Apply()
 			assert.NoError(t, err)
@@ -1285,11 +1285,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
-				nil,                 // the host that can be used to fetch providers.
-				nil,                 // configSource
-				t.TempDir(),         // the working directory to spawn all plugins in.
-				nil,                 // runtimeOptions
-				false,               // disableProviderPreview
+				nil,                      // the host that can be used to fetch providers.
+				nil,                      // configSource
+				t.TempDir(),              // the working directory to spawn all plugins in.
+				nil,                      // runtimeOptions
+				false,                    // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1299,7 +1299,7 @@ func TestImportStep(t *testing.T) {
 					},
 					olds: map[resource.URN]*resource.State{},
 					news: &gsync.Map[urn.URN, *resource.State]{},
-					ctx: ctx,
+					ctx:  ctx,
 				},
 				new: &resource.State{
 					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
@@ -1314,7 +1314,7 @@ func TestImportStep(t *testing.T) {
 						return plugin.DiffResponse{
 							Changes: plugin.DiffSome,
 							ChangedKeys: []resource.PropertyKey{
-								resource.PropertyKey("non-matching-input-1"), 
+								resource.PropertyKey("non-matching-input-1"),
 								resource.PropertyKey("non-matching-input-2"),
 							},
 						}, nil
@@ -1333,11 +1333,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
 				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
-				nil,                 // the host that can be used to fetch providers.
-				nil,                 // configSource
-				t.TempDir(),         // the working directory to spawn all plugins in.
-				nil,                 // runtimeOptions
-				false,               // disableProviderPreview
+				nil,                      // the host that can be used to fetch providers.
+				nil,                      // configSource
+				t.TempDir(),              // the working directory to spawn all plugins in.
+				nil,                      // runtimeOptions
+				false,                    // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1347,7 +1347,7 @@ func TestImportStep(t *testing.T) {
 					},
 					olds: map[resource.URN]*resource.State{},
 					news: &gsync.Map[urn.URN, *resource.State]{},
-					ctx: ctx,
+					ctx:  ctx,
 				},
 				new: &resource.State{
 					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
@@ -1356,7 +1356,7 @@ func TestImportStep(t *testing.T) {
 					Custom: true,
 				},
 				randomSeed: []byte{},
-				provider: &deploytest.Provider{},
+				provider:   &deploytest.Provider{},
 			}
 			_, _, err := s.Apply()
 			assert.NoError(t, err)

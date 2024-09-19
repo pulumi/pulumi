@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: "Add input keys from diff during import step to warning and error message, fixing #15606."

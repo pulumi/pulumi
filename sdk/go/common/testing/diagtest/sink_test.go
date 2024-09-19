@@ -15,7 +15,6 @@
 package diagtest
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
