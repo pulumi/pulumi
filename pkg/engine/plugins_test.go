@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,20 +35,24 @@ func mustMakeVersion(v string) *semver.Version {
 func TestDefaultProvidersSingle(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := NewPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.1"),
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins := NewPackageSet()
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:              "kubernetes",
-		Version:           mustMakeVersion("0.22.0"),
-		Kind:              apitype.ResourcePlugin,
-		PluginDownloadURL: "com.server.url",
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:              "kubernetes",
+			Version:           mustMakeVersion("0.22.0"),
+			Kind:              apitype.ResourcePlugin,
+			PluginDownloadURL: "com.server.url",
+		},
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
+	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
 	assert.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
@@ -68,19 +72,23 @@ func TestDefaultProvidersSingle(t *testing.T) {
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := NewPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.1"),
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins := NewPackageSet()
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: nil,
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: nil,
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
+	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -92,24 +100,30 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := NewPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.0"),
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins := NewPackageSet()
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.1"),
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
-	languagePlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.2-dev.1553126336"),
-		Kind:    apitype.ResourcePlugin,
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.2-dev.1553126336"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
+	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -121,19 +135,23 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := NewPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
-		Name: "python",
-		Kind: apitype.LanguagePlugin,
+	languagePlugins := NewPackageSet()
+	languagePlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name: "python",
+			Kind: apitype.LanguagePlugin,
+		},
 	})
-	snapshotPlugins := NewPluginSet()
-	snapshotPlugins.Add(workspace.PluginSpec{
-		Name:    "aws",
-		Version: mustMakeVersion("0.17.0"),
-		Kind:    apitype.ResourcePlugin,
+	snapshotPlugins := NewPackageSet()
+	snapshotPlugins.Add(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "aws",
+			Version: mustMakeVersion("0.17.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
+	defaultProviders := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -581,20 +599,24 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 func TestDefaultProviderPluginsSorting(t *testing.T) {
 	t.Parallel()
 	v1 := semver.MustParse("0.0.1-alpha.10")
-	p1 := workspace.PluginSpec{
-		Name:    "foo",
-		Version: &v1,
-		Kind:    apitype.ResourcePlugin,
+	p1 := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "foo",
+			Version: &v1,
+			Kind:    apitype.ResourcePlugin,
+		},
 	}
 	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
-	p2 := workspace.PluginSpec{
-		Name:    "foo",
-		Version: &v2,
-		Kind:    apitype.ResourcePlugin,
+	p2 := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "foo",
+			Version: &v2,
+			Kind:    apitype.ResourcePlugin,
+		},
 	}
-	plugins := NewPluginSet(p1, p2)
-	result := computeDefaultProviderPlugins(plugins, plugins)
-	assert.Equal(t, map[tokens.Package]workspace.PluginSpec{
+	plugins := NewPackageSet(p1, p2)
+	result := computeDefaultProviderPackages(plugins, plugins)
+	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
 		"foo": p2,
 	}, result)
 }

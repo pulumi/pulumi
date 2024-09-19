@@ -48,7 +48,7 @@ type QuerySource interface {
 // NewQuerySource creates a `QuerySource` for some target runtime environment specified by
 // `runinfo`, and supported by language plugins provided in `plugctx`.
 func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client BackendClient,
-	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]workspace.PluginSpec,
+	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]workspace.PackageDescriptor,
 	provs ProviderSource,
 ) (QuerySource, error) {
 	// Create a new builtin provider. This provider implements features such as `getStack`.
@@ -205,7 +205,7 @@ func runLangPlugin(src *querySource) error {
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
 // "query mode".
 func newQueryResourceMonitor(
-	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
+	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
 	providerRegErrChan chan<- error, tracingSpan opentracing.Span, runinfo *EvalRunInfo,
 ) (*queryResmon, error) {

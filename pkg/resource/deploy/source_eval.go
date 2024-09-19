@@ -96,7 +96,7 @@ type EvalSourceOptions struct {
 func NewEvalSource(
 	plugctx *plugin.Context,
 	runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
+	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
@@ -108,10 +108,10 @@ func NewEvalSource(
 }
 
 type evalSource struct {
-	plugctx             *plugin.Context                         // the plugin context.
-	runinfo             *EvalRunInfo                            // the directives to use when running the program.
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec // the default provider versions for this source.
-	opts                EvalSourceOptions                       // options for the evaluation source.
+	plugctx             *plugin.Context                                // the plugin context.
+	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
+	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
+	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
 func (src *evalSource) Close() error {
@@ -320,7 +320,7 @@ func (iter *evalSourceIterator) forkRun(
 type defaultProviders struct {
 	// A map of package identifiers to versions, used to disambiguate which plugin to load if no version is provided
 	// by the language host.
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec
+	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor
 
 	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
 	// have already been loaded.
