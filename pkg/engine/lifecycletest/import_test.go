@@ -28,8 +28,10 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -1260,4 +1262,88 @@ func TestImportInputDiff(t *testing.T) {
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[1].ID)
 	assert.Equal(t, upInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+}
+
+// Test that the provider packages returned form the language runtime are used for setting the default provider
+// information used to import resources.
+func TestImportDefaultProvider(t *testing.T) {
+	t.Parallel()
+
+	readInputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	readOutputs := resource.PropertyMap{
+		"foo":  resource.NewStringProperty("bar"),
+		"frob": resource.NewNumberProperty(1),
+	}
+
+	pkgAVersion := semver.MustParse("1.0.0")
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", pkgAVersion, func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      "actual-id",
+							Inputs:  readInputs,
+							Outputs: readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return errors.New("unexpected program execution")
+	}, workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Name:    "pkgA",
+			Kind:    apitype.ResourcePlugin,
+			Version: &pkgAVersion,
+		},
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	// Run an import.
+	project := p.GetProject()
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+
+	// The default provider should have been created with the expected version.
+	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
+	assert.Equal(t, "1.0.0", snap.Resources[1].Inputs["version"].StringValue())
+
+	// Import should save the ID, inputs and outputs
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
+	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
+
+	// Import should set Created and Modified timestamps on state.
+	for _, r := range snap.Resources {
+		assert.NotNil(t, r.Created)
+		assert.NotNil(t, r.Modified)
+	}
 }
