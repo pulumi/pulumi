@@ -67,6 +67,7 @@ type MockBackend struct {
 		stack Stack, secret string) (*apitype.SecretValue, error)
 	UpdateStackDeploymentSettingsF  func(context.Context, Stack, apitype.DeploymentSettings) error
 	DestroyStackDeploymentSettingsF func(ctx context.Context, stack Stack) error
+	GetGHAppIntegrationF            func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
 	CurrentUserF                    func() (string, []string, *workspace.TokenInformation, error)
 	PreviewF                        func(context.Context, Stack,
@@ -418,6 +419,13 @@ func (be *MockBackend) GetStackDeploymentSettings(ctx context.Context,
 func (be *MockBackend) DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error {
 	if be.DestroyStackDeploymentSettingsF != nil {
 		return be.DestroyStackDeploymentSettingsF(ctx, stack)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetGHAppIntegration(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error) {
+	if be.GetGHAppIntegrationF != nil {
+		return be.GetGHAppIntegrationF(ctx, stack)
 	}
 	panic("not implemented")
 }

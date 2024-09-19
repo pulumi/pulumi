@@ -1374,6 +1374,11 @@ func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack b
 	return errors.New("stack deployments not supported with diy backends")
 }
 
+func (b *diyBackend) GetGHAppIntegration(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+	// The local backend does not support github integration.
+	return nil, errors.New("github integration not supported with diy backends")
+}
+
 func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
 	stack backend.Stack,
 ) (*apitype.DeploymentSettings, error) {

@@ -78,8 +78,8 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "up",
-		Aliases:    []string{"update"},
+		Use:        "push",
+		Aliases:    []string{"update", "up"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Update stack deployment settings from deployment.yaml",
@@ -101,7 +101,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 			}
 
 			confirm := askForConfirmation("This action will override the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, yes)
+				"do you want to continue?", d.DisplayOptions.Color, true, yes)
 
 			if !confirm {
 				return nil
@@ -151,7 +151,8 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			}
 
 			confirm := askForConfirmation("This action will clear the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, yes)
+				"do you want to continue?", d.DisplayOptions.Color, true, yes)
+
 			if !confirm {
 				return nil
 			}
