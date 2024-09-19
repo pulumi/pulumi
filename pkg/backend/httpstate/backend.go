@@ -1906,7 +1906,9 @@ func (b *cloudBackend) DestroyStackDeploymentSettings(ctx context.Context, stack
 	return b.client.DestroyStackDeploymentSettings(ctx, stackID)
 }
 
-func (b *cloudBackend) GetGHAppIntegration(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+func (b *cloudBackend) GetGHAppIntegration(
+	ctx context.Context, stack backend.Stack,
+) (*apitype.GitHubAppIntegration, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err

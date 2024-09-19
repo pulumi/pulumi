@@ -462,7 +462,8 @@ deploy workflows that update your stacks whenever a pull request is merged.
 To install the App, abort this command and follow the instructions at:
 https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/`
 
-			ghAppExplanationTitle = colors.Highlight(ghAppExplanationTitle, "Pulumi’s GitHub app is not installed", colors.SpecWarning)
+			ghAppExplanationTitle = colors.Highlight(ghAppExplanationTitle,
+				"Pulumi’s GitHub app is not installed", colors.SpecWarning)
 
 			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
 			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
