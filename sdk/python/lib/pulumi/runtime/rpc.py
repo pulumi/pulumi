@@ -1102,7 +1102,22 @@ def translate_output_properties(
         }
 
     if isinstance(output, list):
-        element_type = _get_list_element_type(typ)
+        element_type = None
+        if typ is not None:
+            list_types = [list, List, Sequence, abc.Sequence]
+            if typ in list_types or get_origin(typ) in list_types:
+                element_type = _get_list_element_type(typ)
+            elif return_none_on_dict_type_mismatch:
+                return None
+            else:
+                raise AssertionError(
+                    (
+                        f"Unexpected type; expected a value of type `{typ}`"
+                        f" but got a value of type `{list}`{_Path.format(path)}:"
+                        f" {output}"
+                    )
+                )
+
         return [
             translate_output_properties(
                 v,
