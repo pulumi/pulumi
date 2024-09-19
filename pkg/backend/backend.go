@@ -219,6 +219,7 @@ type Backend interface {
 	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	// Deletes the stach deployment settings
 	DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error
+	// Fetch the GH App installation status
 	GetGHAppIntegration(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
