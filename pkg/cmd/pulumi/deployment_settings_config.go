@@ -251,17 +251,17 @@ func initStackDeploymentCmd(
 		return err
 	}
 
-	oidcExplanationMsg := `Pulumi supports OpenID Connect (OIDC) integration across various services by
+	oidcExplanationMsg := `
+Pulumi supports OpenID Connect (OIDC) integration across various services by
 leveraging signed, short-lived tokens and eliminating the necessity for hardcoded
 cloud provider credentials and facilitates the exchange of these tokens for
-short-term credentials.`
+short-term credentials.
+`
 
 	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "Pulumi", colors.SpecHeadline)
 	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "OpenID Connect (OIDC)", colors.SpecInfo)
 
-	fmt.Println()
-	fmt.Println(d.DisplayOptions.Color.Colorize(oidcExplanationMsg))
-	fmt.Println()
+	d.Prompts.Print(d.DisplayOptions.Color.Colorize(oidcExplanationMsg))
 
 	// For non interactive execution, we skip oidc configuration
 	option := d.Prompts.PromptUserSkippable(
@@ -452,7 +452,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		if !integration.Installed {
 			useGitHub = false
 
-			ghAppExplanationTitle := "Pulumi’s GitHub app is not installed\n\n"
+			ghAppExplanationTitle := "\nPulumi’s GitHub app is not installed\n\n"
 			ghAppExplanationMsg := `Pulumi’s GitHub app displays the results of Pulumi stack update previews in
 pull requests and enables automatic stack deployments via Pulumi Deployments. 
 Once installed and configured, it will show you any potential infrastructure
@@ -460,7 +460,8 @@ changes on Pull Requests and commit checks. You can also configure git push to
 deploy workflows that update your stacks whenever a pull request is merged.
 
 To install the App, abort this command and follow the instructions at:
-https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/`
+https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/
+`
 
 			ghAppExplanationTitle = colors.Highlight(ghAppExplanationTitle,
 				"Pulumi’s GitHub app is not installed", colors.SpecWarning)
@@ -468,25 +469,23 @@ https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/gith
 			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
 			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
 
-			fmt.Println()
-			fmt.Println(d.DisplayOptions.Color.Colorize(ghAppExplanationTitle + ghAppExplanationMsg))
-			fmt.Println()
+			d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationTitle + ghAppExplanationMsg))
 		}
 	}
 
 	if useGitHub {
-		ghAppExplanationMsg := `Pulumi’s GitHub app displays the results of Pulumi stack update previews in
+		ghAppExplanationMsg := `
+Pulumi’s GitHub app displays the results of Pulumi stack update previews in
 pull requests and enables automatic stack deployments via Pulumi Deployments. 
 Once installed and configured, it will show you any potential infrastructure
 changes on Pull Requests and commit checks. You can also configure git push to 
-deploy workflows that update your stacks whenever a pull request is merged.`
+deploy workflows that update your stacks whenever a pull request is merged.
+`
 
 		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
 		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
 
-		fmt.Println()
-		fmt.Println(d.DisplayOptions.Color.Colorize(ghAppExplanationMsg))
-		fmt.Println()
+		d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationMsg))
 
 		useGitHub = d.Prompts.AskForConfirmation(
 			"do you want to use the Pulumi GitHub App?",
@@ -645,15 +644,13 @@ func configureGitSSH(
 	d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath string, gitSSHPrivateKeyValue string,
 ) error {
 	if gitSSHPrivateKeyPath == "" && gitSSHPrivateKeyValue == "" {
-		configureMsg := "No SSH private key was provided, run `pulumi deployment settings " +
-			"configure` with the `--git-auth-ssh-private-key` or `--git-auth-ssh-private-key-path` flag set"
+		configureMsg := "\nNo SSH private key was provided, run `pulumi deployment settings " +
+			"configure` with the `--git-auth-ssh-private-key` or `--git-auth-ssh-private-key-path` flag set\n"
 		configureMsg = colors.Highlight(configureMsg, "No SSH private key was provided", colors.SpecError+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "pulumi deployment settings configure", colors.BrightBlue+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "--git-auth-ssh-private-key", colors.BrightBlue+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "--git-auth-ssh-private-key-path", colors.BrightBlue+colors.Bold)
-		fmt.Println()
-		fmt.Println(d.DisplayOptions.Color.Colorize(configureMsg))
-		fmt.Println()
+		d.Prompts.Print(d.DisplayOptions.Color.Colorize(configureMsg))
 		return nil
 	}
 
