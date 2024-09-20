@@ -78,6 +78,9 @@ on:
         required: false
         description: "GCP service account, required to run tests against GCP"
 
+env:
+  GOPROXY: direct
+
 jobs:
   matrix:
     runs-on: ubuntu-latest

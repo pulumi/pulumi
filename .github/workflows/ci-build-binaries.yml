@@ -52,6 +52,7 @@ defaults:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GOPROXY: direct
 
 jobs:
   build:

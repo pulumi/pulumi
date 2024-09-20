@@ -36,6 +36,7 @@ defaults:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_VERSION: ${{ inputs.version }}
+  GOPROXY: direct
 
 jobs:
   build_python_sdk:
