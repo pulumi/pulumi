@@ -33,6 +33,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Tuple,
     Union,
     cast,
     get_args,
@@ -780,7 +781,7 @@ def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
     keep_internal: Optional[bool] = None,
-) -> tuple[Any, bool]:
+) -> Tuple[Any, bool]:
     """
     Similar to deserialize_properties except that it unwraps secrets and returns a boolean
     indicating whether the resulting object contained a secret.
