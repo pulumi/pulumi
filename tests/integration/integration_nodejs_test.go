@@ -2128,3 +2128,8 @@ func TestParameterizedNode(t *testing.T) {
 		},
 	})
 }
+
+func TestConstructFailuresNode(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "nodejs", "@pulumi/pulumi")
+}

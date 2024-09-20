@@ -81,3 +81,16 @@ export function isGrpcError(err: Error): boolean {
     const code = (<any>err).code;
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
+
+export class DetailedError extends Error {
+
+    public readonly __pulumiDetailedError: boolean = true;
+
+    constructor(message: string, public details?: Array<[string, string]>) {
+	super(message);
+    }
+
+    public static isInstance(obj: any): obj is DetailedError {
+	return utils.isInstance<DetailedError>(obj, "__pulumiDetailedError");
+    }
+}
