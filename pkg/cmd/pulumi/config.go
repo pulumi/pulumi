@@ -586,7 +586,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"will set the value to a list with the first item `a`.\n" +
 			"  - `pulumi config set --path parent.nested value` " +
 			"will set the value of `parent` to a map `nested: value`.\n" +
-			"  - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
+			"  - `pulumi config set --path '[\"parent.name\"][\"nested.name\"]' value` will set the value of \n" +
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
