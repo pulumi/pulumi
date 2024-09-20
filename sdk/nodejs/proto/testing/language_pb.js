@@ -472,7 +472,8 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.toObject = function(includeI
     coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, ""),
     coreSdkVersion: jspb.Message.getFieldWithDefault(msg, 6, ""),
     snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
-    proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance)
+    proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance),
+    languageInfo: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -537,6 +538,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
       var value = new proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement;
       reader.readMessage(value,proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.deserializeBinaryFromReader);
       msg.addSnapshotEdits(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLanguageInfo(value);
       break;
     default:
       reader.skipField();
@@ -615,6 +620,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
       7,
       f,
       proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.serializeBinaryToWriter
+    );
+  }
+  f = message.getLanguageInfo();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
+      f
     );
   }
 };
@@ -953,6 +965,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.addSnapshotEdits =
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.clearSnapshotEditsList = function() {
   return this.setSnapshotEditsList([]);
+};
+
+
+/**
+ * optional string language_info = 8;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getLanguageInfo = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setLanguageInfo = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

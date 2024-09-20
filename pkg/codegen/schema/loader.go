@@ -93,7 +93,7 @@ func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCache
 
 		cacheOptions: cacheOptions,
 	}
-	if !cacheOptions.disableFileCache {
+	if !cacheOptions.disableEntryCache {
 		l = NewCachedLoader(l)
 	}
 	return l

@@ -540,7 +540,7 @@ _package_ref = ...
 async def get_package():
 	global _package_ref
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_package_references():
+		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
 			async with _package_lock:
 				if _package_ref is ...:
 					monitor = pulumi.runtime.settings.get_monitor()
@@ -559,7 +559,7 @@ async def get_package():
 					_package_ref = registerPackageResponse.ref
 	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
-	if _package_ref is None:
+	if _package_ref is None or _package_ref is ...:
 		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
@@ -3389,9 +3389,9 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 
-// Require the SDK to fall within the same major version, and be at least 3.133 which added support for the
+// Require the SDK to fall within the same major version, and be at least 3.134.0 which added support for the
 // package reference feature flag.
-var MinimumValidParameterizationSDKVersion = ">=3.133,<4.0.0"
+var MinimumValidParameterizationSDKVersion = ">=3.134.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies

@@ -1279,22 +1279,27 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
+	userName, _, _, err := b.CurrentUser()
+	if err != nil {
+		userName = "unknown"
+	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
-	if !isCopilotEnabled {
-		// If this overrides user's preference stated by PULUMI_SHOW_COPILOT_LINK, issue a
-		// verbosity level 7 warning to ease diagnosing why the link isn't showing up.
-		if env.ShowCopilotLink.Value() {
-			userName, _, _, err := b.CurrentUser()
-			if err != nil {
-				userName = "unknown"
-			}
-			logging.V(7).Infof(
-				"Copilot in org '%s' is not enabled for user '%s', link to Copilot in diagnostics will not be shown",
-				stackID.Owner, userName)
+	copilotEnabledValueString := "is"
+	continuationString := ""
+	if isCopilotEnabled {
+		if env.SuppressCopilotLink.Value() {
+			// Copilot is enabled in user's org, but the environment variable to suppress the link to Copilot is set.
+			op.Opts.Display.ShowLinkToCopilot = false
+			continuationString = " but the environment variable PULUMI_SUPPRESS_COPILOT_LINK" +
+				" suppresses the link to Copilot in diagnostics"
 		}
+	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
+		copilotEnabledValueString = "is not"
 	}
+	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",
+		stackID.Owner, copilotEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
 		version:    version,

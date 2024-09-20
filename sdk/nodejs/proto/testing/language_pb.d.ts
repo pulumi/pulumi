@@ -62,6 +62,8 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     getSnapshotEditsList(): Array<PrepareLanguageTestsRequest.Replacement>;
     setSnapshotEditsList(value: Array<PrepareLanguageTestsRequest.Replacement>): PrepareLanguageTestsRequest;
     addSnapshotEdits(value?: PrepareLanguageTestsRequest.Replacement, index?: number): PrepareLanguageTestsRequest.Replacement;
+    getLanguageInfo(): string;
+    setLanguageInfo(value: string): PrepareLanguageTestsRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
@@ -82,6 +84,7 @@ export namespace PrepareLanguageTestsRequest {
         coreSdkDirectory: string,
         coreSdkVersion: string,
         snapshotEditsList: Array<PrepareLanguageTestsRequest.Replacement.AsObject>,
+        languageInfo: string,
     }
 
 

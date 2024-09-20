@@ -336,7 +336,7 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
 
 
 def _sync_monitor_supports_parameterization() -> bool:
-    return SETTINGS.feature_support.get("supportsParameterization", False)
+    return SETTINGS.feature_support.get("parameterization", False)
 
 
 def reset_options(
