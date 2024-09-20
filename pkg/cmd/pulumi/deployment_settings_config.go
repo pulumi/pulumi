@@ -483,7 +483,8 @@ https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/gith
 
 			d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationTitle + ghAppExplanationMsg))
 
-			confirm := askForConfirmation("Do you want to continue without using the Pulumi's GitHub app?", d.DisplayOptions.Color, true, false)
+			confirm := askForConfirmation("Do you want to continue without using the Pulumi's GitHub app?",
+				d.DisplayOptions.Color, true, false)
 
 			if !confirm {
 				return errAbortCmd
