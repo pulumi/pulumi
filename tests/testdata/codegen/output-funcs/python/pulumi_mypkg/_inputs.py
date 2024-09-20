@@ -4,14 +4,34 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
 __all__ = [
     'BastionShareableLink',
+    'BastionShareableLinkDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class BastionShareableLinkDict(TypedDict):
+        """
+        Bastion Shareable Link.
+        """
+        vm: str
+        """
+        Reference of the virtual machine resource.
+        """
+elif False:
+    BastionShareableLinkDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class BastionShareableLink:

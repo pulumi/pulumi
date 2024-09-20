@@ -4,15 +4,33 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from .. import _utilities
 from .. import mod1 as _mod1
 
 __all__ = [
     'TypArgs',
+    'TypArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class TypArgsDict(TypedDict):
+        """
+        A test for namespaces (mod 2)
+        """
+        mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
+        val: NotRequired[pulumi.Input[str]]
+elif False:
+    TypArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class TypArgs:
