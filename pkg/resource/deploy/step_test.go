@@ -15,10 +15,10 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
-	"bytes"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -1202,11 +1202,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
-				nil,                      // the host that can be used to fetch providers.
-				nil,                      // configSource
-				t.TempDir(),              // the working directory to spawn all plugins in.
-				nil,                      // runtimeOptions
-				false,                    // disableProviderPreview
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1249,11 +1249,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
-				nil,                      // the host that can be used to fetch providers.
-				nil,                      // configSource
-				t.TempDir(),              // the working directory to spawn all plugins in.
-				nil,                      // runtimeOptions
-				false,                    // disableProviderPreview
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1285,11 +1285,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
-				nil,                      // the host that can be used to fetch providers.
-				nil,                      // configSource
-				t.TempDir(),              // the working directory to spawn all plugins in.
-				nil,                      // runtimeOptions
-				false,                    // disableProviderPreview
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{
@@ -1333,11 +1333,11 @@ func TestImportStep(t *testing.T) {
 			ctx, _ := plugin.NewContext(
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
-				nil,                      // the host that can be used to fetch providers.
-				nil,                      // configSource
-				t.TempDir(),              // the working directory to spawn all plugins in.
-				nil,                      // runtimeOptions
-				false,                    // disableProviderPreview
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
 				nil,
 			)
 			s := &ImportStep{

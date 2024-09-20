@@ -15,8 +15,8 @@
 package diagtest
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
@@ -71,10 +71,10 @@ func TestLogSink(t *testing.T) {
 			sink := LogSink(&fakeT)
 
 			tt.fn(sink, diag.Message("", "msg"))
-			fakeT.RunCleanup()
+			fakeT.runCleanup()
 
-			require.Len(t, fakeT.Msgs, 1)
-			assert.Equal(t, tt.want, fakeT.Msgs[0])
+			require.Len(t, fakeT.msgs, 1)
+			assert.Equal(t, tt.want, fakeT.msgs[0])
 		})
 	}
 }
@@ -83,21 +83,21 @@ func TestLogSink(t *testing.T) {
 type fakeT struct {
 	testing.TB
 
-	Msgs     []string
-	Cleanups []func()
+	msgs     []string
+	cleanups []func()
 }
 
 func (t *fakeT) Logf(msg string, args ...interface{}) {
-	t.Msgs = append(t.Msgs, fmt.Sprintf(msg, args...))
+	t.msgs = append(t.msgs, fmt.Sprintf(msg, args...))
 }
 
 func (t *fakeT) Cleanup(f func()) {
-	t.Cleanups = append(t.Cleanups, f)
+	t.cleanups = append(t.cleanups, f)
 }
 
-func (t *fakeT) RunCleanup() {
+func (t *fakeT) runCleanup() {
 	// cleanup functions are called in reverse order.
-	for i := len(t.Cleanups) - 1; i >= 0; i-- {
-		t.Cleanups[i]()
+	for i := len(t.cleanups) - 1; i >= 0; i-- {
+		t.cleanups[i]()
 	}
 }
