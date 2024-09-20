@@ -775,6 +775,11 @@ var languageTests = map[string]languageTest{
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
 					var stack *resource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
@@ -804,6 +809,11 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
 					var stack *resource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
