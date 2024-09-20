@@ -16,6 +16,7 @@ package diagtest
 
 import (
 	"testing"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestLogSink(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			fakeT := FakeT{TB: t}
+			fakeT := fakeT{TB: t}
 			sink := LogSink(&fakeT)
 
 			tt.fn(sink, diag.Message("", "msg"))
@@ -75,5 +76,28 @@ func TestLogSink(t *testing.T) {
 			require.Len(t, fakeT.Msgs, 1)
 			assert.Equal(t, tt.want, fakeT.Msgs[0])
 		})
+	}
+}
+
+// Wraps a testing.TB and intercepts log messages.
+type fakeT struct {
+	testing.TB
+
+	Msgs     []string
+	Cleanups []func()
+}
+
+func (t *fakeT) Logf(msg string, args ...interface{}) {
+	t.Msgs = append(t.Msgs, fmt.Sprintf(msg, args...))
+}
+
+func (t *fakeT) Cleanup(f func()) {
+	t.Cleanups = append(t.Cleanups, f)
+}
+
+func (t *fakeT) RunCleanup() {
+	// cleanup functions are called in reverse order.
+	for i := len(t.Cleanups) - 1; i >= 0; i-- {
+		t.Cleanups[i]()
 	}
 }

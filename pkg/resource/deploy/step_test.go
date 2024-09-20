@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"bytes"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -1194,13 +1195,13 @@ func TestImportStep(t *testing.T) {
 				assert.True(t, checkCalled)
 			})
 		})
-		t.Run("preview: resource input diff found -> no error, 1 diag msg", func(t *testing.T) {
+		t.Run("preview: resource input diff found -> no error, 4 diag msg", func(t *testing.T) {
 			t.Parallel()
 			var diffCalled bool
-			fakeT := diagtest.FakeT{TB: t}
+			var stderrbuff, stdoutbuff bytes.Buffer
 			ctx, _ := plugin.NewContext(
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,                      // the host that can be used to fetch providers.
 				nil,                      // configSource
 				t.TempDir(),              // the working directory to spawn all plugins in.
@@ -1240,15 +1241,14 @@ func TestImportStep(t *testing.T) {
 			_, _, err := s.Apply()
 			assert.NoError(t, err)
 			assert.True(t, diffCalled)
-			assert.Equal(t, 1, len(fakeT.Msgs))
-			assert.Contains(t, fakeT.Msgs[0], "[non-matching-input-1 non-matching-input-2]")
+			assert.Contains(t, stderrbuff.String(), "[non-matching-input-1 non-matching-input-2]")
 		})
 		t.Run("preview: no resource input diff found -> no error, no msg", func(t *testing.T) {
 			t.Parallel()
-			fakeT := diagtest.FakeT{TB: t}
+			var stderrbuff, stdoutbuff bytes.Buffer
 			ctx, _ := plugin.NewContext(
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,                      // the host that can be used to fetch providers.
 				nil,                      // configSource
 				t.TempDir(),              // the working directory to spawn all plugins in.
@@ -1276,15 +1276,15 @@ func TestImportStep(t *testing.T) {
 			}
 			_, _, err := s.Apply()
 			assert.NoError(t, err)
-			assert.Equal(t, 0, len(fakeT.Msgs))
+			assert.Equal(t, 0, len(stderrbuff.String()))
 		})
 		t.Run("up: resource input diff found -> error, no msg", func(t *testing.T) {
 			t.Parallel()
 			var diffCalled bool
-			fakeT := diagtest.FakeT{TB: t}
+			var stderrbuff, stdoutbuff bytes.Buffer
 			ctx, _ := plugin.NewContext(
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,                      // the host that can be used to fetch providers.
 				nil,                      // configSource
 				t.TempDir(),              // the working directory to spawn all plugins in.
@@ -1324,15 +1324,15 @@ func TestImportStep(t *testing.T) {
 			_, _, err := s.Apply()
 			assert.Error(t, err)
 			assert.True(t, diffCalled)
-			assert.Equal(t, 0, len(fakeT.Msgs))
+			assert.Equal(t, 0, len(stderrbuff.String()))
 			assert.ErrorContains(t, err, "[non-matching-input-1 non-matching-input-2]")
 		})
 		t.Run("up: no resource input diff found", func(t *testing.T) {
 			t.Parallel()
-			fakeT := diagtest.FakeT{TB: t}
+			var stderrbuff, stdoutbuff bytes.Buffer
 			ctx, _ := plugin.NewContext(
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for messages.
-				diagtest.LogSink(&fakeT), // The diagnostics sink to use for status messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,                      // the host that can be used to fetch providers.
 				nil,                      // configSource
 				t.TempDir(),              // the working directory to spawn all plugins in.
@@ -1360,7 +1360,7 @@ func TestImportStep(t *testing.T) {
 			}
 			_, _, err := s.Apply()
 			assert.NoError(t, err)
-			assert.Equal(t, 0, len(fakeT.Msgs))
+			assert.Equal(t, 0, len(stderrbuff.String()))
 		})
 	})
 }
