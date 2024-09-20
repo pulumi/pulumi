@@ -479,8 +479,10 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := "private_key"
 
 		prompts := &promptHandlersMock{
-			T:                     t,
-			ConfirmationResponses: []promptAssertion[bool, bool]{},
+			T: t,
+			ConfirmationResponses: []promptAssertion[bool, bool]{
+				{true, true},
+			},
 			PromptUserResponses: []promptAssertion[string, string]{
 				{optUserPass, optSSH},
 			},
@@ -534,6 +536,61 @@ func TestDSConfigureGit(t *testing.T) {
 		assert.True(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Secret)
 		assert.Equal(t, "encrypted_password",
 			d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Ciphertext)
+
+		prompts.AssertComplete()
+	})
+
+	t.Run("github repo but the app is not installed and aborts", func(t *testing.T) {
+		t.Parallel()
+
+		gitSSHPrivateKeyPath := ""
+		gitSSHPrivateKeyValue := "private_key"
+
+		prompts := &promptHandlersMock{
+			T: t,
+			ConfirmationResponses: []promptAssertion[bool, bool]{
+				{true, false},
+			},
+			PromptUserResponses: []promptAssertion[string, string]{},
+			PromptValueResponses: []promptAssertion[string, string]{
+				{"goproj", "goproj"},
+				{"refs/heads/master", "master"},
+				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
+			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app is not installed",
+			},
+		}
+
+		d := &deploymentSettingsCommandDependencies{
+			Deployment: &workspace.ProjectStackDeployment{},
+			WorkDir:    workDir,
+			Backend: &backend.MockBackend{
+				EncryptStackDeploymentSettingsSecretF: func(
+					ctx context.Context, stack backend.Stack, secret string,
+				) (*apitype.SecretValue, error) {
+					if secret == "private_key" {
+						return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+					}
+					assert.Equal(t, "password", secret)
+					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted_password"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: false,
+					}, nil
+				},
+			},
+			DisplayOptions: &display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			},
+			Prompts: prompts,
+		}
+
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+
+		assert.Error(t, err, errAbortCmd.Error())
 
 		prompts.AssertComplete()
 	})
