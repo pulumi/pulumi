@@ -52,6 +52,8 @@ const (
 	optSkipIntermediateDeployments = "Skip intermediate deployments"
 )
 
+var errAbortCmd = errors.New("abort")
+
 func newDeploymentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
@@ -206,7 +208,14 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 					"editing the file manually; or use --force", d.Stack.Ref())
 			}
 
-			return initStackDeploymentCmd(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+			err = initStackDeploymentCmd(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+			switch {
+			case errors.Is(err, errAbortCmd):
+				return nil
+			case err != nil:
+				return err
+			}
+			return nil
 		}),
 	}
 
@@ -345,7 +354,10 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 			default:
 				return nil
 			}
-			if err != nil {
+			switch {
+			case errors.Is(err, errAbortCmd):
+				return nil
+			case err != nil:
 				return err
 			}
 
@@ -459,7 +471,7 @@ Once installed and configured, it will show you any potential infrastructure
 changes on Pull Requests and commit checks. You can also configure git push to 
 deploy workflows that update your stacks whenever a pull request is merged.
 
-To install the App, abort this command and follow the instructions at:
+To install the App follow the instructions at:
 https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/
 `
 
@@ -470,6 +482,12 @@ https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/gith
 			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
 
 			d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationTitle + ghAppExplanationMsg))
+
+			confirm := askForConfirmation("Do you want to continue without using the Pulumi's GitHub app?", d.DisplayOptions.Color, true, false)
+
+			if !confirm {
+				return errAbortCmd
+			}
 		}
 	}
 
