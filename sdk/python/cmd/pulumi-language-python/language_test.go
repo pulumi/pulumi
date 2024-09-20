@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,7 @@ import (
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -179,16 +181,14 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	// We should run the python tests twice. Once with TOML projects and once with setup.py.
-	//nolint:paralleltest // These aren't yet safe to run in parallel
-	for _, useToml := range []bool{false, true} {
+	runTests := func(t *testing.T, snapshotDir string, useToml bool) {
 		cancel := make(chan bool)
 
 		// Run the language plugin
 		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Init: func(srv *grpc.Server) error {
 				pythonExec := "../pulumi-language-python-exec"
-				host := newLanguageHost(pythonExec, engineAddress, "", useToml)
+				host := newLanguageHost(pythonExec, engineAddress, "")
 				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 				return nil
 			},
@@ -199,11 +199,15 @@ func TestLanguage(t *testing.T) {
 		// Create a temp project dir for the test to run in
 		rootDir := t.TempDir()
 
-		snapshotDir := "./testdata/"
+		snapshotDir = "./testdata/" + snapshotDir
+
+		var languageInfo string
 		if useToml {
-			snapshotDir += "toml"
-		} else {
-			snapshotDir += "setuppy"
+			var info codegen.PackageInfo
+			info.PyProject.Enabled = true
+			json, err := json.Marshal(info)
+			require.NoError(t, err)
+			languageInfo = string(json)
 		}
 
 		// Prepare to run the tests
@@ -226,6 +230,7 @@ func TestLanguage(t *testing.T) {
 					Replacement: "ROOT/artifacts",
 				},
 			},
+			LanguageInfo: languageInfo,
 		})
 		require.NoError(t, err)
 
@@ -233,7 +238,7 @@ func TestLanguage(t *testing.T) {
 		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
 			tt := tt
-			t.Run(fmt.Sprintf("toml=%t/%s", useToml, tt), func(t *testing.T) {
+			t.Run(tt, func(t *testing.T) {
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,
 					Test:  tt,
@@ -252,4 +257,15 @@ func TestLanguage(t *testing.T) {
 		close(cancel)
 		assert.NoError(t, <-handle.Done)
 	}
+
+	// We should run the python tests twice. Once with TOML projects and once with setup.py.
+
+	//nolint:paralleltest
+	t.Run("default", func(t *testing.T) {
+		runTests(t, "setuppy", false)
+	})
+	//nolint:paralleltest
+	t.Run("toml", func(t *testing.T) {
+		runTests(t, "toml", true)
+	})
 }

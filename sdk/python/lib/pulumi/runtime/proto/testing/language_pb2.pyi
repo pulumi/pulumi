@@ -85,6 +85,7 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     CORE_SDK_DIRECTORY_FIELD_NUMBER: builtins.int
     CORE_SDK_VERSION_FIELD_NUMBER: builtins.int
     SNAPSHOT_EDITS_FIELD_NUMBER: builtins.int
+    LANGUAGE_INFO_FIELD_NUMBER: builtins.int
     language_plugin_name: builtins.str
     language_plugin_target: builtins.str
     snapshot_directory: builtins.str
@@ -93,6 +94,11 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     core_sdk_version: builtins.str
     @property
     def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
+    language_info: builtins.str
+    """a JSON string that will be inserted into every schema loaded (for both GeneratePackage and GenerateProject) in
+    the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
+    inputTypes in python.
+    """
     def __init__(
         self,
         *,
@@ -103,8 +109,9 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         core_sdk_directory: builtins.str = ...,
         core_sdk_version: builtins.str = ...,
         snapshot_edits: collections.abc.Iterable[global___PrepareLanguageTestsRequest.Replacement] | None = ...,
+        language_info: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 

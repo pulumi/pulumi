@@ -54,6 +54,11 @@ message PrepareLanguageTestsRequest {
     string core_sdk_directory = 5;
     string core_sdk_version = 6;
     repeated Replacement snapshot_edits = 7;
+
+    // a JSON string that will be inserted into every schema loaded (for both GeneratePackage and GenerateProject) in
+    // the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
+    // inputTypes in python.
+    string language_info = 8;
 }
 
 message PrepareLanguageTestsResponse {
