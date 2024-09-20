@@ -341,12 +341,6 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
           AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-        if: ${{ failure() }}
-        with:
-          ## limits ssh access and adds the ssh public key for the user which triggered the workflow
-          limit-access-to-actor: true
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |

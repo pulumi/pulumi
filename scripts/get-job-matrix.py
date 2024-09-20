@@ -99,7 +99,7 @@ class MakefileTest(TypedDict):
     eta: int
 
 MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
-    {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && make build_package && perf record -o perf.data -- yarn run nyc -s mocha --timeout 5000000 ./bin/tests/automation/localWorkspace.spec.js -f 'create/select/remove LocalWorkspace stack -- remote' && sudo perf report -v | head -30 && perf record -o perf.data -- yarn run nyc -s mocha --timeout 5000000 ./bin/tests/automation/localWorkspace.spec.js -f 'create/select/remove LocalWorkspace stack -- local' && perf report | head -30", "eta": 3},
+    {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && ../../scripts/retry make test_auto", "eta": 3},
     {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && ../../scripts/retry make unit_tests", "eta": 4},
     {"name": "sdk/nodejs test_integration", "run": "cd sdk/nodejs && ../../scripts/retry make test_integration", "eta": 3},
     {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
