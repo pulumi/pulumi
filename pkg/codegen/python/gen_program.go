@@ -672,13 +672,11 @@ func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
-			if typedDictEnabled(pkgInfo.InputTypes) {
-				return true
-			}
+			return typedDictEnabled(pkgInfo.InputTypes)
 		}
 	}
 
-	return false
+	return true
 }
 
 // argumentTypeName computes the Python argument class name for the given expression and model type.
