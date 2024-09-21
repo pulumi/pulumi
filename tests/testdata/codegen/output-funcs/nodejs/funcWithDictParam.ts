@@ -9,7 +9,6 @@ import * as utilities from "./utilities";
  */
 export function funcWithDictParam(args?: FuncWithDictParamArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithDictParamResult> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithDictParam", {
         "a": args.a,
@@ -29,7 +28,12 @@ export interface FuncWithDictParamResult {
  * Check codegen of functions with a Dict<str,str> parameter.
  */
 export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDictParamResult> {
-    return pulumi.output(args).apply((a: any) => funcWithDictParam(a, opts))
+    args = args || {};
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mypkg::funcWithDictParam", {
+        "a": args.a,
+        "b": args.b,
+    }, opts);
 }
 
 export interface FuncWithDictParamOutputArgs {

@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -90,9 +91,14 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
-		ctx context.Context, ws pkgWorkspace.Context, opts backend.UpdateOptions, cmd *cobra.Command,
+		ctx context.Context,
+		ssml stackSecretsManagerLoader,
+		ws pkgWorkspace.Context,
+		lm backend.LoginManager,
+		opts backend.UpdateOptions,
+		cmd *cobra.Command,
 	) error {
-		s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts.Display)
+		s, err := requireStack(ctx, ws, lm, stackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return err
 		}
@@ -112,7 +118,7 @@ func newUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -212,8 +218,14 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(ctx context.Context, ws pkgWorkspace.Context,
-		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
+	upTemplateNameOrURL := func(
+		ctx context.Context,
+		ssml stackSecretsManagerLoader,
+		ws pkgWorkspace.Context,
+		lm backend.LoginManager,
+		templateNameOrURL string,
+		opts backend.UpdateOptions,
+		cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
@@ -261,7 +273,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// There is no current project at this point to pass into currentBackend
-		b, err := currentBackend(ctx, ws, nil, opts.Display)
+		b, err := currentBackend(ctx, ws, lm, nil, opts.Display)
 		if err != nil {
 			return err
 		}
@@ -325,9 +337,19 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for config values (if needed) and save.
 		if err = handleConfig(
-			ctx, ws, promptForValue, proj, s,
-			templateNameOrURL, template, configArray,
-			yes, path, opts.Display); err != nil {
+			ctx,
+			ssml,
+			ws,
+			promptForValue,
+			proj,
+			s,
+			templateNameOrURL,
+			template,
+			configArray,
+			yes,
+			path,
+			opts.Display,
+		); err != nil {
 			return err
 		}
 
@@ -350,7 +372,7 @@ func newUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -445,6 +467,7 @@ func newUpCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
@@ -532,15 +555,30 @@ func newUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			// For now, 'explainFailure' link to Copilot in the CLI output
-			// requires env var PULUMI_SHOW_COPILOT_LINK to be set to true
-			opts.Display.ShowLinkToCopilot = env.ShowCopilotLink.Value()
+			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
+			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
 			if len(args) > 0 {
-				return upTemplateNameOrURL(ctx, ws, args[0], opts, cmd)
+				return upTemplateNameOrURL(
+					ctx,
+					ssml,
+					ws,
+					DefaultLoginManager,
+					args[0],
+					opts,
+					cmd,
+				)
 			}
 
-			return upWorkingDirectory(ctx, ws, opts, cmd)
+			return upWorkingDirectory(
+				ctx,
+				ssml,
+				ws,
+				DefaultLoginManager,
+				opts,
+				cmd,
+			)
 		}),
 	}
 
@@ -655,7 +693,6 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
-	cmd.Flag("attach-debugger").Hidden = true
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
@@ -706,6 +743,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
+	ssml stackSecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
 	project *workspace.Project,
@@ -747,7 +785,18 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(ctx, prompt, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(
+			ctx,
+			ssml,
+			prompt,
+			project,
+			s,
+			template.Config,
+			commandLineConfig,
+			stackConfig,
+			yes,
+			opts,
+		)
 		if err != nil {
 			return err
 		}

@@ -295,12 +295,12 @@ var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResou
 resource_with_assets_resource = example.ResourceWithAssets("resourceWithAssetsResource",
     source=pulumi.StringAsset("content"),
     archive=pulumi.FileArchive("./path/to/archive"),
-    nested=example.TypeWithAssetsArgs(
-        asset=pulumi.StringAsset("content"),
-        plain_archive=pulumi.FileArchive("./path/to/archive"),
-        archive=pulumi.FileArchive("./path/to/archive"),
-        plain_asset=pulumi.StringAsset("content"),
-    ))
+    nested={
+        "asset": pulumi.StringAsset("content"),
+        "plain_archive": pulumi.FileArchive("./path/to/archive"),
+        "archive": pulumi.FileArchive("./path/to/archive"),
+        "plain_asset": pulumi.StringAsset("content"),
+    })
 ```
 
 </pulumi-choosable>

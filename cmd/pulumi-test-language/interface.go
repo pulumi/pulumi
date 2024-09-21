@@ -119,6 +119,8 @@ func (eng *languageTestServer) Done() error {
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.
 type providerLoader struct {
+	language, languageInfo string
+
 	providers []plugin.Provider
 }
 
@@ -173,6 +175,14 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		spec.Meta = &schema.MetadataSpec{}
 	}
 	spec.Meta.SupportPack = true
+
+	// Set the LanguageInfo field if given
+	if l.languageInfo != "" {
+		// We don't expect the language field to be set in the core providers, they should be language agnostic
+		spec.Language = map[string]schema.RawMessage{
+			l.language: schema.RawMessage(l.languageInfo),
+		}
+	}
 
 	p, err := schema.ImportPartialSpec(spec, nil, l)
 	if err != nil {
@@ -245,6 +255,7 @@ type testToken struct {
 	CoreArtifact         string
 	CoreVersion          string
 	SnapshotEdits        []replacement
+	LanguageInfo         string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -301,7 +312,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
 
-	languageClient := plugin.NewLanguageRuntimeClient(pctx, "uut", pulumirpc.NewLanguageRuntimeClient(conn))
+	languageClient := plugin.NewLanguageRuntimeClient(
+		pctx, req.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// Setup the artifacts directory
 	err = os.MkdirAll(filepath.Join(req.TemporaryDirectory, "artifacts"), 0o755)
@@ -309,11 +321,14 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("create artifacts directory: %w", err)
 	}
 
-	// Build the core SDK, use a slightly odd version so we can test dependencies later.
-	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
-	if err != nil {
-		return nil, fmt.Errorf("pack core SDK: %w", err)
+	var coreArtifact string
+	if req.CoreSdkDirectory != "" {
+		// Build the core SDK, use a slightly odd version so we can test dependencies later.
+		coreArtifact, err = languageClient.Pack(
+			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		if err != nil {
+			return nil, fmt.Errorf("pack core SDK: %w", err)
+		}
 	}
 
 	edits := []replacement{}
@@ -333,6 +348,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		CoreArtifact:         coreArtifact,
 		CoreVersion:          req.CoreSdkVersion,
 		SnapshotEdits:        edits,
+		LanguageInfo:         req.LanguageInfo,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -418,7 +434,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
 
-	languageClient := plugin.NewLanguageRuntimeClient(pctx, "uut", pulumirpc.NewLanguageRuntimeClient(conn))
+	languageClient := plugin.NewLanguageRuntimeClient(
+		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
 	providers := make(map[string]plugin.Provider)
@@ -431,6 +448,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	pctx.Host = &testHost{
+		stderr:      stderr,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
@@ -439,7 +457,11 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Generate SDKs for all the packages we need
-	loader := &providerLoader{providers: test.providers}
+	loader := &providerLoader{
+		providers:    test.providers,
+		language:     token.LanguagePluginName,
+		languageInfo: token.LanguageInfo,
+	}
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -508,8 +530,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
-	localDependencies := map[string]string{
-		"pulumi": token.CoreArtifact,
+	localDependencies := map[string]string{}
+	if token.CoreArtifact != "" {
+		localDependencies["pulumi"] = token.CoreArtifact
 	}
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)

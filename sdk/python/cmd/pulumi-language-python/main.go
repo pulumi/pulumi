@@ -45,6 +45,7 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+	"github.com/nxadm/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -54,11 +55,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -81,6 +84,9 @@ const (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
+
+	// The preferred debug port.  Chosen arbitrarily.
+	preferredDebugPort = 58791
 )
 
 var (
@@ -158,7 +164,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, false)
+			host := newLanguageHost(pythonExec, engineAddress, tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -185,9 +191,6 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
-
-	// used by language conformance tests to enable the PyProject.Enabled schema option
-	useToml bool
 }
 
 func parseOptions(root string, options map[string]interface{}) (toolchain.PythonOptions, error) {
@@ -236,14 +239,27 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
+func newLanguageHost(exec, engineAddress, tracing string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
-		useToml:       useToml,
 	}
+}
+
+func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
@@ -676,14 +692,175 @@ func determinePluginVersion(packageVersion string) (string, error) {
 	return result, nil
 }
 
+// debugCommand produces python program args to launch a python file with debugpy.
+func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
+	err := checkForPackage(ctx, "debugpy", opts)
+	if err != nil {
+		var installError *NotInstalledError
+		if errors.As(err, &installError) {
+			return nil, nil, fmt.Errorf("debugpy is not installed. %s", installError.InstallMessage)
+		}
+		return nil, nil, err
+	}
+	logDir, err := os.MkdirTemp("", "pulumi-python-debugpy-")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
+	}
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
+	}
+	args := []string{}
+	args = append(args, "-Xfrozen_modules=off")
+	args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	args = append(args, "--wait-for-client")
+	args = append(args, "--log-to", logDir)
+	return args, &debugger{Host: "127.0.0.1", Port: port, LogDir: logDir}, nil
+}
+
+type debugger struct {
+	Host   string
+	Port   int
+	LogDir string
+}
+
+func (c *debugger) Cleanup() {
+	contract.IgnoreError(os.RemoveAll(c.LogDir))
+}
+
+// WaitForReady waits for debugpy to be ready to accept connections.
+// Returns an error if the context is canceled or the log file is unable to be tailed.
+func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
+	logFile := filepath.Join(c.LogDir, fmt.Sprintf("debugpy.server-%d.log", pid))
+	t, err := tail.TailFile(logFile, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreError(t.Stop())
+		t.Cleanup()
+	}()
+	ready := make(chan bool)
+	go func(tailedLog *tail.Tail) {
+		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				continue
+			}
+			if strings.Contains(line.Text, "Adapter is accepting incoming client connections") {
+				close(ready)
+				break
+			}
+		}
+	}(t)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.Dead():
+		return t.Err()
+	case <-ready:
+		return nil
+	}
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+	// wait for the debugger to be ready
+	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	err := dbg.WaitForReady(ctx, cmd.Process.Pid)
+	if err != nil {
+		return err
+	}
+
+	// emit a debug configuration
+	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+		"name":    "Pulumi: Program (Python)",
+		"type":    "python",
+		"request": "attach",
+		"connect": map[string]interface{}{
+			"host": dbg.Host,
+			"port": dbg.Port,
+		},
+		"justMyCode": true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to serialize debug configuration: %w", err)
+	}
+	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+		Config:  debugConfig,
+		Message: fmt.Sprintf("on port %d", dbg.Port),
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+	return nil
+}
+
+type NotInstalledError struct {
+	InstallMessage string
+}
+
+func (e *NotInstalledError) Error() string {
+	return e.InstallMessage
+}
+
+func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptions) error {
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return err
+	}
+	packages, err := tc.ListPackages(ctx, true)
+	if err != nil {
+		return err
+	}
+	idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == pkg })
+	if idx < 0 {
+		installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", pkg)
+		if opts.Toolchain != toolchain.Poetry {
+			pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
+			if runtime.GOOS == "windows" {
+				pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
+			}
+			installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", pkg, pipCommand)
+		}
+		//revive:disable:error-strings // This error message is user facing.
+		return &NotInstalledError{
+			InstallMessage: installCommand,
+		}
+	}
+	return nil
+}
+
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		contract.IgnoreClose(closer)
+	}()
+
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
 
-	args := []string{host.exec}
+	args := []string{}
+	var dbg *debugger
+	if req.GetAttachDebugger() {
+		args, dbg, err = debugCommand(ctx, opts)
+		if err != nil {
+			return &pulumirpc.RunResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		defer dbg.Cleanup()
+	}
+
+	// Entrypoint script and arguments
+	args = append(args, host.exec)
 	args = append(args, host.constructArguments(req)...)
 
 	config, err := host.constructConfig(req)
@@ -755,28 +932,14 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
-		// If the typechecker is not installed, tell the user to install it.
-		tc, err := toolchain.ResolveToolchain(opts)
+		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
-			return nil, err
-		}
-		packages, err := tc.ListPackages(ctx, true)
-		if err != nil {
-			return nil, err
-		}
-		idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == typechecker })
-		if idx < 0 {
-			installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", typechecker)
-			if opts.Toolchain != toolchain.Poetry {
-				pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
-				if runtime.GOOS == "windows" {
-					pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
-				}
-				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
+			var installError *NotInstalledError
+			if errors.As(err, &installError) {
+				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
+					typechecker, typechecker, installError.InstallMessage)
 			}
-			//revive:disable:error-strings // This error message is user facing.
-			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
-				typechecker, typechecker, installCommand)
+			return nil, err
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
@@ -784,7 +947,27 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 	}
 	var errResult string
-	if err := cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err := startDebugging(ctx, engineClient, cmd, dbg)
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
 		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
 		// process's stdout and stderr writes.
@@ -1245,16 +1428,6 @@ func (host *pythonLanguageHost) GeneratePackage(
 		return &pulumirpc.GeneratePackageResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
-	}
-
-	if host.useToml {
-		var info codegen.PackageInfo
-		var ok bool
-		if info, ok = pkg.Language["python"].(codegen.PackageInfo); !ok {
-			info = codegen.PackageInfo{}
-		}
-		info.PyProject.Enabled = true
-		pkg.Language["python"] = info
 	}
 
 	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)

@@ -47,9 +47,9 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion string = "^3.42.0"
+	MinimumValidSDKVersion string = "^3.133.0"
 	// The minimum version of @pulumi/pulumi that supports parameterization.
-	MinimumValidParameterizationSDKVersion string = "^3.129.0"
+	MinimumValidParameterizationSDKVersion string = "^3.133.0"
 	MinimumTypescriptVersion               string = "^4.3.5"
 	MinimumNodeTypesVersion                string = "^14"
 )
@@ -1165,27 +1165,34 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 // the result of invokes to be a dictionary.
 //
 // We use invoke for functions with object return types and invokeSingle for everything else.
-func runtimeInvokeFunction(fun *schema.Function) string {
+func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
+	var functionName string
 	switch fun.ReturnType.(type) {
 	// If the function has no return type, it is a void function.
 	case nil:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is also a normal invoke function.
 	// because the deserialization can handle it
 	case *schema.MapType:
-		return "invoke"
+		functionName = "invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle
 		// which expects an object with a single property to be returned
 		// then unwraps the value from that property
-		return "invokeSingle"
+		functionName = "invokeSingle"
 	}
+
+	if plain {
+		return functionName
+	}
+
+	return functionName + "Output"
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
 	info := functionFileInfo{functionName: name}
 
@@ -1204,43 +1211,67 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		if argsOptional {
 			optFlag = "?"
 		}
-		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
+		suffix := "Args"
+		if !plain {
+			suffix = "OutputArgs"
+		}
+
+		argsType := title(name) + suffix
+		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argsType)
+
+		if !plain && len(fun.Inputs.Properties) == 0 {
+			// for empty/unit args on output-versioned invokes, don't generate an empty argument
+			argsig = ""
+		}
 	}
 
 	funReturnType := mod.functionReturnType(fun)
 
-	fmt.Fprintf(w, "export function %s(", name)
+	fullFunctionName := name
+	if !plain {
+		fullFunctionName += "Output"
+		info.functionOutputVersionName = fullFunctionName
+	}
+
+	fmt.Fprintf(w, "export function %s(", fullFunctionName)
 	if fun.MultiArgumentInputs {
 		for _, prop := range fun.Inputs.Properties {
-			if prop.IsRequired() {
-				fmt.Fprintf(w, "%s: ", prop.Name)
-				fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
-			} else {
-				fmt.Fprintf(w, "%s?: ", prop.Name)
-				// since we already applied the '?' to the type, we can simplify
-				// the optional-ness of the type
-				propType := prop.Type.(*schema.OptionalType)
-				fmt.Fprintf(w, "%s, ", mod.typeString(propType.ElementType, false, nil))
+			propertyType := codegen.UnwrapType(prop.Type)
+			isInput := false
+			if !plain {
+				isInput = true
+				propertyType = &schema.InputType{ElementType: prop.Type}
 			}
+			fmt.Fprintf(w, "%s", prop.Name)
+			if prop.IsRequired() {
+				fmt.Fprintf(w, ": ")
+			} else {
+				fmt.Fprintf(w, "?: ")
+			}
+			fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
 		}
 	} else {
 		fmt.Fprintf(w, "%s", argsig)
 	}
 
-	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): Promise<%s> {\n", funReturnType)
+	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+	if !plain {
+		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+	}
+
+	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): %s {\n", returnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
 
 	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs {
+	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
-	fmt.Fprint(w, "\n")
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-	invokeCall := runtimeInvokeFunction(fun)
+	invokeCall := runtimeInvokeFunction(fun, plain)
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
 	if fun.Inputs != nil {
@@ -1252,11 +1283,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 			}
 
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
-				if codegen.IsNOptionalInput(p.Type) {
+				if codegen.IsNOptionalInput(p.Type) || !plain {
 					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
 				} else {
 					body = fmt.Sprintf("%s(%s)", name, body)
 				}
+
 				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
 			}
 			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
@@ -1280,26 +1312,67 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
-		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
-			return info, err
-		}
 		info.functionArgsInterfaceName = argsInterfaceName
-	}
+		properties := fun.Inputs.Properties
+		if !plain {
+			argsInterfaceName = title(name) + "OutputArgs"
+			properties = fun.Inputs.InputShape.Properties
+			info.functionOutputVersionArgsInterfaceName = argsInterfaceName
+		} else {
+			info.functionArgsInterfaceName = argsInterfaceName
+		}
 
-	// if the return type is an inline object definition (not a reference), emit it.
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-			fmt.Fprintf(w, "\n")
-			resultInterfaceName := title(name) + "Result"
-			if err := mod.genPlainType(w, resultInterfaceName,
-				objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+		if len(properties) == 0 {
+			if plain {
+				// if there are no properties, generate an empty interface for plain invokes
+				// we would like to remove this, but it would be a breaking change
+				if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
+					return info, err
+				}
+			}
+
+			// this avoids generating an export for the interface that doesn't exist
+			info.functionOutputVersionArgsInterfaceName = ""
+		} else {
+			if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
 				return info, err
 			}
+		}
+	}
+
+	resultInterfaceName := title(name) + "Result"
+	// if the return type is an inline object definition (not a reference), emit it.
+	// only emit the plain result type T since output-versioned invokes will use Output<T> for the non-plain variant
+	if fun.ReturnType != nil {
+		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+			if plain {
+				fmt.Fprintf(w, "\n")
+				if err := mod.genPlainType(w, resultInterfaceName,
+					objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+					return info, err
+				}
+			}
+
 			info.functionResultInterfaceName = resultInterfaceName
 		}
 	}
 
-	return mod.genFunctionOutputVersion(w, fun, info)
+	return info, nil
+}
+
+func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+	plainFunctionInfo, err := mod.genFunctionDefinition(w, fun, true /* plain */)
+	if err != nil {
+		return functionFileInfo{}, err
+	}
+
+	if fun.ReturnType == nil {
+		// no need to generate the output-versioned invoke
+		return plainFunctionInfo, nil
+	}
+
+	// generate output-versioned invoke
+	return mod.genFunctionDefinition(w, fun, false /* plain */)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -1311,103 +1384,6 @@ func functionArgsOptional(fun *schema.Function) bool {
 		}
 	}
 	return true
-}
-
-// Generates `function ${fn}Output(..)` version lifted to work on
-// `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(
-	w io.Writer,
-	fun *schema.Function,
-	info functionFileInfo,
-) (functionFileInfo, error) {
-	if fun.ReturnType == nil {
-		return info, nil
-	}
-
-	originalName := tokenToFunctionName(fun.Token)
-	fnOutput := originalName + "Output"
-	returnType := mod.functionReturnType(fun)
-	info.functionOutputVersionName = fnOutput
-	argTypeName := title(fnOutput) + "Args"
-
-	argsig := ""
-	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
-		argsOptional := functionArgsOptional(fun)
-		optFlag := ""
-		if argsOptional {
-			optFlag = "?"
-		}
-		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
-	}
-
-	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
-
-	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
-	}
-	if !fun.MultiArgumentInputs {
-		if argsig != "" {
-			fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(args).apply((a: any) => %s(a, opts))
-}
-`, fnOutput, argsig, returnType, originalName)
-		} else {
-			fmt.Fprintf(w, `export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(%s(opts))
-}
-`, fnOutput, returnType, originalName)
-		}
-	} else {
-		fmt.Fprintf(w, "export function %s(", fnOutput)
-		var properties []*schema.Property
-		if fun.Inputs != nil {
-			properties = fun.Inputs.Properties
-		}
-
-		for _, prop := range properties {
-			paramDeclaration := ""
-			propertyType := &schema.InputType{ElementType: prop.Type}
-			argumentType := mod.typeString(propertyType, true /* input */, nil)
-			if prop.IsRequired() {
-				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
-			} else {
-				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
-			}
-
-			fmt.Fprintf(w, "%s, ", paramDeclaration)
-		}
-
-		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", returnType)
-		fmt.Fprint(w, "    var args = {\n")
-		for _, p := range properties {
-			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
-		}
-		fmt.Fprint(w, "    };\n")
-		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
-		for _, p := range properties {
-			// Pass the argument to the invocation.
-			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
-		}
-		fmt.Fprint(w, "opts));\n")
-		fmt.Fprint(w, "}\n")
-	}
-
-	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
-		fmt.Fprintf(w, "\n")
-		info.functionOutputVersionArgsInterfaceName = argTypeName
-		if err := mod.genPlainType(w,
-			argTypeName,
-			fun.Inputs.Comment,
-			fun.Inputs.InputShape.Properties,
-			true,  /* input */
-			false, /* readonly */
-			0 /* level */); err != nil {
-			return info, err
-		}
-	}
-
-	return info, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -2888,6 +2864,10 @@ const _packageLock = new mutex.Mutex();
 var _packageRef : undefined | string = undefined;
 export async function getPackage() : Promise<string | undefined> {
 	if (_packageRef === undefined) {
+		if (!runtime.supportsParameterization()) {
+			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
+		}
+
 		await _packageLock.acquire();
 		if (_packageRef === undefined) {
 			const monitor = runtime.getMonitor();

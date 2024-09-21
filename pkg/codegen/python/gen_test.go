@@ -361,7 +361,7 @@ func TestCalculateDeps(t *testing.T) {
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()
-			observedDeps, err := calculateDeps(tc.inputDeps)
+			observedDeps, err := calculateDeps(false, tc.inputDeps)
 			assert.Equal(tt, tc.expectedErr, err)
 			for index := range observedDeps {
 				observedDep := observedDeps[index]

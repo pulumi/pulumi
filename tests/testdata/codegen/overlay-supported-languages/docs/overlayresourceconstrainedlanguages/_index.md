@@ -281,9 +281,9 @@ var overlayResourceConstrainedLanguagesResource = new OverlayResourceConstrained
 ```python
 overlay_resource_constrained_languages_resource = example.OverlayResourceConstrainedLanguages("overlayResourceConstrainedLanguagesResource",
     bar=example.EnumOverlay.SOME_ENUM_VALUE,
-    foo=example.ConfigMapOverlayArgs(
-        config="string",
-    ))
+    foo={
+        "config": "string",
+    })
 ```
 
 </pulumi-choosable>

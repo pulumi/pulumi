@@ -74,7 +74,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 				return err
 			}
 
-			b, err := currentBackend(ctx, ws, project, opts.Display)
+			b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
 			if err != nil {
 				return err
 			}

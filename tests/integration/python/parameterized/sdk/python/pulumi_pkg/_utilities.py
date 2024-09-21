@@ -330,27 +330,27 @@ _package_lock = asyncio.Lock()
 _package_ref = ...
 async def get_package():
 	global _package_ref
-	# TODO: This should check a feature flag for if RegisterPackage is supported.
 	if _package_ref is ...:
-		async with _package_lock:
-			if _package_ref is ...:
-				monitor = pulumi.runtime.settings.get_monitor()
-				parameterization = resource_pb2.Parameterization(
-					name="pkg",
-					version=get_version(),
-					value=base64.b64decode("cGtn"),
-				)
-				registerPackageResponse = monitor.RegisterPackage(
-					resource_pb2.RegisterPackageRequest(
-						name="testprovider",
-						version="0.0.1",
-						download_url=get_plugin_download_url(),
-						parameterization=parameterization,
-					))
-				_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
+		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
+			async with _package_lock:
+				if _package_ref is ...:
+					monitor = pulumi.runtime.settings.get_monitor()
+					parameterization = resource_pb2.Parameterization(
+						name="pkg",
+						version=get_version(),
+						value=base64.b64decode("cGtn"),
+					)
+					registerPackageResponse = monitor.RegisterPackage(
+						resource_pb2.RegisterPackageRequest(
+							name="testprovider",
+							version="0.0.1",
+							download_url=get_plugin_download_url(),
+							parameterization=parameterization,
+						))
+					_package_ref = registerPackageResponse.ref
+	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
-	if _package_ref is None:
-		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
+	if _package_ref is None or _package_ref is ...:
+		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	

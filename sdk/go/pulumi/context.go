@@ -68,6 +68,7 @@ type contextState struct {
 	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
 	supportsTransforms       bool       // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
+	supportsParameterization bool       // true if package references and parameterized providers are supported by pulumi
 	rpcs                     int        // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
@@ -169,6 +170,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsParameterization, err := supportsFeature("parameterization")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -182,6 +188,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsAliasSpecs:       supportsAliasSpecs,
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
+		supportsParameterization: supportsParameterization,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -659,40 +666,33 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 // InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
-func (ctx *Context) InvokePackage(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
-) (err error) {
+func (ctx *Context) invokePackageRaw(
+	tok string, args interface{}, packageRef string, opts ...InvokeOption,
+) (resource.PropertyMap, error) {
 	if tok == "" {
-		return errors.New("invoke token must not be empty")
-	}
-
-	resultV := reflect.ValueOf(result)
-	if !(resultV.Kind() == reflect.Ptr &&
-		(resultV.Elem().Kind() == reflect.Struct ||
-			(resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String))) {
-		return errors.New("result must be a pointer to a struct or map value")
+		return nil, errors.New("invoke token must not be empty")
 	}
 
 	options, err := NewInvokeOptions(opts...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err = ctx.beginRPC(); err != nil {
-		return err
+		return nil, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		providerRef = pr
 	}
@@ -703,7 +703,7 @@ func (ctx *Context) InvokePackage(
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -720,7 +720,7 @@ func (ctx *Context) InvokePackage(
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -736,7 +736,7 @@ func (ctx *Context) InvokePackage(
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return err
+		return nil, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -747,32 +747,71 @@ func (ctx *Context) InvokePackage(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return ferr
+		return nil, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	outProps, err := plugin.UnmarshalProperties(
+	return plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
-		},
-	)
-	if err != nil {
-		return err
+		})
+}
+
+func validInvokeResult(resultV reflect.Value) bool {
+	isPointer := resultV.Kind() == reflect.Ptr
+	isMap := resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String
+	structOrMap := resultV.Elem().Kind() == reflect.Struct || isMap
+	return isPointer && structOrMap
+}
+
+// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+//
+// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+func (ctx *Context) InvokePackage(
+	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+) error {
+	resultV := reflect.ValueOf(result)
+	if !validInvokeResult(resultV) {
+		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	// fail if there are secrets returned from the invoke
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return err
 	}
+	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+
 	if hasSecret {
-		return errors.New("unexpected secret result returned to invoke call")
+		return errors.New("unexpected secret result returned to invoke call, " +
+			"consider using the output-versioned variant of the invoke")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return nil
+}
+
+// InvokePackageRaw is similar to InvokePackage except that it doesn't error out if the result has secrets.
+// Insread, it returns a boolean indicating if the result has secrets.
+func (ctx *Context) InvokePackageRaw(
+	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+) (isSecret bool, err error) {
+	resultV := reflect.ValueOf(result)
+	if !validInvokeResult(resultV) {
+		return false, errors.New("result must be a pointer to a struct or map value")
+	}
+
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	if err != nil {
+		return false, err
+	}
+	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	if err != nil {
+		return false, err
+	}
+	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
+	return hasSecret, nil
 }
 
 // Call will invoke a provider call function, identified by its token tok.
@@ -1476,6 +1515,9 @@ func (ctx *Context) RegisterPackageRemoteComponentResource(
 func (ctx *Context) RegisterPackage(
 	in *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
+	if !ctx.state.supportsParameterization {
+		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
+	}
 	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 

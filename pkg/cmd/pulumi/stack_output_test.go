@@ -109,7 +109,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context,
+			requireStack := func(context.Context, pkgWorkspace.Context, backend.LoginManager,
 				string, stackLoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -221,7 +221,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context,
+			requireStack := func(context.Context, pkgWorkspace.Context, backend.LoginManager,
 				string, stackLoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -343,7 +343,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context,
+			requireStack := func(context.Context, pkgWorkspace.Context, backend.LoginManager,
 				string, stackLoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -382,7 +382,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, pkgWorkspace.Context, string, stackLoadOption, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, string, stackLoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")

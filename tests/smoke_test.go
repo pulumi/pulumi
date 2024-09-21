@@ -1,3 +1,17 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tests
 
 import (
@@ -10,8 +24,11 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"gopkg.in/yaml.v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -276,6 +293,34 @@ func TestPackageGetSchema(t *testing.T) {
 }
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
+func TestPackageGetMappingToFile(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+	removeRandomFromLocalPlugins := func() {
+		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+	}
+
+	// Make sure the random provider is not installed locally
+	// So that we can test the `package get-mapping` command works if the plugin
+	// is not installed locally on first run.
+	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	if strings.Contains(out, "random  resource") {
+		removeRandomFromLocalPlugins()
+	}
+
+	stdout, result := e.RunCommand("pulumi",
+		"package", "get-mapping", "terraform", "random@4.13.0",
+		"--out", "mapping.json")
+	require.Empty(t, stdout)
+	require.Contains(t, result, "random@4.13.0 maps to provider random")
+	contents, err := os.ReadFile(filepath.Join(e.RootPath, "mapping.json"))
+	require.NoError(t, err, "Reading the generated tf mapping from file should work")
+	require.NotNil(t, contents, "mapping contents should be non-empty")
+}
+
+//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -293,11 +338,9 @@ func TestPackageGetMapping(t *testing.T) {
 		removeRandomFromLocalPlugins()
 	}
 
-	result, _ := e.RunCommand("pulumi", "package", "get-mapping", "terraform", "random@4.13.0", "--out", "mapping.json")
+	schema, result := e.RunCommand("pulumi", "package", "get-mapping", "terraform", "random@4.13.0")
 	require.Contains(t, result, "random@4.13.0 maps to provider random")
-	contents, err := os.ReadFile(filepath.Join(e.RootPath, "mapping.json"))
-	require.NoError(t, err, "Reading the generated tf mapping from file should work")
-	require.NotNil(t, contents, "mapping contents should be non-empty")
+	require.NotEmpty(t, schema, "mapping contents should be non-empty")
 }
 
 // Quick sanity tests for each downstream language to check that import works.
@@ -491,6 +534,76 @@ func TestInstall(t *testing.T) {
 			assert.Regexp(t, regexp.MustCompile(`resource plugin random.+ installing`), stderr)
 			e.RunCommand("pulumi", "stack", "init", "test")
 			e.RunCommand("pulumi", "up", "--yes")
+			e.RunCommand("pulumi", "destroy", "--yes")
+		})
+	}
+}
+
+// A smoke test to ensure that secrets providers that are persisted to state are
+// used in favour of and to restore stack YAML configuration when it is absent
+// or empty and the PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER environment variable
+// is set.
+//
+//nolint:paralleltest // pulumi new is not parallel safe, and we set environment variables
+func TestSecretsProvidersSmoke(t *testing.T) {
+	// Make sure we can download needed plugins
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	// Ensure we have a passphrase set for the default secrets provider.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
+
+	// Enable secrets manager fallback.
+	t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "true")
+
+	operations := [][]string{
+		{"up", "--yes"},
+		{"preview"},
+		{"refresh", "--yes"},
+	}
+
+	for _, runtime := range Runtimes {
+		t.Run(runtime, func(t *testing.T) {
+			//nolint:paralleltest
+
+			e := ptesting.NewEnvironment(t)
+			defer deleteIfNotFailed(e)
+
+			// `new` wants to work in an empty directory but our use of local url means we have a
+			// ".pulumi" directory at root.
+			projectDir := filepath.Join(e.RootPath, "project")
+			err := os.Mkdir(projectDir, 0o700)
+			require.NoError(t, err)
+
+			e.CWD = projectDir
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
+			e.RunCommand("pulumi", "up", "--yes")
+
+			stackJSONStr, _ := e.RunCommand("pulumi", "stack", "export")
+			stackJSON := apitype.UntypedDeployment{}
+			err = json.Unmarshal([]byte(stackJSONStr), &stackJSON)
+			require.NoError(t, err)
+
+			deployment := apitype.DeploymentV3{}
+			err = json.Unmarshal(stackJSON.Deployment, &deployment)
+			require.NoError(t, err)
+
+			for _, operation := range operations {
+				os.Remove(filepath.Join(projectDir, "Pulumi.dev.yaml"))
+				e.RunCommand("pulumi", operation...)
+
+				stackYamlStr, err := os.ReadFile(filepath.Join(projectDir, "Pulumi.dev.yaml"))
+				require.NoError(t, err)
+
+				stack := workspace.ProjectStack{}
+				err = yaml.Unmarshal(stackYamlStr, &stack)
+				require.NoError(t, err)
+
+				require.NotEmpty(t, stack.EncryptionSalt)
+				require.Contains(t, string(deployment.SecretsProviders.State), stack.EncryptionSalt)
+			}
+
 			e.RunCommand("pulumi", "destroy", "--yes")
 		})
 	}

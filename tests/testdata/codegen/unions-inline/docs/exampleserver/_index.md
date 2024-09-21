@@ -278,10 +278,10 @@ var exampleServerResource = new ExampleServer("exampleServerResource", ExampleSe
 <pulumi-choosable type="language" values="python">
 
 ```python
-example_server_resource = example.ExampleServer("exampleServerResource", properties=example.ServerPropertiesForReplicaArgs(
-    create_mode="Replica",
-    version="string",
-))
+example_server_resource = example.ExampleServer("exampleServerResource", properties={
+    "create_mode": "Replica",
+    "version": "string",
+})
 ```
 
 </pulumi-choosable>

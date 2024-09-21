@@ -4,20 +4,52 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import mod1 as _mod1
 from . import mod2 as _mod2
 
 __all__ = [
     'HelmReleaseSettings',
+    'HelmReleaseSettingsDict',
     'HelmReleaseSettingsArgs',
+    'HelmReleaseSettingsArgsDict',
     'KubeClientSettingsArgs',
+    'KubeClientSettingsArgsDict',
     'LayeredTypeArgs',
+    'LayeredTypeArgsDict',
     'TypArgs',
+    'TypArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class HelmReleaseSettingsDict(TypedDict):
+        """
+        BETA FEATURE - Options to configure the Helm Release resource.
+        """
+        required_arg: str
+        """
+        to test required args
+        """
+        driver: NotRequired[str]
+        """
+        The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+        """
+        plugins_path: NotRequired[str]
+        """
+        The path to the helm plugins directory.
+        """
+elif False:
+    HelmReleaseSettingsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class HelmReleaseSettings:
@@ -78,6 +110,26 @@ class HelmReleaseSettings:
         pulumi.set(self, "plugins_path", value)
 
 
+if not MYPY:
+    class HelmReleaseSettingsArgsDict(TypedDict):
+        """
+        BETA FEATURE - Options to configure the Helm Release resource.
+        """
+        required_arg: pulumi.Input[str]
+        """
+        to test required args
+        """
+        driver: NotRequired[pulumi.Input[str]]
+        """
+        The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+        """
+        plugins_path: NotRequired[pulumi.Input[str]]
+        """
+        The path to the helm plugins directory.
+        """
+elif False:
+    HelmReleaseSettingsArgsDict: TypeAlias = Mapping[str, Any]
+
 @pulumi.input_type
 class HelmReleaseSettingsArgs:
     def __init__(__self__, *,
@@ -137,6 +189,23 @@ class HelmReleaseSettingsArgs:
         pulumi.set(self, "plugins_path", value)
 
 
+if not MYPY:
+    class KubeClientSettingsArgsDict(TypedDict):
+        """
+        Options for tuning the Kubernetes client used by a Provider.
+        """
+        burst: NotRequired[pulumi.Input[int]]
+        """
+        Maximum burst for throttle. Default value is 10.
+        """
+        qps: NotRequired[pulumi.Input[float]]
+        """
+        Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+        """
+        rec_test: NotRequired[pulumi.Input['KubeClientSettingsArgsDict']]
+elif False:
+    KubeClientSettingsArgsDict: TypeAlias = Mapping[str, Any]
+
 @pulumi.input_type
 class KubeClientSettingsArgs:
     def __init__(__self__, *,
@@ -192,6 +261,32 @@ class KubeClientSettingsArgs:
     def rec_test(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
         pulumi.set(self, "rec_test", value)
 
+
+if not MYPY:
+    class LayeredTypeArgsDict(TypedDict):
+        """
+        Make sure that defaults propagate through types
+        """
+        other: pulumi.Input['HelmReleaseSettingsArgsDict']
+        thinker: pulumi.Input[str]
+        """
+        To ask and answer
+        """
+        answer: NotRequired[pulumi.Input[float]]
+        """
+        The answer to the question
+        """
+        plain_other: NotRequired['HelmReleaseSettingsArgsDict']
+        """
+        Test how plain types interact
+        """
+        question: NotRequired[pulumi.Input[str]]
+        """
+        The question already answered
+        """
+        recursive: NotRequired[pulumi.Input['LayeredTypeArgsDict']]
+elif False:
+    LayeredTypeArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class LayeredTypeArgs:
@@ -292,6 +387,17 @@ class LayeredTypeArgs:
     def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
         pulumi.set(self, "recursive", value)
 
+
+if not MYPY:
+    class TypArgsDict(TypedDict):
+        """
+        A test for namespaces (mod main)
+        """
+        mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
+        mod2: NotRequired[pulumi.Input['_mod2.TypArgsDict']]
+        val: NotRequired[pulumi.Input[str]]
+elif False:
+    TypArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class TypArgs:

@@ -159,6 +159,13 @@ func TestProgressEvents(t *testing.T) {
 					})
 				})
 			}
+
+			t.Run("no-show-sames", func(t *testing.T) {
+				opts := defaultOpts()
+				opts.IsInteractive = true
+				opts.ShowSameResources = false
+				testProgressEvents(t, path, accept, ".interactive-no-show-sames", opts, 80, 24, true)
+			})
 		})
 
 		t.Run(entry.Name()+"non-interactive", func(t *testing.T) {

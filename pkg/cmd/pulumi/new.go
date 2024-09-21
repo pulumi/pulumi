@@ -97,6 +97,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		IsInteractive: args.interactive,
 	}
 
+	ssml := newStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Validate name (if specified) before further prompts/operations.
@@ -137,7 +138,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = currentBackend(ctx, ws, nil, opts)
+		b, err = currentBackend(ctx, ws, DefaultLoginManager, nil, opts)
 		if err != nil {
 			return err
 		}
@@ -164,7 +165,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
-		b, err := currentBackend(ctx, ws, project, opts)
+		b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 		if err != nil {
 			return err
 		}
@@ -407,9 +408,19 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
 		err = handleConfig(
-			ctx, ws, args.prompt, proj, s,
-			args.templateNameOrURL, template, args.configArray,
-			args.yes, args.configPath, opts)
+			ctx,
+			ssml,
+			ws,
+			args.prompt,
+			proj,
+			s,
+			args.templateNameOrURL,
+			template,
+			args.configArray,
+			args.yes,
+			args.configPath,
+			opts,
+		)
 		if err != nil {
 			return err
 		}
@@ -1103,6 +1114,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	ssml stackSecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -1137,11 +1149,11 @@ func promptForConfig(
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
-	sm, needsSave, err := getStackSecretsManager(stack, ps, nil)
+	sm, state, err := ssml.getSecretsManager(ctx, stack, ps)
 	if err != nil {
 		return nil, err
 	}
-	if needsSave {
+	if state != stackSecretsManagerUnchanged {
 		if err = saveProjectStack(stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}

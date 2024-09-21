@@ -7,15 +7,14 @@ import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 export function getCustomResult(a?: number, opts?: pulumi.InvokeOptions): Promise<outputs.CustomResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("std:index:GetCustomResult", {
         "a": a,
     }, opts);
 }
 export function getCustomResultOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOptions): pulumi.Output<outputs.CustomResult> {
-    var args = {
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("std:index:GetCustomResult", {
         "a": a,
-    };
-    return pulumi.output(args).apply((resolvedArgs: any) => getCustomResult(resolvedArgs.a, opts));
+    }, opts);
 }

@@ -237,6 +237,12 @@ class ContextProperty:
     def __getitem__(self, key):
         return self.fget()[key]
 
+    def get(self, key, default=None):
+        data = self.fget()
+        if not isinstance(data, dict):
+            raise TypeError("Can't get key values on non-dict variables.")
+        return data.get(key, default)
+
     def __contains__(self, element):
         return element in self.fget()
 

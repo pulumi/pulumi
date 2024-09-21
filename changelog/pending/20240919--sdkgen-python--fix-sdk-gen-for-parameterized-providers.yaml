@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Fix sdk-gen for parameterized providers

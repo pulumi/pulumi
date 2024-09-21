@@ -62,7 +62,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, ws, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, ws, DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
@@ -83,19 +83,20 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 }
 
 func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
-	err := runTotalStateEdit(ctx, ws, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
-		// Protects against Panic when a user tries to unprotect non-existing resources
-		if snap == nil {
-			return errors.New("no resources found to unprotect")
-		}
+	err := runTotalStateEdit(
+		ctx, ws, DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+			// Protects against Panic when a user tries to unprotect non-existing resources
+			if snap == nil {
+				return errors.New("no resources found to unprotect")
+			}
 
-		for _, res := range snap.Resources {
-			err := edit.UnprotectResource(snap, res)
-			contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
-		}
+			for _, res := range snap.Resources {
+				err := edit.UnprotectResource(snap, res)
+				contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
+			}
 
-		return nil
-	})
+			return nil
+		})
 	if err != nil {
 		return err
 	}
@@ -106,7 +107,7 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 func unprotectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, stackName, showPrompt, urn, edit.UnprotectResource)
+	err := runStateEdit(ctx, ws, DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
 	if err != nil {
 		return err
 	}

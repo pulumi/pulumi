@@ -774,6 +774,28 @@ func (pp ProjectPlugin) Spec() PluginSpec {
 	}
 }
 
+// A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
+// that must be applied to that plugin in order to produce the package.
+type PackageDescriptor struct {
+	// A specification for the plugin that provides the package.
+	PluginSpec
+
+	// An optional parameterization to apply to the providing plugin to produce
+	// the package.
+	Parameterization *Parameterization
+}
+
+// A Parameterization may be applied to a supporting plugin to yield a package.
+type Parameterization struct {
+	// The name of the package that will be produced by the parameterization.
+	Name string
+	// The version of the package that will be produced by the parameterization.
+	Version semver.Version
+	// A plugin-dependent bytestring representing the value of the parameter to be
+	// passed to the plugin.
+	Value []byte
+}
+
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
 	Name              string             // the simple name of the plugin.

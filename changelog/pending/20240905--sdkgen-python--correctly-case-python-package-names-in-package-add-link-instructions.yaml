@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Correctly case Python package names in `package add` link instructions

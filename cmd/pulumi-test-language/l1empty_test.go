@@ -44,6 +44,8 @@ type L1EmptyLanguageHost struct {
 	skipStack bool
 	// If true then we'll fail the pack command (which is only used for the core SDK for l1-empty)
 	failPack bool
+	// If true behave as if there's no core SDK.
+	skipCoreSDK bool
 }
 
 func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
@@ -67,8 +69,10 @@ func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 func (h *L1EmptyLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
-		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+	if !h.skipCoreSDK {
+		if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+			return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+		}
 	}
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
@@ -359,6 +363,48 @@ func TestL1Empty_MissingStack(t *testing.T) {
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, prepareResponse.Token)
+
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
+		Token: prepareResponse.Token,
+		Test:  "l1-empty",
+	})
+	require.NoError(t, err)
+	t.Logf("stdout: %s", runResponse.Stdout)
+	t.Logf("stderr: %s", runResponse.Stderr)
+	assert.False(t, runResponse.Success)
+	require.Len(t, runResponse.Messages, 1)
+	failureMessage := runResponse.Messages[0]
+	assert.Contains(t, failureMessage, "expected at least 1 StepOp")
+}
+
+// Run a simple passing test for a language without a core SDK (e.g. yaml)
+func TestL1Empty_NoCoreSDK(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	engine := &languageTestServer{}
+	runtime := &L1EmptyLanguageHost{
+		tempDir:     tempDir,
+		skipStack:   true,
+		skipCoreSDK: true,
+	}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:   "mock",
+		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:   tempDir,
+		SnapshotDirectory:    "./testdata/snapshots",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

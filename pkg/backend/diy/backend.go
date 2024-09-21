@@ -88,6 +88,9 @@ type Backend interface {
 
 	// Upgrade to the latest state store version.
 	Upgrade(ctx context.Context, opts *UpgradeOptions) error
+
+	// Lock the specified stack reference in this backend.
+	Lock(ctx context.Context, stackRef backend.StackReference) error
 }
 
 type diyBackend struct {

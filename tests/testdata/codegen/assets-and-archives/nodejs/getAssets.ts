@@ -5,7 +5,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 export function getAssets(args: GetAssetsArgs, opts?: pulumi.InvokeOptions): Promise<GetAssetsResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("example::GetAssets", {
         "archive": args.archive,
@@ -23,7 +22,11 @@ export interface GetAssetsResult {
     readonly source: pulumi.asset.Asset | pulumi.asset.Archive;
 }
 export function getAssetsOutput(args: GetAssetsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetAssetsResult> {
-    return pulumi.output(args).apply((a: any) => getAssets(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("example::GetAssets", {
+        "archive": args.archive,
+        "source": args.source,
+    }, opts);
 }
 
 export interface GetAssetsOutputArgs {

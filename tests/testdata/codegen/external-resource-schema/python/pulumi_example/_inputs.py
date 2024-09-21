@@ -4,15 +4,35 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 import pulumi_random
 
 __all__ = [
     'PetArgs',
+    'PetArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class PetArgsDict(TypedDict):
+        required_name: pulumi.Input['pulumi_random.RandomPet']
+        required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]
+        required_name_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]
+        age: NotRequired[pulumi.Input[int]]
+        name: NotRequired[pulumi.Input['pulumi_random.RandomPet']]
+        name_array: NotRequired[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]
+        name_map: NotRequired[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]
+elif False:
+    PetArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class PetArgs:

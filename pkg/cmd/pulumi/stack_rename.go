@@ -53,7 +53,7 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Look up the stack to be moved, and find the path to the project file's location.
-			s, err := requireStack(ctx, ws, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

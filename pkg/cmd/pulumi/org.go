@@ -102,7 +102,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, ws, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -146,7 +146,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, ws, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
