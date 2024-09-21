@@ -126,7 +126,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 	cmd.Flags().StringVarP(&backendURL, "cloud-url", "c", "", "A cloud URL to log in to")
 	cmd.Flags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login.")
 	cmd.Flags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
-	cmd.Flags().BoolVar(&shared, "shared", false, "Log in to the account in use by the `pulumi` CLI")
+	cmd.Flags().BoolVar(&shared, "shared", false, "Log in to the account in use by the pulumi CLI")
 
 	return cmd
 }
