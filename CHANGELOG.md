@@ -1,5 +1,87 @@
 # Changelog
 
+## 3.133.0 (2024-09-16)
+
+
+### Features
+
+- [cli] Add an `--attach-debugger` flag for pulumi preview and pulumi up, that makes pulumi attach a debugger to the running program and allows attaching to it
+  [#17268](https://github.com/pulumi/pulumi/pull/17268)
+
+- [auto/{nodejs,python}] Add StartDebuggingEvent to the automation API
+  [#17221](https://github.com/pulumi/pulumi/pull/17221)
+
+- [cli/package] Make --out optional within `pulumi package get-mapping`
+  [#17227](https://github.com/pulumi/pulumi/pull/17227)
+
+- [engine] Package references and parameterized providers are now considered stable and have a feature flag to report so
+  [#17153](https://github.com/pulumi/pulumi/pull/17153)
+
+- [pkg] Update pulumi-java to 0.16.1
+  [#17263](https://github.com/pulumi/pulumi/pull/17263)
+
+- [sdk/dotnet] Update dotnet to 3.67.1
+  [#17262](https://github.com/pulumi/pulumi/pull/17262)
+
+- [sdk/python] Add `debugpy` as a dependency to improve the debugging experience
+  [#17253](https://github.com/pulumi/pulumi/pull/17253)
+
+- [sdkgen/nodejs] Add first-class output-versioned invokes for NodeJS
+  [#17237](https://github.com/pulumi/pulumi/pull/17237)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix closure serialization when using the Pulumi SDK inside anonymous functions
+  [#17247](https://github.com/pulumi/pulumi/pull/17247)
+
+## 3.132.0 (2024-09-11)
+
+
+### Features
+
+- [cli/state] Show the full set of delete commands necessary to remove resources from the source stack, if writing to it fails
+  [#17205](https://github.com/pulumi/pulumi/pull/17205)
+
+- [cli/state] Try to revert changes to destination stack if we are unable to save the source stack in state move
+  [#17208](https://github.com/pulumi/pulumi/pull/17208)
+
+- [engine] Send resource names and types in provider requests from the engine, in addition to the combined URN
+  [#17177](https://github.com/pulumi/pulumi/pull/17177)
+
+- [pkg] Add support for ESC Projects
+  [#17226](https://github.com/pulumi/pulumi/pull/17226)
+
+- [sdk/dotnet] Update dotnet to 3.67.0
+  [#17223](https://github.com/pulumi/pulumi/pull/17223)
+
+- [sdkgen/go] Allow output-versioned invokes to resolve and maintain secrets
+  [#17132](https://github.com/pulumi/pulumi/pull/17132)
+
+
+### Bug Fixes
+
+- [cli] Recover from zero-byte `credentials.json` files
+  [#17186](https://github.com/pulumi/pulumi/pull/17186)
+
+- [cli] Using PULUMI_BACKEND_URL no longer updates credentials.json
+  [#17199](https://github.com/pulumi/pulumi/pull/17199)
+
+- [engine] Fix parameterized providers not downloading correctly when found from state
+  [#17218](https://github.com/pulumi/pulumi/pull/17218)
+
+- [cli/about] Fix language plugins always having unknown version in about
+  [#17216](https://github.com/pulumi/pulumi/pull/17216)
+
+- [cli/display] Fix deletes not being show in `refresh` when using json output
+  [#16851](https://github.com/pulumi/pulumi/pull/16851)
+
+- [cli/display] Hide unnecessary rows in non-interactive mode
+  [#17188](https://github.com/pulumi/pulumi/pull/17188)
+
+- [sdkgen/python] Correctly case Python package names in `package add` link instructions
+  [#17178](https://github.com/pulumi/pulumi/pull/17178)
+
 ## 3.131.0 (2024-09-04)
 
 

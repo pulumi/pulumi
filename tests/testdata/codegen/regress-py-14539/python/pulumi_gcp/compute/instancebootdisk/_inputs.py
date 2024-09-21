@@ -4,15 +4,34 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from ... import _utilities
 from ... import compute as _compute
 
 __all__ = [
     'InstanceBootDiskArgs',
+    'InstanceBootDiskArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class InstanceBootDiskArgsDict(TypedDict):
+        initialize_params: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgsDict']
+        """
+        Parameters for a new disk that will be created
+        alongside the new instance. Either `initialize_params` or `source` must be set.
+        Structure is documented below.
+        """
+elif False:
+    InstanceBootDiskArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class InstanceBootDiskArgs:

@@ -59,7 +59,7 @@ a preview showing a diff of the altered state.`,
 			}
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
-			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, display.Options{
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})

@@ -57,6 +57,7 @@ func newLogsCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -68,12 +69,12 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

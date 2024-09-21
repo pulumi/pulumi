@@ -614,7 +614,7 @@ type mockHost struct {
 
 	ListAnalyzersF func() []plugin.Analyzer
 
-	ProviderF func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+	ProviderF func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
 
 	CloseProviderF func(provider plugin.Provider) error
 
@@ -679,9 +679,9 @@ func (h *mockHost) ListAnalyzers() []plugin.Analyzer {
 	panic("unimplemented")
 }
 
-func (h *mockHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (h *mockHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	if h.ProviderF != nil {
-		return h.ProviderF(pkg, version)
+		return h.ProviderF(descriptor)
 	}
 	panic("unimplemented")
 }

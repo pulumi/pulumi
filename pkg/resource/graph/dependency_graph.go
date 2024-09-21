@@ -1,4 +1,16 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package graph
 
@@ -92,10 +104,10 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	return dependents
 }
 
-// OnlyDependsOn returns a slice containing all resources that directly or indirectly
-// depend upon *only* the given resource.  Resources that also depend on another resource with
-// the same URN will not be included in the returned slice.  The returned slice is guaranteed
-// to be in topological order with respect to the snapshot dependency graph.
+// OnlyDependsOn returns a slice containing all resources that directly or indirectly depend upon *only* the specific ID
+// for the given resources URN. Resources that also depend on another resource with the same URN, but a different ID,
+// will not be included in the returned slice. The returned slice is guaranteed to be in topological order with respect
+// to the snapshot dependency graph.
 //
 // The time complexity of OnlyDependsOn is linear with respect to the number of resources.
 func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State {

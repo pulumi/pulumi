@@ -9,7 +9,6 @@ import * as utilities from "./utilities";
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
 export function absReducedOutput(args: AbsReducedOutputArgs, opts?: pulumi.InvokeOptions): Promise<number> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingle("std:index:AbsReducedOutput", {
         "a": args.a,
@@ -26,7 +25,11 @@ export interface AbsReducedOutputArgs {
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
 export function absReducedOutputOutput(args: AbsReducedOutputOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<number> {
-    return pulumi.output(args).apply((a: any) => absReducedOutput(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeSingleOutput("std:index:AbsReducedOutput", {
+        "a": args.a,
+        "b": args.b,
+    }, opts);
 }
 
 export interface AbsReducedOutputOutputArgs {

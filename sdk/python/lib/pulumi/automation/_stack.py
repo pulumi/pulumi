@@ -285,6 +285,7 @@ class Stack:
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
         attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -315,6 +316,7 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -410,6 +412,7 @@ class Stack:
         suppress_progress: Optional[bool] = None,
         import_file: Optional[str] = None,
         attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -439,6 +442,7 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -609,6 +613,7 @@ class Stack:
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
         remove: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -632,6 +637,7 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
         :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -1032,6 +1038,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
+    refresh: Optional[bool] = kwargs.get("refresh")
 
     if message:
         extra_args.extend(["--message", message])
@@ -1077,6 +1084,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--continue-on-error"])
     if attach_debugger:
         extra_args.extend(["--attach-debugger"])
+    if refresh:
+        extra_args.extend(["--refresh"])
     return extra_args
 
 

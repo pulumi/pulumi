@@ -17,16 +17,24 @@
 package ints
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/stretchr/testify/assert"
@@ -1400,7 +1408,13 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParameterizedPython(t *testing.T) {
+	// TODO: Unskip this test after 3.134.0 is released. Python codegen for parameterized providers will try to
+	// refer to release 3.134.0, but until we actually release that version pip will fail that this constraint
+	// can't be met.
+	t.Skip("This needs to skip until 3.134.0 is released due to how pip resoloution works")
+
 	e := ptesting.NewEnvironment(t)
+
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
 	// work. This also means we don't delete the directory after the test runs.
 	var err error
@@ -1453,4 +1467,134 @@ func TestConfigGetterOverloads(t *testing.T) {
 
 	// Run a preview. This will typecheck the program and fail if typechecking has errors.
 	e.RunCommand("pulumi", "preview")
+}
+
+// Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
+// and finally that the program terminates successfully after the debugger is detached.
+func TestDebuggerAttachPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("python", "venv"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+		e.RunCommand("pulumi", "stack", "init", "debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "debugger-test")
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent)
+
+	// We've attached a debugger, so we need to connect to it and let the program continue.
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(
+		int(debugEvent.Config["connect"].(map[string]interface{})["port"].(float64))))
+	if err != nil {
+		log.Fatalf("Failed to connect to debugger: %v", err)
+	}
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	resp, err := dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	// go-dap doesn't support this event, but we need to read it
+	// anyway.  We don't actually care that it's not supported,
+	// since we don't want to do anyting with it.
+	require.ErrorContains(t, err, "Event event 'debugpySockets' is not supported (seq: 3)")
+	require.Nil(t, resp)
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi",
+			ClientName:      "Pulumi",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializeResponse{}, resp)
+
+	json, err := json.Marshal(debugEvent.Config)
+	require.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	// As above we don't care about the details of this event
+	require.ErrorContains(t, err, "Event event 'debugpyWaitingForServer' is not supported (seq: 5)")
+	require.Nil(t, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializedEvent{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ConfigurationDoneRequest{
+		Request: newDAPRequest(seq, "configurationDone"),
+	})
+	require.NoError(t, err)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ConfigurationDoneResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.AttachResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ProcessEvent{}, resp)
+
+	for {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		if reflect.TypeOf(resp) == reflect.TypeOf(&dap.TerminatedEvent{}) {
+			break
+		}
+		require.IsType(t, &dap.ThreadEvent{}, resp)
+	}
+	conn.Close()
+
+	// Make sure the program finished successfully.
+	wg.Wait()
 }

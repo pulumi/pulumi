@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -99,7 +98,7 @@ func (eng *hostServer) Log(ctx context.Context, req *pulumirpc.LogRequest) (*emp
 	case pulumirpc.LogSeverity_ERROR:
 		sev = diag.Error
 	default:
-		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
 	if req.Ephemeral {

@@ -6,6 +6,7 @@ dill~=0.3
 six~=1.12
 semver~=2.13
 pyyaml~=6.0
+debugpy~=1.8.5
 
 # Dev packages only needed during development.
 pylint==3.1.0

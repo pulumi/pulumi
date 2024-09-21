@@ -275,9 +275,9 @@ var userResource = new User("userResource", UserArgs.builder()
 <pulumi-choosable type="language" values="python">
 
 ```python
-user_resource = credentials.User("userResource", shared=credentials.SharedArgs(
-    foo="string",
-))
+user_resource = credentials.User("userResource", shared={
+    "foo": "string",
+})
 ```
 
 </pulumi-choosable>

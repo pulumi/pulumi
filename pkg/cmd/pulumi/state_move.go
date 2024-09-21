@@ -73,14 +73,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, ws, sourceStackName, stackLoadOnly, display.Options{
+			sourceStack, err := requireStack(ctx, ws, DefaultLoginManager, sourceStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, ws, destStackName, stackLoadOnly, display.Options{
+			destStack, err := requireStack(ctx, ws, DefaultLoginManager, destStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -281,6 +281,10 @@ func (cmd *stateMoveCmd) Run(
 	}
 	sourceSnapshot.Resources = sourceSnapshot.Resources[:i]
 
+	// Save a copy of the destination snapshot so we can restore it if saving the source snapshot with the
+	// deleted resources fails.
+	originalDestResources := destSnapshot.Resources
+
 	// Create a root stack if there is none
 	rootStack, err := stack.GetRootStackResource(destSnapshot)
 	if err != nil {
@@ -348,25 +352,27 @@ func (cmd *stateMoveCmd) Run(
 
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
-		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
+		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
+		r := res.Copy()
+		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
 				return err
 			}
-			res.Parent = rootStack.URN
+			r.Parent = rootStack.URN
 		}
 
-		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(res, remainingResources)...)
-		err = rewriteURNs(res, dest, rewriteMap)
+		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)
+		err = rewriteURNs(r, dest, rewriteMap)
 		if err != nil {
 			return err
 		}
 
-		if _, ok := destResMap[res.URN]; ok {
-			return fmt.Errorf("resource %s already exists in destination stack", res.URN)
+		if _, ok := destResMap[r.URN]; ok {
+			return fmt.Errorf("resource %s already exists in destination stack", r.URN)
 		}
 
-		destSnapshot.Resources = append(destSnapshot.Resources, res)
+		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
 	if len(brokenSourceDependencies) > 0 {
@@ -439,10 +445,27 @@ None of the resources have been moved, it is safe to try again`, err)
 
 	err = saveSnapshot(ctx, source, sourceSnapshot, false)
 	if err != nil {
-		return fmt.Errorf(`failed to save source snapshot: %w
+		// Try to restore the destination snapshot to its original state
+		destSnapshot.Resources = originalDestResources
+		errDest := saveSnapshot(ctx, dest, destSnapshot, false)
+		if errDest != nil {
+			var deleteCommands string
+			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
+			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
+				deleteCommands += fmt.Sprintf(
+					"\n    pulumi state delete --stack %s '%s'",
+					source.Ref().FullyQualifiedName(),
+					resourcesToMoveOrdered[i].URN)
+			}
+			return fmt.Errorf(`failed to save source snapshot: %w
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
-source stack.  Please remove the resources from the source stack manually using 'pulumi state delete'`, err)
+source stack.  Please remove the resources from the source stack manually using the following commands:%v
+'`, err, deleteCommands)
+		}
+		return fmt.Errorf(`failed to save source snapshot: %w
+
+None of the resources have been moved.  Please fix the error and try again`, err)
 	}
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(

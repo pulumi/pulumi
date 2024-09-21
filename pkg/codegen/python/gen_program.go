@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -671,13 +672,11 @@ func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
-			if typedDictEnabled(pkgInfo.InputTypes) {
-				return true
-			}
+			return typedDictEnabled(pkgInfo.InputTypes)
 		}
 	}
 
-	return false
+	return true
 }
 
 // argumentTypeName computes the Python argument class name for the given expression and model type.

@@ -15,10 +15,10 @@
 package cmdutil
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -76,7 +76,7 @@ func SetGlobalColorization(value string) error {
 		c := colors.Raw
 		globalColorization = &c
 	default:
-		return errors.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", value)
+		return fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", value)
 	}
 
 	return nil

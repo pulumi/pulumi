@@ -230,7 +230,7 @@ func (r *messageRenderer) rowUpdated(row Row) {
 	if r.isInteractive {
 		// if we're in a terminal, then refresh everything so that all our columns line up
 		r.render(false)
-	} else {
+	} else if !row.HideRowIfUnnecessary() {
 		// otherwise, just print out this single row.
 		colorizedColumns := row.ColorizedColumns()
 		colorizedColumns[r.display.suffixColumn] += row.ColorizedSuffix()

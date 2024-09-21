@@ -1,3 +1,17 @@
+// Copyright 2021-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package test
 
 import (
@@ -474,6 +488,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "overlay-supported-languages",
 		Description: "Testing restricting the languages an overlay supports.",
 		Skip:        allLanguages.Except("docs/any"),
+	},
+	{
+		Directory: "regress-py-17219",
+		// The default behavior should be to generate classes and typed dicts.
+		Description: "Regress pulumi/pulumi#17219 affecting Python",
+		Skip:        allLanguages.Except("python/any"),
 	},
 }
 

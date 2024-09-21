@@ -399,7 +399,7 @@ func runDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, project, opts)
+	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}

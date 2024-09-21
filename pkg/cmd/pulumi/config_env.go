@@ -65,11 +65,13 @@ type configEnvCmd struct {
 	interactive bool
 	color       colors.Colorization
 
-	ws pkgWorkspace.Context
+	ssml stackSecretsManagerLoader
+	ws   pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
+		lm backend.LoginManager,
 		stackName string,
 		lopt stackLoadOption,
 		opts display.Options,
@@ -85,6 +87,8 @@ type configEnvCmd struct {
 func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
+
+	cmd.ssml = newStackSecretsManagerLoaderFromEnv()
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
@@ -96,7 +100,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, cmd.ws, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.ws, DefaultLoginManager, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -143,7 +147,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 			}, nil)
 		} else {
 			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
-				"Try adding one with `pulumi config env add [envName]`.\n")
+				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
 		}
 
 	}
@@ -170,7 +174,17 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return err
 	}
 
-	if err := listConfig(ctx, cmd.stdout, project, *stack, projectStack, showSecrets, false, false); err != nil {
+	if err := listConfig(
+		ctx,
+		cmd.ssml,
+		cmd.stdout,
+		project,
+		*stack,
+		projectStack,
+		showSecrets,
+		false, /*jsonOut*/
+		false, /*openEnvironment*/
+	); err != nil {
 		return err
 	}
 

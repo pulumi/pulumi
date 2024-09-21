@@ -45,6 +45,8 @@ type L2ResourceSimpleLanguageHost struct {
 	skipResource bool
 	// Skip returning the simple resource plugin in GetRequiredPlugins
 	skipRequiredPlugins bool
+	// Used by the language info test to assert we see language info in the schema.
+	expectLanguageInfo bool
 }
 
 func (h *L2ResourceSimpleLanguageHost) Pack(
@@ -111,6 +113,34 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 	}
 	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
 		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
+	}
+
+	if h.expectLanguageInfo {
+		// Check we see the language info block in the schema.
+		var spec map[string]interface{}
+		err := json.Unmarshal([]byte(req.Schema), &spec)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal schema: %w", err)
+		}
+		languageRaw, ok := spec["language"]
+		if !ok {
+			return nil, errors.New("expected language block in schema")
+		}
+		language, ok := languageRaw.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("expected language block in schema to be a map")
+		}
+		infoRaw, ok := language["mock"]
+		if !ok {
+			return nil, errors.New("expected mock language block in schema")
+		}
+		info, ok := infoRaw.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("expected mock language block in schema to be a map")
+		}
+		if info["name"] != "mock" {
+			return nil, fmt.Errorf("unexpected language name %s", info["name"])
+		}
 	}
 
 	// Write the minimal package code.
@@ -426,6 +456,47 @@ func TestL2ResourceSnapshotEdit(t *testing.T) {
 				Replacement: "replaced",
 			},
 		},
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, prepareResponse.Token)
+
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
+		Token: prepareResponse.Token,
+		Test:  "l2-resource-simple",
+	})
+	require.NoError(t, err)
+	t.Logf("stdout: %s", runResponse.Stdout)
+	t.Logf("stderr: %s", runResponse.Stderr)
+	assert.Empty(t, runResponse.Messages)
+	assert.True(t, runResponse.Success)
+}
+
+// Run a simple successful test with a mocked runtime that wants a language info block.
+func TestL2ResourceLanguageInfo(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	engine := &languageTestServer{}
+	runtime := &L2ResourceSimpleLanguageHost{
+		tempDir:            tempDir,
+		expectLanguageInfo: true,
+	}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:   "mock",
+		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:   tempDir,
+		SnapshotDirectory:    "./testdata/snapshots",
+		CoreSdkDirectory:     "sdk/dir",
+		LanguageInfo:         "{\"name\":\"mock\"}",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

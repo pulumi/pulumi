@@ -4,14 +4,33 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
 __all__ = [
     'FooArgs',
+    'FooArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class FooArgsDict(TypedDict):
+        a: bool
+        c: int
+        e: str
+        b: NotRequired[bool]
+        d: NotRequired[int]
+        f: NotRequired[str]
+elif False:
+    FooArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class FooArgs:

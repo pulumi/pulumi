@@ -2312,10 +2312,16 @@ func genProjectFile(pkg *schema.Package,
 			}
 		}
 
+		// The minimum version we use needs to be higher if using parameterization.
+		minimumVersion := "3.66.1.0"
+		if pkg.Parameterization != nil {
+			minimumVersion = "3.68.0.0"
+		}
+
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = "[3.66.1.0,4)"
+			packageReferences["Pulumi"] = fmt.Sprintf("[%s,4)", minimumVersion)
 		}
 	}
 

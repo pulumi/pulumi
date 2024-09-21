@@ -134,11 +134,8 @@ func DetectProjectPathFrom(dir string) (string, error) {
 	})
 	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
 	// users can run pulumi with unreadable root directories.
-	var perr *fs.PathError
-	if errors.As(err, &perr) {
-		if errors.Is(perr.Err, fs.ErrPermission) {
-			err = nil
-		}
+	if errors.Is(err, fs.ErrPermission) {
+		err = nil
 	}
 
 	if err != nil {

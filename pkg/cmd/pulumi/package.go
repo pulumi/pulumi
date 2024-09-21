@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -150,15 +149,20 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	var version *semver.Version
-	pkg := packageSource
+	descriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind: apitype.ResourcePlugin,
+			Name: packageSource,
+		},
+	}
+
 	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
-		pkg = s[0]
+		descriptor.Name = s[0]
 		v, err := semver.ParseTolerant(s[1])
 		if err != nil {
 			return nil, fmt.Errorf("VERSION must be valid semver: %w", err)
 		}
-		version = &v
+		descriptor.Version = &v
 	}
 
 	isExecutable := func(info fs.FileInfo) bool {
@@ -171,17 +175,17 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
-	if !strings.ContainsRune(pkg, filepath.Separator) && !strings.ContainsRune(pkg, '/') {
+	if !strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(tokens.Package(pkg), version)
+		provider, err := host.Provider(descriptor)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
-			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
-				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
+			if info, statErr := os.Stat(descriptor.Name); statErr == nil && isExecutable(info) {
+				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 			}
 
 			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
@@ -190,22 +194,16 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 				return nil, err
 			}
 
-			spec := workspace.PluginSpec{
-				Kind:    apitype.ResourcePlugin,
-				Name:    pkg,
-				Version: version,
-			}
-
 			log := func(sev diag.Severity, msg string) {
 				host.Log(sev, "", msg, 0)
 			}
 
-			_, err = pkgWorkspace.InstallPlugin(spec, log)
+			_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
 			if err != nil {
 				return nil, err
 			}
 
-			p, err := host.Provider(tokens.Package(pkg), version)
+			p, err := host.Provider(descriptor)
 			if err != nil {
 				return nil, err
 			}
@@ -216,21 +214,21 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 	}
 
 	// We were given a path to a binary or folder, so invoke that.
-	info, err := os.Stat(pkg)
+	info, err := os.Stat(packageSource)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find file %s", pkg)
+		return nil, fmt.Errorf("could not find file %s", packageSource)
 	} else if err != nil {
 		return nil, err
 	} else if info.IsDir() {
 		// If it's a directory we need to add a fake provider binary to the path because that's what NewProviderFromPath
 		// expects.
-		pkg = filepath.Join(pkg, "pulumi-resource-"+info.Name())
+		packageSource = filepath.Join(packageSource, "pulumi-resource-"+info.Name())
 	} else {
 		if !isExecutable(info) {
-			if p, err := filepath.Abs(pkg); err == nil {
-				pkg = p
+			if p, err := filepath.Abs(packageSource); err == nil {
+				packageSource = p
 			}
-			return nil, fmt.Errorf("plugin at path %q not executable", pkg)
+			return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 		}
 	}
 
@@ -239,7 +237,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	p, err := plugin.NewProviderFromPath(host, pCtx, pkg)
+	p, err := plugin.NewProviderFromPath(host, pCtx, packageSource)
 	if err != nil {
 		return nil, err
 	}
