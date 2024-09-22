@@ -24,6 +24,7 @@ from typing import (
     Literal,
     Optional,
     Set,
+    Tuple,
     overload,
 )
 
@@ -196,7 +197,7 @@ def _invoke(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    async def do_invoke() -> tuple[InvokeResult, Exception | None]:
+    async def do_invoke() -> Tuple[InvokeResult, Optional[Exception]]:
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
         if opts is not None and opts.parent is not None and opts.provider is None:
             opts.provider = opts.parent.get_provider(tok)
