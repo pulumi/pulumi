@@ -87,13 +87,19 @@ def func_with_secrets(crypto_key: Optional[str] = None,
         crypto_key=pulumi.get(__ret__, 'crypto_key'),
         id=pulumi.get(__ret__, 'id'),
         plaintext=pulumi.get(__ret__, 'plaintext'))
-
-
-@_utilities.lift_output_func(func_with_secrets)
 def func_with_secrets_output(crypto_key: Optional[pulumi.Input[str]] = None,
                              plaintext: Optional[pulumi.Input[str]] = None,
                              opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithSecretsResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['cryptoKey'] = crypto_key
+    __args__['plaintext'] = plaintext
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithSecrets', __args__, opts=opts, typ=FuncWithSecretsResult)
+    return __ret__.apply(lambda __response__: FuncWithSecretsResult(
+        ciphertext=pulumi.get(__response__, 'ciphertext'),
+        crypto_key=pulumi.get(__response__, 'crypto_key'),
+        id=pulumi.get(__response__, 'id'),
+        plaintext=pulumi.get(__response__, 'plaintext')))

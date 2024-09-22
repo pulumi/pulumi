@@ -53,6 +53,7 @@ from .stack import (
 from .invoke import (
     invoke,
     invoke_async,
+    invoke_output,
     call,
 )
 
@@ -95,6 +96,7 @@ __all__ = [
     # invoke
     "invoke",
     "invoke_async",
+    "invoke_output",
     "call",
     # _json
     "to_json",

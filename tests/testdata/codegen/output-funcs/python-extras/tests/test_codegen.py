@@ -63,19 +63,18 @@ class MyMocks(pulumi.runtime.Mocks):
 
         if args.token == 'mypkg::listStorageAccountKeys':
 
-            if 'accountName' not in args.args or \
-               not args.args['accountName'] or \
-               pulumi.contains_unknowns(args.args['accountName']):
+            if 'accountName' not in args.args or not args.args['accountName']:
                 raise Exception(
                     'Missing required argument: '
                     'The argument "account_name" is required, '
                     'but no definition was found')
 
+            keys_value = "{}" if pulumi.contains_unknowns(args.args) else jstr(args.args)
             return {'keys': [
                 dict(creationTime='my-creation-time',
                      keyName='my-key-name',
                      permissions='my-permissions',
-                     value=jstr(args.args))
+                     value=keys_value)
             ]}
 
         raise Exception(f'Unhandled args.token={args.token}')

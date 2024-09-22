@@ -113,9 +113,6 @@ def get_config(base64_encode: Optional[bool] = None,
         id=pulumi.get(__ret__, 'id'),
         parts=pulumi.get(__ret__, 'parts'),
         rendered=pulumi.get(__ret__, 'rendered'))
-
-
-@_utilities.lift_output_func(get_config)
 def get_config_output(base64_encode: Optional[pulumi.Input[Optional[bool]]] = None,
                       boundary: Optional[pulumi.Input[Optional[str]]] = None,
                       gzip: Optional[pulumi.Input[Optional[bool]]] = None,
@@ -124,4 +121,17 @@ def get_config_output(base64_encode: Optional[pulumi.Input[Optional[bool]]] = No
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['base64Encode'] = base64_encode
+    __args__['boundary'] = boundary
+    __args__['gzip'] = gzip
+    __args__['parts'] = parts
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('cloudinit:index/getConfig:getConfig', __args__, opts=opts, typ=GetConfigResult)
+    return __ret__.apply(lambda __response__: GetConfigResult(
+        base64_encode=pulumi.get(__response__, 'base64_encode'),
+        boundary=pulumi.get(__response__, 'boundary'),
+        gzip=pulumi.get(__response__, 'gzip'),
+        id=pulumi.get(__response__, 'id'),
+        parts=pulumi.get(__response__, 'parts'),
+        rendered=pulumi.get(__response__, 'rendered')))
