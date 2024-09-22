@@ -282,7 +282,7 @@ func newPreviewCmd() *cobra.Command {
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
-		Long: "Show a preview of updates a stack's resources.\n" +
+		Long: "Show a preview of updates to a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
 			"represented by an existing state file. The new desired state is computed by running\n" +
@@ -296,6 +296,7 @@ func newPreviewCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -382,7 +383,7 @@ func newPreviewCmd() *cobra.Command {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -624,7 +625,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
-	cmd.Flag("attach-debugger").Hidden = true
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)

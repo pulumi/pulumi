@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.133.0 (2024-09-16)
+
+
+### Features
+
+- [cli] Add an `--attach-debugger` flag for pulumi preview and pulumi up, that makes pulumi attach a debugger to the running program and allows attaching to it
+  [#17268](https://github.com/pulumi/pulumi/pull/17268)
+
+- [auto/{nodejs,python}] Add StartDebuggingEvent to the automation API
+  [#17221](https://github.com/pulumi/pulumi/pull/17221)
+
+- [cli/package] Make --out optional within `pulumi package get-mapping`
+  [#17227](https://github.com/pulumi/pulumi/pull/17227)
+
+- [engine] Package references and parameterized providers are now considered stable and have a feature flag to report so
+  [#17153](https://github.com/pulumi/pulumi/pull/17153)
+
+- [pkg] Update pulumi-java to 0.16.1
+  [#17263](https://github.com/pulumi/pulumi/pull/17263)
+
+- [sdk/dotnet] Update dotnet to 3.67.1
+  [#17262](https://github.com/pulumi/pulumi/pull/17262)
+
+- [sdk/python] Add `debugpy` as a dependency to improve the debugging experience
+  [#17253](https://github.com/pulumi/pulumi/pull/17253)
+
+- [sdkgen/nodejs] Add first-class output-versioned invokes for NodeJS
+  [#17237](https://github.com/pulumi/pulumi/pull/17237)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix closure serialization when using the Pulumi SDK inside anonymous functions
+  [#17247](https://github.com/pulumi/pulumi/pull/17247)
+
 ## 3.132.0 (2024-09-11)
 
 

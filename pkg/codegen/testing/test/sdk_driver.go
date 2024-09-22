@@ -489,6 +489,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing restricting the languages an overlay supports.",
 		Skip:        allLanguages.Except("docs/any"),
 	},
+	{
+		Directory: "regress-py-17219",
+		// The default behavior should be to generate classes and typed dicts.
+		Description: "Regress pulumi/pulumi#17219 affecting Python",
+		Skip:        allLanguages.Except("python/any"),
+	},
 }
 
 var genSDKOnly bool

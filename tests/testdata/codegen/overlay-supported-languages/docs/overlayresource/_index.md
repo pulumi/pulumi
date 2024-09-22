@@ -281,9 +281,9 @@ var overlayResourceResource = new OverlayResource("overlayResourceResource", Ove
 ```python
 overlay_resource_resource = example.OverlayResource("overlayResourceResource",
     bar=example.EnumOverlay.SOME_ENUM_VALUE,
-    foo=example.ConfigMapOverlayArgs(
-        config="string",
-    ))
+    foo={
+        "config": "string",
+    })
 ```
 
 </pulumi-choosable>

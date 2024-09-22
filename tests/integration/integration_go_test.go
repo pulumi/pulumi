@@ -1252,7 +1252,7 @@ func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {
 	return events, nil
 }
 
-func newRequest(seq int, command string) dap.Request {
+func newDAPRequest(seq int, command string) dap.Request {
 	request := dap.Request{}
 	request.Type = "request"
 	request.Command = command
@@ -1307,7 +1307,7 @@ outer:
 
 	seq := 0
 	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
-		Request: newRequest(seq, "initialize"),
+		Request: newDAPRequest(seq, "initialize"),
 		Arguments: dap.InitializeRequestArguments{
 			ClientID:        "pulumi",
 			ClientName:      "Pulumi",
@@ -1329,7 +1329,7 @@ outer:
 	json, err := json.Marshal(debugEvent.Config)
 	assert.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
-		Request:   newRequest(seq, "attach"),
+		Request:   newDAPRequest(seq, "attach"),
 		Arguments: json,
 	})
 	assert.NoError(t, err)
@@ -1343,7 +1343,7 @@ outer:
 	assert.IsType(t, &dap.AttachResponse{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
-		Request: newRequest(seq, "continue"),
+		Request: newDAPRequest(seq, "continue"),
 	})
 	assert.NoError(t, err)
 	seq++
@@ -1355,7 +1355,7 @@ outer:
 	assert.IsType(t, &dap.TerminatedEvent{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
-		Request: newRequest(seq, "disconnect"),
+		Request: newDAPRequest(seq, "disconnect"),
 	})
 	assert.NoError(t, err)
 

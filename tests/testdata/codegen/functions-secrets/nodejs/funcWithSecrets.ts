@@ -5,7 +5,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 export function funcWithSecrets(args: FuncWithSecretsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithSecretsResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithSecrets", {
         "cryptoKey": args.cryptoKey,
@@ -25,7 +24,11 @@ export interface FuncWithSecretsResult {
     readonly plaintext: string;
 }
 export function funcWithSecretsOutput(args: FuncWithSecretsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithSecretsResult> {
-    return pulumi.output(args).apply((a: any) => funcWithSecrets(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mypkg::funcWithSecrets", {
+        "cryptoKey": args.cryptoKey,
+        "plaintext": args.plaintext,
+    }, opts);
 }
 
 export interface FuncWithSecretsOutputArgs {

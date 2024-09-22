@@ -156,7 +156,29 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 func (h *testHost) ResolvePlugin(
 	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
-	panic("not implemented")
+	if kind == apitype.ResourcePlugin {
+		for _, provider := range h.providers {
+			pkg := provider.Pkg()
+			providerVersion, err := getProviderVersion(provider)
+			if err != nil {
+				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+			}
+			if name == string(pkg) && version == nil || version.EQ(providerVersion) {
+				return &workspace.PluginInfo{
+					Name:    name,
+					Kind:    kind,
+					Version: version,
+				}, nil
+			}
+		}
+		return nil, fmt.Errorf("unknown provider %s@%s", name, version)
+	}
+
+	return &workspace.PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, nil
 }
 
 func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {

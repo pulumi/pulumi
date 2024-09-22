@@ -32,7 +32,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -56,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"google.golang.org/grpc"
@@ -84,6 +84,9 @@ const (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
+
+	// The preferred debug port.  Chosen arbitrarily.
+	preferredDebugPort = 58791
 )
 
 var (
@@ -161,7 +164,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, false)
+			host := newLanguageHost(pythonExec, engineAddress, tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -188,9 +191,6 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
-
-	// used by language conformance tests to enable the PyProject.Enabled schema option
-	useToml bool
 }
 
 func parseOptions(root string, options map[string]interface{}) (toolchain.PythonOptions, error) {
@@ -239,13 +239,12 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
+func newLanguageHost(exec, engineAddress, tracing string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
-		useToml:       useToml,
 	}
 }
 
@@ -693,15 +692,6 @@ func determinePluginVersion(packageVersion string) (string, error) {
 	return result, nil
 }
 
-func selectPort() (int, error) {
-	l, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
-}
-
 // debugCommand produces python program args to launch a python file with debugpy.
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
 	err := checkForPackage(ctx, "debugpy", opts)
@@ -716,7 +706,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
 	}
-	port, err := selectPort()
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
@@ -1438,16 +1428,6 @@ func (host *pythonLanguageHost) GeneratePackage(
 		return &pulumirpc.GeneratePackageResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
-	}
-
-	if host.useToml {
-		var info codegen.PackageInfo
-		var ok bool
-		if info, ok = pkg.Language["python"].(codegen.PackageInfo); !ok {
-			info = codegen.PackageInfo{}
-		}
-		info.PyProject.Enabled = true
-		pkg.Language["python"] = info
 	}
 
 	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)

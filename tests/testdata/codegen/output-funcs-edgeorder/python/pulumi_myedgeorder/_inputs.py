@@ -4,19 +4,47 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from ._enums import *
 
 __all__ = [
     'ConfigurationFilters',
+    'ConfigurationFiltersDict',
     'CustomerSubscriptionDetails',
+    'CustomerSubscriptionDetailsDict',
     'CustomerSubscriptionRegisteredFeatures',
+    'CustomerSubscriptionRegisteredFeaturesDict',
     'FilterableProperty',
+    'FilterablePropertyDict',
     'HierarchyInformation',
+    'HierarchyInformationDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class ConfigurationFiltersDict(TypedDict):
+        """
+        Configuration filters
+        """
+        hierarchy_information: 'HierarchyInformationDict'
+        """
+        Product hierarchy information
+        """
+        filterable_property: NotRequired[Sequence['FilterablePropertyDict']]
+        """
+        Filters specific to product
+        """
+elif False:
+    ConfigurationFiltersDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ConfigurationFilters:
@@ -56,6 +84,26 @@ class ConfigurationFilters:
     def filterable_property(self, value: Optional[Sequence['FilterableProperty']]):
         pulumi.set(self, "filterable_property", value)
 
+
+if not MYPY:
+    class CustomerSubscriptionDetailsDict(TypedDict):
+        """
+        Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
+        """
+        quota_id: str
+        """
+        Quota ID of a subscription
+        """
+        location_placement_id: NotRequired[str]
+        """
+        Location placement Id of a subscription
+        """
+        registered_features: NotRequired[Sequence['CustomerSubscriptionRegisteredFeaturesDict']]
+        """
+        List of registered feature flags for subscription
+        """
+elif False:
+    CustomerSubscriptionDetailsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class CustomerSubscriptionDetails:
@@ -112,6 +160,22 @@ class CustomerSubscriptionDetails:
         pulumi.set(self, "registered_features", value)
 
 
+if not MYPY:
+    class CustomerSubscriptionRegisteredFeaturesDict(TypedDict):
+        """
+        Represents subscription registered features
+        """
+        name: NotRequired[str]
+        """
+        Name of subscription registered feature
+        """
+        state: NotRequired[str]
+        """
+        State of subscription registered feature
+        """
+elif False:
+    CustomerSubscriptionRegisteredFeaturesDict: TypeAlias = Mapping[str, Any]
+
 @pulumi.input_type
 class CustomerSubscriptionRegisteredFeatures:
     def __init__(__self__, *,
@@ -152,6 +216,22 @@ class CustomerSubscriptionRegisteredFeatures:
         pulumi.set(self, "state", value)
 
 
+if not MYPY:
+    class FilterablePropertyDict(TypedDict):
+        """
+        Different types of filters supported and its values.
+        """
+        supported_values: Sequence[str]
+        """
+        Values to be filtered.
+        """
+        type: Union[str, 'SupportedFilterTypes']
+        """
+        Type of product filter.
+        """
+elif False:
+    FilterablePropertyDict: TypeAlias = Mapping[str, Any]
+
 @pulumi.input_type
 class FilterableProperty:
     def __init__(__self__, *,
@@ -189,6 +269,30 @@ class FilterableProperty:
     def type(self, value: Union[str, 'SupportedFilterTypes']):
         pulumi.set(self, "type", value)
 
+
+if not MYPY:
+    class HierarchyInformationDict(TypedDict):
+        """
+        Holds details about product hierarchy information
+        """
+        configuration_name: NotRequired[str]
+        """
+        Represents configuration name that uniquely identifies configuration
+        """
+        product_family_name: NotRequired[str]
+        """
+        Represents product family name that uniquely identifies product family
+        """
+        product_line_name: NotRequired[str]
+        """
+        Represents product line name that uniquely identifies product line
+        """
+        product_name: NotRequired[str]
+        """
+        Represents product name that uniquely identifies product
+        """
+elif False:
+    HierarchyInformationDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class HierarchyInformation:

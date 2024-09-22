@@ -242,14 +242,36 @@ export async function awaitFeatureSupport(): Promise<void> {
     const monitorRef = getMonitor();
     if (monitorRef !== undefined) {
         const store = getStore();
-        store.supportsSecrets = await monitorSupportsFeature(monitorRef, "secrets");
-        store.supportsResourceReferences = await monitorSupportsFeature(monitorRef, "resourceReferences");
-        store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
-        store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
-        store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
-        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
-        store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
-        store.supportsParameterization = await monitorSupportsFeature(monitorRef, "parameterization");
+        const [
+            secrets,
+            resourceReferences,
+            outputValues,
+            deletedWith,
+            aliasSpecs,
+            transforms,
+            invokeTransforms,
+            parameterization,
+        ] = await Promise.all(
+            [
+                "secrets",
+                "resourceReferences",
+                "outputValues",
+                "deletedWith",
+                "aliasSpecs",
+                "transforms",
+                "invokeTransforms",
+                "parameterization",
+            ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
+        );
+
+        store.supportsSecrets = secrets;
+        store.supportsResourceReferences = resourceReferences;
+        store.supportsOutputValues = outputValues;
+        store.supportsDeletedWith = deletedWith;
+        store.supportsAliasSpecs = aliasSpecs;
+        store.supportsTransforms = transforms;
+        store.supportsInvokeTransforms = invokeTransforms;
+        store.supportsParameterization = parameterization;
     }
 }
 

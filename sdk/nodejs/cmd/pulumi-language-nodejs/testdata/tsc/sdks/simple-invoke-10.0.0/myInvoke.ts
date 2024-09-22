@@ -5,7 +5,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 export function myInvoke(args: MyInvokeArgs, opts?: pulumi.InvokeOptions): Promise<MyInvokeResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("simple-invoke:index:myInvoke", {
         "value": args.value,
@@ -20,7 +19,10 @@ export interface MyInvokeResult {
     readonly result: string;
 }
 export function myInvokeOutput(args: MyInvokeOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<MyInvokeResult> {
-    return pulumi.output(args).apply((a: any) => myInvoke(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("simple-invoke:index:myInvoke", {
+        "value": args.value,
+    }, opts);
 }
 
 export interface MyInvokeOutputArgs {

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Add `debugpy` as a dependency to improve the debugging experience

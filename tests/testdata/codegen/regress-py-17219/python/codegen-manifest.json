@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "pulumi_cloudinit/README.md",
+    "pulumi_cloudinit/__init__.py",
+    "pulumi_cloudinit/_inputs.py",
+    "pulumi_cloudinit/_utilities.py",
+    "pulumi_cloudinit/config.py",
+    "pulumi_cloudinit/get_config.py",
+    "pulumi_cloudinit/outputs.py",
+    "pulumi_cloudinit/provider.py",
+    "pulumi_cloudinit/pulumi-plugin.json",
+    "pulumi_cloudinit/py.typed",
+    "pyproject.toml"
+  ]
+}

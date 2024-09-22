@@ -12,7 +12,6 @@ import * as utilities from "./utilities";
  * API Version: 2020-12-01-preview.
  */
 export function listProductFamilies(args: ListProductFamiliesArgs, opts?: pulumi.InvokeOptions): Promise<ListProductFamiliesResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("myedgeorder::listProductFamilies", {
         "customerSubscriptionDetails": args.customerSubscriptionDetails,
@@ -59,7 +58,13 @@ export interface ListProductFamiliesResult {
  * API Version: 2020-12-01-preview.
  */
 export function listProductFamiliesOutput(args: ListProductFamiliesOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListProductFamiliesResult> {
-    return pulumi.output(args).apply((a: any) => listProductFamilies(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("myedgeorder::listProductFamilies", {
+        "customerSubscriptionDetails": args.customerSubscriptionDetails,
+        "expand": args.expand,
+        "filterableProperties": args.filterableProperties,
+        "skipToken": args.skipToken,
+    }, opts);
 }
 
 export interface ListProductFamiliesOutputArgs {

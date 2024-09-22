@@ -331,7 +331,7 @@ _package_ref = ...
 async def get_package():
 	global _package_ref
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_package_references():
+		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
 			async with _package_lock:
 				if _package_ref is ...:
 					monitor = pulumi.runtime.settings.get_monitor()
@@ -350,6 +350,7 @@ async def get_package():
 					_package_ref = registerPackageResponse.ref
 	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
-	if _package_ref is None:
+	if _package_ref is None or _package_ref is ...:
 		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
+	

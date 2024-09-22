@@ -11,7 +11,6 @@ import * as utilities from "./utilities";
  * API Version: 2021-02-01.
  */
 export function listStorageAccountKeys(args: ListStorageAccountKeysArgs, opts?: pulumi.InvokeOptions): Promise<ListStorageAccountKeysResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::listStorageAccountKeys", {
         "accountName": args.accountName,
@@ -49,7 +48,12 @@ export interface ListStorageAccountKeysResult {
  * API Version: 2021-02-01.
  */
 export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
-    return pulumi.output(args).apply((a: any) => listStorageAccountKeys(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mypkg::listStorageAccountKeys", {
+        "accountName": args.accountName,
+        "expand": args.expand,
+        "resourceGroupName": args.resourceGroupName,
+    }, opts);
 }
 
 export interface ListStorageAccountKeysOutputArgs {

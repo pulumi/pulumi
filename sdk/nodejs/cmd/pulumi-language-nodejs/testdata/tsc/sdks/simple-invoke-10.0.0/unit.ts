@@ -6,7 +6,6 @@ import * as utilities from "./utilities";
 
 export function unit(args?: UnitArgs, opts?: pulumi.InvokeOptions): Promise<UnitResult> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("simple-invoke:index:unit", {
     }, opts);
@@ -19,5 +18,8 @@ export interface UnitResult {
     readonly result: string;
 }
 export function unitOutput(opts?: pulumi.InvokeOptions): pulumi.Output<UnitResult> {
-    return pulumi.output(unit(opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("simple-invoke:index:unit", {
+    }, opts);
 }
+

@@ -281,9 +281,9 @@ var resourceResource = new Resource("resourceResource", ResourceArgs.builder()
 ```python
 resource_resource = example.Resource("resourceResource",
     bar=example.EnumOverlay.SOME_ENUM_VALUE,
-    foo=example.ConfigMapOverlayArgs(
-        config="string",
-    ))
+    foo={
+        "config": "string",
+    })
 ```
 
 </pulumi-choosable>

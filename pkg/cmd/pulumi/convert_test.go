@@ -48,8 +48,11 @@ func TestYamlConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
+	cwd, err := filepath.Abs("convert_testdata")
+	require.NoError(t, err)
+
 	result := runConvert(
-		pkgWorkspace.Instance, env.Global(), []string{}, "convert_testdata", []string{},
+		pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
 		"yaml", "go", "convert_testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
@@ -60,8 +63,11 @@ func TestPclConvert(t *testing.T) {
 	// Check that we can run convert from PCL to PCL
 	tmp := t.TempDir()
 
+	cwd, err := filepath.Abs("pcl_convert_testdata")
+	require.NoError(t, err)
+
 	result := runConvert(
-		pkgWorkspace.Instance, env.Global(), []string{}, "pcl_convert_testdata",
+		pkgWorkspace.Instance, env.Global(), []string{}, cwd,
 		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
@@ -89,15 +95,18 @@ func TestProjectNameDefaults(t *testing.T) {
 	// Arrange.
 	outDir := t.TempDir()
 
+	cwd, err := filepath.Abs("pcl_convert_testdata")
+	require.NoError(t, err)
+
 	// Act.
-	err := runConvert(
+	err = runConvert(
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},             /*args*/
-		"pcl_convert_testdata", /*cwd*/
-		[]string{},             /*mappings*/
-		"pcl",                  /*from*/
-		"yaml",                 /*language*/
+		[]string{}, /*args*/
+		cwd,        /*cwd*/
+		[]string{}, /*mappings*/
+		"pcl",      /*from*/
+		"yaml",     /*language*/
 		outDir,
 		true, /*generateOnly*/
 		true, /*strict*/
@@ -119,15 +128,18 @@ func TestProjectNameOverrides(t *testing.T) {
 	outDir := t.TempDir()
 	name := "test-project-name"
 
+	cwd, err := filepath.Abs("pcl_convert_testdata")
+	require.NoError(t, err)
+
 	// Act.
-	err := runConvert(
+	err = runConvert(
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},             /*args*/
-		"pcl_convert_testdata", /*cwd*/
-		[]string{},             /*mappings*/
-		"pcl",                  /*from*/
-		"yaml",                 /*language*/
+		[]string{}, /*args*/
+		cwd,        /*cwd*/
+		[]string{}, /*mappings*/
+		"pcl",      /*from*/
+		"yaml",     /*language*/
 		outDir,
 		true, /*generateOnly*/
 		true, /*strict*/
