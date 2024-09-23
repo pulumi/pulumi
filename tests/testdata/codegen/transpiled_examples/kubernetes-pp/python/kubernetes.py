@@ -13,14 +13,14 @@ app = kubernetes.apps.v1.Deployment("app",
     spec={
         "selector": {
             "match_labels": {
-                "app_kubernetes_io_name": "nginx-demo",
+                "app.kubernetes.io/name": "nginx-demo",
             },
         },
         "replicas": 1,
         "template": {
             "metadata": {
                 "labels": {
-                    "app_kubernetes_io_name": "nginx-demo",
+                    "app.kubernetes.io/name": "nginx-demo",
                 },
             },
             "spec": {
@@ -35,7 +35,7 @@ service = kubernetes.core.v1.Service("service",
     metadata={
         "namespace": nginx_demo.metadata.name,
         "labels": {
-            "app_kubernetes_io_name": "nginx-demo",
+            "app.kubernetes.io/name": "nginx-demo",
         },
     },
     spec={
@@ -46,7 +46,7 @@ service = kubernetes.core.v1.Service("service",
             "protocol": "TCP",
         }],
         "selector": {
-            "app_kubernetes_io_name": "nginx-demo",
+            "app.kubernetes.io/name": "nginx-demo",
         },
     })
 ingress = kubernetes.networking.v1.Ingress("ingress",

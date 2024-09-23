@@ -1005,4 +1005,102 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-map-keys": {
+		providers: []plugin.Provider{
+			&providers.PrimitiveProvider{}, &providers.PrimitiveRefProvider{},
+			&providers.RefRefProvider{}, &providers.PlainProvider{},
+		},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+
+					requireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
+					primResource := requireSingleResource(l, snap.Resources, "primitive:index:Resource")
+					requireSingleResource(l, snap.Resources, "pulumi:providers:primitive-ref")
+					refResource := requireSingleResource(l, snap.Resources, "primitive-ref:index:Resource")
+					requireSingleResource(l, snap.Resources, "pulumi:providers:ref-ref")
+					rrefResource := requireSingleResource(l, snap.Resources, "ref-ref:index:Resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"boolean":     false,
+						"float":       2.17,
+						"integer":     -12,
+						"string":      "Goodbye",
+						"numberArray": []interface{}{0, 1},
+						"booleanMap": map[string]interface{}{
+							"my key": false,
+							"my.key": true,
+							"my-key": false,
+							"my_key": true,
+							"MY_KEY": false,
+							"myKey":  true,
+						},
+					})
+					assert.Equal(l, want, primResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"boolean":   false,
+							"float":     2.17,
+							"integer":   -12,
+							"string":    "Goodbye",
+							"boolArray": []interface{}{false, true},
+							"stringMap": map[string]interface{}{
+								"my key": "one",
+								"my.key": "two",
+								"my-key": "three",
+								"my_key": "four",
+								"MY_KEY": "five",
+								"myKey":  "six",
+							},
+						}),
+					})
+					assert.Equal(l, want, refResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, refResource.Inputs, refResource.Outputs, "expected inputs and outputs to match")
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     -2.17,
+								"integer":   123,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{},
+								"stringMap": map[string]interface{}{
+									"my key": "one",
+									"my.key": "two",
+									"my-key": "three",
+									"my_key": "four",
+									"MY_KEY": "five",
+									"myKey":  "six",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{},
+							"stringMap": map[string]interface{}{
+								"my key": "one",
+								"my.key": "two",
+								"my-key": "three",
+								"my_key": "four",
+								"MY_KEY": "five",
+								"myKey":  "six",
+							},
+						}),
+					})
+					assert.Equal(l, want, rrefResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, rrefResource.Inputs, rrefResource.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 }

@@ -294,11 +294,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
-		Directory:   "typeddict",
-		Description: "Use TypedDicts for inputs side by side with args class",
-		Skip:        allProgLanguages.Except("python"),
-	},
-	{
 		Directory:   "entries-function",
 		Description: "Using the entries function",
 		// go and dotnet do fully not support GenForExpression yet
