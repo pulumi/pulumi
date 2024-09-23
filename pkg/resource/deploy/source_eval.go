@@ -1746,10 +1746,21 @@ func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 		case *pulumirpc.InvalidInputProperties:
 			message = message + ":"
 			for _, err := range d.GetErrors() {
-				message = fmt.Sprintf("%v\n\t\t- 'property %v with value '%v' has a problem: %v",
-					message, err.GetPropertyPath(),
-					inputs[resource.PropertyKey(err.GetPropertyPath())].String(),
-					err.GetReason())
+				property := inputs[resource.PropertyKey(err.GetPropertyKey())]
+				value := property.String()
+				path := ""
+				if err.GetPropertyPath() != "" {
+					propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
+					if e == nil {
+						v, ok := propertyPath.Get(property)
+						if ok {
+							value = v.String()
+							path = err.GetPropertyPath()
+						}
+					}
+				}
+				message = fmt.Sprintf("%v\n\t\t- property %v%v with value '%v' has a problem: %v",
+					message, err.GetPropertyKey(), path, value, err.GetReason())
 			}
 		}
 	}

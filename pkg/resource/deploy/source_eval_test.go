@@ -3335,8 +3335,13 @@ func TestValidationFailures(t *testing.T) {
 		&pulumirpc.InvalidInputProperties{
 			Errors: []*pulumirpc.InvalidInputProperties_InvalidInputProperty{
 				{
-					Reason:       "missing",
-					PropertyPath: "testproperty",
+					Reason:      "missing",
+					PropertyKey: "testproperty",
+				},
+				{
+					Reason:       "nested property error",
+					PropertyKey:  "nested",
+					PropertyPath: "[0]",
 				},
 			},
 		},
@@ -3357,7 +3362,8 @@ func TestValidationFailures(t *testing.T) {
 			name: "bad request",
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request:\n" +
-				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n",
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
 		},
 	}
 	for _, c := range cases {
@@ -3410,6 +3416,9 @@ func TestValidationFailures(t *testing.T) {
 
 		props := resource.PropertyMap{
 			"testproperty": resource.NewPropertyValue("testvalue"),
+			"nested": resource.NewArrayProperty(
+				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
+			),
 		}
 
 		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})

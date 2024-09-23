@@ -28,10 +28,12 @@ message ErrorCause {
 message InvalidInputProperties {
     // A single invalid input property.
     message InvalidInputProperty {
-        // The property path that is invalid.
-        string property_path = 1;
+        // The key to the property that is invalid.
+	string property_key = 1;
+        // An optional property path to the property that is invalid.
+        string property_path = 2;
 	// The reason the property is invalid.
-        string reason = 2;
+        string reason = 3;
     }
     // The list of invalid input properties.
     repeated InvalidInputProperty errors = 1;
