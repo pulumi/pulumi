@@ -17,22 +17,17 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -51,9 +46,6 @@ func newInstallCmd() *cobra.Command {
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			displayOpts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
 
 			installPolicyPackDeps, err := shouldInstallPolicyPackDependencies()
 			if err != nil {
@@ -120,74 +112,16 @@ func newInstallCmd() *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				installs, err := lang.GetRequiredPlugins(programInfo)
+				plugins, err := lang.GetRequiredPlugins(programInfo)
 				if err != nil {
 					return err
 				}
 
-				// Now for each kind, name, version pair, download it from the release website, and install it.
-				for _, install := range installs {
-					// PluginSpec.String() just returns the name and version, we want the kind too.
-					label := fmt.Sprintf("%s plugin %s", install.Kind, install)
+				pluginSet := engine.NewPluginSet(plugins...)
 
-					// If the plugin already exists, don't download it unless --reinstall was passed.
-					if !reinstall {
-						if install.Version != nil {
-							if workspace.HasPlugin(install) {
-								logging.V(1).Infof("%s skipping install (existing == match)", label)
-								continue
-							}
-						} else {
-							if has, _ := workspace.HasPluginGTE(install); has {
-								logging.V(1).Infof("%s skipping install (existing >= match)", label)
-								continue
-							}
-						}
-					}
-
-					// If we don't have a version yet but we are installing try and call GetLatestVersion
-					// to fill it in.
-					if install.Version == nil {
-						logging.V(8).Infof(
-							"installPlugin(%s): version not specified, trying to lookup latest version", install.Name)
-
-						version, err := install.GetLatestVersion()
-						if err != nil {
-							return fmt.Errorf("could not get latest version for plugin %s: %w", install.Name, err)
-						}
-						install.Version = version
-					}
-
-					pctx.Diag.Infoerrf(diag.Message("", "%s version %s installing"), label, install.Version)
-
-					// If we got here, actually try to do the download.
-					withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-						return workspace.ReadCloserProgressBar(stream, size,
-							"Downloading plugin", displayOpts.Color)
-					}
-					retry := func(err error, attempt int, limit int, delay time.Duration) {
-						pctx.Diag.Warningf(
-							diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
-					}
-
-					r, err := workspace.DownloadToFile(install, withProgress, retry)
-					if err != nil {
-						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
-					}
-					defer func() {
-						err := os.Remove(r.Name())
-						if err != nil {
-							pctx.Diag.Warningf(
-								diag.Message("", "Error removing temporary file %s: %s"), r.Name(), err)
-						}
-					}()
-
-					payload := workspace.TarPlugin(r)
-
-					logging.V(1).Infof("%s installing tarball ...", label)
-					if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
-						return fmt.Errorf("installing %s: %w", label, err)
-					}
+				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
+					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
+					return err
 				}
 			}
 

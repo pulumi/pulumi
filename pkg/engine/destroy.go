@@ -80,8 +80,8 @@ func newDestroySource(
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 
-	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, plugins.Deduplicate(),
-		plugctx.Host.GetProjectPlugins()); err != nil {
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, plugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 
