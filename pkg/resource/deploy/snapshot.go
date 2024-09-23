@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -157,7 +157,9 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 				provs[ref] = struct{}{}
 			}
-			if provider := state.Provider; provider != "" {
+
+			provider, allDeps := state.GetAllDependencies()
+			if provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
 					return SnapshotIntegrityErrorf("failed to parse provider reference for resource %s: %w", urn, err)
@@ -178,86 +180,77 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			// missing entirely, producing a specific error message depending on the
 			// outcome.
 
-			// Parent dependencies
-			if par := state.Parent; par != "" {
-				if _, has := urns[par]; !has {
-					for _, other := range snap.Resources[i+1:] {
-						if other.URN == par {
-							return SnapshotIntegrityErrorf("child resource %s's parent %s comes after it", urn, par)
-						}
-					}
-					return SnapshotIntegrityErrorf("child resource %s refers to missing parent %s", urn, par)
-				}
-
-				// Ensure that our URN is a child of the parent's URN.
-				expectedType := urn.Type()
-				if par.QualifiedType() != resource.RootStackType {
-					expectedType = par.QualifiedType() + "$" + expectedType
-				}
-
-				if urn.QualifiedType() != expectedType {
-					logging.Warningf("child resource %s has parent %s but it's URN doesn't match", urn, par)
-					// TODO: Change this to an error once we're sure users won't hit this in the wild.
-					// return fmt.Errorf("child resource %s has parent %s but it's URN doesn't match", urn, par)
-				}
-			}
-
-			// Dependencies
-			for _, dep := range state.Dependencies {
-				if _, has := urns[dep]; !has {
-					for _, other := range snap.Resources[i+1:] {
-						if other.URN == dep {
-							return SnapshotIntegrityErrorf(
-								"resource %s's dependency %s comes after it",
-								urn, other.URN,
-							)
-						}
-					}
-
-					return SnapshotIntegrityErrorf(
-						"resource %s's dependency %s refers to missing resource",
-						urn, dep,
-					)
-				}
-			}
-
-			// Property dependencies
-			for prop, deps := range state.PropertyDependencies {
-				for _, dep := range deps {
-					if _, has := urns[dep]; !has {
+			for _, dep := range allDeps {
+				switch dep.Type {
+				case resource.ResourceParent:
+					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
-							if other.URN == dep {
+							if other.URN == dep.URN {
+								return SnapshotIntegrityErrorf("child resource %s's parent %s comes after it", urn, dep.URN)
+							}
+						}
+						return SnapshotIntegrityErrorf("child resource %s refers to missing parent %s", urn, dep.URN)
+					}
+
+					// Ensure that our URN is a child of the parent's URN.
+					expectedType := urn.Type()
+					if dep.URN.QualifiedType() != resource.RootStackType {
+						expectedType = dep.URN.QualifiedType() + "$" + expectedType
+					}
+
+					if urn.QualifiedType() != expectedType {
+						logging.Warningf("child resource %s has parent %s but its URN doesn't match", urn, dep.URN)
+						// TODO: Change this to an error once we're sure users won't hit this in the wild.
+						// return fmt.Errorf("child resource %s has parent %s but its URN doesn't match", urn, dep.URN)
+					}
+				case resource.ResourceDependency:
+					if _, has := urns[dep.URN]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep.URN {
+								return SnapshotIntegrityErrorf(
+									"resource %s's dependency %s comes after it",
+									urn, other.URN,
+								)
+							}
+						}
+
+						return SnapshotIntegrityErrorf(
+							"resource %s's dependency %s refers to missing resource",
+							urn, dep.URN,
+						)
+					}
+				case resource.ResourcePropertyDependency:
+					if _, has := urns[dep.URN]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep.URN {
 								return SnapshotIntegrityErrorf(
 									"resource %s's property dependency %s (from property %s) comes after it",
-									urn, other.URN, prop,
+									urn, other.URN, dep.Key,
 								)
 							}
 						}
 
 						return SnapshotIntegrityErrorf(
 							"resource %s's property dependency %s (from property %s) refers to missing resource",
-							urn, dep, prop,
+							urn, dep.URN, dep.Key,
 						)
 					}
-				}
-			}
-
-			// DeletedWith
-			if dw := state.DeletedWith; dw != "" {
-				if _, has := urns[dw]; !has {
-					for _, other := range snap.Resources[i+1:] {
-						if other.URN == dw {
-							return SnapshotIntegrityErrorf(
-								"resource %s is specified as being deleted with %s, which comes after it",
-								urn, dw,
-							)
+				case resource.ResourceDeletedWith:
+					if _, has := urns[dep.URN]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep.URN {
+								return SnapshotIntegrityErrorf(
+									"resource %s is specified as being deleted with %s, which comes after it",
+									urn, dep.URN,
+								)
+							}
 						}
-					}
 
-					return SnapshotIntegrityErrorf(
-						"resource %s is specified as being deleted with %s, which is missing",
-						urn, dw,
-					)
+						return SnapshotIntegrityErrorf(
+							"resource %s is specified as being deleted with %s, which is missing",
+							urn, dep.URN,
+						)
+					}
 				}
 			}
 
