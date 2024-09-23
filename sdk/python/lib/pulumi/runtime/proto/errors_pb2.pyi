@@ -48,7 +48,7 @@ class ErrorCause(google.protobuf.message.Message):
 global___ErrorCause = ErrorCause
 
 @typing_extensions.final
-class PropertiesError(google.protobuf.message.Message):
+class InvalidInputProperties(google.protobuf.message.Message):
     """An error that can be returned from a component provider and includes details of the
     error, which can be multiple properties.
     """
@@ -56,7 +56,7 @@ class PropertiesError(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
-    class PropertyError(google.protobuf.message.Message):
+    class InvalidInputProperty(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         PROPERTY_NAME_FIELD_NUMBER: builtins.int
@@ -73,12 +73,12 @@ class PropertiesError(google.protobuf.message.Message):
 
     ERRORS_FIELD_NUMBER: builtins.int
     @property
-    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PropertiesError.PropertyError]: ...
+    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___InvalidInputProperties.InvalidInputProperty]: ...
     def __init__(
         self,
         *,
-        errors: collections.abc.Iterable[global___PropertiesError.PropertyError] | None = ...,
+        errors: collections.abc.Iterable[global___InvalidInputProperties.InvalidInputProperty] | None = ...,
     ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["errors", b"errors"]) -> None: ...
 
-global___PropertiesError = PropertiesError
+global___InvalidInputProperties = InvalidInputProperties

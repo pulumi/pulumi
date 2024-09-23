@@ -1743,7 +1743,7 @@ func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
 	for _, d := range st.Details() {
 		switch d := d.(type) {
-		case *pulumirpc.PropertiesError:
+		case *pulumirpc.InvalidInputProperties:
 			message = message + ":"
 			for _, err := range d.GetErrors() {
 				message = fmt.Sprintf("%v\n\t\t- 'property %v with value '%v' has a problem: %v",
