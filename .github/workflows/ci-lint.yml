@@ -49,7 +49,7 @@ jobs:
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
         # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
+        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=github-actions
 
   tidy:
     name: go mod tidy
