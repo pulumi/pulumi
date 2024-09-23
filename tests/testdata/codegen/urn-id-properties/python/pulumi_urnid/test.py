@@ -67,13 +67,17 @@ def test(id: Optional[float] = None,
     return AwaitableTestResult(
         id=pulumi.get(__ret__, 'id'),
         urn=pulumi.get(__ret__, 'urn'))
-
-
-@_utilities.lift_output_func(test)
 def test_output(id: Optional[pulumi.Input[float]] = None,
                 urn: Optional[pulumi.Input[float]] = None,
                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[TestResult]:
     """
     It's fine for invokes to use urn and id
     """
-    ...
+    __args__ = dict()
+    __args__['id'] = id
+    __args__['urn'] = urn
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('urnid:index:Test', __args__, opts=opts, typ=TestResult)
+    return __ret__.apply(lambda __response__: TestResult(
+        id=pulumi.get(__response__, 'id'),
+        urn=pulumi.get(__response__, 'urn')))

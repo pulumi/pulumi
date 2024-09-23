@@ -58,6 +58,9 @@ type CreateStackRequest struct {
 
 	// An optional set of teams to assign to the stack.
 	Teams []string `json:"teams,omitempty"`
+
+	// An optional state to initialize the stack with.
+	State *UntypedDeployment `json:"state,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.

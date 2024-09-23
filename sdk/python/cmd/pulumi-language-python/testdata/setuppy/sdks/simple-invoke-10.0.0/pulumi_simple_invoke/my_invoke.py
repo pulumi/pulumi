@@ -55,12 +55,14 @@ def my_invoke(value: Optional[str] = None,
 
     return AwaitableMyInvokeResult(
         result=pulumi.get(__ret__, 'result'))
-
-
-@_utilities.lift_output_func(my_invoke)
 def my_invoke_output(value: Optional[pulumi.Input[str]] = None,
                      opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[MyInvokeResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['value'] = value
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('simple-invoke:index:myInvoke', __args__, opts=opts, typ=MyInvokeResult)
+    return __ret__.apply(lambda __response__: MyInvokeResult(
+        result=pulumi.get(__response__, 'result')))

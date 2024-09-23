@@ -57,13 +57,16 @@ def func_with_dict_param(a: Optional[Mapping[str, str]] = None,
 
     return AwaitableFuncWithDictParamResult(
         r=pulumi.get(__ret__, 'r'))
-
-
-@_utilities.lift_output_func(func_with_dict_param)
 def func_with_dict_param_output(a: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
                                 b: Optional[pulumi.Input[Optional[str]]] = None,
                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithDictParamResult]:
     """
     Check codegen of functions with a Dict<str,str> parameter.
     """
-    ...
+    __args__ = dict()
+    __args__['a'] = a
+    __args__['b'] = b
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithDictParam', __args__, opts=opts, typ=FuncWithDictParamResult)
+    return __ret__.apply(lambda __response__: FuncWithDictParamResult(
+        r=pulumi.get(__response__, 'r')))

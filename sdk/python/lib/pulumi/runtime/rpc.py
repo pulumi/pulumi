@@ -33,6 +33,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Tuple,
     Union,
     cast,
     get_args,
@@ -756,6 +757,46 @@ def deserialize_properties(
             output[k] = value
 
     return output
+
+
+def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
+    """
+    Returns True if the given protobuf struct contains any unknown values.
+    """
+    for _, v in list(props_struct.items()):
+        if v == UNKNOWN:
+            return True
+        if isinstance(v, struct_pb2.Struct):
+            if struct_contains_unknowns(v):
+                return True
+        if isinstance(v, struct_pb2.ListValue):
+            for item in v:
+                if isinstance(item, struct_pb2.Struct):
+                    if struct_contains_unknowns(item):
+                        return True
+    return False
+
+
+def deserialize_properties_unwrap_secrets(
+    props_struct: struct_pb2.Struct,
+    keep_unknowns: Optional[bool] = None,
+    keep_internal: Optional[bool] = None,
+) -> Tuple[Any, bool]:
+    """
+    Similar to deserialize_properties except that it unwraps secrets and returns a boolean
+    indicating whether the resulting object contained a secret.
+    """
+    output = deserialize_properties(props_struct, keep_unknowns, keep_internal)
+    if isinstance(output, dict):
+        is_secret = False
+        for k, v in output.items():
+            if is_rpc_secret(v):
+                is_secret = True
+                output[k] = unwrap_rpc_secret(v)
+        return (output, is_secret)
+    if is_rpc_secret(output):
+        return (unwrap_rpc_secret(output), True)
+    return (output, False)
 
 
 def deserialize_resource(

@@ -90,9 +90,6 @@ def list_product_families(customer_subscription_details: Optional[pulumi.InputTy
     return AwaitableListProductFamiliesResult(
         next_link=pulumi.get(__ret__, 'next_link'),
         value=pulumi.get(__ret__, 'value'))
-
-
-@_utilities.lift_output_func(list_product_families)
 def list_product_families_output(customer_subscription_details: Optional[pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetails']]]] = None,
                                  expand: Optional[pulumi.Input[Optional[str]]] = None,
                                  filterable_properties: Optional[pulumi.Input[Mapping[str, Sequence[pulumi.InputType['FilterableProperty']]]]] = None,
@@ -108,4 +105,13 @@ def list_product_families_output(customer_subscription_details: Optional[pulumi.
     :param Mapping[str, Sequence[pulumi.InputType['FilterableProperty']]] filterable_properties: Dictionary of filterable properties on product family.
     :param str skip_token: $skipToken is supported on list of product families, which provides the next page in the list of product families.
     """
-    ...
+    __args__ = dict()
+    __args__['customerSubscriptionDetails'] = customer_subscription_details
+    __args__['expand'] = expand
+    __args__['filterableProperties'] = filterable_properties
+    __args__['skipToken'] = skip_token
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('myedgeorder::listProductFamilies', __args__, opts=opts, typ=ListProductFamiliesResult)
+    return __ret__.apply(lambda __response__: ListProductFamiliesResult(
+        next_link=pulumi.get(__response__, 'next_link'),
+        value=pulumi.get(__response__, 'value')))
