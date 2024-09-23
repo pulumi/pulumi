@@ -160,8 +160,10 @@ func TestStateDeleteDependency(t *testing.T) {
 		stack: "stk",
 	}
 	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::dependency`}, ws, lm)
-	assert.ErrorContains(t, err, "urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely deleted because the following resources depend on it:\n"+
-		" * \"dependee\"      (urn:pulumi:proj::stk::pkg:index:typ::dependee)")
+	assert.ErrorContains(t, err,
+		"urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely deleted "+
+			"because the following resources depend on it:\n"+
+			" * \"dependee\"      (urn:pulumi:proj::stk::pkg:index:typ::dependee)")
 }
 
 func TestStateDeleteProtected(t *testing.T) {
@@ -212,7 +214,8 @@ func TestStateDeleteProtected(t *testing.T) {
 		stack: "stk",
 	}
 	err := cmd.Run(context.Background(), []string{`urn:pulumi:proj::stk::pkg:index:typ::res`}, ws, lm)
-	assert.ErrorContains(t, err, "urn:pulumi:proj::stk::pkg:index:typ::res can't be safely deleted because it is protected.")
+	assert.ErrorContains(t, err,
+		"urn:pulumi:proj::stk::pkg:index:typ::res can't be safely deleted because it is protected.")
 	assert.Nil(t, savedDeployment)
 
 	cmd.force = true
