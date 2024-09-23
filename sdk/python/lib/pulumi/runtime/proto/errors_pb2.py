@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/errors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\t\"\xb5\x01\n\x16InvalidInputProperties\x12\x46\n\x06\x65rrors\x18\x01 \x03(\x0b\x32\x36.pulumirpc.InvalidInputProperties.InvalidInputProperty\x1aS\n\x14InvalidInputProperty\x12\x14\n\x0cproperty_key\x18\x01 \x01(\t\x12\x15\n\rproperty_path\x18\x02 \x01(\t\x12\x0e\n\x06reason\x18\x03 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/errors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\t\"\xc9\x01\n\x1bInvalidInputPropertiesError\x12P\n\x06\x65rrors\x18\x01 \x03(\x0b\x32@.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError\x1aX\n\x19InvalidInputPropertyError\x12\x14\n\x0cproperty_key\x18\x01 \x01(\t\x12\x15\n\rproperty_path\x18\x02 \x01(\t\x12\x0e\n\x06reason\x18\x03 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.errors_pb2', globals())
@@ -23,8 +23,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
   _ERRORCAUSE._serialized_start=34
   _ERRORCAUSE._serialized_end=83
-  _INVALIDINPUTPROPERTIES._serialized_start=86
-  _INVALIDINPUTPROPERTIES._serialized_end=267
-  _INVALIDINPUTPROPERTIES_INVALIDINPUTPROPERTY._serialized_start=184
-  _INVALIDINPUTPROPERTIES_INVALIDINPUTPROPERTY._serialized_end=267
+  _INVALIDINPUTPROPERTIESERROR._serialized_start=86
+  _INVALIDINPUTPROPERTIESERROR._serialized_end=287
+  _INVALIDINPUTPROPERTIESERROR_INVALIDINPUTPROPERTYERROR._serialized_start=199
+  _INVALIDINPUTPROPERTIESERROR_INVALIDINPUTPROPERTYERROR._serialized_end=287
 # @@protoc_insertion_point(module_scope)

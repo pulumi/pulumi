@@ -25,9 +25,9 @@ message ErrorCause {
 
 // An error that can be returned from a component provider and includes details of the
 // error, which can be multiple properties.
-message InvalidInputProperties {
+message InvalidInputPropertiesError {
     // A single invalid input property.
-    message InvalidInputProperty {
+    message InvalidInputPropertyError {
         // The key to the property that is invalid.
 	string property_key = 1;
         // An optional property path to the property that is invalid.
@@ -36,5 +36,5 @@ message InvalidInputProperties {
         string reason = 3;
     }
     // The list of invalid input properties.
-    repeated InvalidInputProperty errors = 1;
+    repeated InvalidInputPropertyError errors = 1;
 }

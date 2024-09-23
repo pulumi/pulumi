@@ -1743,7 +1743,7 @@ func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
 	for _, d := range st.Details() {
 		switch d := d.(type) {
-		case *pulumirpc.InvalidInputProperties:
+		case *pulumirpc.InvalidInputPropertiesError:
 			message = message + ":"
 			for _, err := range d.GetErrors() {
 				property := inputs[resource.PropertyKey(err.GetPropertyKey())]
