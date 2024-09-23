@@ -1,0 +1,5 @@
+name: l2-explicit-provider
+runtime:
+  name: python
+  options:
+    virtualenv: venv
