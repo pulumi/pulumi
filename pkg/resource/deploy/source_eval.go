@@ -1747,8 +1747,8 @@ func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 			message = message + ":"
 			for _, err := range d.GetErrors() {
 				message = fmt.Sprintf("%v\n\t\t- 'property %v with value '%v' has a problem: %v",
-					message, err.GetPropertyName(),
-					inputs[resource.PropertyKey(err.GetPropertyName())].String(),
+					message, err.GetPropertyPath(),
+					inputs[resource.PropertyKey(err.GetPropertyPath())].String(),
 					err.GetReason())
 			}
 		}

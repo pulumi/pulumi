@@ -57,23 +57,28 @@ class InvalidInputProperties(google.protobuf.message.Message):
 
     @typing_extensions.final
     class InvalidInputProperty(google.protobuf.message.Message):
+        """A single invalid input property."""
+
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-        PROPERTY_NAME_FIELD_NUMBER: builtins.int
+        PROPERTY_PATH_FIELD_NUMBER: builtins.int
         REASON_FIELD_NUMBER: builtins.int
-        property_name: builtins.str
+        property_path: builtins.str
+        """The property path that is invalid."""
         reason: builtins.str
+        """The reason the property is invalid."""
         def __init__(
             self,
             *,
-            property_name: builtins.str = ...,
+            property_path: builtins.str = ...,
             reason: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["property_name", b"property_name", "reason", b"reason"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["property_path", b"property_path", "reason", b"reason"]) -> None: ...
 
     ERRORS_FIELD_NUMBER: builtins.int
     @property
-    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___InvalidInputProperties.InvalidInputProperty]: ...
+    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___InvalidInputProperties.InvalidInputProperty]:
+        """The list of invalid input properties."""
     def __init__(
         self,
         *,

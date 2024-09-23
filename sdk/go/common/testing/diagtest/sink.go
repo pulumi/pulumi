@@ -41,7 +41,7 @@ func LogSink(t testing.TB) diag.Sink {
 	)
 }
 
-func TestSink(stdout, stderr *bytes.Buffer) diag.Sink {
+func MockSink(stdout, stderr *bytes.Buffer) diag.Sink {
 	return diag.DefaultSink(
 		stdout,
 		stderr,

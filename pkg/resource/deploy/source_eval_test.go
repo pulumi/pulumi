@@ -3336,7 +3336,7 @@ func TestValidationFailures(t *testing.T) {
 			Errors: []*pulumirpc.InvalidInputProperties_InvalidInputProperty{
 				{
 					Reason:       "missing",
-					PropertyName: "testproperty",
+					PropertyPath: "testproperty",
 				},
 			},
 		},
@@ -3382,7 +3382,7 @@ func TestValidationFailures(t *testing.T) {
 		}()
 		var stdout, stderr bytes.Buffer
 		rm := &resmon{
-			diagnostics: diagtest.TestSink(&stdout, &stderr),
+			diagnostics: diagtest.MockSink(&stdout, &stderr),
 			cancel:      cancel,
 			abortChan:   abortChan,
 			defaultProviders: &defaultProviders{

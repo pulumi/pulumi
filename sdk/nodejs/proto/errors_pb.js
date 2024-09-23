@@ -395,7 +395,7 @@ proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.toObject =
  */
 proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.toObject = function(includeInstance, msg) {
   var f, obj = {
-    propertyName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    propertyPath: jspb.Message.getFieldWithDefault(msg, 1, ""),
     reason: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
@@ -435,7 +435,7 @@ proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.deserializeBinaryFro
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPropertyName(value);
+      msg.setPropertyPath(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
@@ -470,7 +470,7 @@ proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.serializeB
  */
 proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPropertyName();
+  f = message.getPropertyPath();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -488,10 +488,10 @@ proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.serializeBinaryToWri
 
 
 /**
- * optional string property_name = 1;
+ * optional string property_path = 1;
  * @return {string}
  */
-proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.getPropertyName = function() {
+proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.getPropertyPath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -500,7 +500,7 @@ proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.getPropert
  * @param {string} value
  * @return {!proto.pulumirpc.InvalidInputProperties.InvalidInputProperty} returns this
  */
-proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.setPropertyName = function(value) {
+proto.pulumirpc.InvalidInputProperties.InvalidInputProperty.prototype.setPropertyPath = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
