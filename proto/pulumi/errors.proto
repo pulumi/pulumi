@@ -23,3 +23,12 @@ message ErrorCause {
     string stackTrace = 2;
 }
 
+// An error that can be returned from a component provider and includes details of the
+// error, which can be multiple properties.
+message PropertiesError {
+    message PropertyError {
+        string property_name = 1;
+        string reason = 2;
+    }
+    repeated PropertyError errors = 1;
+}

@@ -29,7 +29,6 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -3333,11 +3332,11 @@ func TestValidationFailures(t *testing.T) {
 	t.Parallel()
 
 	s, _ := status.Newf(codes.InvalidArgument, "bad request").WithDetails(
-		&errdetails.BadRequest{
-			FieldViolations: []*errdetails.BadRequest_FieldViolation{
+		&pulumirpc.PropertiesError{
+			Errors: []*pulumirpc.PropertiesError_PropertyError{
 				{
-					Field:       "config.yaml",
-					Description: "not found",
+					Reason:       "missing",
+					PropertyName: "testproperty",
 				},
 			},
 		},
@@ -3358,7 +3357,7 @@ func TestValidationFailures(t *testing.T) {
 			name: "bad request",
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request:\n" +
-				"\t\t- 'config.yaml': not found\n",
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n",
 		},
 	}
 	for _, c := range cases {
@@ -3408,13 +3407,22 @@ func TestValidationFailures(t *testing.T) {
 				},
 			},
 		}
+
+		props := resource.PropertyMap{
+			"testproperty": resource.NewPropertyValue("testvalue"),
+		}
+
+		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
+		assert.NoError(t, err)
+
 		req := &pulumirpc.RegisterResourceRequest{
 			Version: "1.0.0",
 			Type:    "pulumi:providers:some-type",
 			Name:    "some-name",
 			Remote:  true,
+			Object:  marshalledProps,
 		}
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err = rm.RegisterResource(context.Background(), req)
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())

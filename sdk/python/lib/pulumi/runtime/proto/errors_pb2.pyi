@@ -16,7 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import builtins
+import collections.abc
 import google.protobuf.descriptor
+import google.protobuf.internal.containers
 import google.protobuf.message
 import sys
 
@@ -44,3 +46,39 @@ class ErrorCause(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["message", b"message", "stackTrace", b"stackTrace"]) -> None: ...
 
 global___ErrorCause = ErrorCause
+
+@typing_extensions.final
+class PropertiesError(google.protobuf.message.Message):
+    """An error that can be returned from a component provider and includes details of the
+    error, which can be multiple properties.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PropertyError(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        PROPERTY_NAME_FIELD_NUMBER: builtins.int
+        REASON_FIELD_NUMBER: builtins.int
+        property_name: builtins.str
+        reason: builtins.str
+        def __init__(
+            self,
+            *,
+            property_name: builtins.str = ...,
+            reason: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["property_name", b"property_name", "reason", b"reason"]) -> None: ...
+
+    ERRORS_FIELD_NUMBER: builtins.int
+    @property
+    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PropertiesError.PropertyError]: ...
+    def __init__(
+        self,
+        *,
+        errors: collections.abc.Iterable[global___PropertiesError.PropertyError] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["errors", b"errors"]) -> None: ...
+
+global___PropertiesError = PropertiesError

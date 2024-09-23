@@ -31,7 +31,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
@@ -1740,14 +1739,17 @@ func (rm *resmon) resolveProvider(
 // of the possible details types, which can be expanded later.  If the details type is not recognized, we
 // still return the message, but will leave out the details.  This will allow us to be forward compatible
 // when new details types are added.
-func statusToMessage(st *status.Status) string {
+func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
 	for _, d := range st.Details() {
 		switch d := d.(type) {
-		case *errdetails.BadRequest:
+		case *pulumirpc.PropertiesError:
 			message = message + ":"
-			for _, violation := range d.GetFieldViolations() {
-				message = fmt.Sprintf("%v\n\t\t- '%v': %v", message, violation.GetField(), violation.GetDescription())
+			for _, err := range d.GetErrors() {
+				message = fmt.Sprintf("%v\n\t\t- 'property %v with value '%v' has a problem: %v",
+					message, err.GetPropertyName(),
+					inputs[resource.PropertyKey(err.GetPropertyName())].String(),
+					err.GetReason())
 			}
 		}
 	}
@@ -2228,19 +2230,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok {
-				// We only turn errors into diagnostics for a few specific status codes that we know provider
-				// constructs return, and that aren't handled by the SDK.  The SDKs treat some status codes
-				// specially, and we want to keep that special handling, so we need to return the error verbatim
-				// to the SDK.
 				//nolint:exhaustive // Remaining cases are covered by default case.
 				switch st.Code() {
-				case codes.InvalidArgument, codes.NotFound, codes.AlreadyExists, codes.FailedPrecondition, codes.Aborted,
-					codes.OutOfRange, codes.DataLoss:
-					message := statusToMessage(st)
-					rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
-
-				default:
+				case codes.Unavailable, codes.Canceled:
+					// We need to return these errors verbatim to the SDK, as the SDKs handle them specially
 					return nil, err
+				default:
+					message := statusToMessage(st, props)
+					rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 				}
 			} else {
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, err)

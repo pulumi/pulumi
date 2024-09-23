@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/errors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/errors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\t\"\x83\x01\n\x0fPropertiesError\x12\x38\n\x06\x65rrors\x18\x01 \x03(\x0b\x32(.pulumirpc.PropertiesError.PropertyError\x1a\x36\n\rPropertyError\x12\x15\n\rproperty_name\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.errors_pb2', globals())
@@ -23,4 +23,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
   _ERRORCAUSE._serialized_start=34
   _ERRORCAUSE._serialized_end=83
+  _PROPERTIESERROR._serialized_start=86
+  _PROPERTIESERROR._serialized_end=217
+  _PROPERTIESERROR_PROPERTYERROR._serialized_start=163
+  _PROPERTIESERROR_PROPERTYERROR._serialized_end=217
 # @@protoc_insertion_point(module_scope)
