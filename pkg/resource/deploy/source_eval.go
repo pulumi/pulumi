@@ -2230,15 +2230,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 		if err != nil {
 			if st, ok := status.FromError(err); ok {
-				//nolint:exhaustive // Remaining cases are covered by default case.
-				switch st.Code() {
-				case codes.Unavailable, codes.Canceled:
-					// We need to return these errors verbatim to the SDK, as the SDKs handle them specially
-					return nil, err
-				default:
-					message := statusToMessage(st, props)
-					rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
-				}
+				message := statusToMessage(st, props)
+				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 			} else {
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, err)
 			}
