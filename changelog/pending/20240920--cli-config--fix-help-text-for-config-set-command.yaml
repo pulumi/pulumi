@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Fix help text for `config set` command
