@@ -95,33 +95,32 @@ func (ts *tokenSource) handleRequests(
 	}
 
 	renewUpdateLeaseIfStale := func() {
-		if state.error != nil {
-			return
-		}
+		for state.error == nil {
+			now := time.Now()
 
-		now := time.Now()
+			// We will renew the lease after 50% of the duration
+			// has elapsed to allow time for retries.
+			stale := now.Add(duration / 2).After(state.expires)
+			if !stale {
+				return
+			}
 
-		// We will renew the lease after 50% of the duration
-		// has elapsed to allow time for retries.
-		stale := now.Add(duration / 2).After(state.expires)
-		if !stale {
-			return
-		}
-
-		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
-		// Renewing might fail because of network issues, or because the token is no longer valid.
-		// We only care about the latter, if its just a network issue we should retry again.
-		var expired expiredTokenError
-		if errors.As(err, &expired) {
-			logging.V(3).Infof("error renewing lease: %v", err)
-			state.error = fmt.Errorf("renewing lease: %w", err)
-			renewTicker.Stop()
-		} else if err != nil {
-			// If we failed to renew the lease, we will retry in the next cycle.
-			logging.V(3).Infof("error renewing lease: %v", err)
-		} else {
-			state.token = newToken
-			state.expires = newTokenExpires
+			newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
+			// Renewing might fail because of network issues, or because the token is no longer valid.
+			// We only care about the latter, if its just a network issue we should retry again.
+			var expired expiredTokenError
+			if errors.As(err, &expired) {
+				logging.V(3).Infof("error renewing lease: %v", err)
+				state.error = fmt.Errorf("renewing lease: %w", err)
+				renewTicker.Stop()
+				return
+			} else if err != nil {
+				// If we failed to renew the lease, we will retry in the next cycle.
+				logging.V(3).Infof("error renewing lease: %v", err)
+			} else {
+				state.token = newToken
+				state.expires = newTokenExpires
+			}
 		}
 	}
 
