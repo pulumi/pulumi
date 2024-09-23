@@ -323,22 +323,23 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			continue
 		}
 
-		// Check direct dependencies but also parents and providers.
-		dependencies := step.New().Dependencies
-		if step.New().Parent != "" {
-			dependencies = append(dependencies, step.New().Parent)
+		provider, allDeps := step.New().GetAllDependencies()
+		allDepURNs := make([]resource.URN, len(allDeps))
+		for i, dep := range allDeps {
+			allDepURNs[i] = dep.URN
 		}
-		if step.New().Provider != "" {
-			prov, err := providers.ParseReference(step.New().Provider)
+
+		if provider != "" {
+			prov, err := providers.ParseReference(provider)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
-					step.New().Provider, step.New().URN, err)
+					provider, step.New().URN, err)
 			}
-			dependencies = append(dependencies, prov.URN())
+			allDepURNs = append(allDepURNs, prov.URN())
 		}
 
-		for _, urn := range dependencies {
+		for _, urn := range allDepURNs {
 			if sg.skippedCreates[urn] {
 				// Targets were specified, but didn't include this resource to create.  And a
 				// resource we are producing a step for does depend on this created resource.
