@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs,python
-  description: Support refresh consistently in up/preview/destroy

@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdkgen/nodejs
-  description: Bump valid nodejs version to v3.133 the one that contains invokeOutput and friends

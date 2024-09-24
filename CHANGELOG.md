@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.134.0 (2024-09-23)
+
+
+### Features
+
+- [engine] Generated and matched aliases are written to debug logs
+  [#17280](https://github.com/pulumi/pulumi/pull/17280)
+
+- [cli/display] Show the count of unchanged resources
+  [#17257](https://github.com/pulumi/pulumi/pull/17257)
+
+- [auto/nodejs] Support an abort channel for gracefully canceling operations
+  [#16783](https://github.com/pulumi/pulumi/pull/16783)
+
+- [auto/{nodejs,python}] Support refresh consistently in up/preview/destroy
+  [#17209](https://github.com/pulumi/pulumi/pull/17209)
+
+- [cli/state] Support falling back to snapshot secret managers when PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER is set
+  [#17236](https://github.com/pulumi/pulumi/pull/17236)
+
+- [sdkgen/python] First-class output-versioned invokes that maintain secrets in Python
+  [#17275](https://github.com/pulumi/pulumi/pull/17275)
+
+
+### Bug Fixes
+
+- [engine] Fix token expired errors due to network issues
+  [#17127](https://github.com/pulumi/pulumi/pull/17127)
+
+- [engine] Fix dependency traversal for untargeted skipped creates
+  [#17340](https://github.com/pulumi/pulumi/pull/17340)
+
+- [engine] Retry token refresh errors immediately
+  [#17338](https://github.com/pulumi/pulumi/pull/17338)
+
+- [cli/config] Fix help text for `config set` command
+  [#17319](https://github.com/pulumi/pulumi/pull/17319)
+
+- [sdk/nodejs] Allow 'pulumi about' in nodejs projects to resolve dependencies from package files by walking up the file tree
+  [#17239](https://github.com/pulumi/pulumi/pull/17239)
+
+- [sdkgen/python] Fully generate TypedDict input types by default
+  [#17296](https://github.com/pulumi/pulumi/pull/17296)
+
+- [sdkgen/python] Fix sdk-gen for parameterized providers
+  [#17303](https://github.com/pulumi/pulumi/pull/17303)
+
+- [sdkgen/python] Fix python defaulting to generating typed dicts for input types
+  [#17322](https://github.com/pulumi/pulumi/pull/17322)
+
+
+### Miscellaneous
+
+- [yaml] Update YAML to 1.10.3
+  [#17304](https://github.com/pulumi/pulumi/pull/17304)
+
+- [sdkgen/nodejs] Bump valid nodejs version to v3.133 the one that contains invokeOutput and friends
+  [#17316](https://github.com/pulumi/pulumi/pull/17316)
+
 ## 3.133.0 (2024-09-16)
 
 
