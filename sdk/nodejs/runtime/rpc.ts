@@ -589,6 +589,18 @@ export function unwrapRpcSecret(obj: any): any {
     return obj.value;
 }
 
+export function containsUnknownValues(value: any): boolean {
+    if (value === unknownValue) {
+        return true;
+    } else if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") {
+        return false;
+    } else if (value instanceof Array) {
+        return value.some(containsUnknownValues);
+    } else {
+        return Object.keys(value).some((k) => containsUnknownValues(value[k]));
+    }
+}
+
 /**
  * Unpacks some special types, reversing the process undertaken by
  * {@link serializeProperty}.
