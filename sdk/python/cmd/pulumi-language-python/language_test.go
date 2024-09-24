@@ -181,14 +181,14 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	runTests := func(t *testing.T, snapshotDir string, useToml bool, inputTypes string) {
+	runTests := func(t *testing.T, snapshotDir string, useToml bool, inputTypes, typechecker string) {
 		cancel := make(chan bool)
 
 		// Run the language plugin
 		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Init: func(srv *grpc.Server) error {
 				pythonExec := "../pulumi-language-python-exec"
-				host := newLanguageHost(pythonExec, engineAddress, "")
+				host := newLanguageHost(pythonExec, engineAddress, "", typechecker)
 				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 				return nil
 			},
@@ -260,20 +260,22 @@ func TestLanguage(t *testing.T) {
 		assert.NoError(t, <-handle.Done)
 	}
 
-	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also
-	// want to test that explicitly setting the input types works as expected, as well as the default. This
-	// shouldn't interact with the project type so we vary both at once.
+	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
+	// test that explicitly setting the input types works as expected, as well as the default. This shouldn't interact
+	// with the project type so we vary both at once. We also want to test that the typechecker works, that doesn't vary
+	// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
+	// tradeoff here only testing the old classes style with pyright.
 
 	//nolint:paralleltest
 	t.Run("default", func(t *testing.T) {
-		runTests(t, "setuppy", false, "")
+		runTests(t, "setuppy", false, "", "mypy")
 	})
 	//nolint:paralleltest
 	t.Run("toml", func(t *testing.T) {
-		runTests(t, "toml", true, "classes-and-dicts")
+		runTests(t, "toml", true, "classes-and-dicts", "pyright")
 	})
 	//nolint:paralleltest
 	t.Run("classes", func(t *testing.T) {
-		runTests(t, "classes", false, "classes")
+		runTests(t, "classes", false, "classes", "pyright")
 	})
 }
