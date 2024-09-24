@@ -236,6 +236,13 @@ type Backend interface {
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
+
+	// DefaultSecretManager returns the default secrets manager to use for stacks created against this backend, or nil if
+	// it is not possible to determine a default secrets manager for a stack prior to its creation.
+	//
+	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
+	// secrets manager for that stack.
+	DefaultSecretManager() (secrets.Manager, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
