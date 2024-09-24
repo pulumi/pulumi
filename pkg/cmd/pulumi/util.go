@@ -206,7 +206,7 @@ func currentBackend(
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
 }
 
-func createSecretsManager(
+func createSecretsManagerForExistingStack(
 	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
@@ -277,7 +277,7 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(ctx, ws, stack, secretsProvider,
+	if err := createSecretsManagerForExistingStack(ctx, ws, stack, secretsProvider,
 		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
 		return nil, err
 	}
