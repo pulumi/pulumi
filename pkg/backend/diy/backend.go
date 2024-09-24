@@ -701,8 +701,12 @@ func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
 	return proj.Name.String() != stack.project.String()
 }
 
-func (b *diyBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	root string, opts *backend.CreateStackOptions,
+func (b *diyBackend) CreateStack(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	root string,
+	initialState *apitype.UntypedDeployment,
+	opts *backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	if opts != nil && len(opts.Teams) > 0 {
 		return nil, backend.ErrTeamsNotSupported

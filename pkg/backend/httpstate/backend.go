@@ -940,7 +940,10 @@ func currentProjectContradictsWorkspace(project *workspace.Project, stack client
 }
 
 func (b *cloudBackend) CreateStack(
-	ctx context.Context, stackRef backend.StackReference, root string,
+	ctx context.Context,
+	stackRef backend.StackReference,
+	root string,
+	initialState *apitype.UntypedDeployment,
 	opts *backend.CreateStackOptions,
 ) (
 	backend.Stack, error,
@@ -964,7 +967,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, nil)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {

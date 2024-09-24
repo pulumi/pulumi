@@ -265,7 +265,7 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	stack, err := b.CreateStack(ctx, stackRef, root, opts)
+	stack, err := b.CreateStack(ctx, stackRef, root, nil, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
