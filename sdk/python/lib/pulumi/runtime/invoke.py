@@ -146,7 +146,7 @@ def invoke_output(
 
     async def do_invoke_output() -> None:
         try:
-            invoke_result = await invoke_async(
+            invoke_result = await _invoke(
                 tok, props, opts, typ, package_ref=package_ref
             )
 
@@ -174,13 +174,14 @@ async def invoke_async(
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
-) -> InvokeResult:
+) -> Any:
     """
     invoke_async dynamically asynchronously invokes the function, tok, which is offered by a provider plugin.
     the inputs can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
-    return await _invoke(tok, props, opts, typ, package_ref=package_ref)
+    invokeResult = await _invoke(tok, props, opts, typ, package_ref=package_ref)
+    return invokeResult.value
 
 
 def _invoke(
