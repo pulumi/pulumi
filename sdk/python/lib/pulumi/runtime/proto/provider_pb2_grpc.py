@@ -167,6 +167,12 @@ class ResourceProviderServicer(object):
 
     def Configure(self, request, context):
         """Configure configures the resource provider with "globals" that control its behavior.
+
+        :::{warning}
+        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+        ConfigureRequest.args.
+        :::
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
