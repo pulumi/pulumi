@@ -349,37 +349,37 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 callback(undefined, resp);
             } catch (e) {
-		if (e instanceof InvalidInputPropertiesError) {
-		    const metadata = new grpc.Metadata();
-		    if (e.invalidProperties) {
-			let status = new statusproto.Status();
-			// We don't care about the exact status code here, since they are pretty web centric, and don't
-			// necessarily make sense in this context.  Pick one that's close enough.
-			status.setCode(grpc.status.INVALID_ARGUMENT);
-			status.setMessage(e.message);
+                if (e instanceof InvalidInputPropertiesError) {
+                    const metadata = new grpc.Metadata();
+                    if (e.invalidProperties) {
+                        const status = new statusproto.Status();
+                        // We don't care about the exact status code here, since they are pretty web centric, and don't
+                        // necessarily make sense in this context.  Pick one that's close enough.
+                        status.setCode(grpc.status.INVALID_ARGUMENT);
+                        status.setMessage(e.message);
 
-			const errorDetails = new errorproto.InvalidInputPropertiesError();
-			e.invalidProperties.forEach((detail) => {
-			    const error = new errorproto.InvalidInputPropertiesError.PropertyError();
-			    error.setPropertyPath(detail.propertyPath);
-			    error.setReason(detail.reason);
-			    errorDetails.addErrors(error);
-			});
+                        const errorDetails = new errorproto.InvalidInputPropertiesError();
+                        e.invalidProperties.forEach((detail) => {
+                            const propertyError = new errorproto.InvalidInputPropertiesError.PropertyError();
+                            propertyError.setPropertyPath(detail.propertyPath);
+                            propertyError.setReason(detail.reason);
+                            errorDetails.addErrors(propertyError);
+                        });
 
-			const details = new anyproto.Any();
-			details.pack(errorDetails.serializeBinary(), "pulumirpc.InvalidInputPropertiesError")
+                        const details = new anyproto.Any();
+                        details.pack(errorDetails.serializeBinary(), "pulumirpc.InvalidInputPropertiesError");
 
-			status.addDetails(details);
-			metadata.add('grpc-status-details-bin', Buffer.from(status.serializeBinary()));
-		    }
-		    const error = {
-			code: grpc.status.INVALID_ARGUMENT,
-			details: e.message,
-			metadata: metadata,
-		    };
-		    callback(error, undefined);
-		    return;
-		}
+                        status.addDetails(details);
+                        metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
+                    }
+                    const error = {
+                        code: grpc.status.INVALID_ARGUMENT,
+                        details: e.message,
+                        metadata: metadata,
+                    };
+                    callback(error, undefined);
+                    return;
+                }
                 callback(e, undefined);
             } finally {
                 // remove the gRPC callback context from the map of in-flight callbacks

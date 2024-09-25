@@ -87,20 +87,22 @@ export class InvalidInputDetails {
     public reason: string;
 
     constructor(propertyPath: string, reason: string) {
-	this.propertyPath = propertyPath;
-	this.reason = reason;
+        this.propertyPath = propertyPath;
+        this.reason = reason;
     }
 }
 
 export class InvalidInputPropertiesError extends Error {
-
     public readonly __pulumiInvalidInputPropertiesError: boolean = true;
 
-    constructor(message: string, public invalidProperties?: Array<InvalidInputDetails>) {
-	super(message);
+    constructor(
+        message: string,
+        public invalidProperties?: Array<InvalidInputDetails>,
+    ) {
+        super(message);
     }
 
     public static isInstance(obj: any): obj is InvalidInputPropertiesError {
-	return utils.isInstance<InvalidInputPropertiesError>(obj, "__pulumiInvalidInputPropertiesError");
+        return utils.isInstance<InvalidInputPropertiesError>(obj, "__pulumiInvalidInputPropertiesError");
     }
 }
