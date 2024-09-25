@@ -52,31 +52,29 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 		if ignore[candidate.URN] {
 			return false
 		}
-		if includeChildren && dependentSet[candidate.Parent] {
-			return true
-		}
-		for _, dependency := range candidate.Dependencies {
-			if dependentSet[dependency] {
-				return true
-			}
-		}
-		for _, deps := range candidate.PropertyDependencies {
-			for _, dep := range deps {
-				if dependentSet[dep] {
+
+		provider, allDeps := candidate.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				if includeChildren && dependentSet[dep.URN] {
+					return true
+				}
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+				if dependentSet[dep.URN] {
 					return true
 				}
 			}
 		}
-		if candidate.DeletedWith != "" && dependentSet[candidate.DeletedWith] {
-			return true
-		}
-		if candidate.Provider != "" {
-			ref, err := providers.ParseReference(candidate.Provider)
-			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
+
+		if provider != "" {
+			ref, err := providers.ParseReference(provider)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 			if dependentSet[ref.URN()] {
 				return true
 			}
 		}
+
 		return false
 	}
 
@@ -124,35 +122,31 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 		if res.URN == candidate.URN && res.ID == candidate.ID {
 			return false
 		}
-		if len(dependentSet[candidate.Parent]) > 0 && len(nonDependentSet[candidate.Parent]) == 0 {
-			return true
-		}
-		for _, dependency := range candidate.Dependencies {
-			if len(dependentSet[dependency]) == 1 && len(nonDependentSet[dependency]) == 0 {
-				return true
-			}
-		}
-		for _, deps := range candidate.PropertyDependencies {
-			for _, dep := range deps {
-				if len(dependentSet[dep]) == 1 && len(nonDependentSet[dep]) == 0 {
+
+		provider, allDeps := candidate.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				if len(dependentSet[dep.URN]) > 0 && len(nonDependentSet[dep.URN]) == 0 {
+					return true
+				}
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+				if len(dependentSet[dep.URN]) == 1 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
 			}
 		}
-		if candidate.DeletedWith != "" {
-			if len(dependentSet[candidate.DeletedWith]) == 1 && len(nonDependentSet[candidate.DeletedWith]) == 0 {
-				return true
-			}
-		}
-		if candidate.Provider != "" {
-			ref, err := providers.ParseReference(candidate.Provider)
-			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
+
+		if provider != "" {
+			ref, err := providers.ParseReference(provider)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 			for _, id := range dependentSet[ref.URN()] {
 				if id == ref.ID() {
 					return true
 				}
 			}
 		}
+
 		return false
 	}
 
@@ -198,23 +192,19 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 	set := mapset.NewSet[*resource.State]()
 
 	dependentUrns := make(map[resource.URN]bool)
-	for _, dep := range res.Dependencies {
-		dependentUrns[dep] = true
-	}
-
-	for _, deps := range res.PropertyDependencies {
-		for _, dep := range deps {
-			dependentUrns[dep] = true
+	provider, allDeps := res.GetAllDependencies()
+	for _, dep := range allDeps {
+		if dep.Type == resource.ResourceParent {
+			// We handle parents later on, so we won't include them here.
+			continue
 		}
+
+		dependentUrns[dep.URN] = true
 	}
 
-	if res.DeletedWith != "" {
-		dependentUrns[res.DeletedWith] = true
-	}
-
-	if res.Provider != "" {
-		ref, err := providers.ParseReference(res.Provider)
-		contract.AssertNoErrorf(err, "cannot parse provider reference %q", res.Provider)
+	if provider != "" {
+		ref, err := providers.ParseReference(provider)
+		contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 		dependentUrns[ref.URN()] = true
 	}
 
@@ -322,21 +312,20 @@ func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedPro
 	r := urns[urn]
 	for {
 		r.marked = true
-		if r.resource.Provider != "" {
-			ref, err := providers.ParseReference(r.resource.Provider)
-			contract.AssertNoErrorf(err, "cannot parse provider reference %q", r.resource.Provider)
+		provider, allDeps := r.resource.GetAllDependencies()
+		if provider != "" {
+			ref, err := providers.ParseReference(provider)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 			dependedProviders[ref.URN()] = struct{}{}
 		}
-		for _, dep := range r.resource.Dependencies {
-			markAsDependency(dep, urns, dependedProviders)
-		}
-		for _, deps := range r.resource.PropertyDependencies {
-			for _, dep := range deps {
-				markAsDependency(dep, urns, dependedProviders)
+
+		for _, dep := range allDeps {
+			if dep.Type == resource.ResourceParent {
+				// We handle parents later on, so we won't include them here.
+				continue
 			}
-		}
-		if r.resource.DeletedWith != "" {
-			markAsDependency(r.resource.DeletedWith, urns, dependedProviders)
+
+			markAsDependency(dep.URN, urns, dependedProviders)
 		}
 
 		// If the resource's parent is already marked, we don't need to continue to

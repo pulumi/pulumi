@@ -296,10 +296,10 @@ example_resource_resource = legacy_names.Example_resource("example_resourceResou
     map_enum=[{
         "string": legacy_names.Enum_XYZ.PLAIN,
     }],
-    request__http=legacy_names.htt_p_module.RequestArgs(
-        url="string",
-        content_body="string",
-    ))
+    request__http={
+        "url": "string",
+        "content_body": "string",
+    })
 ```
 
 </pulumi-choosable>

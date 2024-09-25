@@ -484,55 +484,337 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	p.Run(t, snap1)
 }
 
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// depends on a resource whose creation was skipped.
 func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testing.T) {
 	t.Parallel()
 
-	loaders := []*deploytest.ProviderLoader{
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
 		return nil
 	})
-	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: host1F},
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to depend on it. Target
+	// B, but not A. This should fail because A's create will be skipped, meaning
+	// that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
 	}
 
-	p.Steps = []TestStep{{Op: Update}}
-	p.Run(t, nil)
-
-	resA := p.NewURN("pkgA:m:typA", "resA", "")
-	resB := p.NewURN("pkgA:m:typA", "resB", "")
-
-	// Now, create a resource resB.  But reference it from A. This will cause a dependency we can't
-	// satisfy.
-	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true,
-			deploytest.ResourceOptions{
-				Dependencies: []resource.URN{resB},
-			})
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
 		assert.NoError(t, err)
 
 		return nil
 	})
-	host2F := deploytest.NewPluginHostF(nil, nil, program2F, loaders...)
 
-	p.Options.HostF = host2F
-	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
-	p.Steps = []TestStep{{
-		Op:            Update,
-		ExpectFailure: true,
-	}}
-	p.Run(t, nil)
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// property-depends on a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDependency(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to have a property that
+	// depends on it. Target B, but not A. This should fail because A's create
+	// will be skipped, meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"prop": {resA.URN},
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// is deleted with a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to be deleted with it.
+	// Target B, but not A. This should fail because A's create will be skipped,
+	// meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// is parented to a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var resBOldURN resource.URN
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+		resBOldURN = resB.URN
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to be parented by it.
+	// Target B, but not A. This should fail because A's create will be skipped,
+	// meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			Parent:    resA.URN,
+			AliasURNs: []resource.URN{resBOldURN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
 }
 
 func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *testing.T) {

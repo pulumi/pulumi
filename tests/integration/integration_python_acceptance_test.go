@@ -318,8 +318,11 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestAutomaticVenvCreationPoetry(t *testing.T) {
-	t.Parallel()
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -487,8 +490,11 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestNewPythonRuntimeOptions(t *testing.T) {
-	t.Parallel()
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -508,8 +514,11 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestNewPythonConvertRequirementsTxt(t *testing.T) {
-	t.Parallel()
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
