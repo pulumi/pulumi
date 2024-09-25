@@ -1022,44 +1022,12 @@ func (nameInfo) Format(name string) string {
 	return name
 }
 
-// rewriteUnaryNegate rewrites UnaryOperation(-, Number(N)) into Number(-N).
-func rewriteUnaryNegate(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	var diags hcl.Diagnostics
-	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-		switch expr := expr.(type) {
-		case *model.UnaryOpExpression:
-			if expr.Operation != hclsyntax.OpNegate {
-				return expr, nil
-			}
-			if lit, ok := expr.Operand.(*model.LiteralValueExpression); ok && lit.Value.Type().Equals(cty.Number) {
-				num, _ := lit.Value.AsBigFloat().Int64()
-				negated := &model.LiteralValueExpression{
-					Value:  cty.NumberIntVal(-num),
-					Syntax: lit.Syntax,
-					Tokens: lit.Tokens,
-				}
-
-				typeCheckDiags := negated.Typecheck(true)
-				diags = append(diags, typeCheckDiags...)
-				return negated, nil
-			}
-		}
-
-		return expr, nil
-	}
-
-	expr, visitorDiags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
-	diags = append(diags, visitorDiags...)
-	return expr, diags
-}
-
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	model.Expression, []interface{},
 ) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	expr, unaryNegateDiags := rewriteUnaryNegate(expr)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
@@ -1085,7 +1053,6 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	for _, t := range oTemps {
 		temps = append(temps, t)
 	}
-	diags = append(diags, unaryNegateDiags...)
 	diags = append(diags, convertDiags...)
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)

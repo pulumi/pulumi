@@ -769,6 +769,23 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	if tokens == nil {
 		tokens = _syntax.NewUnaryOpTokens(syntax.Op)
 	}
+
+	// simplify UnaryOperation(Negate, Number(N)) into Number(-N)
+	if syntax.Op == hclsyntax.OpNegate {
+		if lit, ok := operand.(*LiteralValueExpression); ok && lit.Value.Type().Equals(cty.Number) {
+			num, _ := lit.Value.AsBigFloat().Int64()
+			negated := &LiteralValueExpression{
+				Value:  cty.NumberIntVal(-num),
+				Syntax: lit.Syntax,
+				Tokens: lit.Tokens,
+			}
+
+			typecheckDiags := negated.Typecheck(false)
+			diagnostics = append(diagnostics, typecheckDiags...)
+			return negated, diagnostics
+		}
+	}
+
 	expr := &UnaryOpExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
