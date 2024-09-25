@@ -589,15 +589,23 @@ export function unwrapRpcSecret(obj: any): any {
     return obj.value;
 }
 
-export function containsUnknownValues(value: any): boolean {
+/** @internal */
+export function containsUnknownValues(value: unknown): boolean {
     if (value === unknownValue) {
         return true;
-    } else if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") {
+    } else if (
+        value === null ||
+        value === undefined ||
+        typeof value === "boolean" ||
+        typeof value === "number" ||
+        typeof value === "string"
+    ) {
         return false;
     } else if (value instanceof Array) {
         return value.some(containsUnknownValues);
     } else {
-        return Object.keys(value).some((k) => containsUnknownValues(value[k]));
+        const map = value as Record<string, unknown>;
+        return Object.keys(map).some((key) => containsUnknownValues(map[key]));
     }
 }
 
