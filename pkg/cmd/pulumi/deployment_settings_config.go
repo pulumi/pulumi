@@ -260,12 +260,10 @@ func initStackDeploymentCmd(
 		return err
 	}
 
-	oidcExplanationMsg := `
-Pulumi supports OpenID Connect (OIDC) integration across various services by
-leveraging signed, short-lived tokens and eliminating the necessity for hardcoded
-cloud provider credentials and facilitates the exchange of these tokens for
-short-term credentials.
-`
+	oidcExplanationMsg := "\nPulumi supports OpenID Connect (OIDC) integration across various services by " +
+		"leveraging signed, short-lived tokens and eliminating the necessity for hardcoded " +
+		"cloud provider credentials and facilitates the exchange of these tokens for " +
+		"short-term credentials.\n"
 
 	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "Pulumi", colors.SpecHeadline)
 	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "OpenID Connect (OIDC)", colors.SpecInfo)
@@ -465,15 +463,13 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 			useGitHub = false
 
 			ghAppExplanationTitle := "\nPulumi’s GitHub app is not installed\n\n"
-			ghAppExplanationMsg := `Pulumi’s GitHub app displays the results of Pulumi stack update previews in
-pull requests and enables automatic stack deployments via Pulumi Deployments. 
-Once installed and configured, it will show you any potential infrastructure
-changes on Pull Requests and commit checks. You can also configure git push to 
-deploy workflows that update your stacks whenever a pull request is merged.
-
-To install the App follow the instructions at:
-https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/
-`
+			ghAppExplanationMsg := "Pulumi’s GitHub app displays the results of Pulumi stack update previews in " +
+				"pull requests and enables automatic stack deployments via Pulumi Deployments. " +
+				"Once installed and configured, it will show you any potential infrastructure " +
+				"changes on Pull Requests and commit checks. You can also configure git push to " +
+				"deploy workflows that update your stacks whenever a pull request is merged.\n\n" +
+				"To install the App follow the instructions at: " +
+				"https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/\n"
 
 			ghAppExplanationTitle = colors.Highlight(ghAppExplanationTitle,
 				"Pulumi’s GitHub app is not installed", colors.SpecWarning)
@@ -493,13 +489,11 @@ https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/gith
 	}
 
 	if useGitHub {
-		ghAppExplanationMsg := `
-Pulumi’s GitHub app displays the results of Pulumi stack update previews in
-pull requests and enables automatic stack deployments via Pulumi Deployments. 
-Once installed and configured, it will show you any potential infrastructure
-changes on Pull Requests and commit checks. You can also configure git push to 
-deploy workflows that update your stacks whenever a pull request is merged.
-`
+		ghAppExplanationMsg := "\nPulumi’s GitHub app displays the results of Pulumi stack update previews in " +
+			"pull requests and enables automatic stack deployments via Pulumi Deployments. " +
+			"Once installed and configured, it will show you any potential infrastructure " +
+			"changes on Pull Requests and commit checks. You can also configure git push to " +
+			"deploy workflows that update your stacks whenever a pull request is merged.\n"
 
 		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
 		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
