@@ -17,6 +17,7 @@
 package diagtest
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -38,4 +39,8 @@ func LogSink(t testing.TB) diag.Sink {
 			Debug: true,
 		},
 	)
+}
+
+func MockSink(stdoutbuff *bytes.Buffer, stderrbuff *bytes.Buffer) diag.Sink {
+	return diag.DefaultSink(stdoutbuff, stderrbuff, diag.FormatOptions{Color: colors.Never, Debug: true})
 }
