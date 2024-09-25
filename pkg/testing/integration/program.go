@@ -2692,3 +2692,33 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
 }
+
+// AssertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
+// failures when a scenario exceeds the provided threshold.
+type AssertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
+
+func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
+
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2fs (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}

@@ -182,6 +182,15 @@ jobs:
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
+          PERFORMANCE_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind performance-test \
+            --platform "${INTEGRATION_PLATFORMS[@]}" \
+            --version-set "${VERSION_SETS_TO_TEST[@]}"
+          )
+
           ACCEPTANCE_TEST_MATRIX_WIN="{}"
           if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]windows-latest[[:space:]] ]]; then
             ACCEPTANCE_TEST_MATRIX_WIN=$(
@@ -232,6 +241,9 @@ jobs:
           echo "::group::Integration test matrix"
           echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
           echo "::endgroup::"
+          echo "::group::Performance test matrix"
+          echo "$PERFORMANCE_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
           echo "::group::acceptance test matrix windows"
           echo "$ACCEPTANCE_TEST_MATRIX_WIN" | yq -P '.'
           echo "::endgroup::"
@@ -245,6 +257,7 @@ jobs:
           echo "::group::Set outputs"
           ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
           ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
+          ./.github/scripts/set-output performance-test-matrix "${PERFORMANCE_TEST_MATRIX}"
           ./.github/scripts/set-output acceptance-test-matrix-win "${ACCEPTANCE_TEST_MATRIX_WIN}"
           ./.github/scripts/set-output acceptance-test-matrix-macos "${ACCEPTANCE_TEST_MATRIX_MACOS}"
           ./.github/scripts/set-output version-set "${VERSION_SET}"
@@ -253,6 +266,7 @@ jobs:
     outputs:
       unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
       integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
+      performance-test-matrix: "${{ fromJson(steps.matrix.outputs.performance-test-matrix) }}"
       acceptance-test-matrix-win: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-win) }}"
       acceptance-test-matrix-macos: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-macos) }}"
       version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
@@ -369,6 +383,30 @@ jobs:
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+
+  performance-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Performance Test${{ matrix.platform && '' }}
+    needs: [matrix, build-binaries, build-sdks]
+    if: ${{ needs.matrix.outputs.performance-test-matrix != '{}' }}
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix: ${{ fromJson(needs.matrix.outputs.performance-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true
+      enable-coverage: false
+      test-retries: ${{ inputs.test-retries }}
       version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit
 
