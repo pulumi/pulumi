@@ -507,7 +507,7 @@ deploy workflows that update your stacks whenever a pull request is merged.
 		d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationMsg))
 
 		useGitHub = d.Prompts.AskForConfirmation(
-			"do you want to use the Pulumi GitHub App?",
+			"Do you want to use the Pulumi GitHub App?",
 			d.DisplayOptions.Color, true, !d.Interactive)
 	}
 
