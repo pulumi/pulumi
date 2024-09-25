@@ -205,6 +205,77 @@ func (v Value) WithDependencies(deps []urn.URN) Value {
 	return v
 }
 
+// Copy performs a deep copy of the Value.
+//
+// Caveats:
+//
+// - Archives copies share underlying asset values.
+func (v Value) Copy() Value {
+	var dependencies []urn.URN
+	if v.dependencies != nil {
+		dependencies = make([]urn.URN, len(v.dependencies))
+		copy(dependencies, v.dependencies)
+	}
+	var value any
+	switch {
+	// Primitive values can just be copied
+	case v.IsBool(), v.IsNumber(), v.IsString(),
+		v.IsNull(), v.IsComputed():
+		value = v.v
+	case v.IsArray():
+		a := v.AsArray()
+		cp := make(Array, len(a))
+		for i, v := range a {
+			cp[i] = v.Copy()
+		}
+		value = cp
+	case v.IsMap():
+		m := v.AsMap()
+		cp := make(Map, len(m))
+		for k, v := range m {
+			cp[k] = v.Copy()
+		}
+		value = cp
+	case v.IsAsset():
+		a := v.AsAsset()
+		if a == nil {
+			value = a
+		} else {
+			cp := *a
+			value = &cp
+		}
+	case v.IsArchive():
+		a := v.AsArchive()
+		assets := make(map[string]any, len(a.Assets))
+		for k, v := range a.Assets {
+			// values are of the any type, and thus cannot be reliably deep
+			// copied.
+			assets[k] = v
+		}
+		value = &archive.Archive{
+			Sig:    a.Sig,
+			Hash:   a.Hash,
+			Assets: assets,
+			Path:   a.Path,
+			URI:    a.URI,
+		}
+	case v.IsResourceReference():
+		ref := v.AsResourceReference()
+		value = ResourceReference{
+			URN:            ref.URN,
+			ID:             ref.ID.Copy(),
+			PackageVersion: ref.PackageVersion,
+		}
+	}
+
+	return Value{
+		isSecret:     v.isSecret,
+		dependencies: dependencies,
+		v:            value,
+	}
+
+}
+
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
 // To set to a null or computed value, pass Null or Computed as newGoValue.
