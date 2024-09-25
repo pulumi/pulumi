@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
@@ -170,6 +171,8 @@ func TestGet(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.path.Get(tt.from)
 			if tt.failure == nil {
 				assert.Equal(t, tt.expected, got)
@@ -178,6 +181,92 @@ func TestGet(t *testing.T) {
 				assert.Equal(t, tt.failure.found, err.Found())
 				assert.Equal(t, tt.failure.msg, err.Error())
 			}
+		})
+	}
+}
+
+func TestSet(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		path property.Path
+		src  property.Value
+		to   property.Value
+
+		expected property.Value
+	}{
+		{
+			name: "inside map",
+			path: property.Path{property.NewSegment("k2")},
+			src: property.New(property.Map{
+				"k1": property.New("v1"),
+			}),
+			to: property.New("v2"),
+			expected: property.New(property.Map{
+				"k1": property.New("v1"),
+				"k2": property.New("v2"),
+			}),
+		},
+		{
+			name: "inside array",
+			path: property.Path{property.NewSegment(1)},
+			src: property.New(property.Array{
+				property.New("o1"),
+				property.New("o2"),
+			}),
+			to: property.New("v2"),
+			expected: property.New(property.Array{
+				property.New("o1"),
+				property.New("v2"),
+			}),
+		},
+		{
+			name:     "empty path",
+			path:     property.Path{},
+			src:      property.New("v1"),
+			to:       property.New("v2"),
+			expected: property.New("v2"),
+		},
+		{
+			name: "nested",
+			path: property.Path{
+				property.NewSegment("l1"),
+				property.NewSegment(0),
+				property.NewSegment("n1"),
+			},
+			src: property.New(property.Map{
+				"l0": property.New("l0-value"),
+				"l1": property.New(property.Array{
+					property.New(property.Map{
+						"n1": property.New("old-value"),
+					}),
+				}),
+			}),
+			to: property.New(property.Null),
+			expected: property.New(property.Map{
+				"l0": property.New("l0-value"),
+				"l1": property.New(property.Array{
+					property.New(property.Map{
+						"n1": property.New(property.Null),
+					}),
+				}),
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cp := tt.src.Copy()
+			result, err := tt.path.Set(tt.src, tt.to)
+			require.NoError(t, err)
+
+			assert.Equal(t, cp, tt.src, ".Set should not mutate what it's called on")
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
