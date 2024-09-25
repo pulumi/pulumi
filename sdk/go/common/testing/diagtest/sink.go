@@ -41,6 +41,13 @@ func LogSink(t testing.TB) diag.Sink {
 	)
 }
 
-func MockSink(stdoutbuff *bytes.Buffer, stderrbuff *bytes.Buffer) diag.Sink {
-	return diag.DefaultSink(stdoutbuff, stderrbuff, diag.FormatOptions{Color: colors.Never, Debug: true})
+func MockSink(stdout, stderr *bytes.Buffer) diag.Sink {
+	return diag.DefaultSink(
+		stdout,
+		stderr,
+		diag.FormatOptions{
+			Color: colors.Never,
+			Debug: true,
+		},
+	)
 }

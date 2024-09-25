@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -214,6 +215,8 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
+	case <-iter.mon.AbortChan():
+		return nil, result.BailErrorf("EvalSourceIterator aborted")
 	case reg := <-iter.regChan:
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
@@ -638,6 +641,7 @@ type resmon struct {
 	regChan                chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan             chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan            chan *readResourceEvent            // the channel to send resource reads to.
+	abortChan              chan bool                          // a channel that can abort iteration of resources.
 	cancel                 chan bool                          // a channel that can cancel the server.
 	done                   <-chan error                       // a channel that resolves when the server completes.
 	opts                   EvalSourceOptions                  // options for the resource monitor.
@@ -672,6 +676,8 @@ func newResourceMonitor(
 	configSecretKeys []config.Key,
 	tracingSpan opentracing.Span,
 ) (*resmon, error) {
+	abortChan := make(chan bool)
+
 	// Create our cancellation channel.
 	cancel := make(chan bool)
 
@@ -699,6 +705,7 @@ func newResourceMonitor(
 		regChan:            regChan,
 		regOutChan:         regOutChan,
 		regReadChan:        regReadChan,
+		abortChan:          abortChan,
 		cancel:             cancel,
 		opts:               src.opts,
 		callbacks:          map[string]*CallbacksClient{},
@@ -733,6 +740,10 @@ func newResourceMonitor(
 	go d.serve()
 
 	return resmon, nil
+}
+
+func (rm *resmon) AbortChan() <-chan bool {
+	return rm.abortChan
 }
 
 // Get or allocate a new grpc client for the given callback address.
@@ -1724,6 +1735,37 @@ func (rm *resmon) resolveProvider(
 	return ""
 }
 
+// Turn the GRPC status into a message, which can later be logged.  Currently we only support a subset
+// of the possible details types, which can be expanded later.  If the details type is not recognized, we
+// still return the message, but will leave out the details.  This will allow us to be forward compatible
+// when new details types are added.
+func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
+	message := st.Message()
+	for i, d := range st.Details() {
+		if i == 0 {
+			message = message + ":"
+		}
+		switch d := d.(type) {
+		case *pulumirpc.InvalidInputPropertiesError:
+			props := resource.NewObjectProperty(inputs)
+			for _, err := range d.GetErrors() {
+				propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
+				if e == nil {
+					value, ok := propertyPath.Get(props)
+					if ok {
+						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
+							message, err.GetPropertyPath(), value, err.GetReason())
+						continue
+					}
+				}
+				message = fmt.Sprintf("%v\n\t\t- property %v has a problem: %v",
+					message, err.GetPropertyPath(), err.GetReason())
+			}
+		}
+	}
+	return message
+}
+
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
@@ -2197,7 +2239,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Options: options,
 		})
 		if err != nil {
-			return nil, err
+			if st, ok := status.FromError(err); ok {
+				message := statusToMessage(st, props)
+				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
+			} else {
+				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, err)
+			}
+
+			close(rm.abortChan)
+			<-rm.cancel
+			return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
 		}
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
