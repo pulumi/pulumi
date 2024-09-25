@@ -770,21 +770,6 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 		tokens = _syntax.NewUnaryOpTokens(syntax.Op)
 	}
 
-	// simplify UnaryOperation(Negate, Number(N)) into Number(-N)
-	if syntax.Op == hclsyntax.OpNegate {
-		if lit, ok := operand.(*LiteralValueExpression); ok && lit.Value.Type().Equals(cty.Number) {
-			negated := &LiteralValueExpression{
-				Value:  lit.Value.Negate(),
-				Syntax: lit.Syntax,
-				Tokens: lit.Tokens,
-			}
-
-			typecheckDiags := negated.Typecheck(false)
-			diagnostics = append(diagnostics, typecheckDiags...)
-			return negated, diagnostics
-		}
-	}
-
 	expr := &UnaryOpExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
@@ -793,6 +778,24 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
+
+	// simplify UnaryOperation(Negate, Number(N)) into Number(-N)
+	if syntax.Op == hclsyntax.OpNegate {
+		if lit, ok := operand.(*LiteralValueExpression); ok && lit.Value.Type().Equals(cty.Number) {
+			newVal := lit.Value.Negate()
+
+			lit.Tokens = &_syntax.LiteralValueTokens{
+				Parentheses: tokens.Parentheses,
+				Value:       append([]_syntax.Token{tokens.Operator}, lit.Tokens.Value...),
+			}
+			lit.Syntax = &hclsyntax.LiteralValueExpr{
+				SrcRange: syntax.SrcRange,
+				Val:      newVal,
+			}
+			lit.Value = newVal
+			return lit, diagnostics
+		}
+	}
 
 	return expr, diagnostics
 }
