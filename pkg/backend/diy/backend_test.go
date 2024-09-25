@@ -1558,6 +1558,113 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 		"file with a timestamp extension not found in %v", got)
 }
 
+// Tests that a DIY backend's CreateStack implementation will persist supplied initial states.
+func TestCreateStack_WritesInitialState(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	//
+	// Matching expected and actual state byte-for-byte is tricky due to e.g. whitespace changes that may occur during
+	// JSON serialization. Consequently we implement a best-effort approach where we look for a (hopefully) sufficiently
+	// unique token in the serialized state.
+
+	magic := "6826601b489b8b121f77668d401fe7cfc7d1488148e57ed6987b7303ab066919"
+
+	cases := []struct {
+		name     string
+		state    *apitype.UntypedDeployment
+		contains string
+	}{
+		{
+			name: "invalid",
+			state: &apitype.UntypedDeployment{
+				Version:    3,
+				Deployment: json.RawMessage(`{"manifest":1337331}`),
+			},
+			contains: `1337331`,
+		},
+		{
+			name: "invalid snapshot (magic number)",
+			state: &apitype.UntypedDeployment{
+				Version:    3,
+				Deployment: []byte(`{"manifest":{"magic":"incorrect", "version": "3.134.1-dev.1337"}}`),
+			},
+			contains: `"3.134.1-dev.1337"`,
+		},
+		{
+			name: "invalid snapshot (bad dependencies)",
+			state: &apitype.UntypedDeployment{
+				Version: 3,
+				Deployment: []byte(`{
+					"resources": [
+						{
+							"urn": "urn:pulumi:stack::proj::type::name1",
+							"type": "type",
+							"parent": "urn:pulumi:stack::proj::type::name2"
+						},
+						{
+							"urn": "urn:pulumi:stack::proj::type::name2",
+							"type": "type"
+						}
+					]
+				}`),
+			},
+			contains: "urn:pulumi:stack::proj::type::name2",
+		},
+		{
+			name: "valid",
+			state: &apitype.UntypedDeployment{
+				Version: 3,
+				Deployment: []byte(`{
+					"manifest":{
+						"time": "2024-09-24T17:40:37.722248188+01:00",
+						"magic": "` + magic + `",
+						"version": "3.134.1-dev.0"
+					}
+				}`),
+			},
+			contains: magic,
+		},
+	}
+
+	project := "testproj"
+	stack := "teststack"
+
+	for _, c := range cases {
+		c := c
+
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			stateFile := path.Join(stateDir, ".pulumi", "stacks", project, stack+".json")
+
+			ctx := context.Background()
+
+			b, err := newDIYBackend(
+				ctx,
+				diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
+				&workspace.Project{Name: tokens.PackageName(project)},
+				nil,
+			)
+			require.NoError(t, err)
+
+			stackRef, err := b.ParseStackReference(stack)
+			require.NoError(t, err)
+
+			// Act.
+			_, err = b.CreateStack(ctx, stackRef, "", c.state, nil)
+
+			// Assert.
+			require.NoError(t, err)
+			assert.FileExists(t, stateFile)
+			stateBytes, err := os.ReadFile(stateFile)
+			assert.NoError(t, err)
+			assert.Contains(t, string(stateBytes), c.contains)
+		})
+	}
+}
+
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	stateDir := t.TempDir()
