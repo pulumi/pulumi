@@ -19,6 +19,11 @@ import (
 )
 
 // Path provides access and alteration methods on [Value]s.
+//
+// Paths are composed of [PathSegment]s, which can be one of:
+//
+// - [KeySegment]: For indexing into [Map]s.
+// - [IndexSegment]: For indexing into [Array]s.
 type Path []PathSegment
 
 func (p Path) Get(v Value) (Value, PathApplyFailure) {
@@ -32,6 +37,9 @@ func (p Path) Get(v Value) (Value, PathApplyFailure) {
 	return v, nil
 }
 
+// Set a value.
+//
+// Set does not src in place, rather producing a copy.
 func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 	if len(p) == 0 {
 		return to, nil
@@ -74,6 +82,15 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 	}
 }
 
+// Alter changes the value at p by applying f.
+//
+// To preserve metadata, use [WithGoValue] in conjunction with Alter:
+//
+//	p.Alter(v, func(v Value) Value) {
+//		return property.WithGoValue(v, "new-value")
+//	})
+//
+// This will preserve any secrets or dependencies encoded in `v`.
 func (p Path) Alter(v Value, f func(v Value) Value) (Value, PathApplyFailure) {
 	oldValue, err := p.Get(v)
 	if err != nil {
@@ -86,6 +103,7 @@ type PathSegment interface {
 	apply(Value) (Value, PathApplyFailure)
 }
 
+// NewSegment creates a new [PathSegment] suitable for use in [Path].
 func NewSegment[T interface{ string | int }](v T) PathSegment {
 	switch v := any(v).(type) {
 	case string:
