@@ -3335,13 +3335,12 @@ func TestValidationFailures(t *testing.T) {
 		&pulumirpc.InvalidInputPropertiesError{
 			Errors: []*pulumirpc.InvalidInputPropertiesError_InvalidInputPropertyError{
 				{
-					Reason:      "missing",
-					PropertyKey: "testproperty",
+					Reason:       "missing",
+					PropertyPath: "testproperty",
 				},
 				{
 					Reason:       "nested property error",
-					PropertyKey:  "nested",
-					PropertyPath: "[0]",
+					PropertyPath: "nested[0]",
 				},
 			},
 		},

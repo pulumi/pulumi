@@ -1741,26 +1741,25 @@ func (rm *resmon) resolveProvider(
 // when new details types are added.
 func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
-	for _, d := range st.Details() {
+	for i, d := range st.Details() {
+		if i == 0 {
+			message = message + ":"
+		}
 		switch d := d.(type) {
 		case *pulumirpc.InvalidInputPropertiesError:
-			message = message + ":"
+			props := resource.NewObjectProperty(inputs)
 			for _, err := range d.GetErrors() {
-				property := inputs[resource.PropertyKey(err.GetPropertyKey())]
-				value := property.String()
-				path := ""
-				if err.GetPropertyPath() != "" {
-					propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
-					if e == nil {
-						v, ok := propertyPath.Get(property)
-						if ok {
-							value = v.String()
-							path = err.GetPropertyPath()
-						}
+				propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
+				if e == nil {
+					value, ok := propertyPath.Get(props)
+					if ok {
+						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
+							message, err.GetPropertyPath(), value, err.GetReason())
+						continue
 					}
 				}
-				message = fmt.Sprintf("%v\n\t\t- property %v%v with value '%v' has a problem: %v",
-					message, err.GetPropertyKey(), path, value, err.GetReason())
+				message = fmt.Sprintf("%v\n\t\t- property %v has a problem: %v",
+					message, err.GetPropertyPath(), err.GetReason())
 			}
 		}
 	}

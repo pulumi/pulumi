@@ -395,9 +395,8 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.
  */
 proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.toObject = function(includeInstance, msg) {
   var f, obj = {
-    propertyKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    propertyPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    reason: jspb.Message.getFieldWithDefault(msg, 3, "")
+    propertyPath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    reason: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -436,13 +435,9 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.deserializ
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPropertyKey(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
       msg.setPropertyPath(value);
       break;
-    case 3:
+    case 2:
       var value = /** @type {string} */ (reader.readString());
       msg.setReason(value);
       break;
@@ -475,24 +470,17 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.
  */
 proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPropertyKey();
+  f = message.getPropertyPath();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getPropertyPath();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
   f = message.getReason();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      2,
       f
     );
   }
@@ -500,10 +488,10 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.serializeB
 
 
 /**
- * optional string property_key = 1;
+ * optional string property_path = 1;
  * @return {string}
  */
-proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.getPropertyKey = function() {
+proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.getPropertyPath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -512,16 +500,16 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.
  * @param {string} value
  * @return {!proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError} returns this
  */
-proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.setPropertyKey = function(value) {
+proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.setPropertyPath = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string property_path = 2;
+ * optional string reason = 2;
  * @return {string}
  */
-proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.getPropertyPath = function() {
+proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.getReason = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -530,26 +518,8 @@ proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.
  * @param {string} value
  * @return {!proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError} returns this
  */
-proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.setPropertyPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string reason = 3;
- * @return {string}
- */
-proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.getReason = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError} returns this
- */
 proto.pulumirpc.InvalidInputPropertiesError.InvalidInputPropertyError.prototype.setReason = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

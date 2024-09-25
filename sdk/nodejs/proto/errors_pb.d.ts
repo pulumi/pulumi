@@ -52,8 +52,6 @@ export namespace InvalidInputPropertiesError {
 
 
     export class InvalidInputPropertyError extends jspb.Message { 
-        getPropertyKey(): string;
-        setPropertyKey(value: string): InvalidInputPropertyError;
         getPropertyPath(): string;
         setPropertyPath(value: string): InvalidInputPropertyError;
         getReason(): string;
@@ -71,7 +69,6 @@ export namespace InvalidInputPropertiesError {
 
     export namespace InvalidInputPropertyError {
         export type AsObject = {
-            propertyKey: string,
             propertyPath: string,
             reason: string,
         }

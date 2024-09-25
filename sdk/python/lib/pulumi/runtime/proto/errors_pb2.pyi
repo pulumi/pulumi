@@ -61,23 +61,19 @@ class InvalidInputPropertiesError(google.protobuf.message.Message):
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-        PROPERTY_KEY_FIELD_NUMBER: builtins.int
         PROPERTY_PATH_FIELD_NUMBER: builtins.int
         REASON_FIELD_NUMBER: builtins.int
-        property_key: builtins.str
-        """The key to the property that is invalid."""
         property_path: builtins.str
-        """An optional property path to the property that is invalid."""
+        """The path to the property that is invalid."""
         reason: builtins.str
         """The reason the property is invalid."""
         def __init__(
             self,
             *,
-            property_key: builtins.str = ...,
             property_path: builtins.str = ...,
             reason: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["property_key", b"property_key", "property_path", b"property_path", "reason", b"reason"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["property_path", b"property_path", "reason", b"reason"]) -> None: ...
 
     ERRORS_FIELD_NUMBER: builtins.int
     @property
