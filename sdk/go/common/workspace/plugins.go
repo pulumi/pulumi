@@ -346,6 +346,9 @@ type githubSource struct {
 	kind         apitype.PluginKind
 
 	token string
+
+	// If true we explicitly disabled the token due to 401 errors and won't try it again
+	tokenDisabled bool
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
@@ -450,6 +453,7 @@ func (source *githubSource) getHTTPResponse(
 		// If we see a 401 error and were using a token we'll disable that token and try again
 		if downErr != nil && downErr.code == 401 && source.token != "" {
 			source.token = ""
+			source.tokenDisabled = true
 			return source.getHTTPResponse(getHTTPResponse, url, accept)
 		}
 		return nil, -1, err
@@ -469,7 +473,11 @@ func (source *githubSource) getHTTPResponse(
 
 	addAuth := ""
 	if source.token == "" {
-		addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+		if source.tokenDisabled {
+			addAuth = " You can set GITHUB_TOKEN to a different token to make a request with a higher rate limit."
+		} else {
+			addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+		}
 	}
 
 	logging.Errorf("GitHub rate limit exceeded for %s%s%s", req.URL, tryAgain, addAuth)
