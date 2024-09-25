@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -438,19 +437,11 @@ func (ex *deploymentExecutor) performDeletes(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	if len(step.Res().Dependencies) > 0 && skipped.ContainsAny(step.Res().Dependencies...) {
-		return true
-	}
-	for _, deps := range step.Res().PropertyDependencies {
-		if len(deps) > 0 && skipped.ContainsAny(deps...) {
+	_, allDeps := step.Res().GetAllDependencies()
+	for _, dep := range allDeps {
+		if skipped.Contains(dep.URN) {
 			return true
 		}
-	}
-	if step.Res().Parent != "" && skipped.Contains(step.Res().Parent) {
-		return true
-	}
-	if step.Res().DeletedWith != "" && skipped.Contains(step.Res().DeletedWith) {
-		return true
 	}
 
 	return false
@@ -656,40 +647,41 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			continue
 		}
 
-		// Remove any deleted resources from this resource's dependency list.
-		if len(new.Dependencies) != 0 {
-			deps := slice.Prealloc[resource.URN](len(new.Dependencies))
-			for _, d := range new.Dependencies {
-				if referenceable[d] {
-					deps = append(deps, d)
-				}
-			}
-			new.Dependencies = deps
-		}
+		newDeps := []resource.URN{}
+		newPropDeps := map[resource.PropertyKey][]resource.URN{}
 
-		// Remove any deleted resources from this resource's property dependencies
-		// lists. If we end up emptying a property dependency list, we'll remove the
-		// property from the map altogether.
-		for prop, deps := range new.PropertyDependencies {
-			if len(deps) != 0 {
-				newDeps := slice.Prealloc[resource.URN](len(deps))
-				for _, d := range deps {
-					if referenceable[d] {
-						newDeps = append(newDeps, d)
-					}
+		_, allDeps := new.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				// We handle parents separately later on (see undangleParentResources),
+				// so we'll skip over them here.
+				continue
+			case resource.ResourceDependency:
+				if referenceable[dep.URN] {
+					newDeps = append(newDeps, dep.URN)
 				}
-
-				if len(newDeps) > 0 {
-					new.PropertyDependencies[prop] = newDeps
-				} else {
-					delete(new.PropertyDependencies, prop)
+			case resource.ResourcePropertyDependency:
+				if referenceable[dep.URN] {
+					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
+				}
+			case resource.ResourceDeletedWith:
+				if !referenceable[dep.URN] {
+					new.DeletedWith = ""
 				}
 			}
 		}
 
-		// Remove any deleted resources from DeletedWith properties.
-		if new.DeletedWith != "" && !referenceable[new.DeletedWith] {
-			new.DeletedWith = ""
+		// Since we can only have shrunk the sets of dependencies and property
+		// dependencies, we'll only update them if they were non empty to begin
+		// with. This is to avoid e.g. replacing a nil input with an non-nil but
+		// empty output, which while equivalent in many cases is not the same and
+		// could result in subtly different behaviour in some parts of the engine.
+		if len(new.Dependencies) > 0 {
+			new.Dependencies = newDeps
+		}
+		if len(new.PropertyDependencies) > 0 {
+			new.PropertyDependencies = newPropDeps
 		}
 
 		// Add this resource to the resource list and mark it as referenceable.

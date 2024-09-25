@@ -48,7 +48,7 @@ func TestSearch_cmd(t *testing.T) {
 			orgName: orgName,
 			Stdout:  &buff,
 			currentBackend: func(
-				context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+				context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
 				return &stubHTTPBackend{
 					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
@@ -102,7 +102,7 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 		searchCmd: searchCmd{
 			Stdout: &buff,
 			currentBackend: func(
-				context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+				context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
 				return &stubHTTPBackend{
 					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {

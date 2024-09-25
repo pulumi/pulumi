@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -37,6 +38,7 @@ import (
 )
 
 type testHost struct {
+	stderr      *bytes.Buffer
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
@@ -52,7 +54,12 @@ func (h *testHost) ServerAddr() string {
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	panic("not implemented")
+	prefix := ""
+	if urn != "" {
+		prefix = fmt.Sprintf(" %s: ", urn)
+	}
+	_, err := fmt.Fprintf(h.stderr, "[%s]%s\n", prefix, msg)
+	contract.IgnoreError(err)
 }
 
 func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -74,13 +81,13 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (h *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	// Look in the providers map for this provider
-	if version == nil {
+	if descriptor.Version == nil {
 		return nil, errors.New("unexpected provider request with no version")
 	}
 
-	key := fmt.Sprintf("%s@%s", pkg, version)
+	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
 	provider, has := h.providers[key]
 	if !has {
 		return nil, fmt.Errorf("unknown provider %s", key)
@@ -149,7 +156,29 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 func (h *testHost) ResolvePlugin(
 	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
-	panic("not implemented")
+	if kind == apitype.ResourcePlugin {
+		for _, provider := range h.providers {
+			pkg := provider.Pkg()
+			providerVersion, err := getProviderVersion(provider)
+			if err != nil {
+				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+			}
+			if name == string(pkg) && version == nil || version.EQ(providerVersion) {
+				return &workspace.PluginInfo{
+					Name:    name,
+					Kind:    kind,
+					Version: version,
+				}, nil
+			}
+		}
+		return nil, fmt.Errorf("unknown provider %s@%s", name, version)
+	}
+
+	return &workspace.PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, nil
 }
 
 func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {

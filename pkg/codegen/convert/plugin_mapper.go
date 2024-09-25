@@ -76,7 +76,14 @@ func (pc *hostManagedProvider) Close() error {
 // that uses the given plugin host to create providers.
 func ProviderFactoryFromHost(host plugin.Host) ProviderFactory {
 	return func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-		provider, err := host.Provider(pkg, version)
+		descriptor := workspace.PackageDescriptor{
+			PluginSpec: workspace.PluginSpec{
+				Name:    string(pkg),
+				Version: version,
+			},
+		}
+
+		provider, err := host.Provider(descriptor)
 		if err != nil {
 			desc := pkg.String()
 			if version != nil {

@@ -1,4 +1,16 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package graph
 
@@ -335,7 +347,28 @@ func TestDependencyGraph(t *testing.T) {
 			name     string
 			res      *resource.State
 			expected []*resource.State
-		}{}
+		}{
+			{
+				name:     "providerA",
+				res:      providerA,
+				expected: []*resource.State{a1, a2, providerB, b1, c1},
+			},
+			{
+				name:     "a1",
+				res:      a1,
+				expected: []*resource.State{a2, providerB, b1, c1},
+			},
+			{
+				name:     "d1",
+				res:      d1,
+				expected: []*resource.State{d2, d3, d4, d5},
+			},
+			{
+				name:     "e1",
+				res:      e1,
+				expected: []*resource.State{e2, e3, e4, e5},
+			},
+		}
 
 		for _, c := range cases {
 			c := c
@@ -754,6 +787,86 @@ func TestDependencyGraph(t *testing.T) {
 
 				// Act.
 				actual := dg.ParentsOf(c.res)
+
+				// Assert.
+				assert.Equal(t, c.expected, actual)
+			})
+		}
+	})
+
+	t.Run("ChildrenOf", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange.
+		cases := []struct {
+			name     string
+			res      *resource.State
+			expected []*resource.State
+		}{
+			{
+				name:     "d1",
+				res:      d1,
+				expected: []*resource.State{d2, d4},
+			},
+			{
+				name:     "d2",
+				res:      d2,
+				expected: []*resource.State{d4},
+			},
+			{
+				name:     "d3",
+				res:      d3,
+				expected: []*resource.State{d5},
+			},
+			{
+				name:     "e1",
+				res:      e1,
+				expected: []*resource.State{},
+			},
+		}
+
+		for _, c := range cases {
+			c := c
+			t.Run(c.name, func(t *testing.T) {
+				t.Parallel()
+
+				// Act.
+				actual := dg.ChildrenOf(c.res)
+
+				// Assert.
+				assert.Equal(t, c.expected, actual)
+			})
+		}
+	})
+
+	t.Run("Contains", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange.
+		cases := []struct {
+			name     string
+			res      *resource.State
+			expected bool
+		}{
+			{
+				name:     "a1",
+				res:      a1,
+				expected: true,
+			},
+			{
+				name:     "fx1",
+				res:      fx1,
+				expected: false,
+			},
+		}
+
+		for _, c := range cases {
+			c := c
+			t.Run(c.name, func(t *testing.T) {
+				t.Parallel()
+
+				// Act.
+				actual := dg.Contains(c.res)
 
 				// Assert.
 				assert.Equal(t, c.expected, actual)

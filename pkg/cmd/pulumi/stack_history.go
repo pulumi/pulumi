@@ -1,3 +1,17 @@
+// Copyright 2018-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -39,11 +53,12 @@ func newStackHistoryCmd() *cobra.Command {
 This command displays data about previous updates for a stack.`,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -62,11 +77,11 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
-				crypter, needsSave, err := getStackDecrypter(s, ps)
+				crypter, state, err := ssml.getDecrypter(ctx, s, ps)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
-				if needsSave {
+				if state != stackSecretsManagerUnchanged {
 					if err = saveProjectStack(s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}

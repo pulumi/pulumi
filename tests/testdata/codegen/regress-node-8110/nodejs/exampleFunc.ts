@@ -9,7 +9,6 @@ import * as utilities from "./utilities";
 
 export function exampleFunc(args?: ExampleFuncArgs, opts?: pulumi.InvokeOptions): Promise<void> {
     args = args || {};
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("my8110::exampleFunc", {
         "enums": args.enums,

@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -97,6 +96,11 @@ func newDestroyCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			// Destroy is always permitted to fall back to looking for secrets providers in state, since we explicitly
+			// want to support use cases where a user is trying to destroy a stack they no longer have configuration for.
+			ssml := stackSecretsManagerLoader{FallbackToState: true}
+
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
@@ -175,7 +179,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -203,24 +207,13 @@ func newDestroyCmd() *cobra.Command {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-			if err != nil {
-				return err
-			}
-
-			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
-			var defaultSecretsManager secrets.Manager
-			if snap != nil {
-				defaultSecretsManager = snap.SecretsManager
-			}
-
 			getConfig := getStackConfiguration
 			if stackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = getStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, s, proj, defaultSecretsManager)
+			cfg, sm, err := getConfig(ctx, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

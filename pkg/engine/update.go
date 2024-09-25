@@ -227,35 +227,16 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
 func RunInstallPlugins(
-	proj *workspace.Project,
-	pwd string,
-	main string,
-	target *deploy.Target,
-	plugctx *plugin.Context,
+	proj *workspace.Project, opts *deploymentOptions, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
 ) error {
-	_, _, err := installPlugins(
-		context.Background(),
-		proj,
-		pwd,
-		main,
-		target,
-		nil, /*opts*/
-		plugctx,
-		true, /*returnInstallErrors*/
-	)
+	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, opts, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
 func installPlugins(
-	ctx context.Context,
-	proj *workspace.Project,
-	pwd string,
-	main string,
-	target *deploy.Target,
-	opts *deploymentOptions,
-	plugctx *plugin.Context,
-	returnInstallErrors bool,
-) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
+	ctx context.Context, proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
+	plugctx *plugin.Context, returnInstallErrors bool,
+) (PluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -291,8 +272,8 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins.Deduplicate(),
-		plugctx.Host.GetProjectPlugins()); err != nil {
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
 		}
@@ -696,7 +677,8 @@ func (acts *updateActions) OnResourceStepPost(
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
 	// reported above.
-	return ctx.(SnapshotMutation).End(step, err == nil || status == resource.StatusPartialFailure)
+	return ctx.(SnapshotMutation).End(step, err == nil ||
+		status == resource.StatusPartialFailure)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

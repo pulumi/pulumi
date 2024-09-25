@@ -4,15 +4,31 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
 __all__ = [
     'ServerPropertiesForReplicaArgs',
+    'ServerPropertiesForReplicaArgsDict',
     'ServerPropertiesForRestoreArgs',
+    'ServerPropertiesForRestoreArgsDict',
 ]
+
+MYPY = False
+
+if not MYPY:
+    class ServerPropertiesForReplicaArgsDict(TypedDict):
+        create_mode: pulumi.Input[str]
+        version: NotRequired[pulumi.Input[str]]
+elif False:
+    ServerPropertiesForReplicaArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ServerPropertiesForReplicaArgs:
@@ -41,6 +57,13 @@ class ServerPropertiesForReplicaArgs:
     def version(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "version", value)
 
+
+if not MYPY:
+    class ServerPropertiesForRestoreArgsDict(TypedDict):
+        create_mode: pulumi.Input[str]
+        restore_point_in_time: pulumi.Input[str]
+elif False:
+    ServerPropertiesForRestoreArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ServerPropertiesForRestoreArgs:

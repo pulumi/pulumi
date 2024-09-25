@@ -40,13 +40,15 @@ async def get_value2():
 
 
 def do_invoke():
-    value = invoke(
+    invokeResult = invoke(
         "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
-    ).value
-    return value["value"]
+    )
+
+    return invokeResult.value["value"]
 
 
 async def await_invoke():
+    # awaiting InvokeResult X unwraps it and returns X.value
     value = await invoke(
         "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
     )

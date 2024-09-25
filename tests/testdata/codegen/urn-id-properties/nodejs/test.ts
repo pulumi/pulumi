@@ -8,7 +8,6 @@ import * as utilities from "./utilities";
  * It's fine for invokes to use urn and id
  */
 export function test(args: TestArgs, opts?: pulumi.InvokeOptions): Promise<TestResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("urnid:index:Test", {
         "id": args.id,
@@ -29,7 +28,11 @@ export interface TestResult {
  * It's fine for invokes to use urn and id
  */
 export function testOutput(args: TestOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<TestResult> {
-    return pulumi.output(args).apply((a: any) => test(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("urnid:index:Test", {
+        "id": args.id,
+        "urn": args.urn,
+    }, opts);
 }
 
 export interface TestOutputArgs {

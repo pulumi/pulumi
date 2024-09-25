@@ -539,28 +539,28 @@ _package_lock = asyncio.Lock()
 _package_ref = ...
 async def get_package():
 	global _package_ref
-	# TODO: This should check a feature flag for if RegisterPackage is supported.
 	if _package_ref is ...:
-		async with _package_lock:
-			if _package_ref is ...:
-				monitor = pulumi.runtime.settings.get_monitor()
-				parameterization = resource_pb2.Parameterization(
-					name=%q,
-					version=get_version(),
-					value=base64.b64decode(%q),
-				)
-				registerPackageResponse = monitor.RegisterPackage(
-					resource_pb2.RegisterPackageRequest(
+		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
+			async with _package_lock:
+				if _package_ref is ...:
+					monitor = pulumi.runtime.settings.get_monitor()
+					parameterization = resource_pb2.Parameterization(
 						name=%q,
-						version=%q,
-						download_url=get_plugin_download_url(),
-						parameterization=parameterization,
-					))
-				_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
+						version=get_version(),
+						value=base64.b64decode(%q),
+					)
+					registerPackageResponse = monitor.RegisterPackage(
+						resource_pb2.RegisterPackageRequest(
+							name=%q,
+							version=%q,
+							download_url=get_plugin_download_url(),
+							parameterization=parameterization,
+						))
+					_package_ref = registerPackageResponse.ref
+	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
-	if _package_ref is None:
-		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
+	if _package_ref is None or _package_ref is ...:
+		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
 			pkg.Name, param, pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version)
@@ -1917,12 +1917,16 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// If there is a return type, emit it.
 	retTypeName := ""
+	retTypeNameOutput := ""
 	var rets []*schema.Property
 	if returnType != nil {
 		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties
+		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
 	} else {
 		retTypeName = "Awaitable[None]"
+		retTypeNameOutput = "pulumi.Output[None]"
 	}
 
 	var args []*schema.Property
@@ -1930,57 +1934,105 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		args = fun.Inputs.Properties
 	}
 
-	mod.genFunDef(w, name, retTypeName, args, false /* wrapInput */)
-	mod.genFunDocstring(w, fun)
-	mod.genFunDeprecationMessage(w, fun)
+	genFunctionDef := func(returnTypeName string, plain bool) error {
+		fnName := name
+		resultType := returnTypeName
+		if !plain {
+			fnName += "_output"
+			resultType, _ = awaitableTypeNames(returnType.Token)
+		}
 
-	// Copy the function arguments into a dictionary.
-	fmt.Fprintf(w, "    __args__ = dict()\n")
-	for _, arg := range args {
-		// TODO: args validation.
-		fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
+		mod.genFunDef(w, fnName, returnTypeName, args, !plain /* wrapInput */)
+		mod.genFunDocstring(w, fun)
+		mod.genFunDeprecationMessage(w, fun)
+		// Copy the function arguments into a dictionary.
+		fmt.Fprintf(w, "    __args__ = dict()\n")
+		for _, arg := range args {
+			// TODO: args validation.
+			fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
+		}
+		// If the caller explicitly specified a version, use it, otherwise inject this package's version.
+		fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
+
+		// Now simply invoke the runtime function with the arguments.
+		trailingArgs := ""
+		if returnType != nil {
+			// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
+			// the call to invoke.
+			trailingArgs += ", typ=" + baseName
+		}
+
+		// If the invoke is on a parameterized package, make sure we pass the
+		// parameter.
+		pkg, err := fun.PackageReference.Definition()
+		if err != nil {
+			return err
+		}
+		if pkg.Parameterization != nil {
+			trailingArgs += ", package_ref=_utilities.get_package()"
+		}
+
+		runtimeFunction := "invoke"
+		if !plain {
+			runtimeFunction = "invoke_output"
+		}
+
+		fmt.Fprintf(w, "    __ret__ = pulumi.runtime.%s('%s', __args__, opts=opts%s)",
+			runtimeFunction,
+			fun.Token,
+			trailingArgs)
+
+		if plain {
+			// If the function is plain, we need to return the result directly.
+			fmt.Fprint(w, ".value\n")
+		}
+		fmt.Fprintf(w, "\n")
+
+		// And copy the results to an object, if there are indeed any expected returns.
+		if returnType != nil {
+			if plain {
+				fmt.Fprintf(w, "    return %s(", resultType)
+			} else {
+				fmt.Fprintf(w, "    return __ret__.apply(lambda __response__: %s(", resultType)
+			}
+
+			getter := "__ret__"
+			if !plain {
+				getter = "__response__"
+			}
+
+			for i, ret := range rets {
+				if i > 0 {
+					fmt.Fprintf(w, ",")
+				}
+				// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
+				// This avoids calling getter functions which will print deprecation messages on unused
+				// fields and should be hidden from the user during Result instantiation.
+				fmt.Fprintf(w, "\n        %[1]s=pulumi.get(%[2]s, '%[1]s')", PyName(ret.Name), getter)
+			}
+
+			if plain {
+				fmt.Fprintf(w, ")\n")
+			} else {
+				fmt.Fprintf(w, "))\n")
+			}
+		}
+
+		return nil
 	}
 
-	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-	fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
-
-	// Now simply invoke the runtime function with the arguments.
-	trailingArgs := ""
-	if returnType != nil {
-		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
-		// the call to invoke.
-		trailingArgs += ", typ=" + baseName
-	}
-
-	// If the invoke is on a parameterized package, make sure we pass the
-	// parameter.
-	pkg, err := fun.PackageReference.Definition()
-	if err != nil {
+	// generate plain invoke
+	if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
 		return "", err
 	}
-	if pkg.Parameterization != nil {
-		trailingArgs += ", package_ref=_utilities.get_package()"
-	}
 
-	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, trailingArgs)
-	fmt.Fprintf(w, "\n")
-
-	// And copy the results to an object, if there are indeed any expected returns.
-	if returnType != nil {
-		fmt.Fprintf(w, "    return %s(", retTypeName)
-		for i, ret := range rets {
-			if i > 0 {
-				fmt.Fprintf(w, ",")
-			}
-			// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
-			// This avoids calling getter functions which will print deprecation messages on unused
-			// fields and should be hidden from the user during Result instantiation.
-			fmt.Fprintf(w, "\n        %[1]s=pulumi.get(__ret__, '%[1]s')", PyName(ret.Name))
+	if fun.NeedsOutputVersion() {
+		// generate output-versioned invoke
+		if err := genFunctionDef(retTypeNameOutput, false /* plain */); err != nil {
+			return "", err
 		}
-		fmt.Fprintf(w, ")\n")
 	}
 
-	mod.genFunctionOutputVersion(w, fun)
 	return w.String(), nil
 }
 
@@ -2058,38 +2110,6 @@ func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 		}
 	}
 	return nil
-}
-
-// Generates `def ${fn}_output(..) version lifted to work on
-// `Input`-wrapped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
-	if !fun.NeedsOutputVersion() {
-		return
-	}
-
-	returnType := returnTypeObject(fun)
-
-	var retTypeName string
-	if returnType != nil {
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
-		retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
-	} else {
-		retTypeName = "pulumi.Output[void]"
-	}
-
-	originalName := PyName(tokenToName(fun.Token))
-	outputSuffixedName := originalName + "_output"
-
-	var args []*schema.Property
-	if fun.Inputs != nil {
-		args = fun.Inputs.Properties
-	}
-
-	fmt.Fprintf(w, "\n\n@_utilities.lift_output_func(%s)\n", originalName)
-	mod.genFunDef(w, outputSuffixedName, retTypeName, args, true /*wrapInput*/)
-	mod.genFunDocstring(w, fun)
-	mod.genFunDeprecationMessage(w, fun)
-	fmt.Fprintf(w, "    ...\n")
 }
 
 func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
@@ -2250,7 +2270,7 @@ func genPackageMetadata(
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
-	if ok && info.InputTypes == InputTypesSettingClassesAndDicts {
+	if !ok || typedDictEnabled(info.InputTypes) {
 		// Add typing-extensions to the requires
 		updatedRequires := make(map[string]string, len(requires))
 		for key, value := range requires {
@@ -2329,7 +2349,7 @@ func genPackageMetadata(
 	// Collect the deps into a tuple, where the first
 	// element is the dep name and the second element
 	// is the version constraint.
-	deps, err := calculateDeps(requires)
+	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
 	if err != nil {
 		return "", err
 	}
@@ -2970,11 +2990,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				inputTypes:                   info.InputTypes,
 			}
 
-			if info.InputTypes == "" {
-				// TODO[pulumi/pulumi/16375]: Flip default to classes-and-dicts
-				mod.inputTypes = InputTypesSettingClasses
-			}
-
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
 				parentName := path.Dir(modName)
 				if parentName == "." {
@@ -3363,16 +3378,16 @@ func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
 // list in lexical order.
 func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 	requires := map[string]string{}
-	if info, ok := pkg.Language["python"].(PackageInfo); ok {
-		requires = make(map[string]string, len(info.Requires))
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if ok {
 		for k, v := range info.Requires {
 			requires[k] = v
 		}
-		if info.InputTypes == InputTypesSettingClassesAndDicts {
-			requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
-		}
 	}
-	deps, err := calculateDeps(requires)
+	if !ok || typedDictEnabled(info.InputTypes) {
+		requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+	}
+	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
 	if err != nil {
 		return err
 	}
@@ -3389,6 +3404,10 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 
+// Require the SDK to fall within the same major version, and be at least 3.134.0 which added support for the
+// package reference feature flag.
+var MinimumValidParameterizationSDKVersion = ">=3.134.0,<4.0.0"
+
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
 // as provided in the package schema, and validates whether
@@ -3399,19 +3418,25 @@ var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 // a valid value.
 // This function returns an error if the provided Pulumi version fails to
 // validate.
-func ensureValidPulumiVersion(requires map[string]string) (map[string]string, error) {
+func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
+
+	minimumVersion := MinimumValidSDKVersion
+	if parameterized {
+		minimumVersion = MinimumValidParameterizationSDKVersion
+	}
+
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": MinimumValidSDKVersion,
+			"pulumi": minimumVersion,
 		}
 		return result, nil
 	}
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = MinimumValidSDKVersion
+		deps["pulumi"] = minimumVersion
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.
@@ -3450,10 +3475,10 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 // is the dependency's version constraint.
 // This function returns an error if the version of Pulumi listed as a
 // dep fails to validate.
-func calculateDeps(requires map[string]string) ([][2]string, error) {
+func calculateDeps(parameterized bool, requires map[string]string) ([][2]string, error) {
 	var err error
 	result := slice.Prealloc[[2]string](len(requires))
-	if requires, err = ensureValidPulumiVersion(requires); err != nil {
+	if requires, err = ensureValidPulumiVersion(parameterized, requires); err != nil {
 		return nil, err
 	}
 	// Collect all of the names into an array, including

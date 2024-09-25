@@ -363,20 +363,20 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
-	plug, err := host.plugin(apitype.ResourcePlugin, string(pkg), version, nil)
+	plug, err := host.plugin(apitype.ResourcePlugin, descriptor.Name, descriptor.Version, nil)
 	if err != nil {
 		return nil, err
 	}
 	if plug == nil {
 		v := "nil"
-		if version != nil {
-			v = version.String()
+		if descriptor.Version != nil {
+			v = descriptor.Version.String()
 		}
-		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", pkg.String(), v)
+		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", descriptor.Name, v)
 	}
 	return plug.(plugin.Provider), nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,4 +147,64 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	}
 
 	return s
+}
+
+// StateDependency objects are used when enumerating all the dependencies of a
+// resource. They encapsulate the various types of dependency relationships that
+// Pulumi resources may have with one another.
+type StateDependency struct {
+	// The type of dependency.
+	Type StateDependencyType
+	// If the dependency is a property dependency, the property key that owns the
+	// dependency.
+	Key PropertyKey
+	// The URN of the resource that is being depended on.
+	URN URN
+}
+
+// The type of dependencies that a resource may have.
+type StateDependencyType string
+
+const (
+	// ResourceParent is the type of parent-child dependency relationships. The
+	// resource being depended on is the parent of the dependent resource.
+	ResourceParent StateDependencyType = "parent"
+	// ResourceDependency is the type of dependency relationships where there is
+	// no specific property owning the dependency.
+	ResourceDependency StateDependencyType = "dependency"
+	// ResourcePropertyDependency is the type of dependency relationships where a
+	// specific property makes reference to another resource.
+	ResourcePropertyDependency StateDependencyType = "property-dependency"
+	// ResourceDeletedWith is the type of dependency relationships where a
+	// resource will be "deleted with" another. The resource being depended on is
+	// one whose deletion subsumes the deletion of the dependent resource.
+	ResourceDeletedWith StateDependencyType = "deleted-with"
+)
+
+// GetAllDependencies returns a resource's provider and all of its dependencies.
+// For use cases that rely on processing all possible links between sets of
+// resources, this method (coupled with e.g. an exhaustive switch over the types
+// of dependencies returned) should be preferred over direct access to e.g.
+// Dependencies, PropertyDependencies, and so on.
+func (s *State) GetAllDependencies() (string, []StateDependency) {
+	var allDeps []StateDependency
+	if s.Parent != "" {
+		allDeps = append(allDeps, StateDependency{Type: ResourceParent, URN: s.Parent})
+	}
+	for _, dep := range s.Dependencies {
+		if dep != "" {
+			allDeps = append(allDeps, StateDependency{Type: ResourceDependency, URN: dep})
+		}
+	}
+	for key, deps := range s.PropertyDependencies {
+		for _, dep := range deps {
+			if dep != "" {
+				allDeps = append(allDeps, StateDependency{Type: ResourcePropertyDependency, Key: key, URN: dep})
+			}
+		}
+	}
+	if s.DeletedWith != "" {
+		allDeps = append(allDeps, StateDependency{Type: ResourceDeletedWith, URN: s.DeletedWith})
+	}
+	return s.Provider, allDeps
 }

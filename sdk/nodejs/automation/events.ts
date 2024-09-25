@@ -317,6 +317,14 @@ export interface ResOpFailedEvent {
 }
 
 /**
+ * An event emitted when a debugger has been started and is waiting for the user
+ * to attach to it using the DAP protocol.
+ */
+export interface StartDebuggingEvent {
+    config: Record<string, any>;
+}
+
+/**
  * A Pulumi engine event, such as a change to a resource or diagnostic message.
  * This is intended to capture a discriminated union -- exactly one event field
  * will be non-nil.
@@ -387,4 +395,9 @@ export interface EngineEvent {
      * A policy event, if this engine event represents a policy violation.
      */
     policyEvent?: PolicyEvent;
+
+    /**
+     * A debugging event, if the engine event represents a debugging message.
+     */
+    startDebuggingEvent?: StartDebuggingEvent;
 }

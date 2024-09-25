@@ -44,6 +44,12 @@ type ResourceProviderClient interface {
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
+	//
+	// :::{warning}
+	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+	// ConfigureRequest.args.
+	// :::
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
@@ -327,6 +333,12 @@ type ResourceProviderServer interface {
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
+	//
+	// :::{warning}
+	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+	// ConfigureRequest.args.
+	// :::
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)

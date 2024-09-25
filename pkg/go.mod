@@ -36,7 +36,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.131.0
+	github.com/pulumi/pulumi/sdk/v3 v3.134.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/spf13/cobra v1.8.0
@@ -88,11 +88,10 @@ require (
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pkg/errors v0.9.1
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.9.1
-	github.com/pulumi/pulumi-java/pkg v0.14.0
-	github.com/pulumi/pulumi-yaml v1.10.0
+	github.com/pulumi/esc v0.10.0
+	github.com/pulumi/pulumi-java/pkg v0.16.1
+	github.com/pulumi/pulumi-yaml v1.10.3
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
@@ -220,6 +219,7 @@ require (
 	github.com/petar-dambovaliev/aho-corasick v0.0.0-20230725210150-fb29fc3c913e // indirect
 	github.com/pgavlin/text v0.0.0-20240821195002-b51d0990e284 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect

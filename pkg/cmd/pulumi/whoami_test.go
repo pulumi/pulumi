@@ -1,3 +1,17 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -20,7 +34,7 @@ func TestWhoAmICmd_default(t *testing.T) {
 	cmd := whoAmICmd{
 		Stdout: &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -44,7 +58,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -75,7 +89,7 @@ func TestWhoAmICmd_json(t *testing.T) {
 		jsonOut: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -106,7 +120,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -141,7 +155,7 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		jsonOut: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -176,7 +190,7 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 		verbose: true,
 		Stdout:  &buff,
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {

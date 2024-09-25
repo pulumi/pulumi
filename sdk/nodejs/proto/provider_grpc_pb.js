@@ -417,6 +417,12 @@ diffConfig: {
     responseDeserialize: deserialize_pulumirpc_DiffResponse,
   },
   // Configure configures the resource provider with "globals" that control its behavior.
+//
+// :::{warning}
+// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+// ConfigureRequest.args.
+// :::
 configure: {
     path: '/pulumirpc.ResourceProvider/Configure',
     requestStream: false,

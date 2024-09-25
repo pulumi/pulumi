@@ -1265,3 +1265,93 @@ Successfully moved resources from organization/test/sourceStack to organization/
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[2].Parent)
 }
+
+// TODO: Add a test checking the error text for when the reverting to the original destination state fails.
+// See https://github.com/pulumi/pulumi/pull/17208/files#diff-cbb48e4e8470d1946c5073f9d6ece05f454b340cc66ca4d9fbf7901e0a8b5c47L1330
+//
+//nolint:lll // The link is too long
+func TestMoveLockedBackendRevertsDestination(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/anotherproject/destStack"
+	destStack := createStackWithResources(t, b, destStackName, []*resource.State{})
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+
+	lockingB, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	err = lockingB.Lock(ctx, sourceStack.Ref())
+	assert.NoError(t, err)
+
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
+	assert.ErrorContains(t, err, "None of the resources have been moved.  Please fix the error and try again")
+
+	sourceStack, err = b.GetStack(ctx, sourceStack.Ref())
+	require.NoError(t, err)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destStack.Ref())
+	require.NoError(t, err)
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	assert.Len(t, destSnapshot.Resources, 0)
+
+	require.Len(t, sourceSnapshot.Resources, 4)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
+		sourceSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
+		sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name"),
+		sourceSnapshot.Resources[2].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2"),
+		sourceSnapshot.Resources[3].URN)
+}

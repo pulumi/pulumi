@@ -60,7 +60,7 @@ func newCancelCmd() *cobra.Command {
 
 			ws := pkgWorkspace.Instance
 
-			s, err := requireStack(ctx, ws, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

@@ -53,7 +53,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	}
 
 	cmd.AddCommand(newStateEditCommand())
-	cmd.AddCommand(newStateDeleteCommand())
+	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, DefaultLoginManager))
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
 	cmd.AddCommand(newStateUpgradeCommand())
@@ -119,10 +119,10 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
 func runStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, stackName string, showPrompt bool,
 	urn resource.URN, operation edit.OperationFunc,
 ) error {
-	return runTotalStateEdit(ctx, ws, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+	return runTotalStateEdit(ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
@@ -135,13 +135,13 @@ func runStateEdit(
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 ) error {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(ctx, ws, stackName, stackOfferNew, opts)
+	s, err := requireStack(ctx, ws, lm, stackName, stackOfferNew, opts)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,8 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 //
 // Prompt is displayed to the user when selecting the URN.
 func getURNFromState(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, snap **deploy.Snapshot, prompt string,
+	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+	stackName string, snap **deploy.Snapshot, prompt string,
 ) (resource.URN, error) {
 	if snap == nil {
 		// This means we won't cache the value.
@@ -220,7 +221,7 @@ func getURNFromState(
 			Color: cmdutil.GetGlobalColorization(),
 		}
 
-		s, err := requireStack(ctx, ws, stackName, stackLoadOnly, opts)
+		s, err := requireStack(ctx, ws, lm, stackName, stackLoadOnly, opts)
 		if err != nil {
 			return "", err
 		}

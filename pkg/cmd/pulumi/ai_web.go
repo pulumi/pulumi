@@ -82,7 +82,7 @@ type aiWebCmd struct {
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
 	currentBackend func(
-		context.Context, pkgWorkspace.Context, *workspace.Project, display.Options,
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 

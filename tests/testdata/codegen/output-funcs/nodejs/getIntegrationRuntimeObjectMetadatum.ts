@@ -11,7 +11,6 @@ import * as utilities from "./utilities";
  * API Version: 2018-06-01.
  */
 export function getIntegrationRuntimeObjectMetadatum(args: GetIntegrationRuntimeObjectMetadatumArgs, opts?: pulumi.InvokeOptions): Promise<GetIntegrationRuntimeObjectMetadatumResult> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getIntegrationRuntimeObjectMetadatum", {
         "factoryName": args.factoryName,
@@ -58,7 +57,13 @@ export interface GetIntegrationRuntimeObjectMetadatumResult {
  * API Version: 2018-06-01.
  */
 export function getIntegrationRuntimeObjectMetadatumOutput(args: GetIntegrationRuntimeObjectMetadatumOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
-    return pulumi.output(args).apply((a: any) => getIntegrationRuntimeObjectMetadatum(a, opts))
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeOutput("mypkg::getIntegrationRuntimeObjectMetadatum", {
+        "factoryName": args.factoryName,
+        "integrationRuntimeName": args.integrationRuntimeName,
+        "metadataPath": args.metadataPath,
+        "resourceGroupName": args.resourceGroupName,
+    }, opts);
 }
 
 export interface GetIntegrationRuntimeObjectMetadatumOutputArgs {

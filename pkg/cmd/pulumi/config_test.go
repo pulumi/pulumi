@@ -61,6 +61,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = getStackConfiguration(
 		context.Background(),
+		stackSecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
@@ -80,7 +81,6 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 		},
 		nil,
-		nil,
 	)
 }
 
@@ -90,6 +90,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	called := false
 	_, _, _ = getStackConfigurationOrLatest(
 		context.Background(),
+		stackSecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
@@ -111,7 +112,6 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 				}
 			},
 		},
-		nil,
 		nil,
 	)
 	if !called {
@@ -427,7 +427,13 @@ func TestCopyConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		requiresSaving, err := copyEntireConfigMap(
-			sourceStack, &sourceProjectStack, destinationStack, &destinationProjectStack)
+			context.Background(),
+			stackSecretsManagerLoader{},
+			sourceStack,
+			&sourceProjectStack,
+			destinationStack,
+			&destinationProjectStack,
+		)
 		require.NoError(t, err)
 		assert.True(t, requiresSaving, "expected config file changes requiring saving")
 

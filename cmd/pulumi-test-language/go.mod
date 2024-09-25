@@ -10,8 +10,8 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/pulumi/pulumi/pkg/v3 v3.98.0
-	github.com/pulumi/pulumi/sdk/v3 v3.131.0
+	github.com/pulumi/pulumi/pkg/v3 v3.131.0
+	github.com/pulumi/pulumi/sdk/v3 v3.134.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.63.2
@@ -150,7 +150,7 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/esc v0.9.1 // indirect
+	github.com/pulumi/esc v0.10.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

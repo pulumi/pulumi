@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from ... import _utilities
 from ... import x as _x
 
@@ -71,12 +76,16 @@ def get_policy_document(statements: Optional[Sequence[Union['_x.GetPolicyDocumen
         id=pulumi.get(__ret__, 'id'),
         json=pulumi.get(__ret__, 'json'),
         statements=pulumi.get(__ret__, 'statements'))
-
-
-@_utilities.lift_output_func(get_policy_document)
 def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]]]] = None,
                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetPolicyDocumentResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['statements'] = statements
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('aws:x/iam/getPolicyDocument:getPolicyDocument', __args__, opts=opts, typ=GetPolicyDocumentResult)
+    return __ret__.apply(lambda __response__: GetPolicyDocumentResult(
+        id=pulumi.get(__response__, 'id'),
+        json=pulumi.get(__response__, 'json'),
+        statements=pulumi.get(__response__, 'statements')))

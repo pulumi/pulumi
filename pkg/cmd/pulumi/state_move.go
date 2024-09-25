@@ -73,14 +73,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, ws, sourceStackName, stackLoadOnly, display.Options{
+			sourceStack, err := requireStack(ctx, ws, DefaultLoginManager, sourceStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, ws, destStackName, stackLoadOnly, display.Options{
+			destStack, err := requireStack(ctx, ws, DefaultLoginManager, destStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -281,6 +281,10 @@ func (cmd *stateMoveCmd) Run(
 	}
 	sourceSnapshot.Resources = sourceSnapshot.Resources[:i]
 
+	// Save a copy of the destination snapshot so we can restore it if saving the source snapshot with the
+	// deleted resources fails.
+	originalDestResources := destSnapshot.Resources
+
 	// Create a root stack if there is none
 	rootStack, err := stack.GetRootStackResource(destSnapshot)
 	if err != nil {
@@ -348,25 +352,27 @@ func (cmd *stateMoveCmd) Run(
 
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
-		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
+		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
+		r := res.Copy()
+		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
 				return err
 			}
-			res.Parent = rootStack.URN
+			r.Parent = rootStack.URN
 		}
 
-		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(res, remainingResources)...)
-		err = rewriteURNs(res, dest, rewriteMap)
+		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)
+		err = rewriteURNs(r, dest, rewriteMap)
 		if err != nil {
 			return err
 		}
 
-		if _, ok := destResMap[res.URN]; ok {
-			return fmt.Errorf("resource %s already exists in destination stack", res.URN)
+		if _, ok := destResMap[r.URN]; ok {
+			return fmt.Errorf("resource %s already exists in destination stack", r.URN)
 		}
 
-		destSnapshot.Resources = append(destSnapshot.Resources, res)
+		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
 	if len(brokenSourceDependencies) > 0 {
@@ -439,10 +445,27 @@ None of the resources have been moved, it is safe to try again`, err)
 
 	err = saveSnapshot(ctx, source, sourceSnapshot, false)
 	if err != nil {
-		return fmt.Errorf(`failed to save source snapshot: %w
+		// Try to restore the destination snapshot to its original state
+		destSnapshot.Resources = originalDestResources
+		errDest := saveSnapshot(ctx, dest, destSnapshot, false)
+		if errDest != nil {
+			var deleteCommands string
+			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
+			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
+				deleteCommands += fmt.Sprintf(
+					"\n    pulumi state delete --stack %s '%s'",
+					source.Ref().FullyQualifiedName(),
+					resourcesToMoveOrdered[i].URN)
+			}
+			return fmt.Errorf(`failed to save source snapshot: %w
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
-source stack.  Please remove the resources from the source stack manually using 'pulumi state delete'`, err)
+source stack.  Please remove the resources from the source stack manually using the following commands:%v
+'`, err, deleteCommands)
+		}
+		return fmt.Errorf(`failed to save source snapshot: %w
+
+None of the resources have been moved.  Please fix the error and try again`, err)
 	}
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
@@ -478,45 +501,56 @@ type brokenDependency struct {
 
 func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
 	var brokenDeps []brokenDependency
-	j := 0
-	for _, dep := range res.Dependencies {
-		if _, ok := resourcesToMove[string(dep)]; !ok {
-			res.Dependencies[j] = dep
-			j++
-		} else {
-			brokenDeps = append(brokenDeps, brokenDependency{
-				dependencyURN:  dep,
-				dependencyType: dependency,
-				resourceURN:    res.URN,
-			})
-		}
-	}
-	res.Dependencies = res.Dependencies[:j]
-	for k, propDeps := range res.PropertyDependencies {
-		j = 0
-		for _, propDep := range propDeps {
-			if _, ok := resourcesToMove[string(propDep)]; !ok {
-				propDeps[j] = propDep
-				j++
-			} else {
+
+	var preservedDeps []urn.URN
+	preservedPropDeps := map[resource.PropertyKey][]urn.URN{}
+	preservedDeletedWith := urn.URN("")
+
+	// Providers are always moved, so we don't need to break the dependency and can ignore them here.
+	_, allDeps := res.GetAllDependencies()
+	for _, dep := range allDeps {
+		switch dep.Type {
+		case resource.ResourceParent:
+			// Resources are reparented appropriately later on, so we ignore parent dependencies here.
+			continue
+		case resource.ResourceDependency:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
-					dependencyURN:  propDep,
-					dependencyType: propertyDependency,
-					propdepKey:     k,
+					dependencyURN:  dep.URN,
+					dependencyType: dependency,
 					resourceURN:    res.URN,
 				})
+			} else {
+				preservedDeps = append(preservedDeps, dep.URN)
+			}
+		case resource.ResourcePropertyDependency:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  dep.URN,
+					dependencyType: propertyDependency,
+					propdepKey:     dep.Key,
+					resourceURN:    res.URN,
+				})
+			} else {
+				preservedPropDeps[dep.Key] = append(preservedPropDeps[dep.Key], dep.URN)
+			}
+		case resource.ResourceDeletedWith:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  dep.URN,
+					dependencyType: deletedWith,
+					resourceURN:    res.URN,
+				})
+			} else {
+				preservedDeletedWith = dep.URN
 			}
 		}
-		res.PropertyDependencies[k] = propDeps[:j]
 	}
-	if _, ok := resourcesToMove[string(res.DeletedWith)]; ok {
-		brokenDeps = append(brokenDeps, brokenDependency{
-			dependencyURN:  res.DeletedWith,
-			dependencyType: deletedWith,
-			resourceURN:    res.URN,
-		})
-		res.DeletedWith = ""
-	}
+
+	res.Dependencies = preservedDeps
+	res.PropertyDependencies = preservedPropDeps
+	res.DeletedWith = preservedDeletedWith
+
 	return brokenDeps
 }
 
@@ -537,47 +571,44 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 	if err != nil {
 		return err
 	}
-	if res.Provider != "" {
-		if newProviderURN, ok := rewriteMap[res.Provider]; ok {
+
+	provider, allDeps := res.GetAllDependencies()
+	if provider != "" {
+		if newProviderURN, ok := rewriteMap[provider]; ok {
 			res.Provider = newProviderURN
 		} else {
-			providerURN, err := renameStackAndProject(urn.URN(res.Provider), dest)
+			providerURN, err := renameStackAndProject(urn.URN(provider), dest)
 			if err != nil {
 				return err
 			}
 			res.Provider = string(providerURN)
 		}
 	}
-	if res.Parent != "" {
-		parentURN, err := renameStackAndProject(res.Parent, dest)
+
+	var rewrittenDeps []urn.URN
+	rewrittenPropDeps := map[resource.PropertyKey][]urn.URN{}
+
+	for _, dep := range allDeps {
+		rewrittenURN, err := renameStackAndProject(dep.URN, dest)
 		if err != nil {
 			return err
 		}
-		res.Parent = parentURN
-	}
-	for k, dep := range res.Dependencies {
-		depURN, err := renameStackAndProject(dep, dest)
-		if err != nil {
-			return err
-		}
-		res.Dependencies[k] = depURN
-	}
-	for k, propDeps := range res.PropertyDependencies {
-		for j, propDep := range propDeps {
-			depURN, err := renameStackAndProject(propDep, dest)
-			if err != nil {
-				return err
-			}
-			res.PropertyDependencies[k][j] = depURN
+
+		switch dep.Type {
+		case resource.ResourceParent:
+			res.Parent = rewrittenURN
+		case resource.ResourceDependency:
+			rewrittenDeps = append(rewrittenDeps, rewrittenURN)
+		case resource.ResourcePropertyDependency:
+			rewrittenPropDeps[dep.Key] = append(rewrittenPropDeps[dep.Key], rewrittenURN)
+		case resource.ResourceDeletedWith:
+			res.DeletedWith = rewrittenURN
 		}
 	}
-	if res.DeletedWith != "" {
-		urn, err := renameStackAndProject(res.DeletedWith, dest)
-		if err != nil {
-			return err
-		}
-		res.DeletedWith = urn
-	}
+
+	res.Dependencies = rewrittenDeps
+	res.PropertyDependencies = rewrittenPropDeps
+
 	return nil
 }
 

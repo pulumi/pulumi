@@ -162,6 +162,7 @@ export class PulumiCommand {
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
+        signal?: AbortSignal,
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
         // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
@@ -178,7 +179,7 @@ export class PulumiCommand {
             additionalEnv["PATH"] = envPath;
         }
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput);
+        return exec(this.command, args, cwd, additionalEnv, onOutput, signal);
     }
 }
 
@@ -188,6 +189,7 @@ async function exec(
     cwd?: string,
     additionalEnv?: { [key: string]: string },
     onOutput?: (data: string) => void,
+    signal?: AbortSignal,
 ): Promise<CommandResult> {
     const unknownErrCode = -2;
 
@@ -202,6 +204,12 @@ async function exec(
                     data = data.toString();
                 }
                 onOutput(data);
+            });
+        }
+
+        if (signal) {
+            signal.addEventListener("abort", () => {
+                proc.kill("SIGINT", { forceKillAfterTimeout: false });
             });
         }
 

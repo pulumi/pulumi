@@ -29,6 +29,7 @@ import {
     CustomResourceOptions,
     expandProviders,
     ID,
+    pkgFromType,
     ProviderResource,
     Resource,
     ResourceOptions,
@@ -1277,17 +1278,4 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
-}
-
-/**
- * Extracts the package from the type token of the form "pkg:module:member".
- *
- * @internal
- */
-export function pkgFromType(type: string): string | undefined {
-    const parts = type.split(":");
-    if (parts.length === 3) {
-        return parts[0];
-    }
-    return undefined;
 }
