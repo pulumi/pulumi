@@ -21,9 +21,11 @@ export function getTestSuffix() {
 
 /** @internal */
 export function getTestOrg() {
-    let testOrg = "pulumi-test";
-    if (process.env.PULUMI_TEST_ORG) {
-        testOrg = process.env.PULUMI_TEST_ORG;
+    if (process.env.PULUMI_ACCESS_TOKEN) {
+        if (process.env.PULUMI_TEST_ORG) {
+            return process.env.PULUMI_TEST_ORG;
+        }
+        return "pulumi-test";
     }
-    return testOrg;
+    return "organization";
 }
