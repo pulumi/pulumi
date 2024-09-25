@@ -273,13 +273,14 @@ func (v Value) Copy() Value {
 		dependencies: dependencies,
 		v:            value,
 	}
-
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
 // To set to a null or computed value, pass Null or Computed as newGoValue.
 func WithGoValue[T GoValue](value Value, newGoValue T) Value {
-	value.v = New(newGoValue).v
+	value.v = nil                   // Set v to nil so we don't deep copy it.
+	value = value.Copy()            // Copy metadata
+	value.v = normalize(newGoValue) // Set the new value in normalized form
 	return value
 }

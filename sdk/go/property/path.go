@@ -50,17 +50,28 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 		if i.int < 0 || i.int > len(v.AsArray()) {
 			return Value{}, PathApplyIndexOutOfBounds{found: v.AsArray(), idx: i.int}
 		}
-		v.AsArray()[i.int] = to
+		// We now want to set set v.AsArray()[i]=to, but we don't want to mutate v. We make
+		// a shallow copy of v and then alter that.
+		cp := make(Array, len(v.AsArray()))
+		copy(cp, v.AsArray())
+		cp[i.int] = to
+		return butLast.Set(src, New(cp)) // Finally, propagate the shallow change back up.
 	case v.IsMap():
 		k, ok := last.(KeySegment)
 		if !ok {
 			return Value{}, pathErrorf(v, "expected a key step, found %T", last)
 		}
-		v.AsMap()[k.string] = to
+		// We now want to set set v.AsMap()[k]=to, but we don't want to mutate v. We make
+		// a shallow copy of v and then alter that.
+		cp := make(Map, len(v.AsMap()))
+		for k, e := range v.AsMap() {
+			cp[k] = e
+		}
+		cp[k.string] = to                // Assign to the new map
+		return butLast.Set(src, New(cp)) // Finally, propagate the shallow change back up.
 	default:
 		return Value{}, pathErrorf(v, "expected a map or array, found %s", typeString(v))
 	}
-	return src, nil
 }
 
 func (p Path) Alter(v Value, f func(v Value) Value) (Value, PathApplyFailure) {
@@ -127,7 +138,7 @@ type PathApplyKeyExpectedMap struct {
 }
 
 func (err PathApplyKeyExpectedMap) Error() string {
-	return fmt.Sprintf("expected a map, found a %s", typeString(err.found))
+	return "expected a map, found a " + typeString(err.found)
 }
 
 func (err PathApplyKeyExpectedMap) Found() Value {
@@ -152,7 +163,7 @@ type PathApplyIndexExpectedArray struct {
 }
 
 func (err PathApplyIndexExpectedArray) Error() string {
-	return fmt.Sprintf("expected an array, found a %s", typeString(err.found))
+	return "expected an array, found a " + typeString(err.found)
 }
 
 func (err PathApplyIndexExpectedArray) Found() Value {
