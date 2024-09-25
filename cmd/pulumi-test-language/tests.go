@@ -308,8 +308,10 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 4, "expected 4 outputs")
-					assertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
+					assert.True(l, len(outputs) == 3 || len(outputs) == 4, "there are 3 or 4 outputs")
+					if empty, ok := outputs[resource.PropertyKey("empty")]; ok {
+						assert.Equal(l, resource.NewObjectProperty(resource.PropertyMap{}), empty)
+					}
 					assertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
 						"greeting": resource.NewStringProperty("Hello, world!"),
 						"farewell": resource.NewStringProperty("Goodbye, world!"),

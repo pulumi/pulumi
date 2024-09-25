@@ -1415,6 +1415,15 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 			lifted, _ := liftValueToOutput(elem)
 			expr.Expressions[i] = lifted
 		}
+	case *model.ObjectConsExpression:
+		// if the value is a map, then lift each value to Output[T] as well
+		for i, item := range expr.Items {
+			lifted, _ := liftValueToOutput(item.Value)
+			expr.Items[i] = model.ObjectConsItem{
+				Key:   item.Key,
+				Value: lifted,
+			}
+		}
 	}
 
 	return pcl.NewConvertCall(value, destType), destType
