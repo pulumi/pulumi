@@ -31,9 +31,9 @@ export namespace ErrorCause {
 
 export class InvalidInputPropertiesError extends jspb.Message { 
     clearErrorsList(): void;
-    getErrorsList(): Array<InvalidInputPropertiesError.InvalidInputPropertyError>;
-    setErrorsList(value: Array<InvalidInputPropertiesError.InvalidInputPropertyError>): InvalidInputPropertiesError;
-    addErrors(value?: InvalidInputPropertiesError.InvalidInputPropertyError, index?: number): InvalidInputPropertiesError.InvalidInputPropertyError;
+    getErrorsList(): Array<InvalidInputPropertiesError.PropertyError>;
+    setErrorsList(value: Array<InvalidInputPropertiesError.PropertyError>): InvalidInputPropertiesError;
+    addErrors(value?: InvalidInputPropertiesError.PropertyError, index?: number): InvalidInputPropertiesError.PropertyError;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InvalidInputPropertiesError.AsObject;
@@ -47,27 +47,27 @@ export class InvalidInputPropertiesError extends jspb.Message {
 
 export namespace InvalidInputPropertiesError {
     export type AsObject = {
-        errorsList: Array<InvalidInputPropertiesError.InvalidInputPropertyError.AsObject>,
+        errorsList: Array<InvalidInputPropertiesError.PropertyError.AsObject>,
     }
 
 
-    export class InvalidInputPropertyError extends jspb.Message { 
+    export class PropertyError extends jspb.Message { 
         getPropertyPath(): string;
-        setPropertyPath(value: string): InvalidInputPropertyError;
+        setPropertyPath(value: string): PropertyError;
         getReason(): string;
-        setReason(value: string): InvalidInputPropertyError;
+        setReason(value: string): PropertyError;
 
         serializeBinary(): Uint8Array;
-        toObject(includeInstance?: boolean): InvalidInputPropertyError.AsObject;
-        static toObject(includeInstance: boolean, msg: InvalidInputPropertyError): InvalidInputPropertyError.AsObject;
+        toObject(includeInstance?: boolean): PropertyError.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyError): PropertyError.AsObject;
         static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
         static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-        static serializeBinaryToWriter(message: InvalidInputPropertyError, writer: jspb.BinaryWriter): void;
-        static deserializeBinary(bytes: Uint8Array): InvalidInputPropertyError;
-        static deserializeBinaryFromReader(message: InvalidInputPropertyError, reader: jspb.BinaryReader): InvalidInputPropertyError;
+        static serializeBinaryToWriter(message: PropertyError, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyError;
+        static deserializeBinaryFromReader(message: PropertyError, reader: jspb.BinaryReader): PropertyError;
     }
 
-    export namespace InvalidInputPropertyError {
+    export namespace PropertyError {
         export type AsObject = {
             propertyPath: string,
             reason: string,
