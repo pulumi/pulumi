@@ -1,6 +1,6 @@
 # Property Paths
 
-[`PropertyValue`s](TODO: document these) in Pulumi are often grouped together either as a map of `PropertyKey` to `PropertyValue`, or as a single object property value.
+[`PropertyValue`s](TODO: document these) in Pulumi are often grouped together either as a map of `PropertyKey` to `PropertyValue` (aka `PropertyMap`), or as a single object property value.
 
 To address these we can always use `PropertyPath`s.  `PropertyPath`s represent a path to a nested property in a `PropertyValue`.  Examples of valid paths are:
 
@@ -24,4 +24,4 @@ root.array[*].field
 root.array["*"].field
 ```
 
-Conveniently we can turn a `map[PropertyKey]PropertyValue` into a `PropertyValue` to be addressed by a `PropertyPath`, by just using `NewObjectProperty`.
+Conveniently we can turn a `map[PropertyKey]PropertyValue` (aka `PropertyMap`) into a `PropertyValue` to be addressed by a `PropertyPath`, by just using `NewObjectProperty`.
