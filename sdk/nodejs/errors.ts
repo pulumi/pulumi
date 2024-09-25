@@ -82,15 +82,25 @@ export function isGrpcError(err: Error): boolean {
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
 
-export class DetailedError extends Error {
+export class InvalidInputDetails {
+    public propertyPath: string;
+    public reason: string;
 
-    public readonly __pulumiDetailedError: boolean = true;
+    constructor(propertyPath: string, reason: string) {
+	this.propertyPath = propertyPath;
+	this.reason = reason;
+    }
+}
 
-    constructor(message: string, public details?: Array<[string, string]>) {
+export class InvalidInputPropertiesError extends Error {
+
+    public readonly __pulumiInvalidInputPropertiesError: boolean = true;
+
+    constructor(message: string, public invalidProperties?: Array<InvalidInputDetails>) {
 	super(message);
     }
 
-    public static isInstance(obj: any): obj is DetailedError {
-	return utils.isInstance<DetailedError>(obj, "__pulumiDetailedError");
+    public static isInstance(obj: any): obj is InvalidInputPropertiesError {
+	return utils.isInstance<InvalidInputPropertiesError>(obj, "__pulumiInvalidInputPropertiesError");
     }
 }

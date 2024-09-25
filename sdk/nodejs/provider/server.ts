@@ -24,7 +24,7 @@ import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
-import { DetailedError } from "../errors";
+import { InvalidInputPropertiesError } from "../errors";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
@@ -34,7 +34,7 @@ import * as plugproto from "../proto/plugin_pb";
 import * as provrpc from "../proto/provider_grpc_pb";
 import * as provproto from "../proto/provider_pb";
 import * as statusproto from "../proto/status_pb";
-import * as errordetailsproto from "../proto/error_details_pb";
+import * as errorproto from "../proto/errors_pb";
 
 class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
@@ -349,25 +349,25 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 callback(undefined, resp);
             } catch (e) {
-		if (e instanceof DetailedError) {
+		if (e instanceof InvalidInputPropertiesError) {
 		    const metadata = new grpc.Metadata();
-		    if (e.details) {
+		    if (e.invalidProperties) {
 			let status = new statusproto.Status();
 			// We don't care about the exact status code here, since they are pretty web centric, and don't
 			// necessarily make sense in this context.  Pick one that's close enough.
 			status.setCode(grpc.status.INVALID_ARGUMENT);
 			status.setMessage(e.message);
 
-			const errorDetails = new errordetailsproto.BadRequest();
-			e.details.forEach((detail) => {
-			    const violation = new errordetailsproto.BadRequest.FieldViolation();
-			    violation.setField(detail[0]);
-			    violation.setDescription(detail[1]);
-			    errorDetails.addFieldViolations(violation);
+			const errorDetails = new errorproto.InvalidInputPropertiesError();
+			e.invalidProperties.forEach((detail) => {
+			    const error = new errorproto.InvalidInputPropertiesError.PropertyError();
+			    error.setPropertyPath(detail.propertyPath);
+			    error.setReason(detail.reason);
+			    errorDetails.addErrors(error);
 			});
 
 			const details = new anyproto.Any();
-			details.pack(errorDetails.serializeBinary(), "google.rpc.BadRequest")
+			details.pack(errorDetails.serializeBinary(), "pulumirpc.InvalidInputPropertiesError")
 
 			status.addDetails(details);
 			metadata.add('grpc-status-details-bin', Buffer.from(status.serializeBinary()));
@@ -380,7 +380,6 @@ class Server implements grpc.UntypedServiceImplementation {
 		    callback(error, undefined);
 		    return;
 		}
-                console.error(`${e}: ${e.stack}`);
                 callback(e, undefined);
             } finally {
                 // remove the gRPC callback context from the map of in-flight callbacks
