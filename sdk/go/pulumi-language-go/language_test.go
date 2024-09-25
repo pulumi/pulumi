@@ -174,6 +174,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-output-map":                      "constants don't compile",
 	"l2-primitive-ref":                   "go mod tidy fails",
+	"l2-ref-ref":                         "go mod tidy fails",
 	"l2-target-up-with-new-dependency":   "missing go.mod",
 	"l2-resource-alpha":                  "missing go.mod",
 	"l2-resource-asset-archive":          "missing go.mod",
