@@ -14,11 +14,11 @@
 
 package property
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Path provides access and alteration methods on [Value]s.
-//
-// Path does not support glob ("*") expansion. Values are treated as is.
 type Path []PathSegment
 
 func (p Path) Get(v Value) (Value, PathApplyFailure) {
@@ -32,12 +32,43 @@ func (p Path) Get(v Value) (Value, PathApplyFailure) {
 	return v, nil
 }
 
-func (p Path) Set(src, dst Value) PathApplyFailure {
-	panic("Unimplemented")
+func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
+	if len(p) == 0 {
+		return to, nil
+	}
+	butLast, last := p[:len(p)-1], p[len(p)-1]
+	v, err := butLast.Get(src)
+	if err != nil {
+		return Value{}, err
+	}
+	switch {
+	case v.IsArray():
+		i, ok := last.(IndexSegment)
+		if !ok {
+			return Value{}, pathErrorf(v, "expected an index step, found %T", last)
+		}
+		if i.int < 0 || i.int > len(v.AsArray()) {
+			return Value{}, PathApplyIndexOutOfBounds{found: v.AsArray(), idx: i.int}
+		}
+		v.AsArray()[i.int] = to
+	case v.IsMap():
+		k, ok := last.(KeySegment)
+		if !ok {
+			return Value{}, pathErrorf(v, "expected a key step, found %T", last)
+		}
+		v.AsMap()[k.string] = to
+	default:
+		return Value{}, pathErrorf(v, "expected a map or array, found %s", typeString(v))
+	}
+	return src, nil
 }
 
-func (p Path) Alter(v Value, f func(v Value) Value) {
-	panic("Unimplemented")
+func (p Path) Alter(v Value, f func(v Value) Value) (Value, PathApplyFailure) {
+	oldValue, err := p.Get(v)
+	if err != nil {
+		return Value{}, err
+	}
+	return p.Set(v, f(oldValue))
 }
 
 type PathSegment interface {
@@ -61,6 +92,9 @@ type PathApplyFailure interface {
 	Found() Value
 }
 
+// KeySegment represents a traversal into a map by a key.
+//
+// KeySegment does not support glob ("*") expansion. Values are treated as is.
 type KeySegment struct{ string }
 
 func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
@@ -138,3 +172,15 @@ func (err PathApplyIndexOutOfBounds) Error() string {
 	return fmt.Sprintf("index %d out of bounds of an array of length %d",
 		err.idx, len(err.found))
 }
+
+func pathErrorf(v Value, msg string, a ...any) PathApplyFailure {
+	return pathApplyFailure{found: v, msg: fmt.Sprintf(msg, a...)}
+}
+
+type pathApplyFailure struct {
+	found Value
+	msg   string
+}
+
+func (err pathApplyFailure) Error() string { return err.msg }
+func (err pathApplyFailure) Found() Value  { return err.found }
