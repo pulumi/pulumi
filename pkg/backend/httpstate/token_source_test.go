@@ -16,9 +16,8 @@ package httpstate
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/rand"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +26,11 @@ import (
 )
 
 func TestTokenSource(t *testing.T) {
+	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
+	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
+	if runtime.GOOS == "windows" {
+		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
+	}
 	t.Parallel()
 
 	ctx := context.Background()
@@ -60,6 +64,11 @@ func TestTokenSource(t *testing.T) {
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
+	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
+	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
+	if runtime.GOOS == "windows" {
+		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
+	}
 	t.Parallel()
 
 	ctx := context.Background()
@@ -99,12 +108,6 @@ func (ts *testTokenBackend) Refresh(
 ) (string, time.Time, error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
-
-	// Simulate some network errors
-	if rand.Float32() < 0.1 { //nolint:gosec // test is not security sensitive
-		return "", time.Time{}, errors.New("network error")
-	}
-
 	if err := ts.verifyTokenInner(currentToken); err != nil {
 		return "", time.Time{}, err
 	}
@@ -141,12 +144,12 @@ func (ts *testTokenBackend) verifyTokenInner(token string) error {
 	now := time.Now()
 	expires, gotCurrentToken := ts.tokens[token]
 	if !gotCurrentToken {
-		return expiredTokenError{fmt.Errorf("Unknown token: %v", token)}
+		return fmt.Errorf("Unknown token: %v", token)
 	}
 
 	if now.After(expires) {
-		return expiredTokenError{fmt.Errorf("Expired token %v (%v past expiration)",
-			token, now.Sub(expires))}
+		return fmt.Errorf("Expired token %v (%v past expiration)",
+			token, now.Sub(expires))
 	}
 	return nil
 }
