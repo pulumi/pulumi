@@ -270,3 +270,61 @@ func TestSet(t *testing.T) {
 		})
 	}
 }
+
+func TestAlter(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		f        func(property.Value) property.Value
+		v        property.Value
+		expected property.Value
+		path     property.Path
+
+		expectErr bool
+	}{
+		{
+			name: "mutate-in-map",
+			f: func(v property.Value) property.Value {
+				b := v.AsBool()
+				if !b {
+					panic(v)
+				}
+				return property.WithGoValue(v, "yes")
+			},
+			v: property.New(property.Map{
+				"k": property.New(true),
+			}),
+			path: property.Path{property.NewSegment("k")},
+			expected: property.New(property.Map{
+				"k": property.New("yes"),
+			}),
+		},
+		{
+			name: "invalid-path",
+			f: func(v property.Value) property.Value {
+				panic("v")
+			},
+			v: property.New(property.Map{
+				"k": property.New(true),
+			}),
+			path:      property.Path{property.NewSegment("invalid")},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := tt.path.Alter(tt.v, tt.f)
+			if tt.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
