@@ -60,6 +60,7 @@ type prompts interface {
 		isValidFn func(value string) error, opts display.Options,
 	) (string, error)
 	AskForConfirmation(prompt string, color colors.Colorization, defaultValue bool, yes bool) bool
+	Print(prompt string)
 }
 
 type promptHandlers struct{}
@@ -91,6 +92,10 @@ func (promptHandlers) PromptForValue(
 	isValidFn func(value string) error, opts display.Options,
 ) (string, error) {
 	return promptForValue(yes, valueType, defaultValue, secret, isValidFn, opts)
+}
+
+func (promptHandlers) Print(prompt string) {
+	fmt.Println(prompt)
 }
 
 type repoLookup interface {

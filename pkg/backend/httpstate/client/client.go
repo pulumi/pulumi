@@ -1161,6 +1161,17 @@ func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack Stac
 	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
 }
 
+func (pc *Client) GetGHAppIntegration(
+	ctx context.Context, stack StackIdentifier,
+) (*apitype.GitHubAppIntegration, error) {
+	var response apitype.GitHubAppIntegration
+
+	err := pc.restCall(ctx, "GET", fmt.Sprintf("/api/console/orgs/%s/integrations/github-app",
+		stack.Owner), nil, nil, &response)
+
+	return &response, err
+}
+
 func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
 	stack StackIdentifier,
 ) (*apitype.DeploymentSettings, error) {
