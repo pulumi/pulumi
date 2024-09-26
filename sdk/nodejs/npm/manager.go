@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -82,17 +81,12 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 	}
 
 	// Ensure the "node_modules" directory exists.
-	// NB: This is only appropriate for certain package managers.
-	//     Yarn with Plug'n'Play enabled won't produce a node_modules directory,
-	//     either for Yarn Classic or Yarn Berry.
-	nodeModulesPath := filepath.Join(dir, "node_modules")
-	if _, err := os.Stat(nodeModulesPath); err != nil {
-		if os.IsNotExist(err) {
-			return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
+	nodeModulesPath, err := searchup(dir, "node_modules")
+	if nodeModulesPath == "" {
+		if err != nil {
+			return name, fmt.Errorf("error while looking for 'node_modules': %w", err)
 		}
-		// If the node_modules dir exists but we can't stat it, we might be able to proceed
-		// without issue, but it's bizarre enough that we should warn.
-		logging.Warningf("failed to read node_modules metadata: %v", err)
+		return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
 	}
 
 	return name, nil
