@@ -173,7 +173,7 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = createSecretsManager(ctx, cmd.ws, dest, "", false, true)
+		err = createSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
 		if err != nil {
 			return err
 		}

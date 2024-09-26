@@ -329,6 +329,11 @@ type queryResmon struct {
 
 var _ SourceResourceMonitor = (*queryResmon)(nil)
 
+// Query doesn't do anything with the abort channel, so we just construct a new one that we'll never send anything to.
+func (rm *queryResmon) AbortChan() <-chan bool {
+	return make(<-chan bool)
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *queryResmon) Address() string {
 	return rm.addr

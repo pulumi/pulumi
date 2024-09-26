@@ -67,7 +67,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -105,7 +105,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -280,7 +280,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
@@ -298,7 +298,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Create stack "b" and import a checkpoint with a secret
 	bStackRef, err := b.ParseStackReference("organization/project/b")
 	assert.NoError(t, err)
-	bStack, err := b.CreateStack(ctx, bStackRef, "", nil)
+	bStack, err := b.CreateStack(ctx, bStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
@@ -362,7 +362,7 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that trying to cancel a stack that isn't locked doesn't error
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.CancelCurrentUpdate(ctx, aStackRef)
@@ -424,7 +424,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	// Check that creating a new stack doesn't make a backup file
 	aStackRef, err := lb.parseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -467,7 +467,7 @@ func TestRenameWorks(t *testing.T) {
 	// Create a new stack
 	aStackRef, err := lb.parseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -531,7 +531,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 
 	stackRef, err := b.ParseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	stk, err := b.CreateStack(ctx, stackRef, "", nil)
+	stk, err := b.CreateStack(ctx, stackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, stk)
 
@@ -640,7 +640,7 @@ func TestRenameProjectWorks(t *testing.T) {
 	// Create a new stack
 	aStackRef, err := lb.parseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -741,7 +741,7 @@ func TestHtmlEscaping(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("organization/project/a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.ImportDeployment(ctx, aStack, udep)
@@ -778,7 +778,7 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 	// • Simulate `pulumi stack init`, passing non-nil init options
 	fakeStackRef, err := diy.ParseStackReference("organization/b/foobar")
 	assert.NoError(t, err)
-	_, err = diy.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
 }
 
@@ -813,7 +813,7 @@ func TestLegacyFolderStructure(t *testing.T) {
 	bRef, err := b.ParseStackReference("b")
 	assert.NoError(t, err)
 	assert.Equal(t, "b", bRef.String())
-	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "b", bStack.Ref().String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
@@ -831,12 +831,12 @@ func TestListStacksFilter(t *testing.T) {
 	// Create two different project stack
 	aRef, err := b.ParseStackReference("organization/proj1/a")
 	assert.NoError(t, err)
-	_, err = b.CreateStack(ctx, aRef, "", nil)
+	_, err = b.CreateStack(ctx, aRef, "", nil, nil)
 	assert.NoError(t, err)
 
 	bRef, err := b.ParseStackReference("organization/proj2/b")
 	assert.NoError(t, err)
-	_, err = b.CreateStack(ctx, bRef, "", nil)
+	_, err = b.CreateStack(ctx, bRef, "", nil, nil)
 	assert.NoError(t, err)
 
 	// Check that list stack with a filter only shows one stack
@@ -866,7 +866,7 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	foo, err := b.ParseStackReference("foo")
 	require.NoError(t, err)
 
-	_, err = b.CreateStack(ctx, foo, "", nil)
+	_, err = b.CreateStack(ctx, foo, "", nil, nil)
 	require.NoError(t, err)
 	assert.FileExists(t, filepath.Join(tmpDir, ".pulumi", "stacks", "foo.json"))
 }
@@ -1000,7 +1000,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	bRef, err := b.ParseStackReference("organization/testproj/b")
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/testproj/b", bRef.String())
-	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/testproj/b", bStack.Ref().String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "testproj", "b.json"))
@@ -1040,7 +1040,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	aRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
 	assert.Equal(t, "a", aRef.String())
-	aStack, err := b.CreateStack(ctx, aRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "a", aStack.Ref().String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "a.json"))
@@ -1049,7 +1049,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	bRef, err := b.ParseStackReference("organization/not-my-project/b")
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/not-my-project/b", bRef.String())
-	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
 	assert.Error(t, err)
 	assert.Nil(t, bStack)
 
@@ -1057,7 +1057,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	cRef, err := b.ParseStackReference("organization/my-project/c")
 	assert.NoError(t, err)
 	assert.Equal(t, "c", cRef.String())
-	cStack, err := b.CreateStack(ctx, cRef, "", nil)
+	cStack, err := b.CreateStack(ctx, cRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "c", cStack.Ref().String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "c.json"))
@@ -1506,7 +1506,7 @@ func TestCreateStack_gzip(t *testing.T) {
 	fooRef, err := b.ParseStackReference("foo")
 	require.NoError(t, err)
 
-	_, err = b.CreateStack(ctx, fooRef, "", nil)
+	_, err = b.CreateStack(ctx, fooRef, "", nil, nil)
 	require.NoError(t, err)
 
 	// With PULUMI_DIY_BACKEND_GZIP enabled,
@@ -1534,7 +1534,7 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	fooRef, err := b.ParseStackReference("foo")
 	require.NoError(t, err)
 
-	_, err = b.CreateStack(ctx, fooRef, "", nil)
+	_, err = b.CreateStack(ctx, fooRef, "", nil, nil)
 	require.NoError(t, err)
 
 	// With PULUMI_RETAIN_CHECKPOINTS enabled,
@@ -1568,7 +1568,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	ref, err := b.ParseStackReference("stack")
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	// make up a bad stack

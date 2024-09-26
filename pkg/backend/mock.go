@@ -51,9 +51,15 @@ type MockBackend struct {
 	ValidateStackNameF     func(s string) error
 	DoesProjectExistF      func(context.Context, string, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
-	CreateStackF           func(context.Context, StackReference, string, *CreateStackOptions) (Stack, error)
-	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
-	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
+	CreateStackF           func(
+		context.Context,
+		StackReference,
+		string,
+		*apitype.UntypedDeployment,
+		*CreateStackOptions,
+	) (Stack, error)
+	RemoveStackF func(context.Context, Stack, bool) (bool, error)
+	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
@@ -85,6 +91,8 @@ type MockBackend struct {
 		operations.LogQuery) ([]operations.LogEntry, error)
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
+
+	DefaultSecretManagerF func() (secrets.Manager, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -214,11 +222,15 @@ func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (S
 	panic("not implemented")
 }
 
-func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
-	root string, opts *CreateStackOptions,
+func (be *MockBackend) CreateStack(
+	ctx context.Context,
+	stackRef StackReference,
+	root string,
+	initialState *apitype.UntypedDeployment,
+	opts *CreateStackOptions,
 ) (Stack, error) {
 	if be.CreateStackF != nil {
-		return be.CreateStackF(ctx, stackRef, root, opts)
+		return be.CreateStackF(ctx, stackRef, root, initialState, opts)
 	}
 	panic("not implemented")
 }
@@ -418,6 +430,13 @@ func (be *MockBackend) GetStackDeploymentSettings(ctx context.Context,
 func (be *MockBackend) DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error {
 	if be.DestroyStackDeploymentSettingsF != nil {
 		return be.DestroyStackDeploymentSettingsF(ctx, stack)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) DefaultSecretManager() (secrets.Manager, error) {
+	if be.DefaultSecretManagerF != nil {
+		return be.DefaultSecretManagerF()
 	}
 	panic("not implemented")
 }
