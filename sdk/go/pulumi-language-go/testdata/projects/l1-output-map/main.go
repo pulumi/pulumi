@@ -6,7 +6,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("empty", nil)
+		ctx.Export("empty", pulumi.Map{})
 		ctx.Export("strings", pulumi.StringMap{
 			"greeting": pulumi.String("Hello, world!"),
 			"farewell": pulumi.String("Goodbye, world!"),

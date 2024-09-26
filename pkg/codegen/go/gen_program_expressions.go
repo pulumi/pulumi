@@ -552,11 +552,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	destType model.Type,
 	typeName string,
 ) {
-	if len(expr.Items) == 0 {
-		g.Fgenf(w, "nil")
-		return
-	}
-
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true

@@ -7,7 +7,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		allKeys, err := splat.GetSshKeys(ctx, nil, nil)
+		allKeys, err := splat.GetSshKeys(ctx, map[string]interface{}{}, nil)
 		if err != nil {
 			return err
 		}
