@@ -354,6 +354,7 @@ in-project = true
 func copyOptions(opts PythonOptions) PythonOptions {
 	return PythonOptions{
 		Root:        opts.Root,
+		ProgramDir:  opts.ProgramDir,
 		Virtualenv:  opts.Virtualenv,
 		Typechecker: opts.Typechecker,
 		Toolchain:   opts.Toolchain,

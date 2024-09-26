@@ -193,9 +193,10 @@ type pythonLanguageHost struct {
 	tracing       string
 }
 
-func parseOptions(root string, options map[string]interface{}) (toolchain.PythonOptions, error) {
+func parseOptions(root string, programDir string, options map[string]interface{}) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
-		Root: root,
+		Root:       root,
+		ProgramDir: programDir,
 	}
 
 	if virtualenv, ok := options["virtualenv"]; ok {
@@ -266,7 +267,7 @@ func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Cl
 func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
@@ -842,7 +843,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		contract.IgnoreClose(closer)
 	}()
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
@@ -1112,7 +1113,7 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 func (host *pythonLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
@@ -1196,7 +1197,7 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	// Previously we did not pass any arguments to About and we always used the default python command.
 	opts := toolchain.PythonOptions{Toolchain: toolchain.Pip}
 	if req != nil && req.Info != nil {
-		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 		if err != nil {
 			return nil, err
 		}
@@ -1222,7 +1223,7 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 func (host *pythonLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
@@ -1254,7 +1255,7 @@ func (host *pythonLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s", req.Info.ProgramDirectory)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
