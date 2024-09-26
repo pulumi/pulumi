@@ -1223,7 +1223,7 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	var extraOptions []pcl.BindOption
+	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
