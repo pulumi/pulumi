@@ -100,7 +100,7 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
 # methods so don't want type checking telling us to fill them all in.
 
 $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
-    PROTO_FILES=$(find . -name "*.proto" -not -name "status.proto") && \
+    PROTO_FILES=$(find . -name "*.proto") && \
     echo -e "\tPython: $PY_PULUMIRPC" && \
     TEMP_DIR="/tmp/python-build"      && \
     echo -e "\tPython temp dir: $TEMP_DIR" && \
@@ -112,7 +112,8 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     sed -i "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$TEMP_DIR"/pulumi/*.pyi && \
     sed -i "s/@abc.abstractmethod//" "$TEMP_DIR"/pulumi/*.pyi && \
     rm -rf "$PY_PULUMIRPC"/* && \
-    cp -r "$TEMP_DIR"/pulumi/* "$PY_PULUMIRPC"'
+    cp -r "$TEMP_DIR"/pulumi/* "$PY_PULUMIRPC" && \
+    cp -r "$TEMP_DIR"/google/protobuf/* "$PY_PULUMIRPC"'
 
 # python protoc doesn't generate __init__.py files, and autogenerating them is a bit tricky, so we just
 # restore them from git after each generate.

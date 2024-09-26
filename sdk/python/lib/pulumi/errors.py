@@ -12,9 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Optional
+
 
 class RunError(Exception):
     """
     Can be used for terminating a program abruptly, but resulting in a clean exit rather than the usual
     verbose unhandled error logic which emits the source program text and complete stack trace.
     """
+
+
+class InputPropertyError(Exception):
+    def __init__(self, message: str, property_path: str, reason: str):
+        """
+        Can be used to indicate that the client has made a request with a bad input property.
+        """
+        self.message = message
+        self.property_path = property_path
+        self.reason = reason
+
+
+class PropertyError:
+    """
+    Represents an error in a property value.
+    """
+
+    def __init__(self, property_path: str, reason: str):
+        self.property_path = property_path
+        self.reason = reason
+
+
+class InputPropertiesError(Exception):
+    def __init__(self, message: str, errors: Optional[List[PropertyError]] = None):
+        """
+        Can be used to indicate that the client has made a request with bad input properties.
+        """
+        super().__init__(message)
+        self.message = message
+        self.errors = errors
