@@ -98,19 +98,19 @@ func validateVersion(versionOut string) error {
 func (p *poetry) InstallDependencies(ctx context.Context,
 	root string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	pyprojectTomlDir, err := searchup(root, "pyproject.toml")
-	if pyprojectTomlDir == "" {
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
+	if _, err := searchup(root, "pyproject.toml"); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
 		}
 		// If pyproject.toml does not exist, look for a requirements.txt file and use
 		// it to generate a new pyproject.toml.
 		requirementsTxtDir, err := searchup(root, "requirements.txt")
-		if requirementsTxtDir == "" {
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for requirements.txt in %s: %w", root, err)
+			} else {
+				return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
 			}
-			return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
 		}
 		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 		pyprojectToml := filepath.Join(requirementsTxtDir, "pyproject.toml")
@@ -359,10 +359,13 @@ func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 func searchup(currentDir, fileToFind string) (string, error) {
 	if _, err := os.Stat(filepath.Join(currentDir, fileToFind)); err == nil {
 		return currentDir, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
 	}
 	parentDir := filepath.Dir(currentDir)
 	if currentDir == parentDir {
-		return "", nil
+		// Reached the root directory, file not found
+		return "", os.ErrNotExist
 	}
 	return searchup(parentDir, fileToFind)
 }
