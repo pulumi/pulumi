@@ -108,9 +108,8 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for requirements.txt in %s: %w", root, err)
-			} else {
-				return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
 			}
+			return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
 		}
 		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 		pyprojectToml := filepath.Join(requirementsTxtDir, "pyproject.toml")
