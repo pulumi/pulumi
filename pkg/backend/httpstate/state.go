@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/itime"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -185,7 +186,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 			return tok, assumedExpires(), err
 		}
 
-		ts, err := newTokenSource(ctx, token, assumedExpires(), duration, renewLease)
+		ts, err := newTokenSource(ctx, itime.NewRealClock(), token, assumedExpires(), duration, renewLease)
 		if err != nil {
 			return nil, err
 		}

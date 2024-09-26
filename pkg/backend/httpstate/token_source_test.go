@@ -17,20 +17,15 @@ package httpstate
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/itime"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenSource(t *testing.T) {
-	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
-	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
-	if runtime.GOOS == "windows" {
-		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
@@ -38,7 +33,8 @@ func TestTokenSource(t *testing.T) {
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 
 	tok0, tok0Expires := backend.NewToken(dur)
-	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
+	testClock := itime.NewTestClock(time.Now())
+	ts, err := newTokenSource(ctx, testClock, tok0, tok0Expires, dur, backend.Refresh)
 	assert.NoError(t, err)
 	defer ts.Close()
 
@@ -59,16 +55,11 @@ func TestTokenSource(t *testing.T) {
 			assert.NotEqual(t, tok0, tok)
 		}
 
-		time.Sleep(dur / 16)
+		testClock.Advance(dur / 16)
 	}
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
-	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
-	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
-	if runtime.GOOS == "windows" {
-		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
@@ -76,7 +67,8 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 
 	tok0, tok0Expires := backend.NewToken(dur / 10)
-	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
+	testClock := itime.NewTestClock(time.Now())
+	ts, err := newTokenSource(ctx, testClock, tok0, tok0Expires, dur, backend.Refresh)
 	assert.NoError(t, err)
 	defer ts.Close()
 
@@ -85,7 +77,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
-		time.Sleep(dur / 16)
+		testClock.Advance(dur / 16)
 	}
 }
 
