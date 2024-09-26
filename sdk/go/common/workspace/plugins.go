@@ -474,7 +474,7 @@ func (source *githubSource) getHTTPResponse(
 	addAuth := ""
 	if source.token == "" {
 		if source.tokenDisabled {
-			addAuth = " You can set GITHUB_TOKEN to a different token to make a request with a higher rate limit."
+			addAuth = " Your current GITHUB_TOKEN doesn't allow access to the repository, so we disabled it for this request.  You can set GITHUB_TOKEN to a different token to make a request with a higher rate limit."
 		} else {
 			addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
 		}
