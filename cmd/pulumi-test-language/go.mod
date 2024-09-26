@@ -14,6 +14,7 @@ require (
 	github.com/pulumi/pulumi/sdk/v3 v3.134.1
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -181,7 +182,6 @@ require (
 	gocloud.dev v0.37.0 // indirect
 	gocloud.dev/secrets/hashivault v0.37.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.18.0 // indirect
