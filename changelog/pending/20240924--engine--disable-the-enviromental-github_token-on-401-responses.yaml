@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Disable the enviromental GITHUB_TOKEN on 401 responses
