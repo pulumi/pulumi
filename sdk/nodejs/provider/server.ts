@@ -351,7 +351,7 @@ class Server implements grpc.UntypedServiceImplementation {
             } catch (e) {
                 if (e instanceof InvalidInputPropertiesError) {
                     const metadata = new grpc.Metadata();
-                    if (e.invalidProperties) {
+                    if (e.errors) {
                         const status = new statusproto.Status();
                         // We don't care about the exact status code here, since they are pretty web centric, and don't
                         // necessarily make sense in this context.  Pick one that's close enough.
@@ -359,7 +359,7 @@ class Server implements grpc.UntypedServiceImplementation {
                         status.setMessage(e.message);
 
                         const errorDetails = new errorproto.InvalidInputPropertiesError();
-                        e.invalidProperties.forEach((detail) => {
+                        e.errors.forEach((detail) => {
                             const propertyError = new errorproto.InvalidInputPropertiesError.PropertyError();
                             propertyError.setPropertyPath(detail.propertyPath);
                             propertyError.setReason(detail.reason);

@@ -31,7 +31,7 @@ class Provider implements provider.Provider {
 
 	throw new pulumi.InvalidInputPropertiesError(
 	    "failing for a reason",
-	    [new pulumi.InvalidInputDetails("foo", "the failure reason")]);
+	    [new pulumi.PropertyError("foo", "the failure reason")]);
     }
 }
 

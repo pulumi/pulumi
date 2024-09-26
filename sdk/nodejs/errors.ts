@@ -82,7 +82,7 @@ export function isGrpcError(err: Error): boolean {
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
 
-export class InvalidInputDetails {
+export class PropertyError {
     public propertyPath: string;
     public reason: string;
 
@@ -97,7 +97,7 @@ export class InvalidInputPropertiesError extends Error {
 
     constructor(
         message: string,
-        public invalidProperties?: Array<InvalidInputDetails>,
+        public errors?: Array<PropertyError>,
     ) {
         super(message);
     }
