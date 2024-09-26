@@ -737,9 +737,21 @@ func (b *diyBackend) CreateStack(
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil, nil)
+	_, err = b.saveStack(ctx, diyStackRef, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if initialState != nil {
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		if err != nil {
+			return nil, err
+		}
+
+		_, _, err = b.saveCheckpoint(ctx, diyStackRef, chk)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	stack := newStack(diyStackRef, b)
