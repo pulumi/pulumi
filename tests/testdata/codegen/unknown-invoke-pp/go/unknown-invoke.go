@@ -14,7 +14,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = eks.ModuleValues(ctx, nil, nil)
+		_, err = eks.ModuleValues(ctx, map[string]interface{}{}, nil)
 		if err != nil {
 			return err
 		}

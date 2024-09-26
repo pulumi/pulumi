@@ -50,7 +50,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		zones, err := aws.GetAvailabilityZones(ctx, nil, nil)
+		zones, err := aws.GetAvailabilityZones(ctx, &aws.GetAvailabilityZonesArgs{}, nil)
 		if err != nil {
 			return err
 		}
