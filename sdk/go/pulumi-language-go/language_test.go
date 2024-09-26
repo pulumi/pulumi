@@ -175,7 +175,6 @@ var expectedFailures = map[string]string{
 	"l1-output-map":             "constants don't compile",
 	"l2-primitive-ref":          "go mod tidy fails",
 	"l2-resource-asset-archive": "missing go.mod",
-	"l2-resource-primitives":    "missing go.mod",
 	"l2-resource-config":        "missing go.mod",
 	"l2-invoke-simple":          "multiple-value in single-value context",
 	"l2-invoke-variants":        "multiple-value in single-value context",
