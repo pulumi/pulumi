@@ -128,6 +128,11 @@ func (d *AgentPoolIDMarshaller) MarshalJSON() ([]byte, error) {
 	return json.Marshal(nil)
 }
 
+type GitHubAppIntegration struct {
+	// Whether the app is installed for this org.
+	Installed bool `json:"installed"`
+}
+
 type DeploymentSettings struct {
 	Tag           string                    `json:"tag,omitempty" yaml:"tag,omitempty"`
 	Executor      *ExecutorContext          `json:"executorContext,omitempty" yaml:"executorContext,omitempty"`

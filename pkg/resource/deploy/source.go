@@ -69,6 +69,7 @@ type SourceResourceMonitor interface {
 
 	Address() string
 	Cancel() error
+	AbortChan() <-chan bool
 	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,

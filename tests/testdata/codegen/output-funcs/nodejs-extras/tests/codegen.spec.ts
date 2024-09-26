@@ -144,6 +144,20 @@ describe("output-funcs", () => {
         });
     });
 
+    it("listStorageAccountKeysOutput with unknown inputs returns unknown", (done) => {
+        const output = sut.listStorageAccountKeysOutput({
+            accountName: pulumi.output("my-account-name"),
+            resourceGroupName: pulumi.output("my-resource-group-name"),
+            expand: pulumi.unknown as any,
+        });
+
+        output.apply((res) => {
+            done(new Error("apply should not be called when the result is unknown"));
+        });
+
+        setTimeout(done, 1000);
+    });
+
     it("getIntegrationRuntimeObjectMetadatumOutput", (done) => {
         checkTable(
             done,

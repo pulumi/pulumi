@@ -345,6 +345,65 @@ func TestAutomaticVenvCreationPoetry(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallParentDirectory(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-parent"))
+	// Run from the subdir with the Pulumi.yaml file
+	e.CWD = filepath.Join(e.RootPath, "subfolder")
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallWithMain(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-main"))
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallWithMainAndParent(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-main-and-parent"))
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, "src", ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMypySupport(t *testing.T) {
 	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

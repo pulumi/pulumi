@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -701,8 +702,12 @@ func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
 	return proj.Name.String() != stack.project.String()
 }
 
-func (b *diyBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	root string, opts *backend.CreateStackOptions,
+func (b *diyBackend) CreateStack(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	root string,
+	initialState *apitype.UntypedDeployment,
+	opts *backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	if opts != nil && len(opts.Teams) > 0 {
 		return nil, backend.ErrTeamsNotSupported
@@ -732,9 +737,21 @@ func (b *diyBackend) CreateStack(ctx context.Context, stackRef backend.StackRefe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil, nil)
+	_, err = b.saveStack(ctx, diyStackRef, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if initialState != nil {
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		if err != nil {
+			return nil, err
+		}
+
+		_, _, err = b.saveCheckpoint(ctx, diyStackRef, chk)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	stack := newStack(diyStackRef, b)
@@ -1374,6 +1391,13 @@ func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack b
 	return errors.New("stack deployments not supported with diy backends")
 }
 
+func (b *diyBackend) GetGHAppIntegration(
+	ctx context.Context, stack backend.Stack,
+) (*apitype.GitHubAppIntegration, error) {
+	// The local backend does not support github integration.
+	return nil, errors.New("github integration not supported with diy backends")
+}
+
 func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
 	stack backend.Stack,
 ) (*apitype.DeploymentSettings, error) {
@@ -1408,4 +1432,11 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	}
 
 	return nil
+}
+
+func (b *diyBackend) DefaultSecretManager() (secrets.Manager, error) {
+	// The default secrets manager for stacks against a DIY backend is a
+	// passphrase-based manager.
+	info := &workspace.ProjectStack{}
+	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
 }

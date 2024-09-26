@@ -791,7 +791,6 @@ class Unknown {
 /**
  * {@link unknown} is the singleton {@link Unknown} value.
  *
- * @internal
  */
 export const unknown = new Unknown();
 

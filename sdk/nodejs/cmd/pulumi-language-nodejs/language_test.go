@@ -181,75 +181,79 @@ func TestLanguage(t *testing.T) {
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
 	for _, forceTsc := range []bool{false, true} {
 		forceTsc := forceTsc
-		cancel := make(chan bool)
+		t.Run(fmt.Sprintf("forceTsc=%v", forceTsc), func(t *testing.T) {
+			t.Parallel()
 
-		// Run the language plugin
-		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-			Init: func(srv *grpc.Server) error {
-				host := newLanguageHost(engineAddress, "", forceTsc)
-				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-				return nil
-			},
-			Cancel: cancel,
-		})
-		require.NoError(t, err)
+			cancel := make(chan bool)
 
-		// Create a temp project dir for the test to run in
-		rootDir := t.TempDir()
-
-		snapshotDir := "./testdata/"
-		if forceTsc {
-			snapshotDir += "tsc"
-		} else {
-			snapshotDir += "tsnode"
-		}
-
-		// Prepare to run the tests
-		prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
-			LanguagePluginName:   "nodejs",
-			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-			TemporaryDirectory:   rootDir,
-			SnapshotDirectory:    snapshotDir,
-			CoreSdkDirectory:     "../..",
-			CoreSdkVersion:       sdk.Version.String(),
-			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-				{
-					Path:        "package\\.json",
-					Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
-					Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+			// Run the language plugin
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					host := newLanguageHost(engineAddress, "", forceTsc)
+					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+					return nil
 				},
-				{
-					Path:        "package\\.json",
-					Pattern:     rootDir + "/artifacts",
-					Replacement: "ROOT/artifacts",
-				},
-			},
-		})
-		require.NoError(t, err)
-
-		for _, tt := range tests.Tests {
-			tt := tt
-			t.Run(fmt.Sprintf("forceTsc=%v/%s", forceTsc, tt), func(t *testing.T) {
-				t.Parallel()
-
-				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
-					Token: prepare.Token,
-					Test:  tt,
-				})
-
-				require.NoError(t, err)
-				for _, msg := range result.Messages {
-					t.Log(msg)
-				}
-				t.Logf("stdout: %s", result.Stdout)
-				t.Logf("stderr: %s", result.Stderr)
-				assert.True(t, result.Success)
+				Cancel: cancel,
 			})
-		}
+			require.NoError(t, err)
 
-		t.Cleanup(func() {
-			close(cancel)
-			assert.NoError(t, <-handle.Done)
+			// Create a temp project dir for the test to run in
+			rootDir := t.TempDir()
+
+			snapshotDir := "./testdata/"
+			if forceTsc {
+				snapshotDir += "tsc"
+			} else {
+				snapshotDir += "tsnode"
+			}
+
+			// Prepare to run the tests
+			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+				LanguagePluginName:   "nodejs",
+				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:   rootDir,
+				SnapshotDirectory:    snapshotDir,
+				CoreSdkDirectory:     "../..",
+				CoreSdkVersion:       sdk.Version.String(),
+				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+					{
+						Path:        "package\\.json",
+						Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+						Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+					},
+					{
+						Path:        "package\\.json",
+						Pattern:     rootDir + "/artifacts",
+						Replacement: "ROOT/artifacts",
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			for _, tt := range tests.Tests {
+				tt := tt
+				t.Run(tt, func(t *testing.T) {
+					t.Parallel()
+
+					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+						Token: prepare.Token,
+						Test:  tt,
+					})
+
+					require.NoError(t, err)
+					for _, msg := range result.Messages {
+						t.Log(msg)
+					}
+					t.Logf("stdout: %s", result.Stdout)
+					t.Logf("stderr: %s", result.Stderr)
+					assert.True(t, result.Success)
+				})
+			}
+
+			t.Cleanup(func() {
+				close(cancel)
+				assert.NoError(t, <-handle.Done)
+			})
 		})
 	}
 }

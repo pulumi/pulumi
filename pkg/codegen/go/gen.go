@@ -3795,7 +3795,7 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
 	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
 	if extPkg.SupportPack() {
-		return fmt.Sprintf("%s/%s", modpath, name)
+		return fmt.Sprintf("%s/%s", modpath, goPackage(name))
 	}
 
 	return fmt.Sprintf("%s/go/%s", modpath, name)

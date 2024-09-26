@@ -499,3 +499,170 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
+
+// TestReplacementParameterizedProviderImport tests that we can register a parameterized provider that replaces a base
+// provider and use it to import resources. Test with both default and explicit providers
+func TestReplacementParameterizedProviderImport(t *testing.T) {
+	t.Parallel()
+
+	loadCount := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			loadCount++
+
+			var param string
+
+			return &deploytest.Provider{
+				ParameterizeF: func(
+					ctx context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+
+					param = string(value.Value)
+
+					return plugin.ParameterizeResponse{
+						Name:    value.Name,
+						Version: value.Version,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if param == "" {
+						assert.Equal(t, tokens.Type("pkgA:m:typA"), req.URN.Type())
+						assert.Equal(t, resource.ID("idA"), req.ID)
+					} else {
+						assert.Equal(t, tokens.Type("pkgExt:m:typA"), req.URN.Type())
+						assert.Equal(t, resource.ID("idB"), req.ID)
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Inputs: resource.PropertyMap{
+								"input": resource.NewStringProperty("input"),
+							},
+							Outputs: resource.PropertyMap{
+								"output": resource.NewStringProperty("output"),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		require.NoError(t, err)
+
+		// Import a resource using that base provider
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			PackageRef: pkgRef,
+			ImportID:   "idA",
+			Inputs: resource.PropertyMap{
+				"input": resource.NewStringProperty("input"),
+			},
+		})
+		require.NoError(t, err)
+
+		// Now register a replacement provider
+		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
+			Name:    "pkgExt",
+			Version: "0.5.0",
+			Value:   []byte("replacement"),
+		})
+		require.NoError(t, err)
+
+		// Test importing a resource with the replacement provider
+		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
+			PackageRef: extRef,
+			ImportID:   "idB",
+			Inputs: resource.PropertyMap{
+				"input": resource.NewStringProperty("input"),
+			},
+		})
+		require.NoError(t, err)
+
+		// Test that we can create an explicit replacement provider and can use it
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgExt", "provider", true, deploytest.ResourceOptions{
+			PackageRef: extRef,
+		})
+		assert.NoError(t, err)
+		provID := prov.ID
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+		provRef, err := providers.NewReference(prov.URN, provID)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt:m:typA", "resC", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			ImportID: "idB",
+			Inputs: resource.PropertyMap{
+				"input": resource.NewStringProperty("input"),
+			},
+		})
+		require.NoError(t, err)
+
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	snap, err := TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 6)
+
+	// Check that we loaded the provider thrice
+	assert.Equal(t, 3, loadCount)
+
+	// Check the state of the parameterized provider is what we expect
+	prov := snap.Resources[2]
+	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
+	assert.Equal(t, "default_0_5_0", prov.URN.Name())
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+		"version": "0.5.0",
+		"__internal": map[string]any{
+			"name":             "pkgA",
+			"version":          "1.0.0",
+			"parameterization": "cmVwbGFjZW1lbnQ=",
+		},
+	}), prov.Inputs)
+
+	// Check the state of the imported resources is what we expect
+	resA := snap.Resources[1]
+	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
+	assert.Equal(t, "resA", resA.URN.Name())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("input"),
+	}, resA.Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"output": resource.NewStringProperty("output"),
+	}, resA.Outputs)
+
+	resB := snap.Resources[3]
+	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resB.Type)
+	assert.Equal(t, "resB", resB.URN.Name())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("input"),
+	}, resB.Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"output": resource.NewStringProperty("output"),
+	}, resB.Outputs)
+
+	resC := snap.Resources[5]
+	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resC.Type)
+	assert.Equal(t, "resC", resC.URN.Name())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("input"),
+	}, resC.Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"output": resource.NewStringProperty("output"),
+	}, resC.Outputs)
+}

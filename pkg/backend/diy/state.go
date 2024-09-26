@@ -297,7 +297,6 @@ func (b *diyBackend) saveCheckpoint(
 func (b *diyBackend) saveStack(
 	ctx context.Context,
 	ref *diyBackendReference, snap *deploy.Snapshot,
-	sm secrets.Manager,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
 	chk, err := stack.SerializeCheckpoint(ref.FullyQualifiedName(), snap, false /* showSecrets */)

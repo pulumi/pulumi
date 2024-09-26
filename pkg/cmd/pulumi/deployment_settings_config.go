@@ -52,6 +52,8 @@ const (
 	optSkipIntermediateDeployments = "Skip intermediate deployments"
 )
 
+var errAbortCmd = errors.New("abort")
+
 func newDeploymentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
@@ -206,7 +208,14 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 					"editing the file manually; or use --force", d.Stack.Ref())
 			}
 
-			return initStackDeploymentCmd(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+			err = initStackDeploymentCmd(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+			switch {
+			case errors.Is(err, errAbortCmd):
+				return nil
+			case err != nil:
+				return err
+			}
+			return nil
 		}),
 	}
 
@@ -250,6 +259,16 @@ func initStackDeploymentCmd(
 	if err != nil {
 		return err
 	}
+
+	oidcExplanationMsg := "\nPulumi supports OpenID Connect (OIDC) integration across various services by " +
+		"leveraging signed, short-lived tokens and eliminating the necessity for hardcoded " +
+		"cloud provider credentials and facilitates the exchange of these tokens for " +
+		"short-term credentials.\n"
+
+	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "Pulumi", colors.SpecHeadline)
+	oidcExplanationMsg = colors.Highlight(oidcExplanationMsg, "OpenID Connect (OIDC)", colors.SpecInfo)
+
+	d.Prompts.Print(d.DisplayOptions.Color.Colorize(oidcExplanationMsg))
 
 	// For non interactive execution, we skip oidc configuration
 	option := d.Prompts.PromptUserSkippable(
@@ -333,7 +352,10 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 			default:
 				return nil
 			}
-			if err != nil {
+			switch {
+			case errors.Is(err, errAbortCmd):
+				return nil
+			case err != nil:
 				return err
 			}
 
@@ -432,8 +454,54 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 	}
 
 	if useGitHub {
+		integration, err := d.Backend.GetGHAppIntegration(d.Ctx, d.Stack)
+		if err != nil {
+			return err
+		}
+
+		if !integration.Installed {
+			useGitHub = false
+
+			ghAppExplanationTitle := "\nPulumi’s GitHub app is not installed\n\n"
+			ghAppExplanationMsg := "Pulumi’s GitHub app displays the results of Pulumi stack update previews in " +
+				"pull requests and enables automatic stack deployments via Pulumi Deployments. " +
+				"Once installed and configured, it will show you any potential infrastructure " +
+				"changes on Pull Requests and commit checks. You can also configure git push to " +
+				"deploy workflows that update your stacks whenever a pull request is merged.\n\n" +
+				"To install the App follow the instructions at: " +
+				"https://www.pulumi.com/docs/iac/packages-and-automation/continuous-delivery/github-app/\n"
+
+			ghAppExplanationTitle = colors.Highlight(ghAppExplanationTitle,
+				"Pulumi’s GitHub app is not installed", colors.SpecWarning)
+
+			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
+			ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
+
+			d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationTitle + ghAppExplanationMsg))
+
+			confirm := d.Prompts.AskForConfirmation("Do you want to continue without using the Pulumi's GitHub app?",
+				d.DisplayOptions.Color, true, false)
+
+			if !confirm {
+				return errAbortCmd
+			}
+		}
+	}
+
+	if useGitHub {
+		ghAppExplanationMsg := "\nPulumi’s GitHub app displays the results of Pulumi stack update previews in " +
+			"pull requests and enables automatic stack deployments via Pulumi Deployments. " +
+			"Once installed and configured, it will show you any potential infrastructure " +
+			"changes on Pull Requests and commit checks. You can also configure git push to " +
+			"deploy workflows that update your stacks whenever a pull request is merged.\n"
+
+		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi’s GitHub app", colors.SpecHeadline)
+		ghAppExplanationMsg = colors.Highlight(ghAppExplanationMsg, "Pulumi Deployments", colors.SpecHeadline)
+
+		d.Prompts.Print(d.DisplayOptions.Color.Colorize(ghAppExplanationMsg))
+
 		useGitHub = d.Prompts.AskForConfirmation(
-			"A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
+			"Do you want to use the Pulumi GitHub App?",
 			d.DisplayOptions.Color, true, !d.Interactive)
 	}
 
@@ -589,15 +657,13 @@ func configureGitSSH(
 	d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath string, gitSSHPrivateKeyValue string,
 ) error {
 	if gitSSHPrivateKeyPath == "" && gitSSHPrivateKeyValue == "" {
-		configureMsg := "No SSH private key was provided, run `pulumi deployment settings " +
-			"configure` with the `--git-auth-ssh-private-key` or `--git-auth-ssh-private-key-path` flag set"
+		configureMsg := "\nNo SSH private key was provided, run `pulumi deployment settings " +
+			"configure` with the `--git-auth-ssh-private-key` or `--git-auth-ssh-private-key-path` flag set\n"
 		configureMsg = colors.Highlight(configureMsg, "No SSH private key was provided", colors.SpecError+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "pulumi deployment settings configure", colors.BrightBlue+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "--git-auth-ssh-private-key", colors.BrightBlue+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "--git-auth-ssh-private-key-path", colors.BrightBlue+colors.Bold)
-		fmt.Println()
-		fmt.Println(d.DisplayOptions.Color.Colorize(configureMsg))
-		fmt.Println()
+		d.Prompts.Print(d.DisplayOptions.Color.Colorize(configureMsg))
 		return nil
 	}
 

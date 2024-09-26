@@ -206,7 +206,7 @@ func currentBackend(
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
 }
 
-func createSecretsManager(
+func createSecretsManagerForExistingStack(
 	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
@@ -265,7 +265,7 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	stack, err := b.CreateStack(ctx, stackRef, root, opts)
+	stack, err := b.CreateStack(ctx, stackRef, root, nil, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -277,7 +277,7 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(ctx, ws, stack, secretsProvider,
+	if err := createSecretsManagerForExistingStack(ctx, ws, stack, secretsProvider,
 		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
 		return nil, err
 	}
@@ -1211,7 +1211,10 @@ func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOpt
 // promptUserMulti prompts the user for a value with a list of options, allowing to select none or multiple options.
 // defaultOptions is a set of values to be selected by default.
 func promptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
-	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
+	confirmationHint := " (use enter to accept the current selection)"
+
+	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
+
 	surveycore.DisableColor = true
 	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question = survey.Icon{}

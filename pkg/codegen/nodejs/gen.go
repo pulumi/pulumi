@@ -47,7 +47,7 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion string = "^3.133.0"
+	MinimumValidSDKVersion string = "^3.134.1"
 	// The minimum version of @pulumi/pulumi that supports parameterization.
 	MinimumValidParameterizationSDKVersion string = "^3.133.0"
 	MinimumTypescriptVersion               string = "^4.3.5"

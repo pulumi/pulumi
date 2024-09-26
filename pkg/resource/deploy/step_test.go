@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
@@ -1192,6 +1194,173 @@ func TestImportStep(t *testing.T) {
 				assert.True(t, readCalled)
 				assert.True(t, checkCalled)
 			})
+		})
+		t.Run("preview: resource input diff found -> no error, 4 diag msg", func(t *testing.T) {
+			t.Parallel()
+			var diffCalled bool
+			var stderrbuff, stdoutbuff bytes.Buffer
+			ctx, _ := plugin.NewContext(
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
+				nil,
+			)
+			s := &ImportStep{
+				deployment: &Deployment{
+					opts: &Options{
+						DryRun: true, // DryRun true denotes preview
+					},
+					olds: map[resource.URN]*resource.State{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
+					ctx:  ctx,
+				},
+				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:     "some-id",
+					Type:   "foo:bar:Bar",
+					Custom: true,
+				},
+				randomSeed: []byte{},
+				provider: &deploytest.Provider{
+					DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
+						diffCalled = true
+						return plugin.DiffResponse{
+							Changes: plugin.DiffSome,
+							ChangedKeys: []resource.PropertyKey{
+								resource.PropertyKey("non-matching-input-1"),
+								resource.PropertyKey("non-matching-input-2"),
+							},
+						}, nil
+					},
+				},
+			}
+			_, _, err := s.Apply()
+			assert.NoError(t, err)
+			assert.True(t, diffCalled)
+			assert.Contains(t, stderrbuff.String(), "[non-matching-input-1 non-matching-input-2]")
+		})
+		t.Run("preview: no resource input diff found -> no error, no msg", func(t *testing.T) {
+			t.Parallel()
+			var stderrbuff, stdoutbuff bytes.Buffer
+			ctx, _ := plugin.NewContext(
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
+				nil,
+			)
+			s := &ImportStep{
+				deployment: &Deployment{
+					opts: &Options{
+						DryRun: true, // DryRun true denotes preview
+					},
+					olds: map[resource.URN]*resource.State{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
+					ctx:  ctx,
+				},
+				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:     "some-id",
+					Type:   "foo:bar:Bar",
+					Custom: true,
+				},
+				randomSeed: []byte{},
+				provider:   &deploytest.Provider{},
+			}
+			_, _, err := s.Apply()
+			assert.NoError(t, err)
+			assert.Equal(t, 0, len(stderrbuff.String()))
+		})
+		t.Run("up: resource input diff found -> error, no msg", func(t *testing.T) {
+			t.Parallel()
+			var diffCalled bool
+			var stderrbuff, stdoutbuff bytes.Buffer
+			ctx, _ := plugin.NewContext(
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
+				nil,
+			)
+			s := &ImportStep{
+				deployment: &Deployment{
+					opts: &Options{
+						DryRun: false, // DryRun false denotes up
+					},
+					olds: map[resource.URN]*resource.State{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
+					ctx:  ctx,
+				},
+				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:     "some-id",
+					Type:   "foo:bar:Bar",
+					Custom: true,
+				},
+				randomSeed: []byte{},
+				provider: &deploytest.Provider{
+					DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
+						diffCalled = true
+						return plugin.DiffResponse{
+							Changes: plugin.DiffSome,
+							ChangedKeys: []resource.PropertyKey{
+								resource.PropertyKey("non-matching-input-1"),
+								resource.PropertyKey("non-matching-input-2"),
+							},
+						}, nil
+					},
+				},
+			}
+			_, _, err := s.Apply()
+			assert.Error(t, err)
+			assert.True(t, diffCalled)
+			assert.Equal(t, 0, len(stderrbuff.String()))
+			assert.ErrorContains(t, err, "[non-matching-input-1 non-matching-input-2]")
+		})
+		t.Run("up: no resource input diff found", func(t *testing.T) {
+			t.Parallel()
+			var stderrbuff, stdoutbuff bytes.Buffer
+			ctx, _ := plugin.NewContext(
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
+				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
+				nil,         // the host that can be used to fetch providers.
+				nil,         // configSource
+				t.TempDir(), // the working directory to spawn all plugins in.
+				nil,         // runtimeOptions
+				false,       // disableProviderPreview
+				nil,
+			)
+			s := &ImportStep{
+				deployment: &Deployment{
+					opts: &Options{
+						DryRun: false, // DryRun false denotes up
+					},
+					olds: map[resource.URN]*resource.State{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
+					ctx:  ctx,
+				},
+				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:     "some-id",
+					Type:   "foo:bar:Bar",
+					Custom: true,
+				},
+				randomSeed: []byte{},
+				provider:   &deploytest.Provider{},
+			}
+			_, _, err := s.Apply()
+			assert.NoError(t, err)
+			assert.Equal(t, 0, len(stderrbuff.String()))
 		})
 	})
 }

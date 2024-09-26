@@ -661,7 +661,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
 		}
 
-		s, err := testBackend.CreateStack(ctx, ref, "", nil)
+		s, err := testBackend.CreateStack(ctx, ref, "", nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("create test stack reference: %w", err)
 		}
@@ -900,7 +900,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		var s backend.Stack
 		if i == 0 {
-			s, err = testBackend.CreateStack(ctx, stackReference, projectDir, nil)
+			s, err = testBackend.CreateStack(ctx, stackReference, projectDir, nil, nil)
 			if err != nil {
 				return nil, fmt.Errorf("create test stack: %w", err)
 			}

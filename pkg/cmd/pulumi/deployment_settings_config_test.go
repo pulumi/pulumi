@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -41,6 +42,7 @@ type promptHandlersMock struct {
 	PromptUserResponses      []promptAssertion[string, string]
 	PromptValueResponses     []promptAssertion[string, string]
 	PromptUserMultiResponses []promptAssertion[[]string, []string]
+	PrintTexts               []string
 }
 
 func (p *promptHandlersMock) AssertComplete() {
@@ -48,6 +50,16 @@ func (p *promptHandlersMock) AssertComplete() {
 	assert.Empty(p.T, p.PromptUserResponses)
 	assert.Empty(p.T, p.PromptValueResponses)
 	assert.Empty(p.T, p.PromptUserMultiResponses)
+	assert.Empty(p.T, p.PrintTexts)
+}
+
+func (p *promptHandlersMock) Print(prompt string) {
+	if len(p.PrintTexts) == 0 {
+		panic(fmt.Sprintf("PrintTexts prompt for %q not found", prompt))
+	}
+	value := p.PrintTexts[0]
+	p.PrintTexts = p.PrintTexts[1:]
+	assert.True(p.T, strings.Contains(prompt, value))
 }
 
 func (p *promptHandlersMock) AskForConfirmation(
@@ -148,6 +160,9 @@ func TestDSConfigureGit(t *testing.T) {
 					},
 				},
 			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app",
+			},
 		}
 
 		d := &deploymentSettingsCommandDependencies{
@@ -158,6 +173,13 @@ func TestDSConfigureGit(t *testing.T) {
 				IsInteractive: true,
 			},
 			Prompts: prompts,
+			Backend: &backend.MockBackend{
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: true,
+					}, nil
+				},
+			},
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -199,6 +221,9 @@ func TestDSConfigureGit(t *testing.T) {
 					[]string{},
 				},
 			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app",
+			},
 		}
 
 		d := &deploymentSettingsCommandDependencies{
@@ -224,6 +249,13 @@ func TestDSConfigureGit(t *testing.T) {
 				IsInteractive: true,
 			},
 			Prompts: prompts,
+			Backend: &backend.MockBackend{
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: true,
+					}, nil
+				},
+			},
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -258,6 +290,9 @@ func TestDSConfigureGit(t *testing.T) {
 				{"refs/heads/master", "master"},
 				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
 			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app",
+			},
 		}
 
 		d := &deploymentSettingsCommandDependencies{
@@ -282,6 +317,11 @@ func TestDSConfigureGit(t *testing.T) {
 				) (*apitype.SecretValue, error) {
 					assert.Equal(t, "password", secret)
 					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: true,
+					}, nil
 				},
 			},
 			DisplayOptions: &display.Options{
@@ -323,6 +363,9 @@ func TestDSConfigureGit(t *testing.T) {
 				{"", "username"},
 				{"", "password"},
 			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app",
+			},
 		}
 
 		d := &deploymentSettingsCommandDependencies{
@@ -334,6 +377,11 @@ func TestDSConfigureGit(t *testing.T) {
 				) (*apitype.SecretValue, error) {
 					assert.Equal(t, "password", secret)
 					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: true,
+					}, nil
 				},
 			},
 			DisplayOptions: &display.Options{
@@ -376,6 +424,9 @@ func TestDSConfigureGit(t *testing.T) {
 				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
 				{"", "password"},
 			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app",
+			},
 		}
 
 		d := &deploymentSettingsCommandDependencies{
@@ -390,6 +441,11 @@ func TestDSConfigureGit(t *testing.T) {
 					}
 					assert.Equal(t, "password", secret)
 					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted_password"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: true,
+					}, nil
 				},
 			},
 			DisplayOptions: &display.Options{
@@ -412,6 +468,189 @@ func TestDSConfigureGit(t *testing.T) {
 		assert.True(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Secret)
 		assert.Equal(t, "encrypted_password",
 			d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Ciphertext)
+
+		prompts.AssertComplete()
+	})
+
+	t.Run("github repo but the app is not installed", func(t *testing.T) {
+		t.Parallel()
+
+		gitSSHPrivateKeyPath := ""
+		gitSSHPrivateKeyValue := "private_key"
+
+		prompts := &promptHandlersMock{
+			T: t,
+			ConfirmationResponses: []promptAssertion[bool, bool]{
+				{true, true},
+			},
+			PromptUserResponses: []promptAssertion[string, string]{
+				{optUserPass, optSSH},
+			},
+			PromptValueResponses: []promptAssertion[string, string]{
+				{"goproj", "goproj"},
+				{"refs/heads/master", "master"},
+				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
+				{"", "password"},
+			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app is not installed",
+			},
+		}
+
+		d := &deploymentSettingsCommandDependencies{
+			Deployment: &workspace.ProjectStackDeployment{},
+			WorkDir:    workDir,
+			Backend: &backend.MockBackend{
+				EncryptStackDeploymentSettingsSecretF: func(
+					ctx context.Context, stack backend.Stack, secret string,
+				) (*apitype.SecretValue, error) {
+					if secret == "private_key" {
+						return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+					}
+					assert.Equal(t, "password", secret)
+					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted_password"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: false,
+					}, nil
+				},
+			},
+			DisplayOptions: &display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			},
+			Prompts: prompts,
+		}
+
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
+		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
+		assert.Equal(t, "https://github.com/pulumi/test-repo.git",
+			d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
+		assert.True(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.SSHPrivateKey.Secret)
+		assert.Equal(t, "encrypted",
+			d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.SSHPrivateKey.Ciphertext)
+		assert.True(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Secret)
+		assert.Equal(t, "encrypted_password",
+			d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password.Ciphertext)
+
+		prompts.AssertComplete()
+	})
+
+	t.Run("github repo but the app is not installed and aborts", func(t *testing.T) {
+		t.Parallel()
+
+		gitSSHPrivateKeyPath := ""
+		gitSSHPrivateKeyValue := "private_key"
+
+		prompts := &promptHandlersMock{
+			T: t,
+			ConfirmationResponses: []promptAssertion[bool, bool]{
+				{true, false},
+			},
+			PromptUserResponses: []promptAssertion[string, string]{},
+			PromptValueResponses: []promptAssertion[string, string]{
+				{"goproj", "goproj"},
+				{"refs/heads/master", "master"},
+				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
+			},
+			PrintTexts: []string{
+				"Pulumi’s GitHub app is not installed",
+			},
+		}
+
+		d := &deploymentSettingsCommandDependencies{
+			Deployment: &workspace.ProjectStackDeployment{},
+			WorkDir:    workDir,
+			Backend: &backend.MockBackend{
+				EncryptStackDeploymentSettingsSecretF: func(
+					ctx context.Context, stack backend.Stack, secret string,
+				) (*apitype.SecretValue, error) {
+					if secret == "private_key" {
+						return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+					}
+					assert.Equal(t, "password", secret)
+					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted_password"}, nil
+				},
+				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
+					return &apitype.GitHubAppIntegration{
+						Installed: false,
+					}, nil
+				},
+			},
+			DisplayOptions: &display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			},
+			Prompts: prompts,
+		}
+
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+
+		assert.Error(t, err, errAbortCmd.Error())
+
+		prompts.AssertComplete()
+	})
+
+	t.Run("non github", func(t *testing.T) {
+		t.Parallel()
+
+		gitSSHPrivateKeyPath := ""
+		gitSSHPrivateKeyValue := ""
+
+		prompts := &promptHandlersMock{
+			T: t,
+			PromptUserResponses: []promptAssertion[string, string]{
+				{optUserPass, optNoAuthentication},
+			},
+			PromptValueResponses: []promptAssertion[string, string]{
+				{"goproj", "goproj"},
+				{"refs/heads/master", "master"},
+				{"https://github.com/pulumi/test-repo.git", "https://example.com/pulumi/test-repo.git"},
+			},
+		}
+
+		d := &deploymentSettingsCommandDependencies{
+			Deployment: &workspace.ProjectStackDeployment{
+				DeploymentSettings: apitype.DeploymentSettings{
+					SourceContext: &apitype.SourceContext{
+						Git: &apitype.SourceContextGit{
+							GitAuth: &apitype.GitAuthConfig{
+								BasicAuth: &apitype.BasicAuth{
+									UserName: apitype.SecretValue{Value: "user"},
+									Password: apitype.SecretValue{Ciphertext: "ciphered"},
+								},
+							},
+						},
+					},
+				},
+			},
+			WorkDir: workDir,
+			Backend: &backend.MockBackend{
+				EncryptStackDeploymentSettingsSecretF: func(
+					ctx context.Context, stack backend.Stack, secret string,
+				) (*apitype.SecretValue, error) {
+					assert.Equal(t, "password", secret)
+					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+				},
+			},
+			DisplayOptions: &display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			},
+			Prompts: prompts,
+		}
+
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
+		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
+		assert.Equal(t, "https://example.com/pulumi/test-repo.git", d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
+		assert.Nil(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth)
 
 		prompts.AssertComplete()
 	})

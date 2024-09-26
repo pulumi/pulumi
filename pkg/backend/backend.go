@@ -165,8 +165,15 @@ type Backend interface {
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
-	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
+	// CreateStack creates a new stack with the given name, initial state and options that are specific to the
+	// backend provider.
+	CreateStack(
+		ctx context.Context,
+		stackRef StackReference,
+		root string,
+		initialState *apitype.UntypedDeployment,
+		opts *CreateStackOptions,
+	) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
@@ -219,6 +226,8 @@ type Backend interface {
 	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	// Deletes the stach deployment settings
 	DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error
+	// Fetch the GH App installation status
+	GetGHAppIntegration(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
 	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)
@@ -229,6 +238,13 @@ type Backend interface {
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
+
+	// DefaultSecretManager returns the default secrets manager to use for stacks created against this backend, or nil if
+	// it is not possible to determine a default secrets manager for a stack prior to its creation.
+	//
+	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
+	// secrets manager for that stack.
+	DefaultSecretManager() (secrets.Manager, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
