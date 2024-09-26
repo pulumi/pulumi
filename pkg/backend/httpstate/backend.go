@@ -2163,3 +2163,10 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 	}
 	return parsed, nil
 }
+
+func (b *cloudBackend) DefaultSecretManager() (secrets.Manager, error) {
+	// The default secrets manager for a cloud-backed stack is a cloud secrets manager, which is inherently
+	// stack-specific. Thus at the backend level we return nil, deferring to Stack.DefaultSecretManager when the stack has
+	// been created.
+	return nil, nil
+}

@@ -91,6 +91,8 @@ type MockBackend struct {
 		operations.LogQuery) ([]operations.LogEntry, error)
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
+
+	DefaultSecretManagerF func() (secrets.Manager, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -428,6 +430,13 @@ func (be *MockBackend) GetStackDeploymentSettings(ctx context.Context,
 func (be *MockBackend) DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error {
 	if be.DestroyStackDeploymentSettingsF != nil {
 		return be.DestroyStackDeploymentSettingsF(ctx, stack)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) DefaultSecretManager() (secrets.Manager, error) {
+	if be.DefaultSecretManagerF != nil {
+		return be.DefaultSecretManagerF()
 	}
 	panic("not implemented")
 }

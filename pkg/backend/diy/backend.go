@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -1412,4 +1413,11 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	}
 
 	return nil
+}
+
+func (b *diyBackend) DefaultSecretManager() (secrets.Manager, error) {
+	// The default secrets manager for stacks against a DIY backend is a
+	// passphrase-based manager.
+	info := &workspace.ProjectStack{}
+	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
 }
