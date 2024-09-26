@@ -332,9 +332,18 @@ type mockResmon struct {
 
 	RegisterResourceOutputsF func(ctx context.Context,
 		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
+
+	AbortChanF func() <-chan bool
 }
 
 var _ SourceResourceMonitor = (*mockResmon)(nil)
+
+func (rm *mockResmon) AbortChan() <-chan bool {
+	if rm.AbortChanF != nil {
+		return rm.AbortChanF()
+	}
+	panic("not implemented")
+}
 
 func (rm *mockResmon) Address() string {
 	if rm.AddressF != nil {

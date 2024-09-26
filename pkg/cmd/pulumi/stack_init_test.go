@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +47,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 			ctx context.Context,
 			ref backend.StackReference,
 			projectRoot string,
+			initialState *apitype.UntypedDeployment,
 			opts *backend.CreateStackOptions,
 		) (backend.Stack, error) {
 			assert.NotEmpty(t, opts.Teams, "expected teams to be set")

@@ -1,0 +1,1 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl

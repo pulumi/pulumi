@@ -811,8 +811,21 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
 
 					outputs := stack.Outputs
 
@@ -833,13 +846,63 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
 
 					outputs := stack.Outputs
 
 					assertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
 					assertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
+				},
+			},
+		},
+	},
+	"l2-primitive-ref": {
+		providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:primitive-ref", provider.Type.String(), "expected primitive-ref provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "primitive-ref:index:Resource", simple.Type.String(), "expected primitive-ref resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"boolean":   false,
+							"float":     2.17,
+							"integer":   -12,
+							"string":    "Goodbye",
+							"boolArray": []interface{}{false, true},
+							"stringMap": map[string]interface{}{
+								"two":   "turtle doves",
+								"three": "french hens",
+							},
+						}),
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
 __all__ = [
@@ -62,13 +67,17 @@ def get_assets(archive: Optional[pulumi.Archive] = None,
     return AwaitableGetAssetsResult(
         archive=pulumi.get(__ret__, 'archive'),
         source=pulumi.get(__ret__, 'source'))
-
-
-@_utilities.lift_output_func(get_assets)
 def get_assets_output(archive: Optional[pulumi.Input[pulumi.Archive]] = None,
                       source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetAssetsResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['archive'] = archive
+    __args__['source'] = source
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('example::GetAssets', __args__, opts=opts, typ=GetAssetsResult)
+    return __ret__.apply(lambda __response__: GetAssetsResult(
+        archive=pulumi.get(__response__, 'archive'),
+        source=pulumi.get(__response__, 'source')))

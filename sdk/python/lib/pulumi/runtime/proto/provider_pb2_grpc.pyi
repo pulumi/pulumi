@@ -67,7 +67,14 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ConfigureRequest,
         pulumi.provider_pb2.ConfigureResponse,
     ]
-    """Configure configures the resource provider with "globals" that control its behavior."""
+    """Configure configures the resource provider with "globals" that control its behavior.
+
+    :::{warning}
+    ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+    ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+    ConfigureRequest.args.
+    :::
+    """
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.InvokeRequest,
         pulumi.provider_pb2.InvokeResponse,
@@ -217,7 +224,14 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ConfigureRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.ConfigureResponse:
-        """Configure configures the resource provider with "globals" that control its behavior."""
+        """Configure configures the resource provider with "globals" that control its behavior.
+
+        :::{warning}
+        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+        ConfigureRequest.args.
+        :::
+        """
     
     def Invoke(
         self,

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Support an abort channel for gracefully canceling operations

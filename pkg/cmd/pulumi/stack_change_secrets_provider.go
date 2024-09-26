@@ -140,7 +140,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := createSecretsManager(ctx, ws, currentStack, secretsProvider, rotateProvider,
+	if err := createSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}

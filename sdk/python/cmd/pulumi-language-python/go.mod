@@ -11,7 +11,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/nxadm/tail v1.4.11
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.133.0
+	github.com/pulumi/pulumi/sdk/v3 v3.134.1
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0

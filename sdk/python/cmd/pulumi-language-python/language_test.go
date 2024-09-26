@@ -181,7 +181,7 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	runTests := func(t *testing.T, snapshotDir string, useToml bool) {
+	runTests := func(t *testing.T, snapshotDir string, useToml bool, inputTypes string) {
 		cancel := make(chan bool)
 
 		// Run the language plugin
@@ -202,9 +202,11 @@ func TestLanguage(t *testing.T) {
 		snapshotDir = "./testdata/" + snapshotDir
 
 		var languageInfo string
-		if useToml {
+		if useToml || inputTypes != "" {
 			var info codegen.PackageInfo
-			info.PyProject.Enabled = true
+			info.PyProject.Enabled = useToml
+			info.InputTypes = inputTypes
+
 			json, err := json.Marshal(info)
 			require.NoError(t, err)
 			languageInfo = string(json)
@@ -258,14 +260,20 @@ func TestLanguage(t *testing.T) {
 		assert.NoError(t, <-handle.Done)
 	}
 
-	// We should run the python tests twice. Once with TOML projects and once with setup.py.
+	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also
+	// want to test that explicitly setting the input types works as expected, as well as the default. This
+	// shouldn't interact with the project type so we vary both at once.
 
 	//nolint:paralleltest
 	t.Run("default", func(t *testing.T) {
-		runTests(t, "setuppy", false)
+		runTests(t, "setuppy", false, "")
 	})
 	//nolint:paralleltest
 	t.Run("toml", func(t *testing.T) {
-		runTests(t, "toml", true)
+		runTests(t, "toml", true, "classes-and-dicts")
+	})
+	//nolint:paralleltest
+	t.Run("classes", func(t *testing.T) {
+		runTests(t, "classes", false, "classes")
 	})
 }

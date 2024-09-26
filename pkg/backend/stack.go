@@ -67,7 +67,8 @@ type Stack interface {
 	// ImportDeployment imports the given deployment into this stack.
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 
-	// DefaultSecretManager returns the default secrets manager to use for this stack.
+	// DefaultSecretManager returns the default secrets manager to use for this stack. This may be more specific than
+	// Backend.DefaultSecretManager.
 	DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error)
 }
 

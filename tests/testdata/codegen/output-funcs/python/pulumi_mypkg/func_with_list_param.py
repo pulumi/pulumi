@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
 __all__ = [
@@ -52,13 +57,16 @@ def func_with_list_param(a: Optional[Sequence[str]] = None,
 
     return AwaitableFuncWithListParamResult(
         r=pulumi.get(__ret__, 'r'))
-
-
-@_utilities.lift_output_func(func_with_list_param)
 def func_with_list_param_output(a: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
                                 b: Optional[pulumi.Input[Optional[str]]] = None,
                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithListParamResult]:
     """
     Check codegen of functions with a List parameter.
     """
-    ...
+    __args__ = dict()
+    __args__['a'] = a
+    __args__['b'] = b
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithListParam', __args__, opts=opts, typ=FuncWithListParamResult)
+    return __ret__.apply(lambda __response__: FuncWithListParamResult(
+        r=pulumi.get(__response__, 'r')))

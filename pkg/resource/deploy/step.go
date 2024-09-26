@@ -1439,7 +1439,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
 	if diff.Changes != plugin.DiffNone {
-		const message = "inputs to import do not match the existing resource"
+		message := fmt.Sprintf("inputs to import do not match the existing resource: %v", s.diffs)
 
 		if s.deployment.opts.DryRun {
 			s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,

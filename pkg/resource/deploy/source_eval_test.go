@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,7 +29,9 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -3323,6 +3326,115 @@ func TestRegisterResource(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestValidationFailures(t *testing.T) {
+	t.Parallel()
+
+	s, _ := status.Newf(codes.InvalidArgument, "bad request").WithDetails(
+		&pulumirpc.InvalidInputPropertiesError{
+			Errors: []*pulumirpc.InvalidInputPropertiesError_PropertyError{
+				{
+					Reason:       "missing",
+					PropertyPath: "testproperty",
+				},
+				{
+					Reason:       "nested property error",
+					PropertyPath: "nested[0]",
+				},
+			},
+		},
+	)
+	badRequestError := s.Err()
+
+	cases := []struct {
+		name           string
+		err            error
+		expectedStderr string
+	}{
+		{
+			name:           "regular error",
+			err:            errors.New("test error"),
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: test error\n",
+		},
+		{
+			name: "bad request",
+			err:  badRequestError,
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request:\n" +
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
+		},
+	}
+	for _, c := range cases {
+		cancel := make(chan bool)
+		abortChan := make(chan bool)
+		go func() {
+			// the resource monitor should close the abort channel to poison the iterator.
+			_, ok := <-abortChan
+			assert.False(t, ok)
+			close(cancel)
+		}()
+		requests := make(chan defaultProviderRequest, 1)
+		go func() {
+			evt := <-requests
+			ref, err := providers.NewReference(
+				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				"b2562429-e255-4b8f-904b-2bd239301ff2")
+			require.NoError(t, err)
+			evt.response <- defaultProviderResponse{
+				ref: ref,
+			}
+		}()
+		var stdout, stderr bytes.Buffer
+		rm := &resmon{
+			diagnostics: diagtest.MockSink(&stdout, &stderr),
+			cancel:      cancel,
+			abortChan:   abortChan,
+			defaultProviders: &defaultProviders{
+				requests: requests,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+			providers: &providerSourceMock{
+				Provider: &deploytest.Provider{
+					DialMonitorF: func(
+						ctx context.Context, endpoint string,
+					) (*deploytest.ResourceMonitor, error) {
+						return nil, nil
+					},
+					ConstructF: func(ctx context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+					) (plugin.ConstructResult, error) {
+						return plugin.ConstructResult{}, c.err
+					},
+				},
+			},
+		}
+
+		props := resource.PropertyMap{
+			"testproperty": resource.NewPropertyValue("testvalue"),
+			"nested": resource.NewArrayProperty(
+				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
+			),
+		}
+
+		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
+		assert.NoError(t, err)
+
+		req := &pulumirpc.RegisterResourceRequest{
+			Version: "1.0.0",
+			Type:    "pulumi:providers:some-type",
+			Name:    "some-name",
+			Remote:  true,
+			Object:  marshalledProps,
+		}
+		_, err = rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "resource monitor shut down")
+		assert.Equal(t, c.expectedStderr, stderr.String())
+		assert.Equal(t, "", stdout.String())
+	}
 }
 
 func TestDowngradeOutputValues(t *testing.T) {

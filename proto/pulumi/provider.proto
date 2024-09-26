@@ -48,7 +48,14 @@ service ResourceProvider {
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
+
     // Configure configures the resource provider with "globals" that control its behavior.
+    //
+    // :::{warning}
+    // ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+    // ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+    // ConfigureRequest.args.
+    // :::
     rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
 
     // Invoke dynamically executes a built-in function in the provider.

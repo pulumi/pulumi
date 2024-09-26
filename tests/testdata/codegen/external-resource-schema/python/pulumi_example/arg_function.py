@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 import pulumi_random
 
@@ -51,12 +56,14 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
 
     return AwaitableArgFunctionResult(
         age=pulumi.get(__ret__, 'age'))
-
-
-@_utilities.lift_output_func(arg_function)
 def arg_function_output(name: Optional[pulumi.Input[Optional['pulumi_random.RandomPet']]] = None,
                         opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
     """
     Use this data source to access information about an existing resource.
     """
-    ...
+    __args__ = dict()
+    __args__['name'] = name
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('example::argFunction', __args__, opts=opts, typ=ArgFunctionResult)
+    return __ret__.apply(lambda __response__: ArgFunctionResult(
+        age=pulumi.get(__response__, 'age')))

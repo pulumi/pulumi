@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -89,7 +89,8 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 		return false
 	}
 
-	if ref := res.Provider; ref != "" {
+	ref, allDeps := res.GetAllDependencies()
+	if ref != "" {
 		proivderRef, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		providerURN := proivderRef.URN()
@@ -98,27 +99,10 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 		}
 	}
 
-	if res.Parent != "" {
-		if sg.targetsActual.Contains(res.Parent) {
+	for _, dep := range allDeps {
+		if sg.targetsActual.Contains(dep.URN) {
 			return true
 		}
-	}
-	for _, dep := range res.Dependencies {
-		if dep != "" && sg.targetsActual.Contains(dep) {
-			return true
-		}
-	}
-
-	for _, deps := range res.PropertyDependencies {
-		for _, dep := range deps {
-			if dep != "" && sg.targetsActual.Contains(dep) {
-				return true
-			}
-		}
-	}
-
-	if res.DeletedWith != "" && sg.targetsActual.Contains(res.DeletedWith) {
-		return true
 	}
 
 	return false
@@ -339,22 +323,23 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			continue
 		}
 
-		// Check direct dependencies but also parents and providers.
-		dependencies := step.New().Dependencies
-		if step.New().Parent != "" {
-			dependencies = append(dependencies, step.New().Parent)
+		provider, allDeps := step.New().GetAllDependencies()
+		allDepURNs := make([]resource.URN, len(allDeps))
+		for i, dep := range allDeps {
+			allDepURNs[i] = dep.URN
 		}
-		if step.New().Provider != "" {
-			prov, err := providers.ParseReference(step.New().Provider)
+
+		if provider != "" {
+			prov, err := providers.ParseReference(provider)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
-					step.New().Provider, step.New().URN, err)
+					provider, step.New().URN, err)
 			}
-			dependencies = append(dependencies, prov.URN())
+			allDepURNs = append(allDepURNs, prov.URN())
 		}
 
-		for _, urn := range dependencies {
+		for _, urn := range allDepURNs {
 			if sg.skippedCreates[urn] {
 				// Targets were specified, but didn't include this resource to create.  And a
 				// resource we are producing a step for does depend on this created resource.
@@ -1020,82 +1005,32 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 				var steps []Step
 
-				if old.Parent != "" {
-					generatedParent := sg.hasGeneratedStep(old.Parent)
-					if !generatedParent {
-						parentOld, has := sg.deployment.Olds()[old.Parent]
-						if !has {
-							return nil, result.BailErrorf(
-								"parent %s of untargeted resource %s has no old state",
-								old.Parent,
-								urn,
-							)
-						}
-
-						parentSteps, err := getDependencySteps(parentOld, nil)
-						if err != nil {
-							return nil, err
-						}
-
-						steps = append(steps, parentSteps...)
-					}
-				}
-
-				for _, dep := range old.Dependencies {
-					generatedDep := sg.hasGeneratedStep(dep)
+				_, allDeps := old.GetAllDependencies()
+				for _, dep := range allDeps {
+					generatedDep := sg.hasGeneratedStep(dep.URN)
 					if !generatedDep {
-						depOld, has := sg.deployment.Olds()[dep]
+						depOld, has := sg.deployment.Olds()[dep.URN]
 						if !has {
-							return nil, result.BailErrorf(
-								"dependency %s of untargeted resource %s has no old state",
-								dep,
-								urn,
-							)
-						}
-
-						depSteps, err := getDependencySteps(depOld, nil)
-						if err != nil {
-							return nil, err
-						}
-
-						steps = append(steps, depSteps...)
-					}
-				}
-
-				for p, deps := range old.PropertyDependencies {
-					for _, dep := range deps {
-						generatedDep := sg.hasGeneratedStep(dep)
-						if !generatedDep {
-							depOld, has := sg.deployment.Olds()[dep]
-							if !has {
-								return nil, result.BailErrorf(
+							var message string
+							switch dep.Type {
+							case resource.ResourceParent:
+								message = fmt.Sprintf("parent %s of untargeted resource %s has no old state", dep.URN, urn)
+							case resource.ResourceDependency:
+								message = fmt.Sprintf("dependency %s of untargeted resource %s has no old state", dep.URN, urn)
+							case resource.ResourcePropertyDependency:
+								message = fmt.Sprintf(
 									"property dependency %s of untargeted resource %s's property %s has no old state",
-									dep,
-									urn,
-									p,
+									dep.URN, urn, dep.Key,
+								)
+							case resource.ResourceDeletedWith:
+								message = fmt.Sprintf(
+									"deleted with dependency %s of untargeted resource %s has no old state",
+									dep.URN, urn,
 								)
 							}
 
-							depSteps, err := getDependencySteps(depOld, nil)
-							if err != nil {
-								return nil, err
-							}
-
-							steps = append(steps, depSteps...)
-						}
-					}
-				}
-
-				if old.DeletedWith != "" {
-					generatedDep := sg.hasGeneratedStep(old.DeletedWith)
-					if !generatedDep {
-						depOld, has := sg.deployment.Olds()[old.DeletedWith]
-						if !has {
-							return nil, result.BailErrorf(
-								"deleted with dependency %s of untargeted resource %s has no old state",
-								old.DeletedWith,
-								urn,
-							)
+							//nolint:govet
+							return nil, result.BailErrorf(message)
 						}
 
 						depSteps, err := getDependencySteps(depOld, nil)
