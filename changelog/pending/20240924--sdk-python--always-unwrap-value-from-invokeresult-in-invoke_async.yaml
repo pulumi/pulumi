@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Always unwrap value from InvokeResult in invoke_async
