@@ -47,6 +47,8 @@ const (
 type PythonOptions struct {
 	// The root directory of the project.
 	Root string
+	// The program directory of the project.
+	ProgramDir string
 	// Virtual environment to use, relative to `Root`.
 	Virtualenv string
 	// Use a typechecker to type check.
@@ -99,7 +101,11 @@ func Name(tc toolchain) string {
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	if options.Toolchain == Poetry {
-		return newPoetry(options.Root)
+		dir := options.ProgramDir
+		if dir == "" {
+			dir = options.Root
+		}
+		return newPoetry(dir)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
