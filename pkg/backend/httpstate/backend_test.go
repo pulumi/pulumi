@@ -52,7 +52,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -87,7 +87,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -243,7 +243,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	// make up a bad stack

@@ -165,8 +165,15 @@ type Backend interface {
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
-	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
+	// CreateStack creates a new stack with the given name, initial state and options that are specific to the
+	// backend provider.
+	CreateStack(
+		ctx context.Context,
+		stackRef StackReference,
+		root string,
+		initialState *apitype.UntypedDeployment,
+		opts *CreateStackOptions,
+	) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the

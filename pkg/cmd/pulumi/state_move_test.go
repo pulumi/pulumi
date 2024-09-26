@@ -61,7 +61,7 @@ func createStackWithResources(
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, udep)
@@ -534,14 +534,14 @@ func TestEmptySourceStack(t *testing.T) {
 	sourceRef, err := b.ParseStackReference(sourceStackName)
 	require.NoError(t, err)
 
-	sourceStack, err := b.CreateStack(ctx, sourceRef, "", nil)
+	sourceStack, err := b.CreateStack(ctx, sourceRef, "", nil, nil)
 	require.NoError(t, err)
 
 	destStackName := "organization/test/destStack"
 	destRef, err := b.ParseStackReference(destStackName)
 	require.NoError(t, err)
 
-	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	destStack, err := b.CreateStack(ctx, destRef, "", nil, nil)
 	require.NoError(t, err)
 
 	mp := &secrets.MockProvider{}
@@ -586,7 +586,7 @@ func TestEmptyDestStack(t *testing.T) {
 	destRef, err := b.ParseStackReference(destStackName)
 	require.NoError(t, err)
 
-	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	destStack, err := b.CreateStack(ctx, destRef, "", nil, nil)
 	require.NoError(t, err)
 
 	mp := &secrets.MockProvider{}
@@ -986,7 +986,7 @@ func TestMoveSecret(t *testing.T) {
 	destRef, err := b.ParseStackReference(destStackName)
 	require.NoError(t, err)
 
-	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	destStack, err := b.CreateStack(ctx, destRef, "", nil, nil)
 	require.NoError(t, err)
 
 	mp := &secrets.MockProvider{}
@@ -1085,7 +1085,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	destRef, err := b.ParseStackReference(destStackName)
 	require.NoError(t, err)
 
-	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	destStack, err := b.CreateStack(ctx, destRef, "", nil, nil)
 	require.NoError(t, err)
 
 	mp := &secrets.MockProvider{}
@@ -1158,7 +1158,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 	destRef, err := b.ParseStackReference(destStackName)
 	require.NoError(t, err)
 
-	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	destStack, err := b.CreateStack(ctx, destRef, "", nil, nil)
 	require.NoError(t, err)
 
 	mp := &secrets.MockProvider{}
