@@ -974,8 +974,12 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		}
 
 		if strings.Contains(mod, "-") {
-			// convert the dashed package name into camelCase
-			mod = strcase.ToLowerCamel(mod)
+			alias := ""
+			for _, part := range strings.Split(mod, "-") {
+				alias += strcase.ToLowerCamel(part)
+			}
+			// convert the dashed package such as package-name into packagename
+			mod = alias
 		}
 		g.importer.Import(path, mod)
 		return
@@ -1695,7 +1699,11 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
-			return strcase.ToLowerCamel(mod)
+			moduleAlias := ""
+			for _, part := range strings.Split(mod, "-") {
+				moduleAlias += strcase.ToLowerCamel(part)
+			}
+			return moduleAlias
 		}
 		return mod
 	}
