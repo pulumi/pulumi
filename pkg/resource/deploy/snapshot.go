@@ -69,6 +69,97 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	}
 }
 
+// Prune removes all dangling dependencies from this snapshot, *which is assumed to be topologically sorted with respect
+// to dependencies*. A dangling dependency is one which points a resource which is not present in the snapshot. An
+// absence of dangling resources is a necessary but not sufficient condition for a snapshot to be valid; the
+// VerifyIntegrity method should be used to ensure that a snapshot is well-formed.
+func (snap *Snapshot) Prune() {
+	// As we go through the set of resources, we'll maintain a mapping from old URNs to new URNs. This lets us use one map
+	// to keep track of both resources we've seen and resources we've rewritten (e.g. if parent-child relationships
+	// changed).
+	//
+	// NOTE: We shouldn't have to worry about duplicate URNs here. These can occur when a resource is being replaced and
+	// both its old and new state are present in the snapshot. In these cases, the old states will be at the end of the
+	// snapshot with their Delete flag set. Old states can only depend on old states (since the new states didn't exist
+	// when they were created). Thus, by the time we "overwrite" entries in the map, we will only be dealing with old
+	// states, and so will have no need to refer to the clobbered entries.
+	seen := map[resource.URN]resource.URN{}
+
+	for _, state := range snap.Resources {
+		newURN := state.URN
+
+		newDeps := []resource.URN{}
+		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+
+		// If a provider reference is dangling, there's not much we can do -- resource states *must* have providers, so we
+		// can't simply remove it. Better to leave it so that VerifyIntegrity can spot it and present an appropriate error
+		// message.
+		_, allDeps := state.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				// Since parent-child relationships affect URNs, we have more work to do for a parent dependency. If our parent
+				// is missing, we'll clear the reference and update our URN to remove the parent type. Moreover, we'll record
+				// the fact that we rewrote our URN so that any of our children can update their URNs appropriately.
+				//
+				// If our parent is present, but was rewritten, we'll need to rewrite our URN and record that it was rewritten
+				// for our children, and so on.
+				//
+				// Note: the precondition that the snapshot is topologically sorted allows us to assume that our parent's
+				// presence/rewriting has already been determined.
+				newParentURN, has := seen[dep.URN]
+				if !has {
+					newURN = resource.NewURN(state.URN.Stack(), state.URN.Project(), "", state.URN.Type(), state.URN.Name())
+					state.Parent = ""
+				} else {
+					newURN = resource.NewURN(
+						state.URN.Stack(),
+						state.URN.Project(),
+						newParentURN.QualifiedType(),
+						state.URN.Type(),
+						state.URN.Name(),
+					)
+					state.Parent = newParentURN
+				}
+			case resource.ResourceDependency:
+				// For dependencies, only preserve those that aren't dangling, taking into account any rewrites that may have
+				// occurred.
+				if newDepURN, has := seen[dep.URN]; has {
+					newDeps = append(newDeps, newDepURN)
+				}
+			case resource.ResourcePropertyDependency:
+				// For property dependencies, only preserve those that aren't dangling, taking into account any rewrites that
+				// may have occurred.
+				if newPropDepURN, has := seen[dep.URN]; has {
+					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], newPropDepURN)
+				}
+			case resource.ResourceDeletedWith:
+				// Only preseve a deleted-with relationship if it isn't dangling, taking into account any rewrites that may have
+				// occurred.
+				if newDeletedWithURN, has := seen[dep.URN]; has {
+					state.DeletedWith = newDeletedWithURN
+				} else {
+					state.DeletedWith = ""
+				}
+			}
+		}
+
+		// Since we can only have shrunk the sets of dependencies and property dependencies, we'll only update them if they
+		// were non-empty to begin with. This is to avoid e.g. replacing a nil input with an non-nil but empty output, which
+		// while equivalent in many cases is not the same and could result in subtly different behaviour in some parts of
+		// the engine.
+		if len(state.Dependencies) > 0 {
+			state.Dependencies = newDeps
+		}
+		if len(state.PropertyDependencies) > 0 {
+			state.PropertyDependencies = newPropDeps
+		}
+
+		seen[state.URN] = newURN
+		state.URN = newURN
+	}
+}
+
 // Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a
 // dependency could be a provider, parent-child relationship, dependency, and so on). Resources in the resulting
 // snapshot will appear in an order such that all dependencies of a resource will appear before the resource itself.
