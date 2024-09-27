@@ -173,8 +173,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // TODO: These tests are not working yet because of issues in sdkgen and programgen
 var expectedFailures = map[string]string{
 	"l2-resource-config": "expected no error, got BAIL: unexpected provider request with no version",
-	"l2-invoke-simple":   "multiple-value in single-value context",
-	"l2-invoke-variants": "multiple-value in single-value context",
 }
 
 func TestLanguage(t *testing.T) {
