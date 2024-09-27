@@ -477,10 +477,6 @@ jobs:
           curl -Os https://cli.codecov.io/latest/linux/codecov
           sudo chmod +x codecov
           ./codecov pr-base-picking --base-sha "$(git ls-remote https://github.com/pulumi/pulumi refs/heads/master | cut -f 1)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
-      - name: Find commit
-        id: find-commit
-        run: |
-          echo "commit-oid=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
         with:
@@ -489,7 +485,7 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
-#          override_commit: ${{ steps.find-commit.outputs.commit-oid }}
+          override_commit: ${{ github.sha }}
           override_pr: ${{ github.event.number }}
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
