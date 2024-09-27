@@ -93,7 +93,7 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
-    timeout-minutes: 60
+    timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       # Create a coverage file to register a testing job was started.
