@@ -29,9 +29,9 @@ class Provider implements provider.Provider {
 
         const component = new Component(name, inputs["foo"], options);
 
-	throw new pulumi.InvalidInputPropertiesError(
+	throw new pulumi.InputPropertiesError(
 	    "failing for a reason",
-	    [new pulumi.PropertyError("foo", "the failure reason")]);
+	    [{propertyPath: "foo", reason: "the failure reason"}]);
     }
 }
 
