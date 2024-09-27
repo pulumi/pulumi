@@ -58,6 +58,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	cmd.AddCommand(newStateRenameCommand())
 	cmd.AddCommand(newStateUpgradeCommand())
 	cmd.AddCommand(newStateMoveCommand())
+	cmd.AddCommand(newStateRepairCommand())
 	return cmd
 }
 
