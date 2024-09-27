@@ -283,9 +283,9 @@ type GetProgramDependenciesRequest struct {
 	// Deprecated: Do not use.
 	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
 	// Deprecated: Do not use.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
+	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory. Deprecated, use info.program_directory instead.
 	// Deprecated: Do not use.
-	Program                string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`                                // the path to the program.
+	Program                string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`                                // the path to the program. Deprecated, use info.entry_point instead.
 	TransitiveDependencies bool         `protobuf:"varint,4,opt,name=transitiveDependencies,proto3" json:"transitiveDependencies,omitempty"` // if transitive dependencies should be included in the result.
 	Info                   *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`                                      // the program info to use to calculate dependencies.
 }
@@ -470,9 +470,9 @@ type GetRequiredPluginsRequest struct {
 	// Deprecated: Do not use.
 	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
 	// Deprecated: Do not use.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
+	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory. Deprecated, use info.program_directory instead.
 	// Deprecated: Do not use.
-	Program string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"` // the path to the program.
+	Program string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"` // the path to the program. Deprecated, use info.entry_point instead.
 	Info    *ProgramInfo `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`       // the program info to use to calculate plugins.
 }
 
@@ -596,7 +596,7 @@ type RunRequest struct {
 	Stack   string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`     // the name of the stack being deployed into.
 	Pwd     string `protobuf:"bytes,3,opt,name=pwd,proto3" json:"pwd,omitempty"`         // the program's working directory.
 	// Deprecated: Do not use.
-	Program           string            `protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`                                                                                       // the path to the program to execute.
+	Program           string            `protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`                                                                                       // the path to the program to execute. Deprecated, use info.entry_point instead.
 	Args              []string          `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`                                                                                             // any arguments to pass to the program.
 	Config            map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // the configuration variables to apply before running.
 	DryRun            bool              `protobuf:"varint,7,opt,name=dryRun,proto3" json:"dryRun,omitempty"`                                                                                        // true if we're only doing a dryrun (preview).
@@ -823,7 +823,7 @@ type InstallDependenciesRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Deprecated: Do not use.
-	Directory               string       `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`                                                                 // the program's working directory.
+	Directory               string       `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`                                                                 // the program's working directory. Deprecated, use info.program_directory instead.
 	IsTerminal              bool         `protobuf:"varint,2,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`                                            // if we are running in a terminal and should use ANSI codes
 	Info                    *ProgramInfo `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`                                                                           // the program info to use to execute the plugin.
 	UseLanguageVersionTools bool         `protobuf:"varint,4,opt,name=use_language_version_tools,json=useLanguageVersionTools,proto3" json:"use_language_version_tools,omitempty"` // if we should use language version tools like pyenv or
@@ -1125,7 +1125,7 @@ type RunPluginRequest struct {
 
 	Pwd string `protobuf:"bytes,1,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
 	// Deprecated: Do not use.
-	Program string       `protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"` // the path to the program to execute.
+	Program string       `protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"` // the path to the program to execute. Deprecated, use info.entry_point instead.
 	Args    []string     `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`       // any arguments to pass to the program.
 	Env     []string     `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`         // any environment variables to set as part of the program.
 	Info    *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`       // the program info to use to execute the plugin.

@@ -147,9 +147,9 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
     project: builtins.str
     """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
-    """the program's working directory."""
+    """the program's working directory. Deprecated, use info.program_directory instead."""
     program: builtins.str
-    """the path to the program."""
+    """the path to the program. Deprecated, use info.entry_point instead."""
     transitiveDependencies: builtins.bool
     """if transitive dependencies should be included in the result."""
     @property
@@ -217,9 +217,9 @@ class GetRequiredPluginsRequest(google.protobuf.message.Message):
     project: builtins.str
     """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
-    """the program's working directory."""
+    """the program's working directory. Deprecated, use info.program_directory instead."""
     program: builtins.str
-    """the path to the program."""
+    """the path to the program. Deprecated, use info.entry_point instead."""
     @property
     def info(self) -> global___ProgramInfo:
         """the program info to use to calculate plugins."""
@@ -298,7 +298,7 @@ class RunRequest(google.protobuf.message.Message):
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
-    """the path to the program to execute."""
+    """the path to the program to execute. Deprecated, use info.entry_point instead."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """any arguments to pass to the program."""
@@ -387,7 +387,7 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     INFO_FIELD_NUMBER: builtins.int
     USE_LANGUAGE_VERSION_TOOLS_FIELD_NUMBER: builtins.int
     directory: builtins.str
-    """the program's working directory."""
+    """the program's working directory. Deprecated, use info.program_directory instead."""
     is_terminal: builtins.bool
     """if we are running in a terminal and should use ANSI codes"""
     @property
@@ -540,7 +540,7 @@ class RunPluginRequest(google.protobuf.message.Message):
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
-    """the path to the program to execute."""
+    """the path to the program to execute. Deprecated, use info.entry_point instead."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """any arguments to pass to the program."""
