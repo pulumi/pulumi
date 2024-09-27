@@ -82,33 +82,49 @@ export function isGrpcError(err: Error): boolean {
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
 
+interface InputPropertyErrorArgs {
+    message: string;
+    propertyPath: string;
+    reason: string;
+}
+
 export class InputPropertyError extends Error {
     public readonly __pulumiInputPropertyError: boolean = true;
 
-    constructor(message: string, public propertyPath: string, public reason: string) {
-	super(message);
+    public propertyPath: string;
+    public reason: string;
+
+    constructor(args: InputPropertyErrorArgs) {
+        super(args.message);
+        this.propertyPath = args.propertyPath;
+        this.reason = args.reason;
     }
 
     public static isInstance(obj: any): obj is InputPropertyError {
-	return utils.isInstance<InputPropertyError>(obj, "__pulumiInputPropertyError");
+        return utils.isInstance<InputPropertyError>(obj, "__pulumiInputPropertyError");
     }
 }
 
-interface PropertyError {
+interface InputPropertyErrorDetails {
     propertyPath: string;
     reason: string;
+}
+
+interface InputPropertiesErrorArgs {
+    message: string;
+    errors: Array<InputPropertyErrorDetails>;
 }
 
 export class InputPropertiesError extends Error {
     public readonly __pulumiInputPropertiesError: boolean = true;
 
-    constructor(
-        message: string,
-        public errors?: Array<PropertyError>,
-    ) {
-        super(message);
-	console.log("constructing")
-	console.log("InputPropertiesError: " + message + " " + errors);
+    public message: string;
+    public errors: Array<InputPropertyErrorDetails>;
+
+    constructor(args: InputPropertiesErrorArgs) {
+        super(args.message);
+        this.message = args.message;
+        this.errors = args.errors;
     }
 
     public static isInstance(obj: any): obj is InputPropertiesError {

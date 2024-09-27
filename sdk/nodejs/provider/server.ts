@@ -380,22 +380,30 @@ class Server implements grpc.UntypedServiceImplementation {
                     callback(error, undefined);
                     return;
                 } else if (e instanceof InputPropertyError) {
-		    const metadata = new grpc.Metadata();
-		    const status = new statusproto.Status();
-		    status.setCode(grpc.status.INVALID_ARGUMENT);
-		    status.setMessage(e.message);
-		    const errorDetails = new errorproto.InputPropertiesError();
-		    const propertyError = new errorproto.InputPropertiesError.PropertyError();
-		    propertyError.setPropertyPath(e.propertyPath);
-		    propertyError.setReason(e.reason);
-		    errorDetails.addErrors(propertyError);
+                    const metadata = new grpc.Metadata();
+                    const status = new statusproto.Status();
+                    status.setCode(grpc.status.INVALID_ARGUMENT);
+                    status.setMessage(e.message);
 
-		    const details = new anyproto.Any();
-		    details.pack(errorDetails.serializeBinary(), "pulumirpc.InputPropertiesError");
+                    const errorDetails = new errorproto.InputPropertiesError();
+                    const propertyError = new errorproto.InputPropertiesError.PropertyError();
+                    propertyError.setPropertyPath(e.propertyPath);
+                    propertyError.setReason(e.reason);
+                    errorDetails.addErrors(propertyError);
 
-		    status.addDetails(details);
-		    metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
-		}
+                    const details = new anyproto.Any();
+                    details.pack(errorDetails.serializeBinary(), "pulumirpc.InputPropertiesError");
+
+                    status.addDetails(details);
+                    metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
+                    const error = {
+                        code: grpc.status.INVALID_ARGUMENT,
+                        details: e.message,
+                        metadata: metadata,
+                    };
+                    callback(error, undefined);
+                    return;
+                }
                 callback(e, undefined);
             } finally {
                 // remove the gRPC callback context from the map of in-flight callbacks
