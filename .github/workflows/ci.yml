@@ -489,7 +489,7 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
-          override_commit: ${{ steps.find-commit.outputs.commit-oid }}
+#          override_commit: ${{ steps.find-commit.outputs.commit-oid }}
           override_pr: ${{ github.event.number }}
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
