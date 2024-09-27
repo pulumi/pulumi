@@ -49,6 +49,137 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	}
 }
 
+// Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a
+// dependency could be a provider, parent-child relationship, dependency, and so on). Resources in the resulting
+// snapshot will appear in an order such that all dependencies of a resource will appear before the resource itself.
+// Sorting may fail if there are cycles in the snapshot, or in cases where references between resources are genuinely
+// ambiguous (e.g. if there are multiple deleted versions of a resource with the same URN that cannot be meaningfully
+// differentiated). As a result of this, callers should be mindful that the snapshot could be left in an invalid state
+// if sorting terminates mid-way through due to an error.
+//
+// This method is generally only used for repairing invalid snapshots, since most snapshots are built in response to
+// resource registrations from a program, and programs are required to submit such registrations in a
+// dependency-respecting order. Note that sortedness is a necessary but not sufficient condition for a snapshot to be
+// valid; the VerifyIntegrity method should be used to ensure that a snapshot is well-formed.
+func (snap *Snapshot) Toposort() error {
+	sorted := []*resource.State{}
+
+	// We implement the sort using a post-order depth-first search, keeping track of nodes we have visited and terminating
+	// when we have seen them all. It is not possible to sort a snapshot with cycles (and indeed, such snapshots will
+	// never be valid Pulumi states). To this end we also keep track of the path we are currently visiting so that we can
+	// spot if we are in a cycle.
+	visiting := map[*resource.State]bool{}
+	visited := map[*resource.State]bool{}
+
+	// When traversing dependencies, we'll need to look them up by URN. It is possible that the same URN exists multiple
+	// times in a snapshot: in the case that the snapshot represents the state mid-way through one or more replacements,
+	// both the old and new resources could appear in the snapshot. Dependencies between old and new resources are
+	// permitted, so it's important that we know which is which and don't disambiguate by URN alone. To this end we keep
+	// track of two lookup tables -- old resources (identifiable by their Delete flag being set) and new resources.
+	//
+	// NOTE: In the event of multiple old resources with the same URN, we can only implement a best-effort approach to
+	// sorting, since there is technically no way to disambiguate.
+	oldsByURN := map[resource.URN]*resource.State{}
+	newsByURN := map[resource.URN]*resource.State{}
+	for _, state := range snap.Resources {
+		if state.Delete {
+			oldsByURN[state.URN] = state
+		} else {
+			newsByURN[state.URN] = state
+		}
+	}
+
+	for _, state := range snap.Resources {
+		err := topoVisit(state, &sorted, oldsByURN, newsByURN, visiting, visited)
+		if err != nil {
+			return err
+		}
+	}
+
+	snap.Resources = sorted
+	return nil
+}
+
+// topoVisit is a helper function for Toposort that visits a resource and its dependencies recursively.
+func topoVisit(
+	state *resource.State,
+	sorted *[]*resource.State,
+	oldsByURN map[resource.URN]*resource.State,
+	newsByURN map[resource.URN]*resource.State,
+	visiting map[*resource.State]bool,
+	visited map[*resource.State]bool,
+) error {
+	if visiting[state] {
+		return errors.New("snapshot has cyclic dependencies")
+	}
+
+	// A helper function for looking up a dependency of this resource. As mentioned above, URN alone is not a unique key
+	// as a resource may exist in both old and new forms. We proceed as follows:
+	//
+	// * If there are both old and new resources with the same URN, and we are old, we take the old one. Since we are old,
+	//   there is no way we could refer to a new state (since that state didn't exist when we were last updated).
+	// * If there are both old and new resources with the same URN, and we are new, we take the new one; it would be
+	//   invalid for us to refer to the old state since it is going to be deleted.
+	// * If there is only one resource with the given URN, we take it.
+	lookup := func(urn resource.URN) *resource.State {
+		old, hasOld := oldsByURN[urn]
+		new, hasNew := newsByURN[urn]
+		if hasOld && hasNew {
+			if state.Delete {
+				return old
+			}
+
+			return new
+		} else if hasOld {
+			return old
+		} else if hasNew {
+			return new
+		}
+
+		return nil
+	}
+
+	if !visited[state] {
+		visiting[state] = true
+
+		provider, allDeps := state.GetAllDependencies()
+		nexts := map[*resource.State]bool{}
+		for _, dep := range allDeps {
+			next := lookup(dep.URN)
+			if next != nil {
+				nexts[next] = true
+			}
+		}
+
+		if provider != "" {
+			ref, err := providers.ParseReference(provider)
+			if err != nil {
+				return fmt.Errorf("failed to parse provider reference for resource %s: %w", state.URN, err)
+			}
+
+			next := lookup(ref.URN())
+			if next != nil {
+				nexts[next] = true
+			}
+		}
+
+		for next := range nexts {
+			if err := topoVisit(next, sorted, oldsByURN, newsByURN, visiting, visited); err != nil {
+				return err
+			}
+		}
+
+		visited[state] = true
+		visiting[state] = false
+
+		// Append this node after all the dependencies have been visited (and thus appended before it, ensuring topological
+		// order).
+		*sorted = append(*sorted, state)
+	}
+
+	return nil
+}
+
 // NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
 // URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
 // later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
