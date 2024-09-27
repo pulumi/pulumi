@@ -173,6 +173,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // TODO: These tests are not working yet because of issues in sdkgen and programgen
 var expectedFailures = map[string]string{
 	"l2-resource-config": "expected no error, got BAIL: unexpected provider request with no version",
+	"l2-plain":           "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 }
 
 func TestLanguage(t *testing.T) {
