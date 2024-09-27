@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@ runtime: yaml`
 
 		const expectedOut = `KEY  VALUE
 
-Save? Yes
 `
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
@@ -100,33 +99,6 @@ Save? Yes
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
 
-	t.Run("effects -> no effects", func(t *testing.T) {
-		t.Parallel()
-
-		const stackYAML = `environment:
-  - env
-  - env2
-`
-
-		env := &esc.Environment{}
-
-		var newStackYAML string
-		stdin := strings.NewReader("n")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent}
-		ctx := context.Background()
-		err := rm.run(ctx, []string{"env2"})
-		require.Error(t, err)
-
-		const expectedOut = "KEY  VALUE\n" +
-			"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties.\n" +
-			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n\n" +
-			"Save? No\n"
-
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
-	})
-
 	t.Run("two imports, secrets", func(t *testing.T) {
 		t.Parallel()
 
@@ -157,7 +129,6 @@ Save? Yes
 app:password  [secret]
 aws:region    us-west-2
 
-Save? Yes
 `
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
@@ -199,7 +170,6 @@ Save? Yes
 app:password  hunter2
 aws:region    us-west-2
 
-Save? Yes
 `
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
