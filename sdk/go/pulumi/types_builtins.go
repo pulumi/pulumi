@@ -5566,6 +5566,87 @@ func ToStringArrayArrayOutput(in []StringArrayOutput) StringArrayArrayOutput {
 	return a.ToStringArrayArrayOutput()
 }
 
+var stringMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem()
+
+// StringMapMapMapInput is an input type that accepts StringMapMapMap and StringMapMapMapOutput values.
+type StringMapMapMapInput interface {
+	Input
+
+	ToStringMapMapMapOutput() StringMapMapMapOutput
+	ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput
+}
+
+// StringMapMapMap is an input type for map[string]StringMapMapInput values.
+type StringMapMapMap map[string]StringMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]string).
+func (StringMapMapMap) ElementType() reflect.Type {
+	return stringMapMapMapType
+}
+
+func (in StringMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]string] {
+	return pulumix.Output[map[string]map[string]map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringMapMapMap) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return ToOutput(in).(StringMapMapMapOutput)
+}
+
+func (in StringMapMapMap) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(StringMapMapMapOutput)
+}
+
+// StringMapMapMapOutput is an Output that returns map[string]map[string]map[string]string values.
+type StringMapMapMapOutput struct{ *OutputState }
+
+func (StringMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]string] {
+	return pulumix.Output[map[string]map[string]map[string]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]string).
+func (StringMapMapMapOutput) ElementType() reflect.Type {
+	return stringMapMapMapType
+}
+
+func (o StringMapMapMapOutput) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return o
+}
+
+func (o StringMapMapMapOutput) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o StringMapMapMapOutput) MapIndex(k StringInput) StringMapMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]map[string]string {
+		return vs[0].(map[string]map[string]map[string]string)[vs[1].(string)]
+	}).(StringMapMapOutput)
+}
+
+func ToStringMapMapMap(in map[string]map[string]map[string]string) StringMapMapMap {
+	m := make(StringMapMapMap)
+	for k, v := range in {
+		m[k] = ToStringMapMap(v)
+	}
+	return m
+}
+
+func ToStringMapMapMapOutput(in map[string]StringMapMapOutput) StringMapMapMapOutput {
+	m := make(StringMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapMapMapOutput()
+}
+
 var urnType = reflect.TypeOf((*URN)(nil)).Elem()
 
 // URNInput is an input type that accepts URN and URNOutput values.
@@ -7104,6 +7185,19 @@ func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
 	}).(StringArrayArrayOutput)
 }
 
+// AsStringMapMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]map[string]string or a compatible type and returns a `StringMapMapMapOutput` with that value.
+// AsStringMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapMapMapOutput() StringMapMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]string), nil
+	}).(StringMapMapMapOutput)
+}
+
 // AsURNOutput asserts that the type of the AnyOutput's underlying interface{} value is
 // URN and returns a `URNOutput` with that value. AsURNOutput panics if the value
 // was not the expected type.
@@ -7270,6 +7364,7 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*StringMapArrayInput)(nil)).Elem(), StringMapArray{})
 	RegisterInputType(reflect.TypeOf((*StringMapMapInput)(nil)).Elem(), StringMapMap{})
 	RegisterInputType(reflect.TypeOf((*StringArrayArrayInput)(nil)).Elem(), StringArrayArray{})
+	RegisterInputType(reflect.TypeOf((*StringMapMapMapInput)(nil)).Elem(), StringMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*URNInput)(nil)).Elem(), URN(""))
 	RegisterInputType(reflect.TypeOf((*URNPtrInput)(nil)).Elem(), URN(""))
 	RegisterInputType(reflect.TypeOf((*URNArrayInput)(nil)).Elem(), URNArray{})
@@ -7346,6 +7441,7 @@ func init() {
 	RegisterOutputType(StringMapArrayOutput{})
 	RegisterOutputType(StringMapMapOutput{})
 	RegisterOutputType(StringArrayArrayOutput{})
+	RegisterOutputType(StringMapMapMapOutput{})
 	RegisterOutputType(URNOutput{})
 	RegisterOutputType(URNPtrOutput{})
 	RegisterOutputType(URNArrayOutput{})
