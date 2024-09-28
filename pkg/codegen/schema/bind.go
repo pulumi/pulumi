@@ -230,6 +230,9 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			version = &v
 		}
 	}
+	if info.Meta != nil && info.Meta.SupportPack && info.Version == "" {
+		diags = diags.Append(errorf("#/version", "version must be provided when package supports packing"))
+	}
 
 	// Parse the module format, if any.
 	moduleFormat := "(.*)"
