@@ -2075,7 +2075,7 @@ func TestToOutputStringArrayArray(t *testing.T) {
 func TestToOutputStringMapMapMap(t *testing.T) {
 	t.Parallel()
 
-	out := ToOutput(StringMapMap{"baz": StringMap{"baz": StringMap{"baz": String("foo")}}})
+	out := ToOutput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
 	_, ok := out.(StringMapMapMapInput)
 	assert.True(t, ok)
 
@@ -4297,7 +4297,7 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 func TestToStringMapMapMapOutput(t *testing.T) {
 	t.Parallel()
 
-	in := StringMapMapMapInput(StringMapMap{"baz": StringMap{"baz": StringMap{"baz": String("foo")}}})
+	in := StringMapMapMapInput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
 
 	out := in.ToStringMapMapMapOutput()
 
@@ -7554,7 +7554,7 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 func TestStringMapMapMapIndex(t *testing.T) {
 	t.Parallel()
 
-	out := (StringMapMap{"baz": StringMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
+	out := (StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -8920,7 +8920,7 @@ func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
 func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
 	t.Parallel()
 
-	anyout := Any(StringMapMap{"baz": StringMap{"baz": StringMap{"baz": String("foo")}}})
+	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
 	out := anyout.AsStringMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)

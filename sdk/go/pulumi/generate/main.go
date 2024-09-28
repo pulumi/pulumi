@@ -315,7 +315,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 				ItemType:      name + "MapMapInput",
 				elementType:   "map[string]map[string]map[string]" + p.Type,
 				item:          mapMapType,
-				Example:       fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
+				Example:       fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
 				RegisterInput: true,
 			})
 		}
