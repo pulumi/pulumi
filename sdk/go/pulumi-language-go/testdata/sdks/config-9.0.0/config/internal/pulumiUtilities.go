@@ -75,7 +75,7 @@ func PkgVersion() (semver.Version, error) {
 	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-ref-ref/sdk(/v\\d+)?")
+	re := regexp.MustCompile("^.*/pulumi-config/sdk(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
@@ -164,8 +164,8 @@ func callPlainInner(
 // PkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.
 func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
 	defaults := []pulumi.ResourceOption{}
-
-	version := semver.MustParse("12.0.0")
+	defaults = append(defaults, pulumi.PluginDownloadURL("http://example.com"))
+	version := semver.MustParse("9.0.0")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}
@@ -175,8 +175,8 @@ func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOptio
 // PkgInvokeDefaultOpts provides package level defaults to pulumi.OptionInvoke.
 func PkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
 	defaults := []pulumi.InvokeOption{}
-
-	version := semver.MustParse("12.0.0")
+	defaults = append(defaults, pulumi.PluginDownloadURL("http://example.com"))
+	version := semver.MustParse("9.0.0")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}
