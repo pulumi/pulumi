@@ -17,6 +17,7 @@ package passphrase
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
@@ -24,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -288,7 +290,7 @@ func NewStackPromptingPassphraseSecretsManagerFromState(
 	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt, stackName)
 	switch {
 	case err == ErrIncorrectPassphrase:
-		return newLockedPasspharseSecretsManager(state), nil
+		return newLockedPassphraseSecretsManager(state), nil
 	case err != nil:
 		return nil, fmt.Errorf("constructing secrets manager: %w", err)
 	default:
@@ -381,9 +383,27 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phraseFile != "" {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
-				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
+				return "", false, fmt.Errorf("unable to construct a path for PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
-			phraseDetails, err := os.ReadFile(phraseFilePath)
+			fileInfo, err := os.Stat(phraseFilePath)
+			if err != nil {
+				return "", false, fmt.Errorf("unable to stat PULUMI_CONFIG_PASSPHRASE_FILE=%q: %w", phraseFilePath, err)
+			}
+			var phraseDetails []byte
+			if fileInfo.Mode().IsRegular() && (fileInfo.Mode().Perm()&0o111 != 0) {
+				// File is executable. Execute it and read its output.
+				cmd := exec.Command(phraseFilePath)
+				out := bytes.Buffer{}
+				cmd.Stdout = &out
+				err = cmd.Run()
+				if err != nil {
+					return "", false, fmt.Errorf("PULUMI_CONFIG_PASSPHRASE_FILE=%q has mode +x but failed to execute: %w", phraseFilePath, err)
+				}
+				phraseDetails = out.Bytes()
+			} else {
+				// Read file contents.
+				phraseDetails, err = os.ReadFile(phraseFilePath)
+			}
 			if err != nil {
 				return "", false, fmt.Errorf("unable to read PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
@@ -403,12 +423,12 @@ func isInteractive() bool {
 	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
 }
 
-// newLockedPasspharseSecretsManager returns a Passphrase secrets manager that has the correct state, but can not
+// newLockedPassphraseSecretsManager returns a Passphrase secrets manager that has the correct state, but can not
 // encrypt or decrypt anything. This is helpful today for some cases, because we have operations that roundtrip
 // checkpoints and we'd like to continue to support these operations even if we don't have the correct passphrase. But
 // if we never end up having to call encrypt or decrypt, this provider will be sufficient.  Since it has the correct
 // state, we ensure that when we roundtrip, we don't lose the state stored in the deployment.
-func newLockedPasspharseSecretsManager(state json.RawMessage) secrets.Manager {
+func newLockedPassphraseSecretsManager(state json.RawMessage) secrets.Manager {
 	return &localSecretsManager{
 		state:   state,
 		crypter: &errorCrypter{},

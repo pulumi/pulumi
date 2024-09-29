@@ -19,6 +19,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +28,15 @@ const (
 	state       = `{"salt":"v1:fozI5u6B030=:v1:F+6ZduKKd8G0/V7L:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 	brokenState = `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 )
+
+func hasErrorCrypter(t *testing.T, sm secrets.Manager) bool {
+	t.Helper()
+	encrypter, err := sm.Encrypter()
+	assert.NoError(t, err)
+	_, ok := encrypter.(*errorCrypter)
+	return ok
+	// assert.IsType(t, &errorCrypter{}, encrypter)
+}
 
 func resetPassphraseTestEnvVars() func() {
 	clearCachedSecretsManagers()
@@ -129,6 +139,28 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestPassphraseManagerExecutablePassfileReturnsSecretsManager(t *testing.T) {
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	tmpFile, err := os.CreateTemp("", "pulumi-secret-test")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	_, err = tmpFile.WriteString("#!/bin/sh\necho password\n")
+	assert.NoError(t, err)
+	err = tmpFile.Chmod(os.FileMode(0o777)) // TODO: 0o700
+	assert.NoError(t, err)
+
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
+
+	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
+	assert.NoError(t, err)
+	assert.NotNil(t, sm)
+	assert.False(t, hasErrorCrypter(t, sm))
 }
 
 //nolint:paralleltest // mutates environment variables
