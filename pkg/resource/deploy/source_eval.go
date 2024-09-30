@@ -1742,11 +1742,11 @@ func (rm *resmon) resolveProvider(
 func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
 	for i, d := range st.Details() {
-		if i == 0 {
+		if i == 0 && message != "" {
 			message = message + ":"
 		}
 		switch d := d.(type) {
-		case *pulumirpc.InvalidInputPropertiesError:
+		case *pulumirpc.InputPropertiesError:
 			props := resource.NewObjectProperty(inputs)
 			for _, err := range d.GetErrors() {
 				propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
