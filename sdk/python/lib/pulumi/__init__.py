@@ -131,8 +131,8 @@ __all__ = [
     "deprecated",
     # errors
     "RunError",
-    "InvalidInputPropertiesError",
-    "PropertyError",
+    "InputPropertiesError",
+    "InputPropertyError",
     # invoke
     "InvokeOptions",
     "InvokeTransform",

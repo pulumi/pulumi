@@ -71,7 +71,7 @@ class ProviderServicer(ResourceProviderServicer):
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[List[PropertyError]]
     ):
-        status = grpc.Status() # type: ignore[attr-defined]
+        status = grpc.Status()  # type: ignore[attr-defined]
         # We don't care about the exact status code here, since they are pretty web centric, and don't
         # necessarily make sense in this context.  Pick one that's close enough.
         # type: ignore
@@ -87,8 +87,8 @@ class ProviderServicer(ResourceProviderServicer):
             error_details = errors_pb2.InputPropertiesError()
             for error in errors:
                 property_error = errors_pb2.InputPropertiesError.PropertyError()
-                property_error.property_path = error.property_path
-                property_error.reason = error.reason
+                property_error.property_path = error["property_path"]
+                property_error.reason = error["reason"]
                 error_details.errors.append(property_error)
 
             details_container = s.details.add()
@@ -115,7 +115,7 @@ class ProviderServicer(ResourceProviderServicer):
             raise
         except InputPropertyError as e:
             status = self.create_grpc_invalid_properties_status(
-                e.message, [PropertyError(e.property_path, e.reason)]
+                e.message, [{"property_path": e.property_path, "reason": e.reason}]
             )
             await context.abort_with_status(status)
             # We already aborted at this point

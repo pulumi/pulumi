@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 
 
 class RunError(Exception):
@@ -32,14 +32,13 @@ class InputPropertyError(Exception):
         self.reason = reason
 
 
-class PropertyError:
+class PropertyError(TypedDict):
     """
     Represents an error in a property value.
     """
 
-    def __init__(self, property_path: str, reason: str):
-        self.property_path = property_path
-        self.reason = reason
+    property_path: str
+    reason: str
 
 
 class InputPropertiesError(Exception):

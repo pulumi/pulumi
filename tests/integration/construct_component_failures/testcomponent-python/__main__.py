@@ -15,7 +15,7 @@
 from typing import Optional
 import sys
 
-from pulumi import Input, Inputs, ComponentResource, ResourceOptions, InputPropertiesError, PropertyError
+from pulumi import Input, Inputs, ComponentResource, ResourceOptions, InputPropertiesError
 import pulumi
 import pulumi.provider as provider
 import grpc
@@ -56,8 +56,7 @@ class Provider(provider.Provider):
 
         component = Component(name, inputs['foo'], options)
 
-        propError = PropertyError("foo", "the failure reason")
-        raise InputPropertiesError("failing for a reason", [propError])
+        raise InputPropertiesError("failing for a reason", [{"property_path": "foo", "reason": "the failure reason"}])
 
 if __name__ == "__main__":
     provider.main(Provider(), sys.argv[1:])
