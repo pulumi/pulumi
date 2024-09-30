@@ -6,6 +6,8 @@ LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodej
 
 TEST_FAST_TIMEOUT := 2m
 
+NODEJS_TEST_PARALLELISM ?= $(shell node -e "console.log(require('os').cpus().length * 2)")
+
 ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
 endif
@@ -60,14 +62,14 @@ install_plugin:: build
 install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --parallel --timeout 120000 \
+	yarn run nyc -s mocha --parallel=$(NODEJS_TEST_PARALLELISM) --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
-	yarn run nyc -s mocha --parallel 'bin/tests_with_mocks/**/*.spec.js'
+	yarn run nyc -s mocha --parallel=$(NODEJS_TEST_PARALLELISM) 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --parallel --timeout 300000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc -s mocha --parallel=$(NODEJS_TEST_PARALLELISM) --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
