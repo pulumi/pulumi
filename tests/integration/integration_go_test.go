@@ -1363,6 +1363,11 @@ outer:
 	wg.Wait()
 }
 
+func TestConstructFailuresGo(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 // TestLogDebugGo tests that the amount of debug logs is reasonable.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
