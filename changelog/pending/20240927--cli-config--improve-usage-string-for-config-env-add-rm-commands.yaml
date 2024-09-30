@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Improve usage string for config env add/rm commands
