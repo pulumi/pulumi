@@ -662,8 +662,13 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		secretsManager = sm.baseSnapshot.SecretsManager
 	}
 
+	var metadata deploy.SnapshotMetadata
+	if sm.baseSnapshot != nil {
+		metadata = sm.baseSnapshot.Metadata
+	}
+
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.

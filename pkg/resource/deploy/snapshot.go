@@ -34,18 +34,38 @@ type Snapshot struct {
 	SecretsManager    secrets.Manager      // the manager to use use when serializing this snapshot.
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
+	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
+}
+
+// SnapshotMetadata contains metadata about a snapshot.
+type SnapshotMetadata struct {
+	// Metadata associated with any integrity error affecting the snapshot.
+	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadata
+}
+
+// SnapshotIntegrityErrorMetadata contains metadata about a snapshot integrity error, such as the version
+// and invocation of the Pulumi engine that caused it.
+type SnapshotIntegrityErrorMetadata struct {
+	// The version of the Pulumi engine that caused the integrity error.
+	Version string
+	// The command/invocation of the Pulumi engine that caused the integrity error.
+	Command string
+	// The error message associated with the integrity error.
+	Error string
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	resources []*resource.State, ops []resource.Operation,
+	metadata SnapshotMetadata,
 ) *Snapshot {
 	return &Snapshot{
 		Manifest:          manifest,
 		SecretsManager:    secretsManager,
 		Resources:         resources,
 		PendingOperations: ops,
+		Metadata:          metadata,
 	}
 }
 

@@ -306,7 +306,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)

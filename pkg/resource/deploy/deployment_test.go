@@ -41,7 +41,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, ops)
+	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{})
 }
 
 func TestPendingOperationsDeployment(t *testing.T) {
