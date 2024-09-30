@@ -2,4 +2,5 @@ name: l2-target-up-with-new-dependency
 runtime:
   name: python
   options:
+    typechecker: mypy
     virtualenv: venv

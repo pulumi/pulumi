@@ -2,4 +2,5 @@ name: l2-resource-config
 runtime:
   name: python
   options:
+    typechecker: pyright
     virtualenv: venv

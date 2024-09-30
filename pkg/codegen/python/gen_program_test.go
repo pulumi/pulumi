@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -84,8 +85,13 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 				},
 			},
 
-			IsGenProject:    true,
-			GenProject:      GenerateProject,
+			IsGenProject: true,
+			GenProject: func(
+				directory string, project workspace.Project,
+				program *pcl.Program, localDependencies map[string]string,
+			) error {
+				return GenerateProject(directory, project, program, localDependencies, "")
+			},
 			ExpectedVersion: expectedVersion,
 			DependencyFile:  "requirements.txt",
 		},

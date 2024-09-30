@@ -2,4 +2,5 @@ name: l2-invoke-variants
 runtime:
   name: python
   options:
+    typechecker: mypy
     virtualenv: venv

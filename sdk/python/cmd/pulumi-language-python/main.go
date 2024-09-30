@@ -164,7 +164,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -191,6 +191,9 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+
+	// This is used by conformance testing to set the typechecker to use in ProgramGen.
+	typechecker string
 }
 
 func parseOptions(root string, programDir string, options map[string]interface{}) (toolchain.PythonOptions, error) {
@@ -240,12 +243,13 @@ func parseOptions(root string, programDir string, options map[string]interface{}
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing string,
+func newLanguageHost(exec, engineAddress, tracing, typechecker string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		typechecker:   typechecker,
 	}
 }
 
@@ -1334,7 +1338,7 @@ func (host *pythonLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.typechecker)
 	if err != nil {
 		return nil, err
 	}
