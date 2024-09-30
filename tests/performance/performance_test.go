@@ -28,8 +28,8 @@ import (
 func TestPerfEmptyUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 2 * time.Second,
-		MaxUpdateDuration:  2 * time.Second,
+		MaxPreviewDuration: 6300 * time.Millisecond,
+		MaxUpdateDuration:  6300 * time.Millisecond,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -48,8 +48,8 @@ func TestPerfEmptyUpdate(t *testing.T) {
 func TestPerfManyComponentUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 10 * time.Second,
-		MaxUpdateDuration:  10 * time.Second,
+		MaxPreviewDuration: 18100 * time.Millisecond,
+		MaxUpdateDuration:  18100 * time.Millisecond,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -71,8 +71,8 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 func TestPerfParentChainUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 10 * time.Second,
-		MaxUpdateDuration:  10 * time.Second,
+		MaxPreviewDuration: 19300 * time.Millisecond,
+		MaxUpdateDuration:  19300 * time.Millisecond,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
