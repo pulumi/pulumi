@@ -1209,6 +1209,7 @@ class ProviderResource(CustomResource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         dependency: bool = False,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str pkg: The package type of this provider resource.
@@ -1217,6 +1218,7 @@ class ProviderResource(CustomResource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
 
         if opts is not None and opts.provider is not None:
@@ -1225,7 +1227,7 @@ class ProviderResource(CustomResource):
             )
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts, dependency
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency, package_ref
         )
         self.package = pkg
 
