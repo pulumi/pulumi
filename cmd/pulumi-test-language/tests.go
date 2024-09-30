@@ -956,4 +956,53 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-plain": {
+		providers: []plugin.Provider{&providers.PlainProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:plain", provider.Type.String(), "expected plain provider")
+
+					plain := snap.Resources[2]
+					assert.Equal(l, "plain:index:Resource", plain.Type.String(), "expected plain resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     2.17,
+								"integer":   -12,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{false, true},
+								"stringMap": map[string]interface{}{
+									"two":   "turtle doves",
+									"three": "french hens",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{true, false},
+							"stringMap": map[string]interface{}{
+								"x": "100",
+								"y": "200",
+							},
+						}),
+					})
+					assert.Equal(l, want, plain.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, plain.Inputs, plain.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 }
