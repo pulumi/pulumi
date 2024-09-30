@@ -14,7 +14,8 @@ import (
 type Foo struct {
 	pulumi.CustomResourceState
 
-	ConditionSets BarArrayArrayArrayOutput `pulumi:"conditionSets"`
+	ConditionSets   BarArrayArrayArrayOutput     `pulumi:"conditionSets"`
+	PrivateEndpoint pulumi.StringMapMapMapOutput `pulumi:"privateEndpoint"`
 }
 
 // NewFoo registers a new resource with the given unique name, arguments, and options.
@@ -152,6 +153,10 @@ func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 
 func (o FooOutput) ConditionSets() BarArrayArrayArrayOutput {
 	return o.ApplyT(func(v *Foo) BarArrayArrayArrayOutput { return v.ConditionSets }).(BarArrayArrayArrayOutput)
+}
+
+func (o FooOutput) PrivateEndpoint() pulumi.StringMapMapMapOutput {
+	return o.ApplyT(func(v *Foo) pulumi.StringMapMapMapOutput { return v.PrivateEndpoint }).(pulumi.StringMapMapMapOutput)
 }
 
 type FooArrayOutput struct{ *pulumi.OutputState }

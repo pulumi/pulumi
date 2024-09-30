@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen
+  description: Validate schema version is provided when package supports packing

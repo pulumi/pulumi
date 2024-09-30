@@ -3332,8 +3332,8 @@ func TestValidationFailures(t *testing.T) {
 	t.Parallel()
 
 	s, _ := status.Newf(codes.InvalidArgument, "bad request").WithDetails(
-		&pulumirpc.InvalidInputPropertiesError{
-			Errors: []*pulumirpc.InvalidInputPropertiesError_PropertyError{
+		&pulumirpc.InputPropertiesError{
+			Errors: []*pulumirpc.InputPropertiesError_PropertyError{
 				{
 					Reason:       "missing",
 					PropertyPath: "testproperty",

@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -52,6 +53,9 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		) (backend.Stack, error) {
 			assert.NotEmpty(t, opts.Teams, "expected teams to be set")
 			return nil, backend.ErrTeamsNotSupported
+		},
+		DefaultSecretManagerF: func() (secrets.Manager, error) {
+			return nil, nil
 		},
 	}
 	cmd := &stackInitCmd{

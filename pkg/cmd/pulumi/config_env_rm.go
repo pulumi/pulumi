@@ -26,8 +26,8 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvRmCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove environments from a stack",
+		Use:   "rm <environment-name>",
+		Short: "Remove environment from a stack",
 		Long:  "Removes an environment from a stack's import list.",
 		Args:  cmdutil.ExactArgs(1),
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {

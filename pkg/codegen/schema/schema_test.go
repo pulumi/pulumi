@@ -751,6 +751,23 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
 
+func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name: "test",
+		Meta: &MetadataSpec{
+			SupportPack: true,
+		},
+		Resources: map[string]ResourceSpec{},
+	}
+
+	_, diags, _ := BindSpec(pkgSpec, loader)
+	assert.Len(t, diags, 1)
+	assert.Equal(t, diags[0].Severity, hcl.DiagError)
+	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
+}
+
 func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
