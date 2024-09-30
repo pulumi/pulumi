@@ -388,6 +388,35 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-transient-dependency-import": {
+		providers: []plugin.Provider{
+			&providers.SimpleProvider{},
+			&providers.SimpleOverlappingNameProvider{},
+		},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the two simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:overlapping_pkg:Resource", simple.Type.String(), "expected simple resource")
+
+					simpleOverlap := snap.Resources[3]
+					assert.Equal(l, "simple:overlapping_pkg:Resource",
+						simpleOverlap.Type.String(), "expected simple overlap resource")
+				},
+			},
+		},
+	},
 	"l2-resource-primitives": {
 		providers: []plugin.Provider{&providers.PrimitiveProvider{}},
 		runs: []testRun{

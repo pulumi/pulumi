@@ -53,27 +53,29 @@ func (p *SimpleOverlappingNameProvider) Pkg() tokens.Package {
 func (p *SimpleOverlappingNameProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	resourceProperties := map[string]schema.PropertySpec{
-		"value": {
-			TypeSpec: schema.TypeSpec{
-				Type: "boolean",
-			},
-		},
-	}
-	resourceRequired := []string{"value"}
-
 	pkg := schema.PackageSpec{
 		Name:    "simpleoverlap",
 		Version: "2.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"simpleoverlap:overlapping_pkg:OverlapResource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "simple:index:Resource",
-					Properties: resourceProperties,
-					Required:   resourceRequired,
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"out": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "/simple/v2.0.0/schema.json#/resources/simple:index:Resource",
+							},
+						},
+					},
 				},
-				InputProperties: resourceProperties,
-				RequiredInputs:  resourceRequired,
+				InputProperties: map[string]schema.PropertySpec{
+					"value": {
+						TypeSpec: schema.TypeSpec{
+							Type: "boolean",
+						},
+					},
+				},
+				RequiredInputs: []string{"value"},
 			},
 		},
 	}
@@ -116,25 +118,25 @@ func (p *SimpleOverlappingNameProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	// URN should be of the form "simpleoverlap:index:Resource"
-	if req.URN.Type() != "simpleoverlap:index:Resource" {
+	if req.URN.Type() != "simpleoverlap:overlapping_pkg:OverlapResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	// Expect just the boolean value
-	value, ok := req.News["value"]
+	// Expect the inner simple provider's resource.
+	value, ok := req.News["out"]
 	if !ok {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("value", "missing value"),
+			Failures: makeCheckFailure("out", "missing out"),
 		}, nil
 	}
-	if !value.IsBool() {
+	if !value.IsObject() {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("value", "value is not a boolean"),
+			Failures: makeCheckFailure("out", "out is not an object"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(req.News) != 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

@@ -21,7 +21,7 @@ func main() {
 			return err
 		}
 		ctx.Export("outOne", one)
-		ctx.Export("outTwo", two.Value)
+		ctx.Export("outTwo", two.Out)
 		return nil
 	})
 }

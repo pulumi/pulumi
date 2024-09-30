@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"errors"
+	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"example.com/pulumi-simpleoverlap/sdk/go/v2/simpleoverlap/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -15,7 +16,7 @@ import (
 type OverlapResource struct {
 	pulumi.CustomResourceState
 
-	Value pulumi.BoolOutput `pulumi:"value"`
+	Out simple.ResourceOutput `pulumi:"out"`
 }
 
 // NewOverlapResource registers a new resource with the given unique name, arguments, and options.
@@ -106,8 +107,8 @@ func (o OverlapResourceOutput) ToOverlapResourceOutputWithContext(ctx context.Co
 	return o
 }
 
-func (o OverlapResourceOutput) Value() pulumi.BoolOutput {
-	return o.ApplyT(func(v *OverlapResource) pulumi.BoolOutput { return v.Value }).(pulumi.BoolOutput)
+func (o OverlapResourceOutput) Out() simple.ResourceOutput {
+	return o.ApplyT(func(v *OverlapResource) simple.ResourceOutput { return v.Out }).(simple.ResourceOutput)
 }
 
 func init() {

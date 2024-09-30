@@ -15,5 +15,5 @@ output "outOne" {
 
 output "outTwo" {
   __logicalName = "outTwo"
-  value = two.value
+  value = two.out
 }
