@@ -171,8 +171,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 }
 
 // Add test names here that are expected to fail and the reason why they are failing
-var expectedFailures = map[string]string{ 
-	"l2-plain":           "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
+var expectedFailures = map[string]string{
+	"l2-plain": "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 }
 
 func TestLanguage(t *testing.T) {
