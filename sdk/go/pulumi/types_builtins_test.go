@@ -545,6 +545,14 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
+				return *new(map[string]map[string]map[string]string)
+			}).(StringMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
@@ -2057,6 +2065,26 @@ func TestToOutputStringArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	_, ok := out.(StringMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4260,6 +4288,36 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringMapMapMapInput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+
+	out := in.ToStringMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToStringMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7493,6 +7551,58 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
 
+func TestStringMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMap(map[string]map[string]map[string]string{"baz": {"baz": {"baz": "foo"}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMapOutput(map[string]StringMapMapOutput{"baz": ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}}).(StringMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+}
+
 func TestURNMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -8795,6 +8905,23 @@ func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(StringArrayArray{StringArray{String("foo")}})
 	out := anyout.AsStringArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	out := anyout.AsStringMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)

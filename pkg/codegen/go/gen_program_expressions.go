@@ -552,11 +552,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	destType model.Type,
 	typeName string,
 ) {
-	if len(expr.Items) == 0 {
-		g.Fgenf(w, "nil")
-		return
-	}
-
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
@@ -1248,7 +1243,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 	}
 	modOrAlias := g.getModOrAlias(pkg, module, module)
 	mod := strings.ReplaceAll(modOrAlias, "/", ".")
-	return pkg, mod, Title(member), diagnostics
+	return goPackage(pkg), mod, Title(member), diagnostics
 }
 
 var functionPackages = map[string][]string{

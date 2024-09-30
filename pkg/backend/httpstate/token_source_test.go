@@ -17,28 +17,24 @@ package httpstate
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenSource(t *testing.T) {
-	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
-	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
-	if runtime.GOOS == "windows" {
-		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
 	dur := 20 * time.Millisecond
-	backend := &testTokenBackend{tokens: map[string]time.Time{}}
+	clock := clockwork.NewFakeClock()
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock}
 
 	tok0, tok0Expires := backend.NewToken(dur)
-	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
+	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
 	assert.NoError(t, err)
 	defer ts.Close()
 
@@ -59,24 +55,20 @@ func TestTokenSource(t *testing.T) {
 			assert.NotEqual(t, tok0, tok)
 		}
 
-		time.Sleep(dur / 16)
+		clock.Advance(dur / 16)
 	}
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
-	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
-	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
-	if runtime.GOOS == "windows" {
-		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
 	dur := 40 * time.Millisecond
-	backend := &testTokenBackend{tokens: map[string]time.Time{}}
+	clock := clockwork.NewFakeClock()
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock}
 
 	tok0, tok0Expires := backend.NewToken(dur / 10)
-	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
+	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
 	assert.NoError(t, err)
 	defer ts.Close()
 
@@ -85,7 +77,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
-		time.Sleep(dur / 16)
+		clock.Advance(dur / 16)
 	}
 }
 
@@ -93,6 +85,7 @@ type testTokenBackend struct {
 	mu      sync.Mutex
 	counter int
 	tokens  map[string]time.Time
+	clock   clockwork.Clock
 }
 
 func (ts *testTokenBackend) NewToken(duration time.Duration) (string, time.Time) {
@@ -128,7 +121,7 @@ func (ts *testTokenBackend) VerifyToken(token string) error {
 }
 
 func (ts *testTokenBackend) newTokenInner(duration time.Duration) (string, time.Time) {
-	now := time.Now()
+	now := ts.clock.Now()
 	ts.counter++
 	tok := ts.tokenNameInner(ts.counter)
 	expires := now.Add(duration)
@@ -141,7 +134,7 @@ func (ts *testTokenBackend) tokenNameInner(refreshCount int) string {
 }
 
 func (ts *testTokenBackend) verifyTokenInner(token string) error {
-	now := time.Now()
+	now := ts.clock.Now()
 	expires, gotCurrentToken := ts.tokens[token]
 	if !gotCurrentToken {
 		return fmt.Errorf("Unknown token: %v", token)

@@ -170,15 +170,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
-// TODO: These tests are not working yet because of issues in sdkgen and programgen
-var expectedFailures = map[string]string{
-	"l1-output-map":             "constants don't compile",
-	"l2-primitive-ref":          "go mod tidy fails",
-	"l2-resource-asset-archive": "missing go.mod",
-	"l2-resource-config":        "missing go.mod",
-	"l2-invoke-simple":          "multiple-value in single-value context",
-	"l2-invoke-variants":        "multiple-value in single-value context",
-}
+// Add test names here that are expected to fail and the reason why they are failing
+var expectedFailures = map[string]string{}
 
 func TestLanguage(t *testing.T) {
 	t.Parallel()

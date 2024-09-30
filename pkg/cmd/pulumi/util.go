@@ -1291,7 +1291,10 @@ func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOpt
 // promptUserMulti prompts the user for a value with a list of options, allowing to select none or multiple options.
 // defaultOptions is a set of values to be selected by default.
 func promptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
-	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
+	confirmationHint := " (use enter to accept the current selection)"
+
+	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
+
 	surveycore.DisableColor = true
 	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question = survey.Icon{}

@@ -26,7 +26,7 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvAddCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "add",
+		Use:   "add <environment-name>...",
 		Short: "Add environments to a stack",
 		Long: "Adds environments to the end of a stack's import list. Imported environments are merged in order\n" +
 			"per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous\n" +

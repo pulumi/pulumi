@@ -3795,7 +3795,7 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
 	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
 	if extPkg.SupportPack() {
-		return fmt.Sprintf("%s/%s", modpath, name)
+		return fmt.Sprintf("%s/%s", modpath, goPackage(name))
 	}
 
 	return fmt.Sprintf("%s/go/%s", modpath, name)
@@ -5246,6 +5246,8 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
 			versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 		}
+	} else if pkg.pkg.SupportPack() && pkg.pkg.Version() != nil {
+		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 	}
 	// Parameterized schemas _always_ respect schema version.
 	if p.Parameterization != nil {

@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.134.1 (2024-09-25)
+
+
+### Features
+
+- [engine] Allow providers to return errors from construct and format them nicely
+  [#17306](https://github.com/pulumi/pulumi/pull/17306)
+
+
+### Bug Fixes
+
+- [engine] Add input keys from diff during import step to warning and error message
+  [#17312](https://github.com/pulumi/pulumi/pull/17312)
+
+- [sdk/nodejs] Short-circuit output invokes if inputs contains unknowns
+  [#17353](https://github.com/pulumi/pulumi/pull/17353)
+
+- [sdk/python] Always unwrap value from InvokeResult in invoke_async
+  [#17349](https://github.com/pulumi/pulumi/pull/17349)
+
 ## 3.134.0 (2024-09-23)
 
 

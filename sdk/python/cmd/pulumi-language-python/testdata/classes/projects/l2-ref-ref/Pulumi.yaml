@@ -1,0 +1,5 @@
+name: l2-ref-ref
+runtime:
+  name: python
+  options:
+    virtualenv: venv

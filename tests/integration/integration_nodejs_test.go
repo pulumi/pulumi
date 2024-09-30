@@ -1515,7 +1515,7 @@ func TestPnpmWorkspace(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.
 		// For this test we don't want to test the current SDK, instead we
-		// want to test `pulumi install` and ensure that it works with yarn
+		// want to test `pulumi install` and ensure that it works with pnpm
 		// workspaces.
 		return nil
 	}
@@ -1535,6 +1535,37 @@ func TestPnpmWorkspace(t *testing.T) {
 	require.NoError(t, pt.RunPulumiCommand("install"), "install")
 
 	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules", ".pnpm"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestInstallWithMain(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works for projects
+		// with a `main` property.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:            filepath.Join("nodejs", "pulumi-main"),
+		Quick:          true,
+		PrepareProject: preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules"))
 	require.NoError(t, err)
 
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
