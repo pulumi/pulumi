@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Check zipped templates for `Pulumi.yaml` files
