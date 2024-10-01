@@ -24,7 +24,7 @@ import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
-import { InputPropertyError, InputPropertiesError } from "../errors";
+import { InputPropertyError, InputPropertiesError, InputPropertyErrorDetails } from "../errors";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
@@ -286,6 +286,37 @@ class Server implements grpc.UntypedServiceImplementation {
         }
     }
 
+    private build_invalid_properties_error(message: string, errors: Array<InputPropertyErrorDetails>): any {
+        const metadata = new grpc.Metadata();
+        if (errors) {
+            const status = new statusproto.Status();
+            // We don't care about the exact status code here, since they are pretty web centric, and don't
+            // necessarily make sense in this context.  Pick one that's close enough.
+            status.setCode(grpc.status.INVALID_ARGUMENT);
+            status.setMessage(message);
+
+            const errorDetails = new errorproto.InputPropertiesError();
+            errors.forEach((detail) => {
+                const propertyError = new errorproto.InputPropertiesError.PropertyError();
+                propertyError.setPropertyPath(detail.propertyPath);
+                propertyError.setReason(detail.reason);
+                errorDetails.addErrors(propertyError);
+            });
+
+            const details = new anyproto.Any();
+            details.pack(errorDetails.serializeBinary(), "pulumirpc.InputPropertiesError");
+
+            status.addDetails(details);
+            metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
+        }
+        const error = {
+            code: grpc.status.INVALID_ARGUMENT,
+            details: message,
+            metadata: metadata,
+        };
+        return error;
+    }
+
     public async construct(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
         const store = new localState.LocalStore();
@@ -350,57 +381,13 @@ class Server implements grpc.UntypedServiceImplementation {
                 callback(undefined, resp);
             } catch (e) {
                 if (e instanceof InputPropertiesError) {
-                    const metadata = new grpc.Metadata();
-                    if (e.errors) {
-                        const status = new statusproto.Status();
-                        // We don't care about the exact status code here, since they are pretty web centric, and don't
-                        // necessarily make sense in this context.  Pick one that's close enough.
-                        status.setCode(grpc.status.INVALID_ARGUMENT);
-                        status.setMessage(e.message);
-
-                        const errorDetails = new errorproto.InputPropertiesError();
-                        e.errors.forEach((detail) => {
-                            const propertyError = new errorproto.InputPropertiesError.PropertyError();
-                            propertyError.setPropertyPath(detail.propertyPath);
-                            propertyError.setReason(detail.reason);
-                            errorDetails.addErrors(propertyError);
-                        });
-
-                        const details = new anyproto.Any();
-                        details.pack(errorDetails.serializeBinary(), "pulumirpc.InputPropertiesError");
-
-                        status.addDetails(details);
-                        metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
-                    }
-                    const error = {
-                        code: grpc.status.INVALID_ARGUMENT,
-                        details: e.message,
-                        metadata: metadata,
-                    };
+                    const error = this.build_invalid_properties_error(e.message, e.errors);
                     callback(error, undefined);
                     return;
                 } else if (e instanceof InputPropertyError) {
-                    const metadata = new grpc.Metadata();
-                    const status = new statusproto.Status();
-                    status.setCode(grpc.status.INVALID_ARGUMENT);
-                    status.setMessage(e.message);
-
-                    const errorDetails = new errorproto.InputPropertiesError();
-                    const propertyError = new errorproto.InputPropertiesError.PropertyError();
-                    propertyError.setPropertyPath(e.propertyPath);
-                    propertyError.setReason(e.reason);
-                    errorDetails.addErrors(propertyError);
-
-                    const details = new anyproto.Any();
-                    details.pack(errorDetails.serializeBinary(), "pulumirpc.InputPropertiesError");
-
-                    status.addDetails(details);
-                    metadata.add("grpc-status-details-bin", Buffer.from(status.serializeBinary()));
-                    const error = {
-                        code: grpc.status.INVALID_ARGUMENT,
-                        details: e.message,
-                        metadata: metadata,
-                    };
+                    const error = this.build_invalid_properties_error("", [
+                        { propertyPath: e.propertyPath, reason: e.reason },
+                    ]);
                     callback(error, undefined);
                     return;
                 }

@@ -82,20 +82,14 @@ export function isGrpcError(err: Error): boolean {
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
 
-interface InputPropertyErrorArgs {
-    message: string;
-    propertyPath: string;
-    reason: string;
-}
-
 export class InputPropertyError extends Error {
     public readonly __pulumiInputPropertyError: boolean = true;
 
     public propertyPath: string;
     public reason: string;
 
-    constructor(args: InputPropertyErrorArgs) {
-        super(args.message);
+    constructor(args: InputPropertyErrorDetails) {
+        super(args.reason);
         this.propertyPath = args.propertyPath;
         this.reason = args.reason;
     }
@@ -105,7 +99,7 @@ export class InputPropertyError extends Error {
     }
 }
 
-interface InputPropertyErrorDetails {
+export interface InputPropertyErrorDetails {
     propertyPath: string;
     reason: string;
 }
