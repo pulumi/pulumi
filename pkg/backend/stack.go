@@ -121,7 +121,7 @@ func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
-func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+func GetLatestConfiguration(ctx context.Context, s Stack) (*config.Map, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
 }
 
@@ -153,7 +153,7 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack,
-	root string, project *workspace.Project, cfg config.Map,
+	root string, project *workspace.Project, cfg *config.Map,
 ) (map[apitype.StackTagName]string, error) {
 	// Get the stack's existing tags.
 	tags := s.Tags()
@@ -179,7 +179,7 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 // GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
 // and Pulumi.yaml file.
 func GetEnvironmentTagsForCurrentStack(root string,
-	project *workspace.Project, cfg config.Map,
+	project *workspace.Project, cfg *config.Map,
 ) (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 

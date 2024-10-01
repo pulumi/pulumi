@@ -492,205 +492,205 @@ func TestParseConfigSuccess(t *testing.T) {
 	}{
 		{
 			Array:    []string{},
-			Expected: config.Map{},
+			Expected: config.NewMap(),
 		},
 		{
 			Array: []string{"my:testKey"},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue(""),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{ config.MustMakeKey("my", "testKey"), config.NewValue(""), },
+			}...),
 		},
 		{
 			Array: []string{"my:testKey="},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue(""),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue(""),},
+			}...),
 		},
 		{
 			Array: []string{"my:testKey=testValue"},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{"my:testKey=test=Value"},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("test=Value"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("test=Value"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:testKey=testValue",
 				"my:testKey=rewritten",
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("rewritten"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("rewritten"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:testKey=testValue",
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:test.Key=testValue",
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "test.Key"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:testKey=testValue",
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:0=testValue",
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "0"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "0"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				"my:true=testValue",
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "true"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "true"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:["test.Key"]=testValue`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "test.Key"), config.NewValue("testValue"),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:outer.inner=value`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":"value"}`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "outer"), config.NewObjectValue(`{"inner":"value"}`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:outer.inner.nested=value`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":{"nested":"value"}}`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "outer"), config.NewObjectValue(`{"inner":{"nested":"value"}}`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:name[0]=value`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "name"): config.NewObjectValue(`["value"]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "name"), config.NewObjectValue(`["value"]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:name[0][0]=value`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "name"): config.NewObjectValue(`[["value"]]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "name"), config.NewObjectValue(`[["value"]]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:servers[0].name=foo`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "servers"): config.NewObjectValue(`[{"name":"foo"}]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "servers"), config.NewObjectValue(`[{"name":"foo"}]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey=false`,
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("false"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{ config.MustMakeKey("my", "testKey"), config.NewValue("false"),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey=true`,
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("true"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{ config.MustMakeKey("my", "testKey"), config.NewValue("true"), },
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey=10`,
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("10"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{ config.MustMakeKey("my", "testKey"), config.NewValue("10"),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey=-1`,
 			},
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewValue("-1"),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewValue("-1"),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey[0]=false`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[false]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewObjectValue(`[false]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey[0]=true`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[true]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewObjectValue(`[true]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey[0]=10`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[10]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewObjectValue(`[10]`),},
+			}...),
 		},
 		{
 			Array: []string{
 				`my:testKey[0]=-1`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[-1]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "testKey"), config.NewObjectValue(`[-1]`),},
+			}...),
 		},
 		{
 			Array: []string{
@@ -699,9 +699,9 @@ func TestParseConfigSuccess(t *testing.T) {
 				`my:names[2]=c`,
 			},
 			Path: true,
-			Expected: config.Map{
-				config.MustMakeKey("my", "names"): config.NewObjectValue(`["a","b","c"]`),
-			},
+			Expected: config.NewMapWithValues([]config.MapEntry{
+				{config.MustMakeKey("my", "names"), config.NewObjectValue(`["a","b","c"]`),},
+			}...),
 		},
 		{
 			Array: []string{
@@ -711,7 +711,7 @@ func TestParseConfigSuccess(t *testing.T) {
 				`my:names[0]=rewritten`,
 			},
 			Path: true,
-			Expected: config.Map{
+			Expected: config.NewMapWithValues([]config.MapEntry{
 				config.MustMakeKey("my", "names"): config.NewObjectValue(`["rewritten","b","c"]`),
 			},
 		},
@@ -735,7 +735,7 @@ func TestSetFail(t *testing.T) {
 
 	tests := []struct {
 		Array    []string
-		Expected config.Map
+		Expected *config.Map
 	}{
 		{
 			Array: []string{`my:[""]=value`},

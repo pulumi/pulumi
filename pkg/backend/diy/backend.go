@@ -920,7 +920,7 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 
 func (b *diyBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (*config.Map, error) {
 	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return nil, err

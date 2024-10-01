@@ -115,7 +115,7 @@ type UpdateInfo struct {
 	Environment map[string]string `json:"environment"`
 
 	// Config used for the update.
-	Config config.Map `json:"config"`
+	Config *config.Map `json:"config"`
 
 	// Information obtained from an update completing.
 	Version         int                     `json:"version"`

@@ -31,16 +31,26 @@ type Map struct {
 	innerMap collections.OrderedMap[Key, Value]
 }
 
-func NewMap() Map {
-	return Map{
-		innerMap: collections.OrderedMap[Key, Value]{},
+func NewMap() *Map {
+	return &Map{
+		innerMap: collections.NewOrderedMap[Key, Value](),
 	}
 }
 
-func NewMapWithCapacity(capacity int) Map {
-	return Map{
+func NewMapWithCapacity(capacity int) *Map {
+	return &Map{
 		innerMap: collections.NewOrderedMapWithCapacity[Key, Value](capacity),
 	}
+}
+
+type MapEntry collections.Pair[Key, Value]
+
+func NewMapWithValues(pairs ...MapEntry) *Map {
+	m := NewMapWithCapacity(len(pairs))
+	for _, p := range pairs {
+		m.innerMap.Set(p.Key, p.Value)
+	}
+	return m
 }
 
 // Decrypt returns the configuration as a map from module member to decrypted value.

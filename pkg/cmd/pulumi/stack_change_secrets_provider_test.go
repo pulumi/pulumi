@@ -256,9 +256,9 @@ runtime: mock
 	require.NoError(t, err)
 	cfgKey := config.MustMakeKey("testStack", "secret")
 	cfg := workspace.ProjectStack{
-		Config: config.Map{
-			cfgKey: config.NewSecureValue(secretBar),
-		},
+		Config: config.NewMapWithValues([]config.MapEntry{
+			{cfgKey, config.NewSecureValue(secretBar)},
+		}...),
 	}
 	err = cfg.Save("Pulumi.testStack.yaml")
 	require.NoError(t, err)
@@ -282,8 +282,9 @@ runtime: mock
 	require.NoError(t, err)
 	projectStack, err := workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
 	require.NoError(t, err)
-	cfgValue, ok := projectStack.Config[cfgKey]
+	cfgValue, ok, err := projectStack.Config.Get(cfgKey, false)
 	require.True(t, ok)
+	require.NoError(t, err)
 	assert.True(t, cfgValue.Secure())
 	val, err := cfgValue.Value(passphraseDecrypter)
 	require.NoError(t, err)

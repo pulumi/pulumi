@@ -462,10 +462,10 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
 		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Config: config.Map{
-			config.MustParseKey("pkgA:name"):   config.NewValue("testingBase"),
-			config.MustParseKey("pkgExt:name"): config.NewValue("testingExt"),
-		},
+		Config: config.NewMapWithValues([]config.MapEntry{
+			{Key: config.MustParseKey("pkgA:name"), Value: config.NewValue("testingBase")},
+			{Key: config.MustParseKey("pkgExt:name"), Value: config.NewValue("testingExt")},
+		}...),
 	}
 
 	snap, err := TestOp(Update).RunStep(

@@ -64,7 +64,7 @@ type MockBackend struct {
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
 	QueryF                                func(context.Context, QueryOperation) error
-	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
+	GetLatestConfigurationF               func(context.Context, Stack) (*config.Map, error)
 	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
@@ -352,7 +352,7 @@ func (be *MockBackend) GetLogs(
 
 func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 	stack Stack,
-) (config.Map, error) {
+) (*config.Map, error) {
 	if be.GetLatestConfigurationF != nil {
 		return be.GetLatestConfigurationF(ctx, stack)
 	}

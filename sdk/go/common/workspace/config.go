@@ -191,7 +191,7 @@ func mergeConfig(
 	stackName string,
 	project *Project,
 	stackEnv esc.Value,
-	stackConfig config.Map,
+	stackConfig *config.Map,
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 	validate bool,
@@ -309,7 +309,7 @@ func ValidateStackConfigAndApplyProjectConfig(
 	stackName string,
 	project *Project,
 	stackEnv esc.Value,
-	stackConfig config.Map,
+	stackConfig *config.Map,
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 ) error {
@@ -325,7 +325,7 @@ func ApplyProjectConfig(
 	stackName string,
 	project *Project,
 	stackEnv esc.Value,
-	stackConfig config.Map,
+	stackConfig *config.Map,
 	encrypter config.Encrypter,
 ) error {
 	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, false)

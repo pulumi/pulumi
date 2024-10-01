@@ -328,7 +328,7 @@ func copyEntireConfigMap(
 	}
 
 	var requiresSaving bool
-	for key, val := range newProjectConfig {
+	for key, val := range newProjectConfig.Elements() {
 		err = destinationProjectStack.Config.Set(key, val, false)
 		if err != nil {
 			return false, err
@@ -992,7 +992,7 @@ func listConfig(
 	}
 
 	var keys config.KeyArray
-	for key := range cfg {
+	for key := range cfg.Elements() {
 		// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
 		// that all the config values for the current program are displayed next to one another in the output.
 		keys = append(keys, key)
@@ -1002,17 +1002,26 @@ func listConfig(
 	if jsonOut {
 		configValues := make(map[string]configValueJSON)
 		for _, key := range keys {
+			secret, ok, err := cfg.Get(key, false)
+			if !ok {
+				return fmt.Errorf("no such key: %w", err)
+			}
+			if err != nil {
+				return fmt.Errorf("could not get configuration value: %w", err)
+			}
 			entry := configValueJSON{
-				Secret: cfg[key].Secure(),
+				Secret: secret.Secure(),
 			}
 
-			decrypted, err := cfg[key].Value(decrypter)
+			value, _, _ := cfg.Get(key, false)
+			decrypted, err := value.Value(decrypter)
 			if err != nil {
 				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
 			entry.Value = &decrypted
 
-			if cfg[key].Object() {
+			obj, _, _ := cfg.Get(key, false)
+			if obj.Object() {
 				var obj interface{}
 				if err := json.Unmarshal([]byte(decrypted), &obj); err != nil {
 					return err
@@ -1023,7 +1032,8 @@ func listConfig(
 			// If the value was a secret value and we aren't showing secrets, then the above would have set value
 			// to "[secret]" which is reasonable when printing for human display, but for our JSON output, we'd rather
 			// just elide the value.
-			if cfg[key].Secure() && !showSecrets {
+			secret, _, _ = cfg.Get(key, false)
+			if secret.Secure() && !showSecrets {
 				entry.Value = nil
 				entry.ObjectValue = nil
 			}
@@ -1037,7 +1047,14 @@ func listConfig(
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
-			decrypted, err := cfg[key].Value(decrypter)
+			secret, ok, err := cfg.Get(key, false)
+			if !ok {
+				return fmt.Errorf("no such key: %w", err)
+			}
+			if err != nil {
+				return fmt.Errorf("could not get configuration value: %w", err)
+			}
+			decrypted, err := secret.Value(decrypter)
 			if err != nil {
 				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
@@ -1287,7 +1304,7 @@ func getStackConfigurationOrLatest(
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, ssml, stack, project,
-		func(err error) (config.Map, error) {
+		func(err error) (*config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.
@@ -1297,7 +1314,7 @@ func getStackConfigurationOrLatest(
 		})
 }
 
-func needsCrypter(cfg config.Map, env esc.Value) bool {
+func needsCrypter(cfg *config.Map, env esc.Value) bool {
 	var hasSecrets func(v esc.Value) bool
 	hasSecrets = func(v esc.Value) bool {
 		if v.Secret {
@@ -1374,7 +1391,7 @@ func getStackConfigurationWithFallback(
 	ssml stackSecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
-	fallbackGetConfig func(err error) (config.Map, error), // optional
+	fallbackGetConfig func(err error) (*config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := loadProjectStack(project, s)
 	if err != nil || workspaceStack == nil {

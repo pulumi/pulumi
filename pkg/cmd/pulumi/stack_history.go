@@ -150,7 +150,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		}
 
 		info.Config = make(map[string]configValueJSON)
-		for k, v := range update.Config {
+		for k, v := range update.Config.Elements() {
 			configValue := configValueJSON{
 				Secret: v.Secure(),
 			}

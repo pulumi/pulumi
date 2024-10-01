@@ -117,7 +117,7 @@ func (b *diyBackend) getTarget(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
-	cfg config.Map,
+	cfg *config.Map,
 	dec config.Decrypter,
 ) (*deploy.Target, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")

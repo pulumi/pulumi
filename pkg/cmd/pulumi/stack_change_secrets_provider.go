@@ -194,7 +194,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		return err
 	}
 
-	for key, val := range newProjectConfig {
+	for key, val := range newProjectConfig.Elements() {
 		if err := reloadedProjectStack.Config.Set(key, val, false); err != nil {
 			return err
 		}

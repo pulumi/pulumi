@@ -537,7 +537,7 @@ type TestPlan struct {
 	Stack          string
 	Runtime        string
 	RuntimeOptions map[string]interface{}
-	Config         config.Map
+	Config         *config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient
 	Options        TestUpdateOptions

@@ -36,7 +36,7 @@ import (
 )
 
 type testRun struct {
-	config config.Map
+	config *config.Map
 	// This can be used to set a main value for the test.
 	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
@@ -755,9 +755,9 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.ConfigProvider{}},
 		runs: []testRun{
 			{
-				config: config.Map{
-					config.MustParseKey("config:name"): config.NewValue("hello"),
-				},
+				config: config.NewMapWithValues(config.MapEntry{
+					Key: config.MustParseKey("config:name"), Value: config.NewValue("hello"),
+				}),
 				assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,

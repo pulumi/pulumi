@@ -772,7 +772,7 @@ func handleConfig(
 	// use its config without prompting.
 	// Otherwise, use the values specified on the command line and prompt for new values.
 	// If the stack already existed and had previous config, those values will be used as the defaults.
-	var c config.Map
+	var c *config.Map
 	if isPreconfiguredEmptyStack(templateNameOrURL, template.Config, stackConfig, snap) {
 		c = stackConfig
 		// TODO[pulumi/pulumi#1894] consider warning if templateNameOrURL is different from
@@ -803,7 +803,7 @@ func handleConfig(
 	}
 
 	// Save the config.
-	if len(c) > 0 {
+	if c.Len() > 0 {
 		if err = saveConfig(ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
@@ -824,17 +824,18 @@ var templateKey = config.MustMakeKey("pulumi", "template")
 func isPreconfiguredEmptyStack(
 	url string,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
-	stackConfig config.Map,
+	stackConfig *config.Map,
 	snap *deploy.Snapshot,
 ) bool {
 	// Does stackConfig have a `pulumi:template` value and does it match url?
 	if stackConfig == nil {
 		return false
 	}
-	templateURLValue, hasTemplateKey := stackConfig[templateKey]
-	if !hasTemplateKey {
+	templateURLValue, hasTemplateKey, err := stackConfig.Get(templateKey, false)
+	if !hasTemplateKey || err != nil {
 		return false
 	}
+
 	templateURL, err := templateURLValue.Value(nil)
 	if err != nil {
 		contract.IgnoreError(err)
@@ -861,8 +862,8 @@ func isPreconfiguredEmptyStack(
 			return false
 		}
 
-		stackVal, ok := stackConfig[parsedTemplateKey]
-		if !ok {
+		stackVal, ok, err := stackConfig.Get(parsedTemplateKey, false)
+		if !ok || err != nil {
 			return false
 		}
 

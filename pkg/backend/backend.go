@@ -213,7 +213,7 @@ type Backend interface {
 	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
-	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
+	GetLatestConfiguration(ctx context.Context, stack Stack) (*config.Map, error)
 
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
@@ -310,7 +310,7 @@ type QueryOperation struct {
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
 	Environment esc.Value
-	Config      config.Map
+	Config      *config.Map
 	Decrypter   config.Decrypter
 }
 

@@ -73,9 +73,9 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (*config.Map, error) {
 						t.Fatalf("GetLatestConfiguration should not be called in typical getStackConfiguration calls.")
-						return config.Map{}, nil
+						return config.NewMap(), nil
 					},
 				}
 			},
@@ -105,9 +105,9 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (*config.Map, error) {
 						called = true
-						return config.Map{}, nil
+						return config.NewMap(), nil
 					},
 				}
 			},
@@ -122,42 +122,45 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 func TestNeedsCrypter(t *testing.T) {
 	t.Parallel()
 
+	cfg := config.NewMapWithValues(config.MapEntry{
+		Key: config.MustMakeKey("test", "foo"), Value: config.NewValue("bar"),
+	})
 	t.Run("no secrets, no env", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
+		m := cfg
 		assert.False(t, needsCrypter(m, esc.Value{}))
 	})
 
 	t.Run("secrets, no env", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewSecureValue("bar")}
+		m := cfg
 		assert.True(t, needsCrypter(m, esc.Value{}))
 	})
 
 	t.Run("no secrets, no secrets in env", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
+		m := cfg
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewValue("hunter2")})
 		assert.False(t, needsCrypter(m, env))
 	})
 
 	t.Run("no secrets, secrets in env", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
+		m := cfg
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewSecret("hunter2")})
 		assert.True(t, needsCrypter(m, env))
 	})
 
 	t.Run("no secrets, secrets in env array", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
+		m := cfg
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewValue([]esc.Value{esc.NewSecret("hunter2")})})
 		assert.True(t, needsCrypter(m, env))
 	})
 
 	t.Run("secrets, secrets in env", func(t *testing.T) {
 		t.Parallel()
-		m := config.Map{config.MustMakeKey("test", "foo"): config.NewSecureValue("bar")}
+		m := cfg
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewSecret("hunter2")})
 		assert.True(t, needsCrypter(m, env))
 	})
@@ -347,17 +350,18 @@ func TestStackEnvConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Nil(t, cfg.Config)
-	cfg.Config = config.Map{}
+	cfg.Config = config.NewMap()
 
 	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
 	require.NoError(t, err)
 
-	assert.Equal(t, config.Map{
-		config.MustMakeKey("project", "string"): config.NewValue("esc"),
-		config.MustMakeKey("aws", "region"):     config.NewValue("us-west-2"),
-		config.MustMakeKey("api", "domain"):     config.NewValue("test"),
-		config.MustMakeKey("ui", "domain"):      config.NewValue("test"),
-	}, cfg.Config)
+	expected := config.NewMapWithValues([]config.MapEntry{
+		{Key: config.MustMakeKey("project", "string"), Value: config.NewValue("esc")},
+		{Key: config.MustMakeKey("aws", "region"), Value: config.NewValue("us-west-2")},
+		{Key: config.MustMakeKey("api", "domain"), Value: config.NewValue("test")},
+		{Key: config.MustMakeKey("ui", "domain"), Value: config.NewValue("test")},
+	}...)
+	assert.Equal(t, expected, cfg.Config)
 }
 
 func TestCopyConfig(t *testing.T) {

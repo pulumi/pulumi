@@ -354,7 +354,7 @@ type getLatestConfigurationResponse struct {
 }
 
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
-func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (*config.Map, error) {
 	latest := getLatestConfigurationResponse{}
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
@@ -366,7 +366,7 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		return nil, err
 	}
 
-	cfg := make(config.Map)
+	cfg := config.NewMap()
 	for k, v := range latest.Info.Config {
 		newKey, err := config.ParseKey(k)
 		if err != nil {
@@ -374,15 +374,15 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		}
 		if v.Object {
 			if v.Secret {
-				cfg[newKey] = config.NewSecureObjectValue(v.String)
+				cfg.Set(newKey, config.NewSecureObjectValue(v.String), false)
 			} else {
-				cfg[newKey] = config.NewObjectValue(v.String)
+				cfg.Set(newKey, config.NewObjectValue(v.String), false)
 			}
 		} else {
 			if v.Secret {
-				cfg[newKey] = config.NewSecureValue(v.String)
+				cfg.Set(newKey, config.NewSecureValue(v.String), false)
 			} else {
-				cfg[newKey] = config.NewValue(v.String)
+				cfg.Set(newKey, config.NewValue(v.String), false)
 			}
 		}
 	}
@@ -604,12 +604,12 @@ type CreateUpdateDetails struct {
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
-	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	cfg *config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
 	dryRun bool,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
-	for k, cv := range cfg {
+	for k, cv := range cfg.Elements() {
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
 

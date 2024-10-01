@@ -990,7 +990,7 @@ type ProjectStack struct {
 	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
-	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	Config *config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Environment is an optional environment definition or list of environments.
 	Environment *Environment `json:"environment,omitempty" yaml:"environment,omitempty"`
 

@@ -1,13 +1,17 @@
 package collections
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"iter"
 	"slices"
 
-	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
+
+// TODO test yaml and json marshalling and unmarshalling
 
 // OrderedMap is a generic map of K to V that preserves order of the keys
 // (including for marshalling to JSON or YAML).
@@ -19,11 +23,24 @@ type OrderedMap[K comparable, V any] struct {
 	innerMap    map[K]V
 }
 
+func NewOrderedMap[K comparable, V any]() OrderedMap[K, V] {
+	return OrderedMap[K, V]{
+		orderedKeys: make([]K, 0),
+		innerMap:    make(map[K]V),
+	}
+}
+
 func NewOrderedMapWithCapacity[K comparable, V any](capacity int) OrderedMap[K, V] {
 	return OrderedMap[K, V]{
 		orderedKeys: make([]K, capacity),
 		innerMap:    make(map[K]V, capacity),
 	}
+}
+
+func NewOrderedMapWithValues[K comparable, V any](pairs ...Pair[K, V]) OrderedMap[K, V] {
+	m := NewOrderedMapWithCapacity[K, V](len(pairs))
+	m.InsertAll(pairs...)
+	return m
 }
 
 func (m OrderedMap[K, V]) Len() int {
@@ -45,10 +62,22 @@ func (m *OrderedMap[K, V]) Set(key K, val V) {
 	m.innerMap[key] = val
 }
 
+type Pair[K comparable, V any] struct {
+	Key   K
+	Value V
+}
+
+// InsertAll uses variadic arguments to insert multiple key-value pairs into the map.
+func (m *OrderedMap[K, V]) InsertAll(pairs ...Pair[K, V]) {
+	for _, pair := range pairs {
+		m.Set(pair.Key, pair.Value)
+	}
+}
+
 func (m *OrderedMap[K, V]) Delete(key K) error {
 	index := slices.Index(m.orderedKeys, key)
 	if index == -1 {
-		return errors.Errorf("key %v not found", key)
+		return fmt.Errorf("key %v not found", key)
 	}
 
 	m.orderedKeys = slices.Delete(m.orderedKeys, index, index+1)
@@ -67,15 +96,90 @@ func (m *OrderedMap[K, V]) Elements() iter.Seq2[K, V] {
 	}
 }
 
-// TODO implement a splat operator insert to help with tests and batch insertion.
-
-// TODO marshal that preserves order
 func (m *OrderedMap[K, V]) MarshalJSON() ([]byte, error) {
-	for _, key := range m.orderedKeys {
+	bytes := bytes.Buffer{}
+
+	buf := bufio.NewWriterSize(&bytes, 512)
+	_, err := buf.WriteRune('{')
+	if err != nil {
+		return nil, err
+	}
+
+	for i, key := range m.orderedKeys {
 		marshalledKey, err := json.Marshal(key)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal key %v: %w", key, err)
+			return nil, err
 		}
 
+		_, err = buf.Write(marshalledKey)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = buf.WriteRune(':')
+		if err != nil {
+			return nil, err
+		}
+
+		v, ok := m.innerMap[key]
+		if !ok {
+			return nil, err
+		}
+		marshalledValue, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = buf.Write(marshalledValue)
+		if err != nil {
+			return nil, err
+		}
+
+		if i < len(m.orderedKeys)-1 {
+			_, err = buf.WriteRune(',')
+			if err != nil {
+				return nil, err
+			}
+
+		}
 	}
+
+	_, err = buf.WriteRune('}')
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.Bytes(), nil
+}
+
+func (m OrderedMap[K, V]) MarshalYAML() (interface{}, error) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+	}
+
+	for _, key := range m.orderedKeys {
+		keyNode := &yaml.Node{}
+		valNode := &yaml.Node{}
+
+		// Encode the key into a YAML node
+		if err := keyNode.Encode(key); err != nil {
+			return nil, err
+		}
+
+		// Retrieve the value from the map
+		val, ok := m.innerMap[key]
+		if !ok {
+			return nil, fmt.Errorf("key %v not found in innerMap", key)
+		}
+
+		// Encode the value into a YAML node
+		if err := valNode.Encode(val); err != nil {
+			return nil, err
+		}
+
+		// Append the key and value nodes to the mapping node
+		node.Content = append(node.Content, keyNode, valNode)
+	}
+
+	return node, nil
 }

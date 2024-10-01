@@ -107,12 +107,13 @@ runtime: yaml`
 				}),
 			}),
 		}
-		cfg := make(config.Map)
+		cfg := config.NewMap()
 		for k, v := range plaintext {
 			cv, err := v.Encrypt(ctx, config.Base64Crypter)
 			require.NoError(t, err)
 			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+			err = cfg.Set(config.MustMakeKey(ns, name), cv, false)
+			assert.NoError(t, err)
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -184,12 +185,13 @@ runtime: yaml`
 				}),
 			}),
 		}
-		cfg := make(config.Map)
+		cfg := config.NewMap()
 		for k, v := range plaintext {
 			cv, err := v.Encrypt(ctx, config.Base64Crypter)
 			require.NoError(t, err)
 			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+			err = cfg.Set(config.MustMakeKey(ns, name), cv, false)
+			assert.NoError(t, err)
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -260,12 +262,13 @@ runtime: yaml`
 				}),
 			}),
 		}
-		cfg := make(config.Map)
+		cfg := config.NewMap()
 		for k, v := range plaintext {
 			cv, err := v.Encrypt(ctx, config.Base64Crypter)
 			require.NoError(t, err)
 			ns, name, _ := strings.Cut(k, ":")
-			cfg[config.MustMakeKey(ns, name)] = cv
+			err = cfg.Set(config.MustMakeKey(ns, name), cv, false)
+			assert.NoError(t, err)
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{

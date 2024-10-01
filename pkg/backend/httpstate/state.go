@@ -240,7 +240,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,
-	cfg config.Map, dec config.Decrypter,
+	cfg *config.Map, dec config.Decrypter,
 ) (*deploy.Target, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {

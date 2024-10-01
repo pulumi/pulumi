@@ -214,7 +214,7 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 
 	target := &deploy.Target{
 		Name:      tokens.MustParseStackName("test"),
-		Config:    config.Map{},
+		Config:    new(config.Map),
 		Decrypter: config.NopDecrypter,
 		Snapshot:  nil,
 	}

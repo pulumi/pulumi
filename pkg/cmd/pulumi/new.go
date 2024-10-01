@@ -856,7 +856,7 @@ func stackInit(
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c *config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
@@ -867,8 +867,11 @@ func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		return err
 	}
 
-	for k, v := range c {
-		ps.Config[k] = v
+	for k, v := range c.Elements() {
+		err = ps.Config.Set(k, v, false)
+		if err != nil {
+			return err
+		}
 	}
 
 	return saveProjectStack(stack, ps)
@@ -1086,8 +1089,8 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 // These are passed as `-c aws:region=us-east-1 -c foo:bar=blah` and end up
 // in configArray as ["aws:region=us-east-1", "foo:bar=blah"].
 // This function converts the array into a config.Map.
-func parseConfig(configArray []string, path bool) (config.Map, error) {
-	configMap := make(config.Map)
+func parseConfig(configArray []string, path bool) (*config.Map, error) {
+	configMap := config.NewMap()
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
@@ -1119,11 +1122,11 @@ func promptForConfig(
 	project *workspace.Project,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
-	commandLineConfig config.Map,
-	stackConfig config.Map,
+	commandLineConfig *config.Map,
+	stackConfig *config.Map,
 	yes bool,
 	opts display.Options,
-) (config.Map, error) {
+) (*config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
 	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
@@ -1167,13 +1170,18 @@ func promptForConfig(
 		return nil, err
 	}
 
-	c := make(config.Map)
+	c := config.NewMap()
 
 	for _, k := range keys {
 		// If it was passed as a command line flag, use it without prompting.
-		if val, ok := commandLineConfig[k]; ok {
-			c[k] = val
+		if val, ok, err := commandLineConfig.Get(k, false); ok && err == nil {
+			err = c.Set(k, val, false)
+			if err != nil {
+				return nil, fmt.Errorf("setting config value: %w", err)
+			}
 			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("getting config value: %w", err)
 		}
 
 		templateConfigValue := parsedTemplateConfig[k]
@@ -1183,13 +1191,15 @@ func promptForConfig(
 		var secret bool
 		if stackConfig != nil {
 			// Use the stack's existing value as the default.
-			if val, ok := stackConfig[k]; ok {
+			if val, ok, err := stackConfig.Get(k, false); ok && err == nil {
 				// It's OK to pass a nil or non-nil crypter for non-secret values.
 				value, err := val.Value(decrypter)
 				if err != nil {
 					return nil, err
 				}
 				defaultValue = value
+			} else if err != nil {
+				return nil, fmt.Errorf("getting config value: %w", err)
 			}
 		}
 		if defaultValue == "" {
@@ -1229,13 +1239,20 @@ func promptForConfig(
 		}
 
 		// Save it.
-		c[k] = v
+		err = c.Set(k, v, false)
+		if err != nil {
+			return nil, fmt.Errorf("error setting key: %w", err)
+		}
 	}
 
 	// Add any other config values from the command line.
-	for k, v := range commandLineConfig {
-		if _, ok := c[k]; !ok {
-			c[k] = v
+	for k, v := range commandLineConfig.Elements() {
+		if _, ok, err := c.Get(k, false); !ok || err != nil {
+			err = c.Set(k, v, false)
+			if err != nil {
+				return nil, fmt.Errorf("could not set key: %w", err)
+			}
+
 		}
 	}
 

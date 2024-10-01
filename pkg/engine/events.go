@@ -307,7 +307,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 	target := update.GetTarget()
 	var secrets []string
 	if target != nil && target.Config.HasSecureValue() {
-		for k, v := range target.Config {
+		for k, v := range target.Config.Elements() {
 			if !v.Secure() {
 				continue
 			}
@@ -493,11 +493,11 @@ func (e *eventEmitter) resourcePreEvent(
 	}))
 }
 
-func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
+func (e *eventEmitter) preludeEvent(isPreview bool, cfg *config.Map) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	configStringMap := make(map[string]string, len(cfg))
-	for k, v := range cfg {
+	configStringMap := make(map[string]string, cfg.Len())
+	for k, v := range cfg.Elements() {
 		keyString := k.String()
 		valueString, err := v.Value(config.NewBlindingDecrypter())
 		contract.AssertNoErrorf(err, "error getting configuration value for entry %q", keyString)

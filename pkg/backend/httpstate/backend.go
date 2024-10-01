@@ -1549,7 +1549,7 @@ func (b *cloudBackend) GetHistory(
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (*config.Map, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err
@@ -1576,8 +1576,8 @@ func convertResourceChanges(changes map[apitype.OpType]int) sdkDisplay.ResourceC
 }
 
 // convertResourceChanges converts the apitype version of config.Map into the internal version.
-func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
-	c := make(config.Map)
+func convertConfig(apiConfig map[string]apitype.ConfigValue) (*config.Map, error) {
+	c := config.NewMap()
 	for rawK, rawV := range apiConfig {
 		k, err := config.ParseKey(rawK)
 		if err != nil {
@@ -1585,15 +1585,15 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 		}
 		if rawV.Object {
 			if rawV.Secret {
-				c[k] = config.NewSecureObjectValue(rawV.String)
+				c.Set(k, config.NewSecureObjectValue(rawV.String), false)
 			} else {
-				c[k] = config.NewObjectValue(rawV.String)
+				c.Set(k, config.NewObjectValue(rawV.String), false)
 			}
 		} else {
 			if rawV.Secret {
-				c[k] = config.NewSecureValue(rawV.String)
+				c.Set(k, config.NewSecureValue(rawV.String), false)
 			} else {
-				c[k] = config.NewValue(rawV.String)
+				c.Set(k, config.NewValue(rawV.String), false)
 			}
 		}
 	}
