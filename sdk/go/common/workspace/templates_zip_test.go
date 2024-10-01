@@ -178,7 +178,7 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			_, err := retrieveZIPTemplates(tt.templateURL)
+			_, err := RetrieveZIPTemplates(tt.templateURL)
 			if tt.expectedError != "" {
 				assert.EqualError(t, err, tt.expectedError)
 			} else {

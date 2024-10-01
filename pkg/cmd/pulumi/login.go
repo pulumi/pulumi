@@ -36,6 +36,7 @@ func newLoginCmd() *cobra.Command {
 	var defaultOrg string
 	var localMode bool
 	var insecure bool
+	var setCurrent bool
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -142,7 +143,7 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			be, err := DefaultLoginManager.Login(
-				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
+				ctx, ws, cmdutil.Diag(), cloudURL, project, setCurrent, displayOptions.Color)
 			if err != nil {
 				return fmt.Errorf("problem logging in: %w", err)
 			}
@@ -176,6 +177,7 @@ func newLoginCmd() *cobra.Command {
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
+	cmd.PersistentFlags().BoolVar(&setCurrent, "set-current", true, "Set the current cloud to the one being logged into")
 
 	return cmd
 }
