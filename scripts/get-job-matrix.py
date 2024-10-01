@@ -74,6 +74,7 @@ def is_unit_test(pkg: str) -> bool:
     return not (
         pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
+        or pkg in PERFORMANCE_TEST_PACKAGES
     )
 
 def is_performance_test(pkg: str) -> bool:
