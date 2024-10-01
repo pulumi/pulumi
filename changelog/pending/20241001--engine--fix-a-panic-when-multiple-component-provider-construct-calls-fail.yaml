@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a panic when multiple component provider construct calls fail
