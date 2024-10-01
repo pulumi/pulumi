@@ -19,18 +19,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"strconv"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/collections"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // Map is a bag of config stored in the settings file.
-type Map map[Key]Value
+type Map struct {
+	innerMap collections.OrderedMap[Key, Value]
+}
+
+func NewMap() Map {
+	return Map{
+		innerMap: collections.OrderedMap[Key, Value]{},
+	}
+}
+
+func NewMapWithCapacity(capacity int) Map {
+	return Map{
+		innerMap: collections.NewOrderedMapWithCapacity[Key, Value](capacity),
+	}
+}
 
 // Decrypt returns the configuration as a map from module member to decrypted value.
 func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 	r := map[Key]string{}
-	for k, c := range m {
+	for k, c := range m.Elements() {
 		v, err := c.Value(decrypter)
 		if err != nil {
 			return nil, err
@@ -40,15 +56,17 @@ func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 	return r, nil
 }
 
-func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
-	newConfig := make(Map)
-	for k, c := range m {
+func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (*Map, error) {
+	newConfig := &Map{
+		innerMap: collections.NewOrderedMapWithCapacity[Key, Value](m.innerMap.Len()),
+	}
+	for k, c := range m.Elements() {
 		val, err := c.Copy(decrypter, encrypter)
 		if err != nil {
 			return nil, err
 		}
 
-		newConfig[k] = val
+		newConfig.innerMap.Set(k, val)
 	}
 
 	return newConfig, nil
@@ -57,7 +75,7 @@ func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
 // SecureKeys returns a list of keys that have secure values.
 func (m Map) SecureKeys() []Key {
 	var keys []Key
-	for k, v := range m {
+	for k, v := range m.Elements() {
 		if v.Secure() {
 			keys = append(keys, k)
 		}
@@ -67,7 +85,7 @@ func (m Map) SecureKeys() []Key {
 
 // HasSecureValue returns true if the config map contains a secure (encrypted) value.
 func (m Map) HasSecureValue() bool {
-	for _, v := range m {
+	for _, v := range m.Elements() {
 		if v.Secure() {
 			return true
 		}
@@ -80,7 +98,7 @@ func (m Map) HasSecureValue() bool {
 func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (resource.PropertyMap, error) {
 	pm := resource.PropertyMap{}
 
-	for k, v := range m {
+	for k, v := range m.Elements() {
 		newV, err := adjustObjectValue(v)
 		if err != nil {
 			return resource.PropertyMap{}, err
@@ -98,7 +116,7 @@ func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (r
 func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 	// If the key isn't a path, go ahead and lookup the value.
 	if !path {
-		v, ok := m[k]
+		v, ok := m.innerMap.Get(k)
 		return v, ok, nil
 	}
 
@@ -109,7 +127,7 @@ func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 	}
 
 	// If we only have a single path segment, go ahead and lookup the value.
-	root, ok := m[configKey]
+	root, ok := m.innerMap.Get(configKey)
 	if len(p) == 1 {
 		return root, ok, nil
 	}
@@ -133,7 +151,7 @@ func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 func (m Map) Remove(k Key, path bool) error {
 	// If the key isn't a path, go ahead and delete it and return.
 	if !path {
-		delete(m, k)
+		m.innerMap.Delete(k)
 		return nil
 	}
 
@@ -144,9 +162,13 @@ func (m Map) Remove(k Key, path bool) error {
 	}
 
 	// If we only have a single path segment, delete the key and return.
-	root, ok := m[configKey]
+	root, ok := m.innerMap.Get(configKey)
 	if len(p) == 1 {
-		delete(m, configKey)
+		err = m.innerMap.Delete(configKey)
+		if err != nil {
+			return fmt.Errorf("Missing config key: %w", err)
+		}
+
 		return nil
 	}
 	if !ok {
@@ -165,7 +187,8 @@ func (m Map) Remove(k Key, path bool) error {
 	if err != nil {
 		return err
 	}
-	m[configKey] = root
+
+	m.innerMap.Set(configKey, root)
 	return nil
 }
 
@@ -173,7 +196,7 @@ func (m Map) Remove(k Key, path bool) error {
 func (m Map) Set(k Key, v Value, path bool) error {
 	// If the key isn't a path, go ahead and set the value and return.
 	if !path {
-		m[k] = v
+		m.innerMap.Set(k, v)
 		return nil
 	}
 
@@ -185,7 +208,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 
 	// If we only have a single path segment, set the value and return.
 	if len(p) == 1 {
-		m[configKey] = v
+		m.innerMap.Set(configKey, v)
 		return nil
 	}
 
@@ -195,7 +218,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	var obj object
-	if root, ok := m[configKey]; ok {
+	if root, ok := m.innerMap.Get(configKey); ok {
 		obj, err = root.unmarshalObject()
 		if err != nil {
 			return err
@@ -211,14 +234,15 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	if err != nil {
 		return err
 	}
-	m[configKey] = root
+
+	m.innerMap.Set(configKey, root)
 	return nil
 }
 
 func (m Map) MarshalJSON() ([]byte, error) {
-	rawMap := make(map[string]Value, len(m))
-	for k, v := range m {
-		rawMap[k.String()] = v
+	rawMap := collections.NewOrderedMapWithCapacity[string, Value](m.innerMap.Len())
+	for k, v := range m.Elements() {
+		rawMap.Set(k.String(), v)
 	}
 
 	return json.Marshal(rawMap)
@@ -230,24 +254,23 @@ func (m *Map) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("could not unmarshal map: %w", err)
 	}
 
-	newMap := make(Map, len(rawMap))
+	m.innerMap = collections.NewOrderedMapWithCapacity[Key, Value](len(rawMap))
 
 	for k, v := range rawMap {
 		pk, err := ParseKey(k)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal map: %w", err)
 		}
-		newMap[pk] = v
+		m.innerMap.Set(pk, v)
 	}
 
-	*m = newMap
 	return nil
 }
 
 func (m Map) MarshalYAML() (interface{}, error) {
-	rawMap := make(map[string]Value, len(m))
-	for k, v := range m {
-		rawMap[k.String()] = v
+	rawMap := collections.NewOrderedMapWithCapacity[string, Value](m.innerMap.Len())
+	for k, v := range m.Elements() {
+		rawMap.Set(k.String(), v)
 	}
 
 	return rawMap, nil
@@ -259,17 +282,16 @@ func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("could not unmarshal map: %w", err)
 	}
 
-	newMap := make(Map, len(rawMap))
+	m.innerMap = collections.NewOrderedMapWithCapacity[Key, Value](len(rawMap))
 
 	for k, v := range rawMap {
 		pk, err := ParseKey(k)
 		if err != nil {
 			return fmt.Errorf("could not unmarshal map: %w", err)
 		}
-		newMap[pk] = v
+		m.innerMap.Set(pk, v)
 	}
 
-	*m = newMap
 	return nil
 }
 
@@ -327,4 +349,12 @@ func adjustObjectValue(v Value) (object, error) {
 
 	// Otherwise, just return the string value.
 	return v.unmarshalObject()
+}
+
+func (m Map) Elements() iter.Seq2[Key, Value] {
+	return m.innerMap.Elements()
+}
+
+func (m Map) Len() int {
+	return m.innerMap.Len()
 }

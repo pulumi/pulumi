@@ -23,9 +23,9 @@ import (
 func UpToCheckpointV2(v1 apitype.CheckpointV1) apitype.CheckpointV2 {
 	var v2 apitype.CheckpointV2
 	v2.Stack = v1.Stack
-	v2.Config = make(config.Map)
-	for key, value := range v1.Config {
-		v2.Config[key] = value
+	v2.Config = config.NewMapWithCapacity(v1.Config.Len())
+	for key, value := range v1.Config.Elements() {
+		v2.Config.Set(key, value, false)
 	}
 
 	var v2deploy *apitype.DeploymentV2

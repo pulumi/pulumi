@@ -1738,7 +1738,7 @@ func TestNestedConfig(t *testing.T) {
 	stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	confKeys := map[string]bool{}
-	for k := range stackSettings.Config {
+	for k := range stackSettings.Config.Elements() {
 		confKeys[k.String()] = true
 	}
 
@@ -2336,7 +2336,7 @@ func TestSaveStackSettings(t *testing.T) {
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	// Set the config value and save it
-	stackConfig.Config[resourceConfig.MustMakeKey(pName, "bar")] = resourceConfig.NewValue("baz")
+	stackConfig.Config.Set(resourceConfig.MustMakeKey(pName, "bar"), resourceConfig.NewValue("baz"), false)
 	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi up --
