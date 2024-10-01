@@ -82,7 +82,6 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
-  PULUMI_TEST_DEPLOYMENTS_API: "true"
 
 jobs:
   test:
@@ -93,7 +92,7 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
-    timeout-minutes: 70
+    timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       # Create a coverage file to register a testing job was started.
