@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -121,69 +122,105 @@ func TestIsZipArchiveURL(t *testing.T) {
 	}
 }
 
+func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	cases := []string{
+		"path",
+		"not a url",
+		"ftp/example.com/foo.zip",
+	}
+
+	for _, templateURL := range cases {
+		parsed, err := url.Parse(templateURL)
+		assert.NoError(t, err)
+
+		// Act.
+		_, err = retrieveZIPTemplates(templateURL)
+
+		// Assert.
+		assert.ErrorContains(t, err, "invalid template URL: "+parsed.String())
+	}
+}
+
 //nolint:paralleltest // uses shared server URL
-func TestRetrieveZIPTemplates(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		fileName := "foo"
-		fileDirName := "bar/baz"
+func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
+	// Arrange.
+	cases := map[string][]string{
+		"empty.zip":          {},
+		"no-pulumi-yaml.zip": {"foo", "bar/baz"},
+	}
+
+	server := newTestServer(t, cases)
+
+	for path := range cases {
+		// Act.
+		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+
+		// Assert.
+		assert.ErrorContains(t, err, "template does not contain a Pulumi.yaml file")
+	}
+}
+
+//nolint:paralleltest // uses shared server URL
+func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
+	// Arrange.
+	cases := map[string][]string{
+		"just-pulumi-yaml.zip":                    {"Pulumi.yaml"},
+		"pulumi-yaml-and-flat-files.zip":          {"Pulumi.yaml", "foo"},
+		"pulumi-yaml-and-nested-files.zip":        {"Pulumi.yaml", "bar/baz"},
+		"pulumi-yaml-and-mixture.zip":             {"Pulumi.yaml", "foo", "bar/baz"},
+		"pulumi-yaml-at-top-level-and-nested.zip": {"Pulumi.yaml", "foo", "bar/Pulumi.yaml"},
+	}
+
+	server := newTestServer(t, cases)
+
+	for path := range cases {
+		// Act.
+		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+
+		// Assert.
+		assert.NoError(t, err)
+	}
+}
+
+// Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to
+// paths, while values are slices whose values correspond to filenames that should be present in the ZIP file served at
+// that path.
+func newTestServer(t *testing.T, zips map[string][]string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		zipName := req.URL.Path[1:]
+		files, ok := zips[zipName]
+		if !ok {
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		buf := new(bytes.Buffer)
 		writer := zip.NewWriter(buf)
-		data := []byte("foo")
-		fileDirPathParts := strings.Split(fileDirName, "/")
-		_, err := writer.Create(strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/") + "/")
-		if err != nil {
-			t.Errorf("Failed to create directory in zip archive: %s", err)
-		}
-		fileHandle, err := writer.Create(fileName)
-		if err != nil {
-			t.Errorf("Failed to create file in zip archive: %s", err)
-		}
-		_, err = fileHandle.Write(data)
-		if err != nil {
-			t.Errorf("Failed to write to zip file: %s", err)
-		}
-		nestedFileHandle, err := writer.Create(fileDirName)
-		if err != nil {
-			t.Errorf("Failed to create nested file in zip archive: %s", err)
-		}
-		_, err = nestedFileHandle.Write(data)
-		if err != nil {
-			t.Errorf("Failed to write nested file to zip archive: %s", err)
-		}
-		writer.Close()
-		rw.Header().Set("Content-Type", "application/zip")
-		rw.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", fileName))
-		_, err = rw.Write(buf.Bytes())
-		if err != nil {
-			t.Errorf("Failed to write to response: %s", err)
-		}
-	}))
-	defer server.Close()
-	tests := []struct {
-		testName      string
-		templateURL   string
-		expectedError string
-	}{
-		{
-			testName:    "valid_zip_url",
-			templateURL: server.URL + "/foo.zip",
-		},
-		{
-			testName:    "invalid_zip_url",
-			templateURL: "not a url",
-			expectedError: "failed to retrieve zip archive: " +
-				"invalid template URL: not%20a%20url",
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.testName, func(t *testing.T) {
-			_, err := retrieveZIPTemplates(tt.templateURL)
-			if tt.expectedError != "" {
-				assert.EqualError(t, err, tt.expectedError)
-			} else {
+		for _, file := range files {
+			// For paths containing slashes, we need to create the directories first.
+			dirs := strings.Split(file, "/")
+			for i := 0; i < len(dirs)-1; i++ {
+				path := strings.Join(dirs[:i+1], "/")
+				_, err := writer.Create(path + "/")
 				assert.NoError(t, err)
 			}
-		})
-	}
+
+			fileHandle, err := writer.Create(file)
+			assert.NoError(t, err)
+
+			// All files contain the same piece of test content.
+			_, err = fileHandle.Write([]byte("test"))
+			assert.NoError(t, err)
+		}
+		writer.Close()
+
+		rw.Header().Set("Content-Type", "application/zip")
+		rw.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", zipName))
+
+		_, err := rw.Write(buf.Bytes())
+		assert.NoError(t, err)
+	}))
 }

@@ -17,6 +17,7 @@ package workspace
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -165,6 +166,18 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 	if err != nil {
 		return "", err
 	}
+
+	hasPulumiYAML := false
+	for _, file := range archive.File {
+		if !file.FileInfo().IsDir() && file.FileInfo().Name() == "Pulumi.yaml" {
+			hasPulumiYAML = true
+			break
+		}
+	}
+	if !hasPulumiYAML {
+		return "", errors.New("template does not contain a Pulumi.yaml file")
+	}
+
 	for _, file := range archive.File {
 		filePath, err := sanitizeArchivePath(tempDir, file.Name)
 		if err != nil {
