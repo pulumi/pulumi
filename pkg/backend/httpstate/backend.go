@@ -1936,8 +1936,6 @@ func (b *cloudBackend) GetStackDeploymentSettings(ctx context.Context,
 	return b.client.GetStackDeploymentSettings(ctx, stackID)
 }
 
-const pulumiOperationHeader = "Pulumi operation"
-
 func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.StackReference,
 	req apitype.CreateDeploymentRequest, opts display.Options, deploymentInitiator string,
 	suppressStreamLogs bool,
@@ -1979,9 +1977,9 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 
 				// If we see it's a Pulumi operation, rather than outputting the deployment logs,
 				// find the associated update and show the normal rendering of the operation's events.
-				if l.Header == pulumiOperationHeader {
+				if l.Header == fmt.Sprintf("pulumi %v", req.Op) {
 					fmt.Println()
-					return b.showDeploymentEvents(ctx, stackID, apitype.UpdateKind(req.Operation.Operation), id, opts)
+					return b.showDeploymentEvents(ctx, stackID, apitype.UpdateKind(req.Op), id, opts)
 				}
 			} else {
 				fmt.Print(l.Line)
