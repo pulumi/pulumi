@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.135.0 (2024-10-01)
+
+
+### Features
+
+- [backend/{diy,service}] Send secrets managers as initial state when creating stacks
+  [#17387](https://github.com/pulumi/pulumi/pull/17387)
+
+- [sdk/python] Search upwards for pyproject.toml when using Poetry
+  [#17388](https://github.com/pulumi/pulumi/pull/17388)
+
+
+### Bug Fixes
+
+- [cli/config] Improve usage string for config env add/rm commands
+  [#17407](https://github.com/pulumi/pulumi/pull/17407)
+
+- [cli/new] Check zipped templates for `Pulumi.yaml` files
+  [#17437](https://github.com/pulumi/pulumi/pull/17437)
+
+- [engine] Disable the enviromental GITHUB_TOKEN on 401 responses
+  [#17351](https://github.com/pulumi/pulumi/pull/17351)
+
+- [engine] Fix a panic when multiple component provider construct calls fail
+  [#17439](https://github.com/pulumi/pulumi/pull/17439)
+
+- [sdkgen/go] Fix nested string map map map properties
+  [#17417](https://github.com/pulumi/pulumi/pull/17417)
+
+- [sdk/nodejs] Fix dependency installation for nodejs projects with a main property
+  [#17391](https://github.com/pulumi/pulumi/pull/17391)
+
+- [sdk/python] Add missing package_ref paramater to ProviderResource
+  [#17432](https://github.com/pulumi/pulumi/pull/17432)
+
+
+### Miscellaneous
+
+- [sdkgen] Validate schema version is provided when package supports packing
+  [#17420](https://github.com/pulumi/pulumi/pull/17420)
+
+- [sdk/python] Replace asyncio.ensure_future with create_task
+  [#17406](https://github.com/pulumi/pulumi/pull/17406)
+
+- [sdkgen/{nodejs,python}] Bump minimum valid SDK version to v3.134.1 so that output-invokes work and maintain secrets
+  [#17390](https://github.com/pulumi/pulumi/pull/17390)
+
 ## 3.134.1 (2024-09-25)
 
 

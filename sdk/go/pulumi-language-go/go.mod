@@ -13,7 +13,7 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.134.1
+	github.com/pulumi/pulumi/sdk/v3 v3.135.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/mod v0.18.0
 	google.golang.org/grpc v1.63.2
