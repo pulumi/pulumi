@@ -4,6 +4,8 @@ go 1.21
 
 replace golang.org/x/text => golang.org/x/text v0.3.8
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible
