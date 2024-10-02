@@ -149,7 +149,7 @@ func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 		return err
 	}
 	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg.Name, relOut)
-	addCmd := ""
+	var addCmd string
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
 		if pm, ok := packagemanager.(string); ok {

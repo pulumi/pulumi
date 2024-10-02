@@ -1301,7 +1301,7 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 	case map[interface{}]interface{}:
 		vv := make(map[string]interface{}, len(v))
 		for k, e := range v {
-			sk := ""
+			var sk string
 			switch k := k.(type) {
 			case string:
 				sk = k

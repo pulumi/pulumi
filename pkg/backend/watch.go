@@ -108,7 +108,7 @@ func watchPaths(root string, paths []string) (chan string, func(), error) {
 	args := []string{"--origin", root}
 	for _, p := range paths {
 
-		watchPath := ""
+		var watchPath string
 		if path.IsAbs(p) {
 			watchPath = p
 		} else {

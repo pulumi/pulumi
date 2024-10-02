@@ -3011,7 +3011,7 @@ func (pkg *pkgContext) genFunctionOutputGenericVersion(w io.Writer, f *schema.Fu
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := originalResultTypeName + "Output"
 
-	code := ""
+	var code string
 
 	if f.Inputs != nil {
 		code = `
@@ -3137,7 +3137,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := originalResultTypeName + "Output"
 
-	code := ""
+	var code string
 
 	var inputsVar string
 	if f.Inputs == nil {

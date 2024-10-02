@@ -197,7 +197,8 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
-	opstr, precedence := "", g.GetPrecedence(expr)
+	var opstr string
+	precedence := g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
 		opstr = "+"

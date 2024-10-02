@@ -28,6 +28,7 @@ linters:
     - tenv
     - unconvert
     - unused
+    - wastedassign
 
 linters-settings:
   nakedret:

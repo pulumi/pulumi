@@ -629,7 +629,8 @@ func determinePluginVersion(packageVersion string) (string, error) {
 	}
 
 	segments := []string{}
-	num, rest := "", packageVersion
+	var num string
+	rest := packageVersion
 	foundDot := false
 	for {
 		if num, rest = parseNumber(rest); num != "" {
