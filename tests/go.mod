@@ -4,6 +4,7 @@ go 1.21
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
+	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 	github.com/pulumi/pulumi/pkg/v3 => ../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../sdk
 )

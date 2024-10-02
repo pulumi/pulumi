@@ -11,6 +11,7 @@ require (
 replace (
 	github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 	github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go => ../../../testdata/codegen/methods-return-plain-resource/go
+	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 )
 
 require (

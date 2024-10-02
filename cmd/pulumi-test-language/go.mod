@@ -6,6 +6,8 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../../sdk
 
 replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/deckarep/golang-set/v2 v2.5.0

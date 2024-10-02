@@ -4,6 +4,8 @@ go 1.21
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require github.com/pulumi/pulumi/sdk/v3 v3.98.0
 
 require (
