@@ -128,6 +128,7 @@ describe("LocalWorkspace", () => {
         });
         it("lists tag values", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
+		console.log('Skipping "list tag values values" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
@@ -137,6 +138,7 @@ describe("LocalWorkspace", () => {
         });
         it("sets and removes tag values", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
+		console.log('Skipping "sets and removes tag values" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
@@ -151,6 +153,7 @@ describe("LocalWorkspace", () => {
         });
         it("gets a single tag value", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
+		console.log('Skipping "gets a single tag value" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
@@ -1641,7 +1644,6 @@ function withTemporaryFileBackend(
     description?: string,
     runtime?: string,
 ): LocalWorkspaceOptions {
-    console.log("with file backend", name, description);
     const tmpDir = tmp.dirSync({
         prefix: "nodejs-tests-automation-",
         unsafeCleanup: true,
@@ -1669,31 +1671,6 @@ function withTemporaryFileBackend(
 
             ...opts?.projectSettings,
             backend,
-        },
-    });
-}
-
-function withTemporaryFileBackendTmp(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
-    const tmpDir = tmp.dirSync({
-        tmpdir: "/tmp",
-        prefix: "nodejs-tests-automation-",
-        unsafeCleanup: true,
-    });
-
-    const backend = { url: `file://${tmpDir.name}` };
-
-    return withTestConfigPassphrase({
-        ...opts,
-        pulumiHome: tmpDir.name,
-        projectSettings: {
-            // We are obliged to provide a name and runtime if we provide project
-            // settings, so we do so, but we spread in the provided project settings
-            // afterwards so that the caller can override them if need be.
-            name: "node_test",
-            runtime: "nodejs",
-
-            ...opts?.projectSettings,
-            backend: backend,
         },
     });
 }
