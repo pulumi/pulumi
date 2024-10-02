@@ -70,7 +70,6 @@ listFoo:
 	}, `
 # header
 foo: 1
-baz: quux
 list: ["1", "two", "pi", # test3
   e*2] #test4
 listFoo:
@@ -79,6 +78,7 @@ listFoo:
   - bar: "barTwo" # nestedComment1
     list: ["a", "bee", cee] # nestedComment2
     # trailer
+baz: quux
 
 # footer
 `)

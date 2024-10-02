@@ -84,9 +84,6 @@ config:
   first-value:
     type: string
     default: first
-  new-value:
-    type: string
-    description: "\U0001F49C a new value added to config, expect unicode to be escaped"
   second-value:
     type: string
   third-value:
@@ -94,14 +91,17 @@ config:
     items:
       type: string
     default: [third] # 🟠 comment after array
+  new-value:
+    type: string
+    description: "\U0001F49C a new value added to config, expect unicode to be escaped"
 # 🟡 comment before resources
 resources:
   my-bucket:
+    type: aws:s3:bucket
     # 🟢 comment before props, note the indentation is excessive, will change to 2 spaces
     properties:
       # 🔵 comment before prop
       bucket: test-123 # 🟣 comment after prop
-    type: aws:s3:bucket
 # 🟥 footer comment
 `)
 	want.Equal(t, string(projData))
