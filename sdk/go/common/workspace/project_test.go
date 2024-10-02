@@ -1530,11 +1530,11 @@ runtime: yaml`
 		require.NoError(t, err)
 
 		expected := `environment:
-  imports:
-    - env
   values:
     pulumiConfig:
       aws:region: us-west-2
+  imports:
+    - env
 `
 
 		stack.Environment = stack.Environment.Append("env")
@@ -1543,12 +1543,12 @@ runtime: yaml`
 		assert.Equal(t, expected, string(marshaled))
 
 		expected = `environment:
-  imports:
-    - env
-    - env2
   values:
     pulumiConfig:
       aws:region: us-west-2
+  imports:
+    - env
+    - env2
 `
 
 		stack.Environment = stack.Environment.Append("env2")
