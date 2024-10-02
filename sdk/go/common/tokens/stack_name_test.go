@@ -17,21 +17,41 @@ package tokens
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseStackName(t *testing.T) {
+func TestParseStackName_AcceptsValidInput(t *testing.T) {
 	t.Parallel()
 
+	// Arrange.
+	tests := []string{
+		"my-stack",
+		"stack",
+		"s-92",
+		"stack_foo",
+		"foo_bar_123",
+	}
+
+	for _, tt := range tests {
+		// Act.
+		sn, err := ParseStackName(tt)
+
+		// Assert.
+		assert.Equal(t, tt, sn.String())
+		assert.NoError(t, err)
+	}
+}
+
+func TestParseStackName_RejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
 	tests := []struct {
 		desc  string
 		input string
 		err   string
 	}{
-		{
-			desc:  "simple valid stack name",
-			input: "my-stack",
-		},
 		{
 			desc:  "stack name empty",
 			input: "",
@@ -74,14 +94,37 @@ func TestParseStackName(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			sn, err := ParseStackName(tt.input)
-			if tt.err != "" {
-				assert.EqualError(t, err, tt.err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.input, sn.String())
-				assert.Equal(t, QName(tt.input), sn.Q())
-			}
+			// Act.
+			_, err := ParseStackName(tt.input)
+
+			// Assert.
+			assert.EqualError(t, err, tt.err)
 		})
 	}
+}
+
+func TestStackNameValidation_AssertsNonEmpty(t *testing.T) {
+	t.Parallel()
+
+	// Act.
+	sn := &StackName{}
+
+	// Assert.
+	assert.PanicsWithValue(t, "fatal: An assertion has failed: stack name must not be empty", func() {
+		contract.Ignore(sn.String())
+	})
+}
+
+//nolint:paralleltest // Modifies the environment
+func TestStackNameValidation_CanBeDisabled(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_VALIDATION", "true")
+
+	// Act.
+	sn1 := StackName{}
+	sn2, err := ParseStackName("")
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.Equal(t, "", sn1.String())
+	assert.Equal(t, "", sn2.String())
 }

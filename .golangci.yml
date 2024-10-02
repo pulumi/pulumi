@@ -25,6 +25,7 @@ linters:
     - perfsprint
     - prealloc
     - revive
+    - tenv
     - unconvert
     - unused
 
