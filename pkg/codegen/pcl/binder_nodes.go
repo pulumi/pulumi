@@ -36,7 +36,6 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 			Summary:  "circular reference",
 			Subject:  &rng,
 		}}
-
 	}
 	node.markBinding()
 

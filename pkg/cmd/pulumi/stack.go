@@ -186,7 +186,6 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		if err == nil {
 			fmt.Fprintf(out, "\n")
 			_ = fprintStackOutputs(os.Stdout, outputs)
-
 		}
 
 		if args.showSecrets {

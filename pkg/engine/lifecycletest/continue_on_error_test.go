@@ -68,7 +68,6 @@ func TestDestroyContinueOnError(t *testing.T) {
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "anotherUnrelatedRes", true, deploytest.ResourceOptions{})
 			assert.NoError(t, err)
-
 		}
 
 		return nil

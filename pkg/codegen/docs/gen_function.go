@@ -293,7 +293,6 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	// Some functions don't have any inputs other than the InvokeOptions.
 	// For example, the `get_billing_service_account` function.
 	if f.Inputs != nil {
-
 		inputs := f.Inputs
 		if outputVersion {
 			inputs = inputs.InputShape
@@ -301,7 +300,6 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 		params = slice.Prealloc[formalParam](len(inputs.Properties))
 		for _, prop := range inputs.Properties {
-
 			var schemaType schema.Type
 			if outputVersion {
 				schemaType = codegen.OptionalType(prop)

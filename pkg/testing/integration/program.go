@@ -2196,7 +2196,6 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 					if _, has := entry[packageName]; has {
 						entry[packageName] = packageVersion
 					}
-
 				}
 			}
 
@@ -2628,7 +2627,6 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	}
 
 	for _, dep := range pt.opts.Dependencies {
-
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
 		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
 		matches, err := filepath.Glob(globPattern)

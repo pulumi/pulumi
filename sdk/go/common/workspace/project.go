@@ -656,7 +656,6 @@ func (proj *Project) Validate() error {
 						inferredTypeName)
 				}
 			}
-
 		} else {
 			// when not namespaced by project, there shouldn't be a type, only a value
 			if configType.IsExplicitlyTyped() {

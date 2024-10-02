@@ -1049,7 +1049,6 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		// Assume invokes are returning Output<T> instead of Task<T>
 		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
-
 	}
 
 	var objType *schema.ObjectType

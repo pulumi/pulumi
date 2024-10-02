@@ -117,7 +117,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}
-
 	}
 	return result
 }

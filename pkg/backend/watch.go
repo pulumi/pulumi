@@ -107,7 +107,6 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 func watchPaths(root string, paths []string) (chan string, func(), error) {
 	args := []string{"--origin", root}
 	for _, p := range paths {
-
 		var watchPath string
 		if path.IsAbs(p) {
 			watchPath = p

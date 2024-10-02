@@ -1373,7 +1373,6 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		// Print this warning before printing all the check failures to give better context.
 		if len(resp.Failures) != 0 {
-
 			// Based on if the user passed 'properties' or not we want to change the error message here.
 			var errorMessage string
 			if len(inputProperties) == 0 {

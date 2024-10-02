@@ -774,7 +774,6 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 		if shouldPrintOld && shouldPrintNew {
 			if diff.Old.IsArchive() &&
 				diff.New.IsArchive() {
-
 				p.printArchiveDiff(titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue())
 				return
 			}
@@ -830,7 +829,6 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			// exponents.
 			p.writef("%g", number)
 		}
-
 	} else if v.IsString() {
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.writef("(%s) ", kind)

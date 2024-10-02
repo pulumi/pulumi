@@ -321,7 +321,6 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 		}
 		cacheAuthMethod = true
 		return remoteURL, auth, err
-
 	}
 
 	// For non-SSH URLs, see if there is basic auth info. Strip it from the

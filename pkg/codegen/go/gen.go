@@ -2205,7 +2205,6 @@ func (pkg *pkgContext) genResource(
 			}
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
-
 			optionalDeref := ""
 			if p.IsRequired() {
 				optionalDeref = "*"
@@ -2682,7 +2681,6 @@ func (pkg *pkgContext) genResource(
 				fmt.Fprintf(w, "}\n")
 			}
 		}
-
 	}
 
 	if !useGenericVariant {
@@ -3659,7 +3657,6 @@ func (pkg *pkgContext) genResourceRegistrations(
 	// Register all output types
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 	for _, method := range r.Methods {
-
 		var objectReturnType *schema.ObjectType
 		if method.Function.ReturnType != nil {
 			if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {

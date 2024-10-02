@@ -302,7 +302,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			default:
 				g.Fgenf(w, "%.v", expr.Args[0])
 			}
-
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)

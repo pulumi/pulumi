@@ -164,7 +164,6 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
-
 		// TODO[pulumi/pulumi#10482] instead of assuming
 		// expiration, consider expiration times returned by
 		// the backend, if any.

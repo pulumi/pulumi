@@ -1894,7 +1894,6 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 				if event.DiagnosticEvent != nil {
 					if event.DiagnosticEvent.Severity == "warning" &&
 						strings.Contains(event.DiagnosticEvent.Message, "will not show as a stack output") {
-
 						assert.Equal(t,
 							"Undefined value (undef) will not show as a stack output.\n",
 							event.DiagnosticEvent.Message)

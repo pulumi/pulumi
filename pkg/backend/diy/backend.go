@@ -808,7 +808,6 @@ func (b *diyBackend) ListStacks(
 				continue
 			}
 			return nil, nil, err
-
 		}
 		results = append(results, newDIYStackSummary(stackRef, chk))
 	}

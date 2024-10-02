@@ -29,6 +29,7 @@ linters:
     - unconvert
     - unused
     - wastedassign
+    - whitespace
 
 linters-settings:
   nakedret:

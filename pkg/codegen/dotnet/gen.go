@@ -1466,7 +1466,6 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		} else {
 			fmt.Fprintf(w, "(\"%s\", %s, options.WithDefaults());\n", fun.Token, argsParamRef)
 		}
-
 	} else {
 		// multi-argument inputs and output property bag
 		// first generate the function definition
@@ -1547,7 +1546,6 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 	if fun.ReturnType != nil {
 		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-
 			fmt.Fprintf(w, "\n")
 
 			res := &plainType{

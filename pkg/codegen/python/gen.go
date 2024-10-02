@@ -822,7 +822,6 @@ func (mod *modContext) genInit(exports []string) string {
 
 	// If there are subpackages, import them with importlib.
 	if mod.submodulesExist() {
-
 		children := make([]*modContext, len(mod.children))
 		copy(children, mod.children)
 

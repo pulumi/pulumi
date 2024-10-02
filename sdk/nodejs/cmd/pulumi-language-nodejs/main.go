@@ -1587,7 +1587,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("copy vendor: %w", err)
 		}
-
 	} else {
 		// Before we can build the package we need to install it's dependencies.
 		err = writeString("$ npm install\n")
