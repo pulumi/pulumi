@@ -63,26 +63,26 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 			if p.URN != "" {
 				resourceName = p.URN.Name()
 			}
-			PrintfWithWatchPrefix(time.Now(), resourceName,
+			WatchPrefixPrintf(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
 		case engine.StartDebuggingEvent:
 			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
+				WatchPrefixPrintf(time.Now(), p.Metadata.URN.Name(),
 					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload().(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
+				WatchPrefixPrintf(time.Now(), p.Metadata.URN.Name(),
 					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOperationFailed:
 			p := e.Payload().(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
+				WatchPrefixPrintf(time.Now(), p.Metadata.URN.Name(),
 					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ProgressEvent:
@@ -98,9 +98,9 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 // the watch output stream as a simple way to avoid garbled output.
 var watchPrintfMutex sync.Mutex
 
-// PrintfWithWatchPrefix wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
+// WatchPrefixPrintf wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
 // resource metadata.
-func PrintfWithWatchPrefix(t time.Time, resourceName string, format string, a ...interface{}) {
+func WatchPrefixPrintf(t time.Time, resourceName string, format string, a ...interface{}) {
 	watchPrintfMutex.Lock()
 	defer watchPrintfMutex.Unlock()
 	prefix := fmt.Sprintf("%12.12s[%20.20s] ", t.Format(timeFormat), resourceName)

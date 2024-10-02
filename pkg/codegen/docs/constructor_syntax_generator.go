@@ -51,7 +51,7 @@ func (g *constructorSyntaxGenerator) indent(buffer *bytes.Buffer) {
 	buffer.WriteString(strings.Repeat(" ", g.indentSize))
 }
 
-func (g *constructorSyntaxGenerator) write(buffer *bytes.Buffer, format string, args ...interface{}) {
+func (g *constructorSyntaxGenerator) writef(buffer *bytes.Buffer, format string, args ...interface{}) {
 	buffer.WriteString(fmt.Sprintf(format, args...))
 }
 
@@ -61,7 +61,7 @@ func (g *constructorSyntaxGenerator) writeValue(
 	seenTypes codegen.StringSet,
 ) {
 	write := func(format string, args ...interface{}) {
-		g.write(buffer, format, args...)
+		g.writef(buffer, format, args...)
 	}
 
 	writeValue := func(valueType schema.Type) {
@@ -222,7 +222,7 @@ func (g *constructorSyntaxGenerator) exampleResourceWithName(r *schema.Resource,
 	buffer := bytes.Buffer{}
 	seenTypes := codegen.NewStringSet()
 	resourceName := name(r.Token)
-	g.write(&buffer, "resource \"%s\" %q {\n", resourceName, r.Token)
+	g.writef(&buffer, "resource \"%s\" %q {\n", resourceName, r.Token)
 	g.indented(func() {
 		sortPropertiesByRequiredFirst(r.InputProperties)
 		for _, p := range r.InputProperties {
@@ -235,13 +235,13 @@ func (g *constructorSyntaxGenerator) exampleResourceWithName(r *schema.Resource,
 			}
 
 			g.indent(&buffer)
-			g.write(&buffer, "%s = ", p.Name)
+			g.writef(&buffer, "%s = ", p.Name)
 			g.writeValue(&buffer, codegen.ResolvedType(p.Type), seenTypes)
-			g.write(&buffer, "\n")
+			g.writef(&buffer, "\n")
 		}
 	})
 
-	g.write(&buffer, "}")
+	g.writef(&buffer, "}")
 	return buffer.String()
 }
 
@@ -249,7 +249,7 @@ func (g *constructorSyntaxGenerator) exampleInvokeWithName(function *schema.Func
 	buffer := bytes.Buffer{}
 	seenTypes := codegen.NewStringSet()
 	functionName := name(function.Token)
-	g.write(&buffer, "%s = invoke(\"%s\", {\n", functionName, function.Token)
+	g.writef(&buffer, "%s = invoke(\"%s\", {\n", functionName, function.Token)
 	g.indented(func() {
 		if function.Inputs == nil {
 			return
@@ -266,13 +266,13 @@ func (g *constructorSyntaxGenerator) exampleInvokeWithName(function *schema.Func
 			}
 
 			g.indent(&buffer)
-			g.write(&buffer, "%s = ", p.Name)
+			g.writef(&buffer, "%s = ", p.Name)
 			g.writeValue(&buffer, codegen.ResolvedType(p.Type), seenTypes)
-			g.write(&buffer, "\n")
+			g.writef(&buffer, "\n")
 		}
 	})
 
-	g.write(&buffer, "})")
+	g.writef(&buffer, "})")
 	return buffer.String()
 }
 

@@ -12,6 +12,7 @@ linters:
     - exhaustive
     - gofumpt
     - goheader
+    - goprintffuncname
     - gosec
     - govet
     - importas

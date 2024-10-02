@@ -362,7 +362,8 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
+		_, err := fmt.Fprintf(out, "    %v: %v\n", key, event.Config[key])
+		contract.IgnoreError(err)
 	}
 
 	return out.String()

@@ -63,7 +63,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 					message := strings.TrimRight(logEntry.Message, "\n")
-					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", message)
+					display.WatchPrefixPrintf(eventTime, logEntry.ID, "%s\n", message)
 
 					shown[logEntry] = true
 				}
@@ -83,7 +83,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
 
 	for range events {
-		display.PrintfWithWatchPrefix(time.Now(), "", "%s",
+		display.WatchPrefixPrintf(time.Now(), "", "%s",
 			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
 		// Perform the update operation
@@ -93,10 +93,10 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 			if err == context.Canceled {
 				return err
 			}
-			display.PrintfWithWatchPrefix(time.Now(), "", "%s",
+			display.WatchPrefixPrintf(time.Now(), "", "%s",
 				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
 		} else {
-			display.PrintfWithWatchPrefix(time.Now(), "", "%s",
+			display.WatchPrefixPrintf(time.Now(), "", "%s",
 				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 		}
 	}
