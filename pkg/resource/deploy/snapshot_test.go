@@ -265,9 +265,10 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 
 	// Arrange.
 	cases := []struct {
-		name  string
-		given []*resource.State
-		want  []*resource.State
+		name    string
+		given   []*resource.State
+		want    []*resource.State
+		results []PruneResult
 	}{
 		{
 			name: "missing parent",
@@ -280,6 +281,15 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 			want: []*resource.State{
 				{
 					URN: "urn:pulumi:stack::project::t::b",
+				},
+			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t$t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					},
 				},
 			},
 		},
@@ -295,6 +305,15 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{},
+				},
+			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
+					},
 				},
 			},
 		},
@@ -319,6 +338,15 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 					},
 				},
 			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t::c",
+					NewURN: "urn:pulumi:stack::project::t::c",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
+					},
+				},
+			},
 		},
 		{
 			name: "missing property dependency",
@@ -334,6 +362,19 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					URN:                  "urn:pulumi:stack::project::t::b",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
+				},
+			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{
+							Type: resource.ResourcePropertyDependency,
+							Key:  "p",
+							URN:  "urn:pulumi:stack::project::t::a",
+						},
+					},
 				},
 			},
 		},
@@ -358,6 +399,24 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 					},
 				},
 			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t::d",
+					NewURN: "urn:pulumi:stack::project::t::d",
+					RemovedDependencies: []resource.StateDependency{
+						{
+							Type: resource.ResourcePropertyDependency,
+							Key:  "pa",
+							URN:  "urn:pulumi:stack::project::t::a",
+						},
+						{
+							Type: resource.ResourcePropertyDependency,
+							Key:  "pbc",
+							URN:  "urn:pulumi:stack::project::t::c",
+						},
+					},
+				},
+			},
 		},
 		{
 			name: "missing deleted-with",
@@ -370,6 +429,15 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 			want: []*resource.State{
 				{
 					URN: "urn:pulumi:stack::project::t::b",
+				},
+			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceDeletedWith, URN: "urn:pulumi:stack::project::t::a"},
+					},
 				},
 			},
 		},
@@ -400,6 +468,23 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					URN:    "urn:pulumi:stack::project::t$u$v::d",
 					Parent: "urn:pulumi:stack::project::t$u::c",
+				},
+			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t$t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					},
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t$u::c",
+					NewURN: "urn:pulumi:stack::project::t$u::c",
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t$u$v::d",
+					NewURN: "urn:pulumi:stack::project::t$u$v::d",
 				},
 			},
 		},
@@ -460,6 +545,37 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
 				},
 			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t$t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					},
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t$u::c",
+					NewURN: "urn:pulumi:stack::project::t$u::c",
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t::e",
+					NewURN: "urn:pulumi:stack::project::t::e",
+					RemovedDependencies: []resource.StateDependency{
+						{
+							Type: resource.ResourcePropertyDependency,
+							Key:  "q",
+							URN:  "urn:pulumi:stack::project::t::q",
+						},
+					},
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t$u$v::f",
+					NewURN: "urn:pulumi:stack::project::t$u$v::f",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::q"},
+					},
+				},
+			},
 		},
 		{
 			name: "duplicate URNs",
@@ -501,6 +617,28 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 					Delete: true,
 				},
 			},
+			results: []PruneResult{
+				{
+					OldURN: "urn:pulumi:stack::project::t$t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					},
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t::b",
+					NewURN: "urn:pulumi:stack::project::t::b",
+					Delete: true,
+					RemovedDependencies: []resource.StateDependency{
+						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					},
+				},
+				{
+					OldURN: "urn:pulumi:stack::project::t$t$u::c",
+					NewURN: "urn:pulumi:stack::project::t$u::c",
+					Delete: true,
+				},
+			},
 		},
 	}
 
@@ -514,10 +652,11 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 			assert.Error(t, snap.VerifyIntegrity())
 
 			// Act.
-			snap.Prune()
+			actual := snap.Prune()
 
 			// Assert.
 			assert.Equal(t, c.want, snap.Resources)
+			assert.Equal(t, c.results, actual)
 			assert.NoError(t, snap.VerifyIntegrity())
 		})
 	}
