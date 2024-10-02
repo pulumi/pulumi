@@ -128,7 +128,7 @@ describe("LocalWorkspace", () => {
         });
         it("lists tag values", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
-		console.log('Skipping "list tag values values" test');
+                console.log('Skipping "list tag values values" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
@@ -138,7 +138,7 @@ describe("LocalWorkspace", () => {
         });
         it("sets and removes tag values", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
-		console.log('Skipping "sets and removes tag values" test');
+                console.log('Skipping "sets and removes tag values" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
@@ -153,7 +153,7 @@ describe("LocalWorkspace", () => {
         });
         it("gets a single tag value", async () => {
             if (!process.env.PULUMI_ACCESS_TOKEN) {
-		console.log('Skipping "gets a single tag value" test');
+                console.log('Skipping "gets a single tag value" test');
                 // Skip the test because the local backend doesn't support tags
                 return;
             }
