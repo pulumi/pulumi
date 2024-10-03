@@ -149,7 +149,6 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
 				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
 		}
-
 	}
 
 	return nil

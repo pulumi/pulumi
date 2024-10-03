@@ -2856,7 +2856,6 @@ import * as mutex from "async-mutex";
 	}
 
 	if def.Parameterization != nil {
-
 		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
 
 		_, err = fmt.Fprintf(w, `

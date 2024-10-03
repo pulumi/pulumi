@@ -1220,7 +1220,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.Fgen(w, instantiation)
 		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
-
 	} else {
 		resourceName := fmt.Sprintf("%q", resName)
 		if g.isComponent {
@@ -1391,7 +1390,6 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		g.Fgen(w, instantiation)
 		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
-
 	} else {
 		resourceName := fmt.Sprintf("%q", resName)
 		if g.isComponent {
@@ -1463,7 +1461,6 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			// currently only used inside anonymous functions (no scope collisions)
 			g.Fgenf(w, "var _zero %s\n", zeroValueType)
 		}
-
 	}
 
 	for _, t := range temps {
@@ -1594,7 +1591,6 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 		}
 	default:
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)
-
 	}
 }
 

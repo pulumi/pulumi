@@ -419,7 +419,6 @@ func runDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 	var gitAuth *apitype.GitAuthConfig
 	if args.gitAuthAccessToken != "" || sshPrivateKey != "" || args.gitAuthPassword != "" ||
 		args.gitAuthUsername != "" {
-
 		gitAuth = &apitype.GitAuthConfig{}
 		switch {
 		case args.gitAuthAccessToken != "":

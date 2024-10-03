@@ -127,7 +127,8 @@ func (g *generator) genAnonymousFunctionExpression(
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
-	opstr, precedence := "", g.GetPrecedence(expr)
+	var opstr string
+	precedence := g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
 		opstr = "+"
@@ -341,7 +342,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(w, "%.v", expr.Args[1])
 		}
 
-		optionsBag := ""
+		var optionsBag string
 		var buf bytes.Buffer
 		if len(expr.Args) == 3 {
 			g.Fgenf(&buf, ", %.v", expr.Args[2])
@@ -799,7 +800,8 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 }
 
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
-	opstr, precedence := "", g.GetPrecedence(expr)
+	var opstr string
+	precedence := g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpLogicalNot:
 		opstr = "!"
@@ -1204,7 +1206,7 @@ func isInputty(destType model.Type) bool {
 }
 
 func (g *generator) literalKey(x model.Expression) (string, bool) {
-	strKey := ""
+	var strKey string
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		if model.StringType.AssignableFrom(x.Type()) {

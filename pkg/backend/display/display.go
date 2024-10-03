@@ -211,11 +211,6 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	return true
 }
 
-func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {
-	_, err := fmt.Fprintf(w, format, a...)
-	contract.IgnoreError(err)
-}
-
 func fprintIgnoreError(w io.Writer, a ...interface{}) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)

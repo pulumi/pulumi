@@ -275,7 +275,11 @@ func newDIYBackend(
 	gzipCompression := opts.Env.GetBool(env.DIYBackendGzip)
 
 	wbucket := &wrappedBucket{bucket: bucket}
-	bucket = nil // prevent accidental use of unwrapped bucket
+
+	// Prevent accidental use of the unwrapped bucket.
+	//
+	//nolint:wastedassign
+	bucket = nil
 
 	backend := &diyBackend{
 		d:           d,
@@ -804,7 +808,6 @@ func (b *diyBackend) ListStacks(
 				continue
 			}
 			return nil, nil, err
-
 		}
 		results = append(results, newDIYStackSummary(stackRef, chk))
 	}

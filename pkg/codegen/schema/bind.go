@@ -586,7 +586,7 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		fragment = fragment[1:]
 	}
 
-	kind, token := "", ""
+	var kind, token string
 	slash := strings.Index(fragment, "/")
 	if slash == -1 {
 		kind = fragment

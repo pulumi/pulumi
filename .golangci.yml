@@ -6,25 +6,30 @@ run:
 linters:
   enable-all: false
   enable:
+    - durationcheck
+    - depguard
     - errcheck
     - exhaustive
-    - prealloc
     - gofumpt
-    - revive
+    - goheader
+    - goprintffuncname
     - gosec
     - govet
+    - importas
     - ineffassign
     - lll
     - misspell
-    - nolintlint
     - nakedret
-    - unconvert
-    - unused
+    - nolintlint
     - paralleltest
     - perfsprint
-    - depguard
-    - importas
-    - goheader
+    - prealloc
+    - revive
+    - tenv
+    - unconvert
+    - unused
+    - wastedassign
+    - whitespace
 
 linters-settings:
   nakedret:

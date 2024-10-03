@@ -36,7 +36,6 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 			Summary:  "circular reference",
 			Subject:  &rng,
 		}}
-
 	}
 	node.markBinding()
 
@@ -80,7 +79,7 @@ func (b *binder) getDependencies(node Node) []Node {
 	depSet := codegen.Set{}
 	var deps []Node
 	diags := hclsyntax.VisitAll(node.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
-		depName := ""
+		var depName string
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
 			// TODO(pdg): function scope binds tighter than "normal" scope

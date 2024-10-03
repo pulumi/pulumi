@@ -237,6 +237,12 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	if delta < 0 {
 		delta = 0
 	}
+
+	// We are multiplying a duration by a duration here, which can be buggy (e.g. consider that time.Second * time.Second
+	// is *not* one second, and that in general multiplying durations is not well-defined). However, in this case it's
+	// fine since we are computing the ratio of the delta to the quantum, so we shouldn't be changing scale accidentally.
+	//
+	//nolint:durationcheck
 	when := delta / quantum * quantum
 	if delta%quantum != 0 {
 		when += quantum

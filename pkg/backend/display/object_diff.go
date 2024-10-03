@@ -96,23 +96,23 @@ func writeString(b io.StringWriter, s string) {
 	contract.IgnoreError(err)
 }
 
-func writeWithIndent(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...interface{}) {
+func writeIndentedf(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...interface{}) {
 	writeString(b, deploy.Color(op))
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeWithIndentNoPrefix(b io.StringWriter, indent int, op display.StepOp, format string, a ...interface{}) {
-	writeWithIndent(b, indent, op, false, format, a...)
+func writeUnprefixedIndentedf(b io.StringWriter, indent int, op display.StepOp, format string, a ...interface{}) {
+	writeIndentedf(b, indent, op, false, format, a...)
 }
 
-func write(b io.StringWriter, op display.StepOp, format string, a ...interface{}) {
-	writeWithIndentNoPrefix(b, 0, op, format, a...)
+func writef(b io.StringWriter, op display.StepOp, format string, a ...interface{}) {
+	writeUnprefixedIndentedf(b, 0, op, format, a...)
 }
 
 func writeVerbatim(b io.StringWriter, op display.StepOp, value string) {
-	writeWithIndentNoPrefix(b, 0, op, "%s", value)
+	writeUnprefixedIndentedf(b, 0, op, "%s", value)
 }
 
 func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
@@ -142,10 +142,10 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 
 	// Always print the ID, URN, and provider.
 	if id != "" {
-		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
+		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
 	if urn != "" {
-		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
 	}
 
 	if step.Provider != "" {
@@ -154,13 +154,13 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 			newProv, err := providers.ParseReference(new.Provider)
 			contract.Assertf(err == nil, "invalid provider reference %q: %v", new.Provider, err)
 
-			writeWithIndentNoPrefix(&b, indent+1, deploy.OpUpdate, "[provider: ")
-			write(&b, deploy.OpDelete, "%s", old.Provider)
+			writeUnprefixedIndentedf(&b, indent+1, deploy.OpUpdate, "[provider: ")
+			writef(&b, deploy.OpDelete, "%s", old.Provider)
 			writeVerbatim(&b, deploy.OpUpdate, " => ")
 			if newProv.ID() == providers.UnknownID {
-				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
+				writef(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
 			} else {
-				write(&b, deploy.OpCreate, "%s", new.Provider)
+				writef(&b, deploy.OpCreate, "%s", new.Provider)
 			}
 			writeVerbatim(&b, deploy.OpUpdate, "]\n")
 		} else {
@@ -169,7 +169,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 
 			// Elide references to default providers.
 			if prov.URN().Name() != "default" {
-				writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
+				writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
 			}
 		}
 	}
@@ -269,11 +269,11 @@ func PrintResourceReference(
 
 func (p *propertyPrinter) printResourceReference(resRef resource.ResourceReference) {
 	p.printPropertyTitle("URN", 3)
-	p.write("%q\n", resRef.URN)
+	p.writef("%q\n", resRef.URN)
 	p.printPropertyTitle("ID", 3)
 	p.printPropertyValue(resRef.ID)
 	p.printPropertyTitle("PackageVersion", 3)
-	p.write("%q\n", resRef.PackageVersion)
+	p.writef("%q\n", resRef.PackageVersion)
 }
 
 func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
@@ -530,7 +530,7 @@ func (p *propertyPrinter) writeString(s string) {
 	writeString(p.dest, s)
 }
 
-func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
+func (p *propertyPrinter) writeIndentedf(format string, a ...interface{}) {
 	if p.truncateOutput {
 		for i, item := range a {
 			if item, ok := item.(string); ok {
@@ -538,15 +538,15 @@ func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
 			}
 		}
 	}
-	writeWithIndent(p.dest, p.indent, p.op, p.prefix, format, a...)
+	writeIndentedf(p.dest, p.indent, p.op, p.prefix, format, a...)
 }
 
-func (p *propertyPrinter) writeWithIndentNoPrefix(format string, a ...interface{}) {
-	writeWithIndentNoPrefix(p.dest, p.indent, p.op, format, a...)
+func (p *propertyPrinter) writeUnprefixedIndentedf(format string, a ...interface{}) {
+	writeUnprefixedIndentedf(p.dest, p.indent, p.op, format, a...)
 }
 
-func (p *propertyPrinter) write(format string, a ...interface{}) {
-	write(p.dest, p.op, format, a...)
+func (p *propertyPrinter) writef(format string, a ...interface{}) {
+	writef(p.dest, p.op, format, a...)
 }
 
 func (p *propertyPrinter) writeVerbatim(value string) {
@@ -554,7 +554,7 @@ func (p *propertyPrinter) writeVerbatim(value string) {
 }
 
 func (p *propertyPrinter) printPropertyTitle(name string, align int) {
-	p.writeWithIndent("%-"+strconv.Itoa(align)+"s: ", name)
+	p.writeIndentedf("%-"+strconv.Itoa(align)+"s: ", name)
 }
 
 func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
@@ -574,15 +574,15 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		} else {
 			p.writeVerbatim("[\n")
 			for i, elem := range arr {
-				p.writeWithIndent("    [%d]: ", i)
+				p.writeIndentedf("    [%d]: ", i)
 				p.indented(1).printPropertyValue(elem)
 			}
-			p.writeWithIndentNoPrefix("]")
+			p.writeUnprefixedIndentedf("]")
 		}
 	case v.IsAsset():
 		a := v.AssetValue()
 		if a.IsText() {
-			p.write("asset(text:%s) {\n", shortHash(a.Hash))
+			p.writef("asset(text:%s) {\n", shortHash(a.Hash))
 
 			a = codeasset.MassageIfUserProgramCodeAsset(a, p.debug)
 
@@ -591,20 +591,20 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(massaged, "\n")
 			for _, line := range lines {
-				p.writeWithIndentNoPrefix("    %s\n", line)
+				p.writeUnprefixedIndentedf("    %s\n", line)
 			}
-			p.writeWithIndentNoPrefix("}")
+			p.writeUnprefixedIndentedf("}")
 		} else if path, has := a.GetPath(); has {
-			p.write("asset(file:%s) { %s }", shortHash(a.Hash), path)
+			p.writef("asset(file:%s) { %s }", shortHash(a.Hash), path)
 		} else if uri, has := a.GetURI(); has {
-			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), uri)
+			p.writef("asset(uri:%s) { %s }", shortHash(a.Hash), uri)
 		} else {
-			p.write("asset(unknown:%s) { }", shortHash(a.Hash))
+			p.writef("asset(unknown:%s) { }", shortHash(a.Hash))
 		}
 	case v.IsArchive():
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
-			p.write("archive(assets:%s) {\n", shortHash(a.Hash))
+			p.writef("archive(assets:%s) {\n", shortHash(a.Hash))
 			var names []string
 			for name := range assets {
 				names = append(names, name)
@@ -613,13 +613,13 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			for _, name := range names {
 				p.printAssetOrArchive(assets[name], name)
 			}
-			p.writeWithIndentNoPrefix("}")
+			p.writeUnprefixedIndentedf("}")
 		} else if path, has := a.GetPath(); has {
-			p.write("archive(file:%s) { %s }", shortHash(a.Hash), path)
+			p.writef("archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else if uri, has := a.GetURI(); has {
-			p.write("archive(uri:%s) { %v }", shortHash(a.Hash), uri)
+			p.writef("archive(uri:%s) { %v }", shortHash(a.Hash), uri)
 		} else {
-			p.write("archive(%s) { }", shortHash(a.Hash))
+			p.writef("archive(%s) { }", shortHash(a.Hash))
 		}
 	case v.IsObject():
 		obj := v.ObjectValue()
@@ -628,13 +628,13 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		} else {
 			p.writeVerbatim("{\n")
 			p.indented(1).printObject(obj)
-			p.writeWithIndentNoPrefix("}")
+			p.writeUnprefixedIndentedf("}")
 		}
 	case v.IsResourceReference():
 		resRef := v.ResourceReferenceValue()
 		p.writeVerbatim("{\n")
 		p.indented(1).printResourceReference(resRef)
-		p.writeWithIndentNoPrefix("}")
+		p.writeUnprefixedIndentedf("}")
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
@@ -642,7 +642,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 }
 
 func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
-	p.writeWithIndent("    \"%v\": ", name)
+	p.writeIndentedf("    \"%v\": ", name)
 	p.indented(1).printPropertyValue(assetOrArchiveToPropertyValue(v))
 }
 
@@ -746,7 +746,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 		for i := 0; i < a.Len(); i++ {
 			elemPrinter := p.indented(2)
 			elemTitleFunc := func(p *propertyPrinter) {
-				p.indented(-1).writeWithIndent("[%d]: ", i)
+				p.indented(-1).writeIndentedf("[%d]: ", i)
 			}
 
 			if add, isadd := a.Adds[i]; isadd {
@@ -761,12 +761,12 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 				elemPrinter.printPropertyValue(same)
 			}
 		}
-		p.writeWithIndentNoPrefix("]\n")
+		p.writeUnprefixedIndentedf("]\n")
 	} else if diff.Object != nil {
 		titleFunc(p)
 		p.writeVerbatim("{\n")
 		p.indented(1).printObjectDiff(*diff.Object, nil)
-		p.writeWithIndentNoPrefix("}\n")
+		p.writeUnprefixedIndentedf("}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
 		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)
@@ -774,7 +774,6 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 		if shouldPrintOld && shouldPrintNew {
 			if diff.Old.IsArchive() &&
 				diff.New.IsArchive() {
-
 				p.printArchiveDiff(titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue())
 				return
 			}
@@ -816,7 +815,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 	if v.IsNull() {
 		p.writeVerbatim("<null>")
 	} else if v.IsBool() {
-		p.write("%t", v.BoolValue())
+		p.writef("%t", v.BoolValue())
 	} else if v.IsNumber() {
 		// All pulumi numbers are IEEE doubles really (even in languages where we codegen integers the wire
 		// protocol only supports doubles). But by default Go will print them in scientific notation for large
@@ -824,23 +823,22 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		// non-fractional). See https://github.com/pulumi/pulumi/issues/13016 for context.
 		number := v.NumberValue()
 		if math.Trunc(number) == number {
-			p.write("%.f", number)
+			p.writef("%.f", number)
 		} else {
 			// For factional values we're fine with Go printing them in scientific notation for large
 			// exponents.
-			p.write("%g", number)
+			p.writef("%g", number)
 		}
-
 	} else if v.IsString() {
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
-			p.write("(%s) ", kind)
+			p.writef("(%s) ", kind)
 			p.printPropertyValue(vv)
 			return
 		}
 		if p.truncateOutput {
-			p.write("%q", p.truncatePropertyString(v.StringValue()))
+			p.writef("%q", p.truncatePropertyString(v.StringValue()))
 		} else {
-			p.write("%q", v.StringValue())
+			p.writef("%q", v.StringValue())
 		}
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
@@ -853,10 +851,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		if p.planning {
 			p.writeVerbatim(v.TypeString())
 		} else {
-			p.write("undefined")
+			p.writef("undefined")
 		}
 	} else if v.IsSecret() {
-		p.write("[secret]")
+		p.writef("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
@@ -884,21 +882,21 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 	if oldPath, has := oldArchive.GetPath(); has {
 		if newPath, has := newArchive.GetPath(); has {
 			titleFunc(p)
-			p.write("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			p.writef("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
 	} else if oldURI, has := oldArchive.GetURI(); has {
 		if newURI, has := newArchive.GetURI(); has {
 			titleFunc(p)
-			p.write("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			p.writef("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
 	} else if oldAssets, has := oldArchive.GetAssets(); has {
 		if newAssets, has := newArchive.GetAssets(); has {
 			titleFunc(p)
-			p.write("archive(assets:%s) {\n", hashChange)
+			p.writef("archive(assets:%s) {\n", hashChange)
 			p.indented(1).printAssetsDiff(oldAssets, newAssets)
-			p.writeWithIndentNoPrefix("}\n")
+			p.writeUnprefixedIndentedf("}\n")
 			return
 		}
 	}
@@ -1021,26 +1019,26 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 	if oldAsset.IsText() {
 		if newAsset.IsText() {
 			titleFunc(p)
-			p.write("asset(text:%s) {", hashChange)
+			p.writef("asset(text:%s) {", hashChange)
 
 			massagedOldText := codeasset.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
 			massagedNewText := codeasset.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
 			p.indented(1).printTextDiff(massagedOldText, massagedNewText)
 
-			p.writeWithIndentNoPrefix("}\n")
+			p.writeUnprefixedIndentedf("}\n")
 			return
 		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		if newPath, has := newAsset.GetPath(); has {
 			titleFunc(p)
-			p.write("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			p.writef("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
 	} else if oldURI, has := oldAsset.GetURI(); has {
 		if newURI, has := newAsset.GetURI(); has {
 			titleFunc(p)
-			p.write("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			p.writef("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
 	}
@@ -1129,7 +1127,7 @@ func (p *propertyPrinter) printLineDiff(diffs []diffmatchpatch.Diff) {
 
 	writeDiff := func(op display.StepOp, text string) {
 		prefix := op == deploy.OpCreate || op == deploy.OpDelete
-		p.withOp(op).withPrefix(prefix).writeWithIndent("%s", text)
+		p.withOp(op).withPrefix(prefix).writeIndentedf("%s", text)
 	}
 
 	for index, diff := range diffs {
@@ -1206,9 +1204,9 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 	}
 
 	if oldKind == newKind {
-		p.write("(%s) ", oldKind)
+		p.writef("(%s) ", oldKind)
 	} else {
-		p.write("(%s => %s) ", oldKind, newKind)
+		p.writef("(%s => %s) ", oldKind, newKind)
 	}
 
 	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)
@@ -1301,7 +1299,7 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 	case map[interface{}]interface{}:
 		vv := make(map[string]interface{}, len(v))
 		for k, e := range v {
-			sk := ""
+			var sk string
 			switch k := k.(type) {
 			case string:
 				sk = k

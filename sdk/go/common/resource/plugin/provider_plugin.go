@@ -1483,7 +1483,6 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{
 			URN: resource.URN(resp.GetUrn()),
 		}, nil
-
 	}
 
 	if !pcfg.acceptSecrets {

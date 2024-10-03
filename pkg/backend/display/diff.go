@@ -247,11 +247,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSty
 		// Ignore anything that didn't change, or is related to 'reads'.  'reads' are just an
 		// indication of the operations we were performing, and are not indicative of any sort of
 		// change to the system.
-		if op != deploy.OpSame &&
-			op != deploy.OpRead &&
-			op != deploy.OpReadDiscard &&
-			op != deploy.OpReadReplacement {
-
+		if op != deploy.OpSame && op != deploy.OpRead && op != deploy.OpReadDiscard && op != deploy.OpReadReplacement {
 			if c := changes[op]; c > 0 {
 				opDescription := string(op)
 				if !event.IsPreview {
@@ -362,7 +358,8 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
+		_, err := fmt.Fprintf(out, "    %v: %v\n", key, event.Config[key])
+		contract.IgnoreError(err)
 	}
 
 	return out.String()
@@ -438,7 +435,6 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-
 		refresh := false // are these outputs from a refresh?
 		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true

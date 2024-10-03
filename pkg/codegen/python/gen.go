@@ -822,7 +822,6 @@ func (mod *modContext) genInit(exports []string) string {
 
 	// If there are subpackages, import them with importlib.
 	if mod.submodulesExist() {
-
 		children := make([]*modContext, len(mod.children))
 		copy(children, mod.children)
 
@@ -1916,8 +1915,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// If there is a return type, emit it.
-	retTypeName := ""
-	retTypeNameOutput := ""
+	var retTypeName string
+	var retTypeNameOutput string
 	var rets []*schema.Property
 	if returnType != nil {
 		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties

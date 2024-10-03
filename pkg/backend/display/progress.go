@@ -1316,7 +1316,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	}
 
 	getDescription := func() string {
-		opText := ""
+		var opText string
 		if failed {
 			switch op {
 			case deploy.OpSame:
@@ -1550,7 +1550,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
-		opText := ""
+		var opText string
 		switch op {
 		case deploy.OpSame:
 			opText = ""

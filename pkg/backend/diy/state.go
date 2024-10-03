@@ -250,7 +250,6 @@ func (b *diyBackend) saveCheckpoint(
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(ctx, file, byts, nil); err != nil {
-
 		b.mutex.Lock()
 		defer b.mutex.Unlock()
 

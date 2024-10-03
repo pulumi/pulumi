@@ -113,7 +113,6 @@ search:
 		}
 
 		newSnapshot = append(newSnapshot, res)
-
 	}
 
 	// If condemnedRes is unique and there exists a resource that is the child of condemnedRes,

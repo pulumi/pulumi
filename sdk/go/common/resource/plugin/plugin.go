@@ -401,7 +401,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			if ok && syscallErr == syscall.ENOENT {
 				return nil, errPluginNotFound
 			}
-
 		}
 		return nil, err
 	}

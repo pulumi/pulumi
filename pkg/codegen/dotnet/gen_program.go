@@ -1300,7 +1300,6 @@ func AnnotateComponentInputs(component *pcl.Component) {
 					}
 				}
 			}
-
 		}
 	}
 }

@@ -685,7 +685,6 @@ func TestProgramCodegen(
 				outfilePath := filepath.Join(testDir, testcase.OutputFile)
 				CheckVersion(t, tt.Directory, depFilePath, testcase.ExpectedVersion)
 				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
-
 			}
 			files, diags, err = testcase.GenProgram(program)
 			assert.NoError(t, err)
