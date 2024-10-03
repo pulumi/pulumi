@@ -42,9 +42,9 @@ describe("LocalWorkspace", () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.projectSettings();
-            assert(settings.name, "testproj");
-            assert(settings.runtime, "go");
-            assert(settings.description, "A minimal Go Pulumi program");
+            assert.strictEqual(settings.name, "testproj");
+            assert.strictEqual(settings.runtime, "go");
+            assert.strictEqual(settings.description, "A minimal Go Pulumi program");
         }
     });
 
