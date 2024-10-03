@@ -16,6 +16,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -539,13 +540,124 @@ func TestInstall(t *testing.T) {
 	}
 }
 
+// A smoke test to ensure that secrets providers are correctly initialized and persisted to state upon stack creation.
+// We check also that when stack configuration exists before stack initialization, any compatible secrets provider
+// configuration is respected and not clobbered or overwritten.
+//
+//nolint:paralleltest // we set environment variables
+func TestSecretsProvidersInitializationSmoke(t *testing.T) {
+	// Make sure we can download needed plugins
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	// Ensure we have a passphrase set for the default secrets provider.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
+
+	// This example salt must be generated using the test passphrase configured above.
+	testEncryptionSalt := "v1:3ZcVRCMzEbk=:v1:A4wYnaSVLIkK0AhS:2SrOnSDh9wVGmoyZt97KYJN3WfDDHA=="
+
+	cases := []struct {
+		name            string
+		secretsProvider string
+		encryptionSalt  string
+	}{
+		{
+			name:            "default provider with no existing configuration",
+			secretsProvider: "",
+			encryptionSalt:  "",
+		},
+		{
+			name:            "default provider with existing configuration",
+			secretsProvider: "",
+			encryptionSalt:  testEncryptionSalt,
+		},
+		{
+			name:            "explicit provider with no existing configuration",
+			secretsProvider: "passphrase",
+			encryptionSalt:  "",
+		},
+		{
+			name:            "explicit provider with existing configuration",
+			secretsProvider: "passphrase",
+			encryptionSalt:  testEncryptionSalt,
+		},
+	}
+
+	for _, runtime := range Runtimes {
+		for _, c := range cases {
+			c := c
+			name := fmt.Sprintf("%s %s", runtime, c.name)
+
+			t.Run(name, func(t *testing.T) {
+				//nolint:paralleltest
+
+				e := ptesting.NewEnvironment(t)
+				defer deleteIfNotFailed(e)
+
+				projectDir := filepath.Join(e.RootPath, "project")
+				err := os.Mkdir(projectDir, 0o700)
+				require.NoError(t, err)
+
+				projectYAML := filepath.Join(projectDir, "Pulumi.yaml")
+				err = os.WriteFile(projectYAML, []byte(fmt.Sprintf(`name: project
+runtime: %s
+backend:
+  url: '%s'`,
+					runtime,
+					e.LocalURL(),
+				)), 0o600)
+				require.NoError(t, err)
+
+				stackYAML := filepath.Join(projectDir, "Pulumi.dev.yaml")
+
+				e.CWD = projectDir
+
+				// If the test case specifies an encryption salt, we'll write out a stack configuration YAML prior to running
+				// `stack init`, so that we can test that anything in that configuration is respected and not overwritten.
+				if c.encryptionSalt != "" {
+					err = os.WriteFile(stackYAML, []byte("encryptionsalt: "+c.encryptionSalt), 0o600)
+					require.NoError(t, err)
+				}
+
+				initArgs := []string{"--stack", "organization/project/dev", "stack", "init"}
+				if c.secretsProvider != "" {
+					initArgs = append(initArgs, "--secrets-provider", c.secretsProvider)
+				}
+
+				e.RunCommand("pulumi", initArgs...)
+
+				stackYAMLBytes, err := os.ReadFile(stackYAML)
+				require.NoError(t, err)
+
+				ps := workspace.ProjectStack{}
+				err = yaml.Unmarshal(stackYAMLBytes, &ps)
+				require.NoError(t, err)
+
+				if c.encryptionSalt != "" {
+					require.Equal(t, c.encryptionSalt, ps.EncryptionSalt)
+				}
+
+				stackJSONStr, _ := e.RunCommand("pulumi", "stack", "export")
+				stackJSON := apitype.UntypedDeployment{}
+				err = json.Unmarshal([]byte(stackJSONStr), &stackJSON)
+				require.NoError(t, err)
+
+				deployment := apitype.DeploymentV3{}
+				err = json.Unmarshal(stackJSON.Deployment, &deployment)
+				require.NoError(t, err)
+
+				require.Contains(t, string(deployment.SecretsProviders.State), ps.EncryptionSalt)
+			})
+		}
+	}
+}
+
 // A smoke test to ensure that secrets providers that are persisted to state are
 // used in favour of and to restore stack YAML configuration when it is absent
 // or empty and the PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER environment variable
 // is set.
 //
 //nolint:paralleltest // pulumi new is not parallel safe, and we set environment variables
-func TestSecretsProvidersSmoke(t *testing.T) {
+func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 	// Make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 

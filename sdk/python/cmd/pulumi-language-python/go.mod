@@ -3,6 +3,7 @@ module github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 go 1.21
 
 replace (
+	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 	github.com/pulumi/pulumi/pkg/v3 => ../../../../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../../..
 )
@@ -11,7 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/nxadm/tail v1.4.11
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.134.1
+	github.com/pulumi/pulumi/sdk/v3 v3.135.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0

@@ -306,6 +306,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
+	typechecker string,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -331,6 +332,13 @@ func GenerateProject(
 		options = map[string]interface{}{
 			"virtualenv": "venv",
 		}
+	}
+
+	if typechecker != "" {
+		if options == nil {
+			options = map[string]interface{}{}
+		}
+		options["typechecker"] = typechecker
 	}
 
 	// Set the runtime to "python" then marshal to Pulumi.yaml
@@ -378,6 +386,11 @@ func GenerateProject(
 				requirementsTxtLines = append(requirementsTxtLines, packageName)
 			}
 		}
+	}
+
+	// If a typechecker is given we need to list that in the requirements.txt as well
+	if typechecker != "" {
+		requirementsTxtLines = append(requirementsTxtLines, typechecker)
 	}
 
 	// We want the requirements.txt files we generate to be stable, so we sort the

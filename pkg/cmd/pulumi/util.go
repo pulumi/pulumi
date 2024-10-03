@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -206,8 +208,10 @@ func currentBackend(
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
 }
 
+// Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
+// changes back to the stack's configuration where applicable.
 func createSecretsManagerForExistingStack(
-	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -259,13 +263,90 @@ func createSecretsManagerForExistingStack(
 	return nil
 }
 
+// Creates a secrets manager for a new stack. If a stack configuration already exists (e.g. the user has created a
+// Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
+// fall back to a default defined by the backend that will manage the stack.
+func createSecretsManagerForNewStack(
+	ws pkgWorkspace.Context,
+	b backend.Backend,
+	stackRef backend.StackReference,
+	secretsProvider string,
+) (*workspace.ProjectStack, bool, secrets.Manager, error) {
+	var sm secrets.Manager
+
+	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
+	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
+	// populate it as we go.
+	var ps *workspace.ProjectStack
+	project, _, err := ws.ReadProject()
+	if err != nil {
+		ps = &workspace.ProjectStack{}
+	} else {
+		ps, err = loadProjectStackByReference(project, stackRef)
+		if err != nil {
+			ps = &workspace.ProjectStack{}
+		}
+	}
+
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+
+	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
+	if isDefaultSecretsProvider {
+		sm, err = b.DefaultSecretManager(ps)
+	} else if secretsProvider == passphrase.Type {
+		sm, err = passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotateSecretsProvider*/)
+	} else {
+		sm, err = cloud.NewCloudSecretsManager(ps, secretsProvider, false /*rotateSecretsProvider*/)
+	}
+	if err != nil {
+		return nil, false, nil, err
+	}
+
+	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
+	return ps, needsSave, sm, err
+}
+
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	stack, err := b.CreateStack(ctx, stackRef, root, nil, opts)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(ws, b, stackRef, secretsProvider)
+	if err != nil {
+		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
+	}
+
+	// If we have a non-empty secrets manager, we'll send it off to the backend as part of the initial state to be stored
+	// for the stack.
+	var initialState *apitype.UntypedDeployment
+	if sm != nil {
+		m := deploy.Manifest{
+			Time:    time.Now(),
+			Version: version.Version,
+			Plugins: nil,
+		}
+		m.Magic = m.NewMagic()
+
+		d := &apitype.DeploymentV3{
+			Manifest: m.Serialize(),
+			SecretsProviders: &apitype.SecretsProvidersV1{
+				Type:  sm.Type(),
+				State: sm.State(),
+			},
+		}
+		dJSON, err := json.Marshal(d)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize initial state for new stack: %w", err)
+		}
+
+		initialState = &apitype.UntypedDeployment{
+			Version:    3,
+			Deployment: dJSON,
+		}
+	}
+
+	stack, err := b.CreateStack(ctx, stackRef, root, initialState, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -277,9 +358,12 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManagerForExistingStack(ctx, ws, stack, secretsProvider,
-		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
-		return nil, err
+	// Now that we've created the stack, we'll write out any necessary configuration changes.
+	if needsSave {
+		err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+		if err != nil {
+			return nil, fmt.Errorf("saving stack config: %w", err)
+		}
 	}
 
 	if setCurrent {

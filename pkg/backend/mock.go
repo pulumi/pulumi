@@ -93,7 +93,7 @@ type MockBackend struct {
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
-	DefaultSecretManagerF func() (secrets.Manager, error)
+	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -442,9 +442,9 @@ func (be *MockBackend) GetGHAppIntegration(ctx context.Context, stack Stack) (*a
 	panic("not implemented")
 }
 
-func (be *MockBackend) DefaultSecretManager() (secrets.Manager, error) {
+func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
 	if be.DefaultSecretManagerF != nil {
-		return be.DefaultSecretManagerF()
+		return be.DefaultSecretManagerF(ps)
 	}
 	panic("not implemented")
 }

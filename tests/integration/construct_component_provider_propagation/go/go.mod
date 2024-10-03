@@ -6,6 +6,8 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 
 require github.com/pulumi/pulumi/sdk/v3 v3.98.0
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect

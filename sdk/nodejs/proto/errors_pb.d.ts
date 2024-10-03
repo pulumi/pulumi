@@ -29,25 +29,25 @@ export namespace ErrorCause {
     }
 }
 
-export class InvalidInputPropertiesError extends jspb.Message { 
+export class InputPropertiesError extends jspb.Message { 
     clearErrorsList(): void;
-    getErrorsList(): Array<InvalidInputPropertiesError.PropertyError>;
-    setErrorsList(value: Array<InvalidInputPropertiesError.PropertyError>): InvalidInputPropertiesError;
-    addErrors(value?: InvalidInputPropertiesError.PropertyError, index?: number): InvalidInputPropertiesError.PropertyError;
+    getErrorsList(): Array<InputPropertiesError.PropertyError>;
+    setErrorsList(value: Array<InputPropertiesError.PropertyError>): InputPropertiesError;
+    addErrors(value?: InputPropertiesError.PropertyError, index?: number): InputPropertiesError.PropertyError;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): InvalidInputPropertiesError.AsObject;
-    static toObject(includeInstance: boolean, msg: InvalidInputPropertiesError): InvalidInputPropertiesError.AsObject;
+    toObject(includeInstance?: boolean): InputPropertiesError.AsObject;
+    static toObject(includeInstance: boolean, msg: InputPropertiesError): InputPropertiesError.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: InvalidInputPropertiesError, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): InvalidInputPropertiesError;
-    static deserializeBinaryFromReader(message: InvalidInputPropertiesError, reader: jspb.BinaryReader): InvalidInputPropertiesError;
+    static serializeBinaryToWriter(message: InputPropertiesError, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): InputPropertiesError;
+    static deserializeBinaryFromReader(message: InputPropertiesError, reader: jspb.BinaryReader): InputPropertiesError;
 }
 
-export namespace InvalidInputPropertiesError {
+export namespace InputPropertiesError {
     export type AsObject = {
-        errorsList: Array<InvalidInputPropertiesError.PropertyError.AsObject>,
+        errorsList: Array<InputPropertiesError.PropertyError.AsObject>,
     }
 
 

@@ -1967,6 +1967,25 @@ func TestEvalSourceIterator(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	})
+	t.Run("Abort", func(t *testing.T) {
+		t.Parallel()
+		abortChan := make(chan bool)
+		iter := &evalSourceIterator{
+			mon: &resmon{
+				abortChan: abortChan,
+			},
+		}
+		go func() {
+			abortChan <- true
+		}()
+		evt, err := iter.Next()
+		assert.ErrorContains(t, err, "EvalSourceIterator aborted")
+		assert.Nil(t, evt)
+
+		evt, err = iter.Next()
+		assert.ErrorContains(t, err, "EvalSourceIterator aborted")
+		assert.Nil(t, evt)
+	})
 }
 
 func TestParseSourcePosition(t *testing.T) {
@@ -3332,8 +3351,8 @@ func TestValidationFailures(t *testing.T) {
 	t.Parallel()
 
 	s, _ := status.Newf(codes.InvalidArgument, "bad request").WithDetails(
-		&pulumirpc.InvalidInputPropertiesError{
-			Errors: []*pulumirpc.InvalidInputPropertiesError_PropertyError{
+		&pulumirpc.InputPropertiesError{
+			Errors: []*pulumirpc.InputPropertiesError_PropertyError{
 				{
 					Reason:       "missing",
 					PropertyPath: "testproperty",
@@ -3369,9 +3388,11 @@ func TestValidationFailures(t *testing.T) {
 		cancel := make(chan bool)
 		abortChan := make(chan bool)
 		go func() {
-			// the resource monitor should close the abort channel to poison the iterator.
-			_, ok := <-abortChan
-			assert.False(t, ok)
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
 			close(cancel)
 		}()
 		requests := make(chan defaultProviderRequest, 1)

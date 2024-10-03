@@ -2,4 +2,5 @@ name: l1-output-map
 runtime:
   name: python
   options:
+    typechecker: pyright
     virtualenv: venv

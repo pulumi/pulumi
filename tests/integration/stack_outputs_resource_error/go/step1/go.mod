@@ -4,6 +4,8 @@ go 1.21.0
 
 require github.com/pulumi/pulumi/sdk/v3 v3.111.1
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect

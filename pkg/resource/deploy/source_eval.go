@@ -196,6 +196,7 @@ type evalSourceIterator struct {
 	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
 	finChan      chan error                         // the channel that communicates completion.
 	done         bool                               // set to true when the evaluation is done.
+	aborted      bool                               // set to true when the iterator is aborted.
 }
 
 func (iter *evalSourceIterator) Close() error {
@@ -208,6 +209,10 @@ func (iter *evalSourceIterator) ResourceMonitor() SourceResourceMonitor {
 }
 
 func (iter *evalSourceIterator) Next() (SourceEvent, error) {
+	// if the iterator is aborted, return an error.
+	if iter.aborted {
+		return nil, result.BailErrorf("EvalSourceIterator aborted")
+	}
 	// If we are done, quit.
 	if iter.done {
 		return nil, nil
@@ -216,6 +221,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
 	case <-iter.mon.AbortChan():
+		iter.aborted = true
 		return nil, result.BailErrorf("EvalSourceIterator aborted")
 	case reg := <-iter.regChan:
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
@@ -1742,11 +1748,11 @@ func (rm *resmon) resolveProvider(
 func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
 	message := st.Message()
 	for i, d := range st.Details() {
-		if i == 0 {
+		if i == 0 && message != "" {
 			message = message + ":"
 		}
 		switch d := d.(type) {
-		case *pulumirpc.InvalidInputPropertiesError:
+		case *pulumirpc.InputPropertiesError:
 			props := resource.NewObjectProperty(inputs)
 			for _, err := range d.GetErrors() {
 				propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
@@ -2246,7 +2252,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, err)
 			}
 
-			close(rm.abortChan)
+			rm.abortChan <- true
 			<-rm.cancel
 			return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
 		}

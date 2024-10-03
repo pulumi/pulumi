@@ -44,7 +44,7 @@ func createStackWithResources(
 ) backend.Stack {
 	sm := b64.NewBase64SecretsManager()
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)

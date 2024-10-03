@@ -6,10 +6,11 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.134.1
+	github.com/pulumi/pulumi/sdk/v3 v3.135.0
 )
 
 replace (
+	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 	github.com/pulumi/pulumi/pkg/v3 => ../../../../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 )

@@ -2,6 +2,8 @@ module project
 
 go 1.20
 
+replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
 require github.com/pulumi/pulumi/sdk/v3 v3.100.0
 
 require (
