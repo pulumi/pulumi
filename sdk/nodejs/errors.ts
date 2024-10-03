@@ -111,6 +111,7 @@ interface InputPropertiesErrorArgs {
 }
 
 export class InputPropertiesError extends Error {
+    /** @internal */
     public readonly __pulumiInputPropertiesError: boolean = true;
 
     public message: string;
