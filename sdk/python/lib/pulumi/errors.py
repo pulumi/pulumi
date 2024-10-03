@@ -41,7 +41,9 @@ class InputPropertyErrorDetails(TypedDict):
 
 
 class InputPropertiesError(Exception):
-    def __init__(self, message: str, errors: Optional[List[InputPropertyErrorDetails]] = None):
+    def __init__(
+        self, message: str, errors: Optional[List[InputPropertyErrorDetails]] = None
+    ):
         """
         Can be used to indicate that the client has made a request with bad input properties.
         """

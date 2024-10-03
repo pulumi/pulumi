@@ -43,7 +43,7 @@ from .deprecated import (
 from .errors import (
     RunError,
     InputPropertyError,
-    InputPropertiesErrorDetails,
+    InputPropertyErrorDetails,
     InputPropertiesError,
 )
 
