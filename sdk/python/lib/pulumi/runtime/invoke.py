@@ -232,10 +232,7 @@ def _invoke(
         monitor = get_monitor()
         # keep track of the dependencies of the inputs
         property_dependencies: Dict[str, List["Resource"]] = {}
-        # here we set keep_output_values to False so that values sent to the engine are plain
-        inputs = await rpc.serialize_properties(
-            props, property_dependencies, keep_output_values=False
-        )
+        inputs = await rpc.serialize_properties(props, property_dependencies)
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
 
@@ -248,7 +245,9 @@ def _invoke(
             nonlocal inputs_contain_secrets
             inputs_contain_secrets = True
 
-        invoke_args = rpc.unwrap_rpc_secret_properties(inputs, on_secrets_encountered)
+        invoke_args = rpc._unwrap_rpc_secret_struct_properties(
+            inputs, on_secrets_encountered
+        )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""

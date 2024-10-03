@@ -777,22 +777,36 @@ def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
     return False
 
 
-def unwrap_rpc_secret_properties(value: Any, on_secret_encountered: Callable) -> Any:
-    if is_rpc_secret(value):
+def _unwrap_rpc_secret_struct_properties(
+    value: Any, on_secret_encountered: Callable
+) -> Any:
+    if _is_rpc_struct_secret(value):
         on_secret_encountered()
-        return unwrap_rpc_secret(value)
+        return _unwrap_rpc_struct_secret(value)
     if isinstance(value, struct_pb2.Struct):
         value_struct = struct_pb2.Struct()
         for k, v in list(value.items()):
-            value_struct[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
+            value_struct[k] = _unwrap_rpc_secret_struct_properties(
+                v, on_secret_encountered
+            )
         return value_struct
     if isinstance(value, dict):
         output = {}
         for k, v in value.items():
-            output[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
+            output[k] = _unwrap_rpc_secret_struct_properties(v, on_secret_encountered)
         return output
     if isinstance(value, list):
-        return [unwrap_rpc_secret_properties(v, on_secret_encountered) for v in value]
+        return [
+            _unwrap_rpc_secret_struct_properties(v, on_secret_encountered)
+            for v in value
+        ]
+    if isinstance(value, struct_pb2.ListValue):
+        return struct_pb2.ListValue(
+            values=[
+                _unwrap_rpc_secret_struct_properties(v, on_secret_encountered)
+                for v in value.values
+            ]
+        )
     return value
 
 
@@ -894,6 +908,27 @@ def is_rpc_secret(value: Any) -> bool:
         and _special_sig_key in value
         and value[_special_sig_key] == _special_secret_sig
     )
+
+
+def _is_rpc_struct_secret(value: Any) -> bool:
+    """
+    Returns if a given python value is actually a wrapped secret.
+    """
+    return (
+        isinstance(value, struct_pb2.Struct)
+        and _special_sig_key in value.fields
+        and value[_special_sig_key] == _special_secret_sig
+    )
+
+
+def _unwrap_rpc_struct_secret(value: struct_pb2.Struct) -> Any:
+    """
+    Given a value, if it is a wrapped secret value, return the underlying value, otherwise return the value unmodified.
+    """
+    if _is_rpc_struct_secret(value):
+        return value["value"]
+
+    return value
 
 
 def wrap_rpc_secret(value: Any) -> Any:

@@ -232,8 +232,9 @@ func (p *SimpleInvokeProvider) Invoke(
 			}, nil
 		}
 		if !value.IsString() {
+			reason := fmt.Sprintf("value is not a string: %v", value)
 			return plugin.InvokeResponse{
-				Failures: makeCheckFailure("value", "is not a string"),
+				Failures: makeCheckFailure("value", reason),
 			}, nil
 		}
 
@@ -245,7 +246,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 		if !secretResponse.IsBool() {
 			return plugin.InvokeResponse{
-				Failures: makeCheckFailure("secretResponse", "is not a bool"),
+				Failures: makeCheckFailure("secretResponse", "secretResponse is not a bool"),
 			}, nil
 		}
 
