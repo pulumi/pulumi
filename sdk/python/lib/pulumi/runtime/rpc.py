@@ -581,9 +581,11 @@ async def serialize_property(
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():
-            # Serializing an output with a secret value requires the use of a magical signature key,
-            # which the engine detects.
-            return {_special_sig_key: _special_secret_sig, "value": value}
+            if keep_output_values:
+                # Serializing an output with a secret value requires the use of a magical signature key,
+                # which the engine detects.
+                return {_special_sig_key: _special_secret_sig, "value": value}
+            return value
         return value
 
     # If value is an input type, convert it to a dict.

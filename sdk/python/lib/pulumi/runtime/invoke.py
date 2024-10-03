@@ -88,10 +88,17 @@ class InvokeResult:
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
     """
 
-    def __init__(self, value: Any, is_secret: bool = False, is_known: bool = True):
+    def __init__(
+        self,
+        value: Any,
+        is_secret: bool = False,
+        is_known: bool = True,
+        dependencies: Optional[List["Resource"]] = None,
+    ):
         self.value = value
         self.is_secret = is_secret
         self.is_known = is_known
+        self.dependencies = dependencies or []
 
     # pylint: disable=using-constant-test
     def __await__(self):
@@ -157,12 +164,12 @@ def invoke_output(
             resolve_is_secret.set_result(
                 invoke_result.is_secret and invoke_result.is_known
             )
+            resolve_deps.set_result(set(invoke_result.dependencies))
         except Exception as exn:
             resolve_value.set_exception(exn)
             resolve_is_known.set_exception(exn)
             resolve_is_secret.set_exception(exn)
-        finally:
-            resolve_deps.set_result(set())
+            resolve_deps.set_exception(exn)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
@@ -223,7 +230,12 @@ def _invoke(
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, {}, keep_output_values=True)
+        # keep track of the dependencies of the inputs
+        property_dependencies: Dict[str, List["Resource"]] = {}
+        # here we set keep_output_values to False so that values sent to the engine are plain
+        inputs = await rpc.serialize_properties(
+            props, property_dependencies, keep_output_values=False
+        )
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
 
@@ -285,8 +297,12 @@ def _invoke(
                 deserialized, lambda prop: prop, typ
             )
 
+        dependencies: List["Resource"] = []
+        for _, property_deps in property_dependencies.items():
+            for dep in property_deps:
+                dependencies.append(dep)
         return (
-            InvokeResult(result, is_secret),
+            InvokeResult(value=result, is_secret=is_secret, dependencies=dependencies),
             None,
         )
 

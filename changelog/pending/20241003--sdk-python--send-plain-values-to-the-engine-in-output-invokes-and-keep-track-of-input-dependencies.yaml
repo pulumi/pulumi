@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Send plain values to the engine in output invokes and keep track of input dependencies
