@@ -83,6 +83,7 @@ export function isGrpcError(err: Error): boolean {
 }
 
 export class InputPropertyError extends Error {
+    /** @internal */
     public readonly __pulumiInputPropertyError: boolean = true;
 
     public propertyPath: string;
