@@ -35,6 +35,6 @@ func NewInputPropertiesError(message string, errors ...InputPropertyErrorDetails
 		})
 	}
 
-	s, _ := status.Newf(codes.InvalidArgument, message).WithDetails(&errorDetails)
+	s, _ := status.Newf(codes.InvalidArgument, "%s", message).WithDetails(&errorDetails)
 	return s.Err()
 }
