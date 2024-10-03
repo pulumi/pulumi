@@ -500,7 +500,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 			assert.NoError(t, err)
 			return nil, nil
 		},
-		DefaultSecretManagerF: func() (secrets.Manager, error) {
+		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
 			return expectedSm, nil
 		},
 	}
