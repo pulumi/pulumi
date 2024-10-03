@@ -46,7 +46,7 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
-from pulumi.errors import InputPropertiesError, InputPropertyError, PropertyError
+from pulumi.errors import InputPropertiesError, InputPropertyError, InputPropertiesErrorDetails
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
@@ -69,7 +69,7 @@ class ProviderServicer(ResourceProviderServicer):
     lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
-        self, message: str, errors: Optional[List[PropertyError]]
+        self, message: str, errors: Optional[List[InputPropertiesErrorDetails]]
     ):
         status = grpc.Status()  # type: ignore[attr-defined]
         # We don't care about the exact status code here, since they are pretty web centric, and don't
@@ -115,7 +115,7 @@ class ProviderServicer(ResourceProviderServicer):
             raise
         except InputPropertyError as e:
             status = self.create_grpc_invalid_properties_status(
-                e.message, [{"property_path": e.property_path, "reason": e.reason}]
+                "", [{"property_path": e.property_path, "reason": e.reason}]
             )
             await context.abort_with_status(status)
             # We already aborted at this point

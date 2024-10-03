@@ -43,7 +43,7 @@ from .deprecated import (
 from .errors import (
     RunError,
     InputPropertyError,
-    PropertyError,
+    InputPropertiesErrorDetails,
     InputPropertiesError,
 )
 
@@ -133,6 +133,7 @@ __all__ = [
     "RunError",
     "InputPropertiesError",
     "InputPropertyError",
+    "InputPropertyErrorDetails",
     # invoke
     "InvokeOptions",
     "InvokeTransform",

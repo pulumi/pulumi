@@ -23,16 +23,15 @@ class RunError(Exception):
 
 
 class InputPropertyError(Exception):
-    def __init__(self, message: str, property_path: str, reason: str):
+    def __init__(self, property_path: str, reason: str):
         """
         Can be used to indicate that the client has made a request with a bad input property.
         """
-        self.message = message
         self.property_path = property_path
         self.reason = reason
 
 
-class PropertyError(TypedDict):
+class InputPropertyErrorDetails(TypedDict):
     """
     Represents an error in a property value.
     """
@@ -42,7 +41,7 @@ class PropertyError(TypedDict):
 
 
 class InputPropertiesError(Exception):
-    def __init__(self, message: str, errors: Optional[List[PropertyError]] = None):
+    def __init__(self, message: str, errors: Optional[List[InputPropertyErrorDetails]] = None):
         """
         Can be used to indicate that the client has made a request with bad input properties.
         """
