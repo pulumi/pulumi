@@ -2,4 +2,5 @@ name: l2-invoke-secrets
 runtime:
   name: python
   options:
+    typechecker: pyright
     virtualenv: venv
