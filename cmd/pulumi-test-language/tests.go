@@ -869,6 +869,39 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-invoke-secrets": {
+		providers: []plugin.Provider{
+			&providers.SimpleInvokeProvider{},
+			&providers.SimpleProvider{},
+		},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+
+					outputs := stack.Outputs
+					assertPropertyMapMember(l, outputs, "nonSecret",
+						resource.NewStringProperty("hello world"))
+					assertPropertyMapMember(l, outputs, "firstSecret",
+						resource.MakeSecret(resource.NewStringProperty("hello world")))
+					assertPropertyMapMember(l, outputs, "secondSecret",
+						resource.MakeSecret(resource.NewStringProperty("goodbye world")))
+				},
+			},
+		},
+	},
 	"l2-primitive-ref": {
 		providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
 		runs: []testRun{

@@ -15,6 +15,11 @@ export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
+export { SecretInvokeArgs, SecretInvokeResult, SecretInvokeOutputArgs } from "./secretInvoke";
+export const secretInvoke: typeof import("./secretInvoke").secretInvoke = null as any;
+export const secretInvokeOutput: typeof import("./secretInvoke").secretInvokeOutput = null as any;
+utilities.lazyLoad(exports, ["secretInvoke","secretInvokeOutput"], () => require("./secretInvoke"));
+
 export { StringResourceArgs } from "./stringResource";
 export type StringResource = import("./stringResource").StringResource;
 export const StringResource: typeof import("./stringResource").StringResource = null as any;
