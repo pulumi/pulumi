@@ -30,14 +30,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -57,7 +57,7 @@ func newDestroyCmd() *cobra.Command {
 	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var previewOnly bool
 	var refresh string
 	var showConfig bool
@@ -94,8 +94,14 @@ func newDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			// Destroy is always permitted to fall back to looking for secrets providers in state, since we explicitly
+			// want to support use cases where a user is trying to destroy a stack they no longer have configuration for.
+			ssml := stackSecretsManagerLoader{FallbackToState: true}
+
+			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -105,14 +111,13 @@ func newDestroyCmd() *cobra.Command {
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only " +
-						"must be passed in to proceed when running in non-interactive mode"))
+				return errors.New("--yes or --skip-preview or --preview-only " +
+					"must be passed in to proceed when running in non-interactive mode")
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			displayType := display.DisplayProgress
@@ -148,7 +153,7 @@ func newDestroyCmd() *cobra.Command {
 					suppressOutputs, "default", targets, nil, nil,
 					targetDependents, "", stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -156,12 +161,16 @@ func newDestroyCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+					return errResult
+				}
+
+				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -170,12 +179,12 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := ws.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
@@ -190,23 +199,12 @@ func newDestroyCmd() *cobra.Command {
 				}
 				root = ""
 			} else if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
-			}
-
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
-			var defaultSecretsManager secrets.Manager
-			if snap != nil {
-				defaultSecretsManager = snap.SecretsManager
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			getConfig := getStackConfiguration
@@ -215,18 +213,18 @@ func newDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = getStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, s, proj, defaultSecretsManager)
+			cfg, sm, err := getConfig(ctx, ssml, s, proj)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -239,16 +237,16 @@ func newDestroyCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configError != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
+				return fmt.Errorf("validating stack config: %w", configError)
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			if len(*targets) > 0 && excludeProtected {
-				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
+				return errors.New("You cannot specify --target and --exclude-protected")
 			}
 
 			var protectedCount int
@@ -257,7 +255,7 @@ func newDestroyCmd() *cobra.Command {
 				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
 					if !jsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
@@ -277,6 +275,7 @@ func newDestroyCmd() *cobra.Command {
 				Targets:                   deploy.NewUrnTargets(targetUrns),
 				TargetDependents:          targetDependents,
 				UseLegacyDiff:             useLegacyDiff(),
+				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
@@ -284,7 +283,7 @@ func newDestroyCmd() *cobra.Command {
 				ContinueOnError:           continueOnError,
 			}
 
-			_, res := s.Destroy(ctx, backend.UpdateOperation{
+			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -295,10 +294,10 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if res == nil && protectedCount > 0 && !jsonDisplay {
+			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
-			} else if res == nil && len(*targets) == 0 {
+			} else if destroyErr == nil && len(*targets) == 0 {
 				if !jsonDisplay && !remove && !previewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
@@ -306,22 +305,22 @@ func newDestroyCmd() *cobra.Command {
 				} else if remove {
 					_, err = s.Remove(ctx, false)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					// Remove also the stack config file.
-					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
-						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-							return result.FromError(err)
+					if _, path, detectErr := workspace.DetectProjectStackPath(s.Ref().Name().Q()); detectErr == nil {
+						if detectErr = os.Remove(path); detectErr != nil && !os.IsNotExist(detectErr) {
+							return detectErr
 						} else if !jsonDisplay {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
 					}
 				}
-			} else if res != nil && res.Error() == context.Canceled {
-				return result.FromError(errors.New("destroy cancelled"))
+			} else if destroyErr == context.Canceled {
+				return errors.New("destroy cancelled")
 			}
-			return PrintEngineResult(res)
+			return destroyErr
 		}),
 	}
 
@@ -359,7 +358,7 @@ func newDestroyCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
@@ -392,8 +391,9 @@ func newDestroyCmd() *cobra.Command {
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", false,
-		"Continue to perform the destroy operation despite the occurrence of errors")
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
+		"Continue to perform the destroy operation despite the occurrence of errors "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

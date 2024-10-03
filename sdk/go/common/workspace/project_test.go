@@ -1,3 +1,17 @@
+// Copyright 2018-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package workspace
 
 import (
@@ -147,69 +161,242 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	assert.NoError(t, err, "There should be no validation error")
 }
 
+func writeAndLoad(t *testing.T, str string) (*Project, error) {
+	tmp, err := os.CreateTemp("", "*.json")
+	assert.NoError(t, err)
+	path := tmp.Name()
+	err = os.WriteFile(path, []byte(str), 0o600)
+	assert.NoError(t, err)
+	return LoadProject(path)
+}
+
 func TestProjectLoadJSON(t *testing.T) {
 	t.Parallel()
 
-	writeAndLoad := func(str string) (*Project, error) {
-		tmp, err := os.CreateTemp("", "*.json")
-		assert.NoError(t, err)
-		path := tmp.Name()
-		err = os.WriteFile(path, []byte(str), 0o600)
-		assert.NoError(t, err)
-		return LoadProject(path)
-	}
-
 	// Test wrong type
-	_, err := writeAndLoad("\"hello  \"")
-	assert.ErrorContains(t, err, "expected project to be an object, was 'string'")
+	t.Run("wrong type", func(t *testing.T) {
+		t.Parallel()
 
-	// Test lack of name
-	_, err = writeAndLoad("{}")
-	assert.ErrorContains(t, err, "project is missing a 'name' attribute")
+		// Act.
+		_, err := writeAndLoad(t, "\"hello  \"")
 
-	// Test bad name
-	_, err = writeAndLoad("{\"name\": \"\"}")
-	assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
+		// Assert.
+		assert.ErrorContains(t, err, "expected project to be an object, was 'string'")
+	})
 
-	// Test missing runtime
-	_, err = writeAndLoad("{\"name\": \"project\"}")
-	assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
+	t.Run("missing name attribute", func(t *testing.T) {
+		t.Parallel()
 
-	// Test other schema errors
-	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": 4}")
-	// These can vary in order, so contains not equals check
-	expected := []string{
-		"3 errors occurred:",
-		"* #/runtime: oneOf failed",
-		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number",
-	}
-	for _, e := range expected {
-		assert.ErrorContains(t, err, e)
-	}
+		// Act.
+		_, err := writeAndLoad(t, "{}")
 
-	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}")
-	expected = []string{
-		"2 errors occurred:",
-		"* #/main: expected string or null, but got object",
-		"* #/backend: expected object or null, but got number",
-	}
-	for _, e := range expected {
-		assert.ErrorContains(t, err, e)
-	}
+		// Assert.
+		assert.ErrorContains(t, err, "project is missing a 'name' attribute")
+	})
 
-	// Test success
-	proj, err := writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\"}")
-	assert.NoError(t, err)
-	assert.Equal(t, tokens.PackageName("project"), proj.Name)
-	assert.Equal(t, "test", proj.Runtime.Name())
+	t.Run("bad name", func(t *testing.T) {
+		t.Parallel()
 
-	// Test null optionals should work
-	proj, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", " +
-		"\"description\": null, \"main\": null, \"backend\": null}")
-	assert.NoError(t, err)
-	assert.Nil(t, proj.Description)
-	assert.Equal(t, "", proj.Main)
+		// Act.
+		_, err := writeAndLoad(t, "{\"name\": \"\"}")
+
+		// Assert.
+		assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
+	})
+
+	t.Run("missing runtime", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, "{\"name\": \"project\"}")
+
+		// Assert.
+		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
+	})
+
+	t.Run("multiple errors 1", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": 4}")
+
+		// Assert.
+		// The order can vary here, so we use Contains and not Equals.
+		expected := []string{
+			"3 errors occurred:",
+			"* #/runtime: oneOf failed",
+			"* #/runtime: expected string, but got number",
+			"* #/runtime: expected object, but got number",
+		}
+
+		for _, e := range expected {
+			assert.ErrorContains(t, err, e)
+		}
+	})
+
+	t.Run("multiple errors, 2", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}")
+
+		// Assert.
+		// The order can vary here, so we use Contains and not Equals.
+		expected := []string{
+			"2 errors occurred:",
+			"* #/main: expected string or null, but got object",
+			"* #/backend: expected object or null, but got number",
+		}
+
+		for _, e := range expected {
+			assert.ErrorContains(t, err, e)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		proj, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": \"test\"}")
+
+		// Assert.
+		assert.NoError(t, err)
+		assert.Equal(t, tokens.PackageName("project"), proj.Name)
+		assert.Equal(t, "test", proj.Runtime.Name())
+	})
+
+	t.Run("null optionals should work", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		proj, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": \"test\", "+
+			"\"description\": null, \"main\": null, \"backend\": null}")
+
+		// Assert.
+		assert.NoError(t, err)
+		assert.Nil(t, proj.Description)
+		assert.Equal(t, "", proj.Main)
+	})
+}
+
+func TestProjectLoadJSONInformativeErrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a missing name attribute", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{"Name": "project", "runtime": "test"}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "project is missing a 'name' attribute")
+		assert.ErrorContains(t, err, "found 'Name' instead")
+	})
+
+	t.Run("a missing runtime attribute", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{"name": "project", "rutnime": "test"}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
+		assert.ErrorContains(t, err, "found 'rutnime' instead")
+	})
+
+	t.Run("a minor spelling mistake in a schema field", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{
+  "name": "project",
+  "runtime": "test",
+  "template": {
+    "displatName": "foo"
+  }
+}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "'displatName' not allowed; did you mean 'displayName'?")
+	})
+
+	t.Run("a major spelling mistake in a schema field", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{
+  "name": "project",
+  "runtime": "test",
+  "template": {
+    "displayNameDisplayName": "foo"
+  }
+}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "'displayNameDisplayName' not allowed")
+		assert.ErrorContains(t, err, "'displayNameDisplayName' not allowed; the allowed attributes are "+
+			"'config', 'description', 'displayName', 'important', 'metadata' and 'quickstart'")
+	})
+
+	t.Run("specific errors when only a single attribute is expected", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{
+  "name": "project",
+  "runtime": "test",
+  "backend": {
+    "url": "https://pulumi.com",
+    "name": "test"
+  }
+}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "'name' not allowed")
+		assert.ErrorContains(t, err, "'name' not allowed; the only allowed attribute is 'url'")
+	})
+
+	t.Run("a minor spelling mistake even deeper in the schema", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{
+  "name": "project",
+  "runtime": "test",
+  "plugins": {
+    "providers": [
+      {
+        "nome": "test"
+      }
+    ]
+  }
+}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "'nome' not allowed; did you mean 'name'")
+	})
+
+	t.Run("a major spelling mistake even deeper in the schema", func(t *testing.T) {
+		t.Parallel()
+
+		// Act.
+		_, err := writeAndLoad(t, `{
+  "name": "project",
+  "runtime": "test",
+  "plugins": {
+    "providers": [
+      {
+        "displayName": "test"
+      }
+    ]
+  }
+}`)
+
+		// Assert.
+		assert.ErrorContains(t, err, "'displayName' not allowed")
+		assert.ErrorContains(t, err, "'displayName' not allowed; the allowed attributes are "+
+			"'name', 'path' and 'version'")
+	})
 }
 
 func deleteFile(t *testing.T, file *os.File) {
@@ -1343,11 +1530,11 @@ runtime: yaml`
 		require.NoError(t, err)
 
 		expected := `environment:
-  imports:
-    - env
   values:
     pulumiConfig:
       aws:region: us-west-2
+  imports:
+    - env
 `
 
 		stack.Environment = stack.Environment.Append("env")
@@ -1356,12 +1543,12 @@ runtime: yaml`
 		assert.Equal(t, expected, string(marshaled))
 
 		expected = `environment:
-  imports:
-    - env
-    - env2
   values:
     pulumiConfig:
       aws:region: us-west-2
+  imports:
+    - env
+    - env2
 `
 
 		stack.Environment = stack.Environment.Append("env2")

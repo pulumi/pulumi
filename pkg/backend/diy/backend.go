@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -59,7 +60,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -89,6 +89,9 @@ type Backend interface {
 
 	// Upgrade to the latest state store version.
 	Upgrade(ctx context.Context, opts *UpgradeOptions) error
+
+	// Lock the specified stack reference in this backend.
+	Lock(ctx context.Context, stackRef backend.StackReference) error
 }
 
 type diyBackend struct {
@@ -643,6 +646,10 @@ func (b *diyBackend) SupportsProgress() bool {
 	return false
 }
 
+func (b *diyBackend) SupportsDeployments() bool {
+	return false
+}
+
 func (b *diyBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }
@@ -695,8 +702,12 @@ func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
 	return proj.Name.String() != stack.project.String()
 }
 
-func (b *diyBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	root string, opts *backend.CreateStackOptions,
+func (b *diyBackend) CreateStack(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	root string,
+	initialState *apitype.UntypedDeployment,
+	opts *backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	if opts != nil && len(opts.Teams) > 0 {
 		return nil, backend.ErrTeamsNotSupported
@@ -726,9 +737,21 @@ func (b *diyBackend) CreateStack(ctx context.Context, stackRef backend.StackRefe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil, nil)
+	_, err = b.saveStack(ctx, diyStackRef, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if initialState != nil {
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		if err != nil {
+			return nil, err
+		}
+
+		_, _, err = b.saveCheckpoint(ctx, diyStackRef, chk)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	stack := newStack(diyStackRef, b)
@@ -913,13 +936,13 @@ func (b *diyBackend) PackPolicies(
 	ctx context.Context, policyPackRef backend.PolicyPackReference,
 	cancellationScopes backend.CancellationScopeSource,
 	callerEventsOpt chan<- engine.Event,
-) result.Result {
-	return result.Error("DIY backend does not support resource policy")
+) error {
+	return errors.New("DIY backend does not support resource policy")
 }
 
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -930,10 +953,10 @@ func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
@@ -942,10 +965,10 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
@@ -959,9 +982,9 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
@@ -969,10 +992,10 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
@@ -984,9 +1007,9 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
@@ -994,10 +1017,10 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
@@ -1009,9 +1032,9 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
@@ -1023,7 +1046,7 @@ func (b *diyBackend) Query(ctx context.Context, op backend.QueryOperation) error
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
-) result.Result {
+) error {
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
@@ -1032,15 +1055,15 @@ func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	stackRef := stack.Ref()
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
+		return nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
@@ -1054,7 +1077,7 @@ func (b *diyBackend) apply(
 	// Start the update.
 	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, op)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -1118,7 +1141,6 @@ func (b *diyBackend) apply(
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
-	updateRes := result.WrapIfNonNil(updateErr)
 	end := time.Now().Unix()
 
 	// Wait for the display to finish showing all the events.
@@ -1127,10 +1149,14 @@ func (b *diyBackend) apply(
 	close(engineEvents)
 	if manager != nil {
 		err = manager.Close()
-		// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
-		// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+		// If the snapshot manager failed to close, we should return that error.
+		// Even though all the parts of the operation have potentially succeeded, a
+		// snapshotting failure is likely to rear its head on the next
+		// operation/invocation (e.g. an invalid snapshot that fails integrity
+		// checks, or a failure to write that means the snapshot is incomplete).
+		// Reporting now should make debugging and reporting easier.
 		if err != nil {
-			cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
 		}
 	}
 
@@ -1140,7 +1166,7 @@ func (b *diyBackend) apply(
 
 	// Save update results.
 	backendUpdateResult := backend.SucceededResult
-	if updateRes != nil {
+	if updateErr != nil {
 		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
@@ -1164,18 +1190,18 @@ func (b *diyBackend) apply(
 		backupErr = b.backupStack(ctx, diyStackRef)
 	}
 
-	if updateRes != nil {
+	if updateErr != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return plan, changes, updateRes
+		return plan, changes, updateErr
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return plan, changes, result.FromError(fmt.Errorf("saving update info: %w", saveErr))
+		return plan, changes, fmt.Errorf("saving update info: %w", saveErr)
 	}
 
 	if backupErr != nil {
-		return plan, changes, result.FromError(fmt.Errorf("saving backup: %w", backupErr))
+		return plan, changes, fmt.Errorf("saving backup: %w", backupErr)
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
@@ -1346,6 +1372,39 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 	return errors.New("stack tags not supported in diy mode")
 }
 
+func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
+	stack backend.Stack, secret string,
+) (*apitype.SecretValue, error) {
+	// The local backend does not support managing deployments.
+	return nil, errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	// The local backend does not support managing deployments.
+	return errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
+	// The local backend does not support managing deployments.
+	return errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) GetGHAppIntegration(
+	ctx context.Context, stack backend.Stack,
+) (*apitype.GitHubAppIntegration, error) {
+	// The local backend does not support github integration.
+	return nil, errors.New("github integration not supported with diy backends")
+}
+
+func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
+	stack backend.Stack,
+) (*apitype.DeploymentSettings, error) {
+	// The local backend does not support managing deployments.
+	return nil, errors.New("stack deployments not supported with diy backends")
+}
+
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
 	// Try to delete ALL the lock files
 	allFiles, err := listBucket(ctx, b.bucket, stackLockDir(stackRef.FullyQualifiedName()))
@@ -1373,4 +1432,11 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	}
 
 	return nil
+}
+
+func (b *diyBackend) DefaultSecretManager() (secrets.Manager, error) {
+	// The default secrets manager for stacks against a DIY backend is a
+	// passphrase-based manager.
+	info := &workspace.ProjectStack{}
+	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
 }

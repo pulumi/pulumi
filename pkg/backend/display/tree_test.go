@@ -182,7 +182,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		// should be empty at this point
 		assert.Emptyf(t, treeRenderer.systemMessages,
 			"Not expecting system messages to be populated until rendering happens.")
-		assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
+		assert.Equalf(t, "<%hide-cursor%>", buf.String(), "No content should have been written to the terminal yet")
 	}()
 
 	// This should trigger a render, and reset the dirty flag to false.
@@ -198,14 +198,61 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 
 		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
 		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
-			"Expecting 1000 system messages to now be in  the tree renderer")
+			"Expecting 1000 system messages to now be in the tree renderer")
 	}()
 
-	// Check that at least one system messages was written to the mock terminal
+	// Check that at least one system message was written to the mock terminal,
+	// and trimmed to the terminal width appropriately.
 	terminalText := buf.String()
 	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
 	assert.Contains(t, terminalText, "System Messages")
-	assert.Contains(t, terminalText, strings.Repeat("a", 1000))
+	assert.Contains(t, terminalText, strings.Repeat("a", 70))
+}
+
+// Tests that when the tree renderer correctly clears stale rows when it renders
+// a frame with fewer rows than the one which preceded it.
+func TestTreeRenderRewindsCorrectly(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer, display := createRendererAndDisplay(term, true)
+
+	addManySystemEvents(display, 10, strings.Repeat("a", 32))
+
+	// Mark a row as updated, this used to invoke render, it should now
+	// only mark the renderer as dirty. This is only cleared when the
+	// frame function is called. the ticker is currently stopped, so
+	// this should never happen
+	treeRenderer.rowUpdated(&resourceRowData{})
+
+	// This should trigger a render, and reset the dirty flag to false.
+	// This is normally called by the ticker event in treeRenderer.eventHandler, but for the test
+	// we have stopped the ticker.
+	treeRenderer.frame(false, false)
+
+	// 10 system messages, plus the table header, stack name, a blank line and the
+	// system messages header.
+	assert.Equal(t, 14, treeRenderer.rewind, "Expected 14 lines to have been written")
+
+	// Hackily clear out the system messages.
+	(func() {
+		treeRenderer.display.eventMutex.Lock()
+		defer treeRenderer.display.eventMutex.Unlock()
+
+		treeRenderer.display.systemEventPayloads = nil
+	})()
+
+	// Render another frame.
+	treeRenderer.rowUpdated(&resourceRowData{})
+	treeRenderer.frame(false, false)
+
+	// The table header and stack name.
+	assert.Equal(t, 2, treeRenderer.rewind, "Expected 4 lines to have been written")
+
+	// The 10 line clears that should have been emitted as part of rewinding the
+	// output.
+	assert.Contains(t, buf.String(), strings.Repeat("<%clear-to-end%>\n", 10))
 }
 
 func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
@@ -242,8 +289,8 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 	}()
 
 	func() {
-		display.m.Lock()
-		defer display.m.Unlock()
+		display.eventMutex.Lock()
+		defer display.eventMutex.Unlock()
 		display.ensureHeaderAndStackRows()
 	}()
 

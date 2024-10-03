@@ -21,6 +21,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -34,19 +36,20 @@ func newOrgCmd() *cobra.Command {
 			"Use this command to manage organization configuration, " +
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// Try to read the current project
-			project, _, err := readProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL(project)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}
@@ -75,16 +78,16 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default [NAME]",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Set the default organization for the current backend",
-		Long: "Set the default organization for the current backend.\n" +
+		Short: "Set the local default organization for the current backend",
+		Long: "Set the local default organization for the current backend.\n" +
 			"\n" +
-			"This command is used to set the default organization in which to create \n" +
+			"This command is used to set your local default organization in which to create \n" +
 			"projects and stacks for the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations. " +
 			"If you try and set a default organization for a backend that does not \n" +
 			"support create organizations, then an error will be returned by the CLI",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -93,12 +96,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			orgName = args[0]
 
 			// Try to read the current project
-			project, _, err := readProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -107,7 +111,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL(project)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
@@ -129,19 +133,20 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Try to read the current project
-			project, _, err := readProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -150,7 +155,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}

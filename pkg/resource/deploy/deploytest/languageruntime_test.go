@@ -56,13 +56,19 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			err := p.InstallDependencies(plugin.ProgramInfo{})
+			err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
+			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
+		})
+		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
+			t.Parallel()
+			p := &languageRuntime{closed: true}
+			_, err := p.RuntimeOptionsPrompts(plugin.ProgramInfo{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			_, err := p.About()
+			_, err := p.About(plugin.ProgramInfo{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("GetProgramDependencies", func(t *testing.T) {
@@ -93,12 +99,19 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			assert.NoError(t, p.InstallDependencies(plugin.ProgramInfo{}))
+			assert.NoError(t, p.InstallDependencies(plugin.InstallDependenciesRequest{}))
+		})
+		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
+			t.Parallel()
+			p := &languageRuntime{}
+			options, err := p.RuntimeOptionsPrompts(plugin.ProgramInfo{})
+			assert.NoError(t, err)
+			assert.Equal(t, []plugin.RuntimeOptionPrompt{}, options)
 		})
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			about, err := p.About()
+			about, err := p.About(plugin.ProgramInfo{})
 			assert.NoError(t, err)
 			assert.Equal(t, plugin.AboutInfo{}, about)
 		})
@@ -124,12 +137,12 @@ func TestLanguageRuntime(t *testing.T) {
 		})
 		t.Run("GeneratePackage", func(t *testing.T) {
 			t.Parallel()
-			_, err := p.GeneratePackage("", "", nil, "", nil)
+			_, err := p.GeneratePackage("", "", nil, "", nil, false)
 			assert.ErrorContains(t, err, "is not supported")
 		})
 		t.Run("GenerateProgram", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := p.GenerateProgram(nil, "")
+			_, _, err := p.GenerateProgram(nil, "", false)
 			assert.ErrorContains(t, err, "is not supported")
 		})
 		t.Run("Pack", func(t *testing.T) {

@@ -1,3 +1,17 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package diy
 
 import (
@@ -37,7 +51,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
@@ -55,7 +69,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	// Create stack "b" and import a checkpoint with a secret
 	bStackRef, err := b.ParseStackReference("b")
 	assert.NoError(t, err)
-	bStack, err := b.CreateStack(ctx, bStackRef, "", nil)
+	bStack, err := b.CreateStack(ctx, bStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
@@ -119,7 +133,7 @@ func TestCancel_legacy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that trying to cancel a stack that isn't locked doesn't error
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.CancelCurrentUpdate(ctx, aStackRef)
@@ -181,7 +195,7 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 	// Check that creating a new stack doesn't make a backup file
 	aStackRef, err := lb.parseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -224,7 +238,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	// Create a new stack
 	aStackRef, err := lb.parseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -292,7 +306,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
 	ctx := context.Background()
 
 	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
@@ -318,7 +332,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.ImportDeployment(ctx, aStack, udep)
@@ -356,7 +370,7 @@ func TestDIYBackendRejectsStackInitOptions_legacy(t *testing.T) {
 	// • Simulate `pulumi stack init`, passing non-nil init options
 	fakeStackRef, err := diy.ParseStackReference("foobar")
 	assert.NoError(t, err)
-	_, err = diy.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
 }
 

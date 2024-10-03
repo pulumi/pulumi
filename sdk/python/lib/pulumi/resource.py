@@ -421,7 +421,7 @@ class ResourceOptions:
     parents walking from the resource up to the stack.
     """
 
-    x_transforms: Optional[List[ResourceTransform]]
+    transforms: Optional[List[ResourceTransform]]
     """
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
@@ -487,7 +487,7 @@ class ResourceOptions:
         import_: Optional[str] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[List[ResourceTransformation]] = None,
-        x_transforms: Optional[List[ResourceTransform]] = None,
+        transforms: Optional[List[ResourceTransform]] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
@@ -518,14 +518,14 @@ class ResourceOptions:
         :param Optional[List[str]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
         :param Optional[Input[str]] id: If provided, an existing resource ID to read, rather than create.
-        :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
+        :param Optional[str] import\\_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
-        :param Optional[List[ResourceTransform]] x_transforms: If provided, a list of transforms to apply
+        :param Optional[List[ResourceTransform]] transforms: If provided, a list of transforms to apply
                to this resource during construction. This is experimental.
         :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
@@ -558,7 +558,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
-        self.x_transforms = x_transforms
+        self.transforms = transforms
         self.urn = urn
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
@@ -701,7 +701,7 @@ class ResourceOptions:
         dest.transformations = _merge_lists(
             dest.transformations, source.transformations
         )
-        dest.x_transforms = _merge_lists(dest.x_transforms, source.x_transforms)
+        dest.transforms = _merge_lists(dest.transforms, source.transforms)
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -839,6 +839,7 @@ class Resource:
         opts: Optional[ResourceOptions] = None,
         remote: bool = False,
         dependency: bool = False,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -852,6 +853,7 @@ class Resource:
                resource.
         :param bool remote: True if this is a remote component resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
 
         if dependency:
@@ -971,10 +973,21 @@ class Resource:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider"
                 )
-            read_resource(cast("CustomResource", self), t, name, props, opts, typ)
+            read_resource(
+                cast("CustomResource", self), t, name, props, opts, typ, package_ref
+            )
         else:
             register_resource(
-                self, t, name, custom, remote, DependencyResource, props, opts, typ
+                self,
+                t,
+                name,
+                custom,
+                remote,
+                DependencyResource,
+                props,
+                opts,
+                typ,
+                package_ref,
             )
 
     def _get_providers(
@@ -1030,9 +1043,9 @@ class Resource:
             # providers map, so that it can be used for child resources.
             if provider_pkg in opts_providers:
                 message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
-                depreciation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
-                warnings.warn(f"{message} for resource {t}. " + depreciation)
-                log.warn(f"{message}. {depreciation}", resource=self)
+                deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                warnings.warn(f"{message} for resource {t}. " + deprecation)
+                log.warn(f"{message}. {deprecation}", resource=self)
             else:
                 opts_providers[provider_pkg] = opts.provider
 
@@ -1112,6 +1125,7 @@ class CustomResource(Resource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         dependency: bool = False,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -1120,8 +1134,11 @@ class CustomResource(Resource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
-        Resource.__init__(self, t, name, True, props, opts, False, dependency)
+        Resource.__init__(
+            self, t, name, True, props, opts, False, dependency, package_ref
+        )
 
     @property
     def id(self) -> "Output[str]":
@@ -1148,6 +1165,7 @@ class ComponentResource(Resource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         remote: bool = False,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -1156,8 +1174,9 @@ class ComponentResource(Resource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool remote: True if this is a remote component resource.
+        :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
-        Resource.__init__(self, t, name, False, props, opts, remote, False)
+        Resource.__init__(self, t, name, False, props, opts, remote, False, package_ref)
         if not remote:
             self.__dict__["id"] = None
         self._remote = remote
@@ -1190,6 +1209,7 @@ class ProviderResource(CustomResource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         dependency: bool = False,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str pkg: The package type of this provider resource.
@@ -1198,6 +1218,7 @@ class ProviderResource(CustomResource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
 
         if opts is not None and opts.provider is not None:
@@ -1206,7 +1227,7 @@ class ProviderResource(CustomResource):
             )
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts, dependency
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency, package_ref
         )
         self.package = pkg
 

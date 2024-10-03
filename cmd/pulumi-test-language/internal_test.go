@@ -59,5 +59,6 @@ func TestInvalidSchema(t *testing.T) {
 		Test:  "internal-bad-schema",
 	})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "bind schema for provider bad:")
+	assert.ErrorContains(t, err, "error loading resource type 'bad:index:Resource':")
+	assert.ErrorContains(t, err, "#/resources/bad:index:Resource/properties/value/type: unknown type kind not a type")
 }

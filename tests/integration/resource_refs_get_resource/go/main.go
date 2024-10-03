@@ -5,8 +5,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -31,6 +33,36 @@ func NewChild(ctx *pulumi.Context, name string, message pulumi.StringInput,
 	}); err != nil {
 		return nil, err
 	}
+	// Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
+	//
+	// See also the comment in NewContainer below for a more thorough explanation.
+	//
+	// TODO: make RegisterResourceOutputs not racy [pulumi/pulumi#16896]
+	componentURNResult, err := internals.UnsafeAwaitOutput(ctx.Context(), component.URN())
+	if err != nil {
+		return nil, err
+	}
+	componentURN := componentURNResult.Value.(pulumi.URN)
+	sleep := 20 * time.Millisecond
+	for i := 0; ; i++ {
+		roundTrippedComponent := &Child{}
+
+		if err := ctx.RegisterComponentResource("test:index:Child", "mychild", roundTrippedComponent,
+			pulumi.URN_(string(componentURN))); err != nil {
+			return nil, err
+		}
+		message, err := internals.UnsafeAwaitOutput(ctx.Context(), roundTrippedComponent.Message)
+		if err != nil {
+			return nil, err
+		}
+		if message.Value.(string) != "" {
+			break
+		} else if i > 10 {
+			return nil, errors.New("outputs were not registered successfully")
+		}
+		time.Sleep(sleep)
+		sleep *= 2
+	}
 	return component, nil
 }
 
@@ -54,6 +86,12 @@ type Container struct {
 	Child ChildOutput `pulumi:"child"`
 }
 
+type CustomContainer struct {
+	pulumi.CustomResource
+
+	Child ChildOutput `pulumi:"child"`
+}
+
 func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
 	opts ...pulumi.ResourceOption,
 ) (*Container, error) {
@@ -65,6 +103,41 @@ func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
 		"child": child,
 	}); err != nil {
 		return nil, err
+	}
+	// Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
+	//
+	// RegisterResourceOutputs does most of its work in a a goroutine, as does RegisterComponentResource.  This
+	// means RegisterResourceOutputs is inheritly racy with the resource being read later.  This test explicitly
+	// tests roundtripping a container component resource, which means we need to read the outputs registered
+	// through RegisterResourceOutputs later, making the test racy.  We can work around this by making sure the
+	// outputs are registered before we return the container.  Ideally we should find a way to make this non-racy
+	// (see the issue linked below)
+	//
+	// TODO: make RegisterResourceOutputs not racy [pulumi/pulumi#16896]
+	containerURNResult, err := internals.UnsafeAwaitOutput(ctx.Context(), component.URN())
+	if err != nil {
+		return nil, err
+	}
+	containerURN := containerURNResult.Value.(pulumi.URN)
+	sleep := 20 * time.Millisecond
+	for i := 0; ; i++ {
+		roundTrippedContainer := &Container{}
+
+		if err := ctx.RegisterComponentResource("test:index:Container", "mycontainer", roundTrippedContainer,
+			pulumi.URN_(string(containerURN))); err != nil {
+			return nil, err
+		}
+		child, err := internals.UnsafeAwaitOutput(ctx.Context(), roundTrippedContainer.Child)
+		if err != nil {
+			return nil, err
+		}
+		if child.Value.(*Child) != nil {
+			break
+		} else if i > 10 {
+			return nil, errors.New("outputs were not registered successfully")
+		}
+		time.Sleep(sleep)
+		sleep *= 2
 	}
 	return component, nil
 }

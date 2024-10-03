@@ -28,12 +28,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -50,6 +52,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -101,6 +104,7 @@ func main() {
 	flag.String("tsconfig", "",
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
+	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -151,7 +155,22 @@ func main() {
 
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
-	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
+	script := fmt.Sprintf(`try {
+		console.log(require.resolve('%s'));
+	} catch (error) {
+		if (error.code === 'MODULE_NOT_FOUND') {
+			console.error("It looks like the Pulumi SDK has not been installed. Have you run pulumi install?")
+		} else {
+			console.error(error.message);
+		}
+		process.exit(1);
+	}`, mod)
+	// The Volta package manager installs shim executables that route to the user's chosen nodejs
+	// version. On Windows this does not properly handle arguments with newlines, so we need to
+	// ensure that the script is a single line.
+	// https://github.com/pulumi/pulumi/issues/16393
+	script = strings.Replace(script, "\n", "", -1)
+	args := []string{"-e", script}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"locateModule",
@@ -166,6 +185,9 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string,
 	cmd.Dir = programDir
 	out, err := cmd.Output()
 	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return "", errors.New(string(ee.Stderr))
+		}
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -190,9 +212,12 @@ type nodeOptions struct {
 	tsconfigpath string
 	// Arguments for the Node process
 	nodeargs string
+	// The packagemanger to use to install dependencies.
+	// One of auto, npm, yarn or pnpm, defaults to auto.
+	packagemanager npm.PackageManagerType
 }
 
-func parseOptions(root string, options map[string]interface{}) (nodeOptions, error) {
+func parseOptions(options map[string]interface{}) (nodeOptions, error) {
 	// typescript defaults to true
 	nodeOptions := nodeOptions{
 		typescript: true,
@@ -222,6 +247,27 @@ func parseOptions(root string, options map[string]interface{}) (nodeOptions, err
 		}
 	}
 
+	if packagemanager, ok := options["packagemanager"]; ok {
+		if pm, ok := packagemanager.(string); ok {
+			switch pm {
+			case "auto":
+				nodeOptions.packagemanager = npm.AutoPackageManager
+			case "npm":
+				nodeOptions.packagemanager = npm.NpmPackageManager
+			case "yarn":
+				nodeOptions.packagemanager = npm.YarnPackageManager
+			case "pnpm":
+				nodeOptions.packagemanager = npm.PnpmPackageManager
+			default:
+				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn or pnpm, got %q", pm)
+			}
+		} else {
+			return nodeOptions, errors.New("packagemanager option must be a string")
+		}
+	} else {
+		nodeOptions.packagemanager = npm.AutoPackageManager
+	}
+
 	return nodeOptions, nil
 }
 
@@ -233,6 +279,21 @@ func newLanguageHost(
 		tracing:       tracing,
 		forceTsc:      forceTsc,
 	}
+}
+
+func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
 }
 
 func compatibleVersions(a, b semver.Version) (bool, string) {
@@ -360,7 +421,19 @@ func getPluginsFromDir(
 		}
 
 		if isDir {
-			// if a directory, recurse.
+			// If a directory, recurse into it. However we have to take care to avoid recursing
+			// into nested policy packs. The plugins in a policy pack are not dependencies of the
+			// program, so we should not include them in the list of plugins to install.
+			policyPack, err := workspace.DetectPolicyPackPathAt(curr)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, err)
+				continue
+			}
+			if policyPack != "" {
+				// curr is a policy pack, so we should not recurse into it.
+				continue
+			}
+
 			more, err := getPluginsFromDir(
 				curr,
 				pulumiPackagePathToVersionMap,
@@ -521,6 +594,12 @@ func getPluginVersion(info packageJSON) (string, error) {
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(closer)
+
 	// Make a connection to the real monitor that we will forward messages to.
 	conn, err := grpc.Dial(
 		req.GetMonitorAddress(),
@@ -565,7 +644,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	nodeBin, err := exec.LookPath("node")
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
+		return &pulumirpc.RunResponse{Error: "could not find node on the $PATH: " + err.Error()}, nil
 	}
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
@@ -581,8 +660,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
@@ -592,7 +670,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	go func() {
 		defer close(responseChannel)
 		responseChannel <- host.execNodejs(
-			ctx, req, nodeBin, runPath,
+			ctx, req, engineClient, nodeBin, runPath,
 			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
 	}()
 
@@ -618,7 +696,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
-	nodeBin, runPath, address, pipesDirectory string,
+	engineClient pulumirpc.EngineClient, nodeBin, runPath, address, pipesDirectory string,
 ) *pulumirpc.RunResponse {
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	args := host.constructArguments(req, runPath, address, pipesDirectory)
@@ -637,7 +715,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	env = append(env, pulumiConfigVar+"="+config)
 	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap())
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
@@ -653,6 +731,11 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
+	if req.GetAttachDebugger() {
+		nodeargs = append(nodeargs, "--inspect-brk")
+		// suppress the console output "Debugger listening on..."
+		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
+	}
 	nodeargs = append(nodeargs, args...)
 
 	if logging.V(5) {
@@ -664,8 +747,17 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.Command(nodeBin, nodeargs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
+	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
+	// `runWithOutput` for more details.
+	cmd.Stdout = struct{ io.Writer }{os.Stdout}
+	r, w := io.Pipe()
+	cmd.Stderr = w
+	// Get a duplicate reader of stderr so that we can both scan it and write it to os.Stderr.
+	stderrDup := io.TeeReader(r, os.Stderr)
+	sniffer := newOOMSniffer()
+	sniffer.Scan(stderrDup)
+
 	cmd.Env = env
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -675,7 +767,34 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		opentracing.Tag{Key: "args", Value: nodeargs})
 	defer tracingSpan.Finish()
 
-	if err := cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":             "Pulumi: Program (Node.js)",
+				"type":             "node",
+				"request":          "attach",
+				"processId":        cmd.Process.Pid,
+				"continueOnAttach": true,
+				"skipFiles":        []interface{}{"<node_internals>/**"},
+			})
+			if err != nil {
+				return err
+			}
+			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+				Config:  debugConfig,
+				Message: fmt.Sprintf("on process id %d", cmd.Process.Pid),
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
 		// process writes using console.out and console.err synchronously, but it does not process writes using
 		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
@@ -685,6 +804,8 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		// error messages in the engine.
 		contract.IgnoreError(os.Stdout.Sync())
 		contract.IgnoreError(os.Stderr.Sync())
+		// Close the write end of the pipe to signal to the sniffer that it should stop scanning.
+		contract.IgnoreError(w.Close())
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often,
 			// since user errors will trigger this.  So, the error message should look as nice as
@@ -700,6 +821,10 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 				return &pulumirpc.RunResponse{Error: "", Bail: true}
 			default:
 				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
+				sniffer.Wait()
+				if sniffer.Detected() {
+					err = fmt.Errorf("Program exited with non-zero exit code: %d. %s", code, sniffer.Message())
+				}
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
@@ -815,6 +940,18 @@ func (host *nodeLanguageHost) InstallDependencies(
 	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
 	defer tracingSpan.Finish()
 
+	if req.UseLanguageVersionTools {
+		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
+		// as the default nodejs version.
+		if err := installNodeVersion(req.Info.ProgramDirectory, stdout); err != nil {
+			// If no version file is present, or fnm is not installed, we ignore the error and
+			// continue.
+			if !errors.Is(err, errVersionFileNotFound) && !errors.Is(err, errFnmNotFound) {
+				return fmt.Errorf("failed to install node version: %w", err)
+			}
+		}
+	}
+
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	workspaceRoot := req.Info.ProgramDirectory
@@ -829,9 +966,14 @@ func (host *nodeLanguageHost) InstallDependencies(
 		workspaceRoot = newWorkspaceRoot
 	}
 
-	_, err = npm.Install(ctx, workspaceRoot, false /*production*/, stdout, stderr)
+	opts, err := parseOptions(req.Info.Options.AsMap())
 	if err != nil {
-		return fmt.Errorf("dependency installation failed: %w", err)
+		return fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
+	if err != nil {
+		return err
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
@@ -842,9 +984,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// in here works well enough for conformance testing.
 		tscCmd := exec.Command("npx", "tsc")
 		tscCmd.Dir = req.Info.ProgramDirectory
-		tscCmd.Stdout = stdout
-		tscCmd.Stderr = stderr
-		if err := tscCmd.Run(); err != nil {
+		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
 		}
 	}
@@ -852,7 +992,106 @@ func (host *nodeLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *nodeLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
+var (
+	errVersionFileNotFound = errors.New("version file not found")
+	errFnmNotFound         = errors.New("fnm not found")
+)
+
+// useFnm checks if the current directory or any of its parents contains a `.nvmrc` or
+// `.node-version` file, and if fnm is installed. If both conditions are met, it returns the
+// the version string specified in the found version file.
+// `.nvmrc` takes precedence over `.node-version`.
+// Note that the version string is not necessarily a semver. The version string can have a `v`
+// prefix, or be a partial version string like `20` or `20.6`.
+func useFnm(cwd string) (string, error) {
+	if _, err := exec.LookPath("fnm"); err != nil {
+		if !errors.Is(err, exec.ErrNotFound) {
+			return "", fmt.Errorf("error while looking for fnm: %w", err)
+		}
+		// fnm is not installed
+		logging.V(9).Infof("Could not find fnm executable")
+		return "", errFnmNotFound
+	}
+	versionFile, err := fsutil.Searchup(cwd, ".nvmrc")
+	if err != nil {
+		if !errors.Is(err, fsutil.ErrNotFound) {
+			return "", fmt.Errorf("error while looking for .nvmrc: %w", err)
+		}
+		// No .nvmrc file found, look for .node-version
+		versionFile, err = fsutil.Searchup(cwd, ".node-version")
+		if err != nil {
+			if !errors.Is(err, fsutil.ErrNotFound) {
+				return "", fmt.Errorf("error while looking for .node-version: %w", err)
+			}
+			// No .nvmrc or .node-version file found
+			return "", errVersionFileNotFound
+		}
+	}
+	versionBytes, err := os.ReadFile(versionFile)
+	if err != nil {
+		return "", err
+	}
+	version := strings.TrimSpace(string(versionBytes))
+	logging.V(9).Infof("Found node version %s in file %s", version, versionFile)
+	return version, nil
+}
+
+// installNodeVersion installs the node version specified in the `.nvmrc` or `.node-version` file.
+// This is meant to be used in container like environments, where we do not run within a shell.
+// When running locally in a shell, fnm, nvm and other similar tools already set the node version
+// via their shell integration.
+func installNodeVersion(cwd string, stdout io.Writer) error {
+	version, err := useFnm(cwd)
+	if err != nil {
+		return err
+	}
+	if stdout != nil {
+		fmt.Fprintf(stdout, "Setting Nodejs version to %s\n", version)
+	}
+	// This is a no-op if the version is already installed
+	installCmd := exec.Command("fnm", "install", version, "--progress", "never")
+	out, err := installCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to install Nodejs version: %v: %s", err, out)
+	}
+	// Set the requested version as default so it is available at $FNM_DIR/aliases/default/bin
+	// This allows us to set the ambient node version for the whole container, without requiring
+	// us to pass environment variables to every `node` invocation.
+	setDefaultCmd := exec.Command("fnm", "alias", version, "default")
+	out, err = setDefaultCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to set default Nodejs version: %v: %s", err, out)
+	}
+	return nil
+}
+
+func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
+	req *pulumirpc.RuntimeOptionsRequest,
+) (*pulumirpc.RuntimeOptionsResponse, error) {
+	var prompts []*pulumirpc.RuntimeOptionPrompt
+	rawOpts := req.Info.Options.AsMap()
+
+	if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
+		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+			Key:         "packagemanager",
+			Description: "The package manager to use for installing dependencies",
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn"),
+			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "npm",
+			},
+		})
+	}
+
+	return &pulumirpc.RuntimeOptionsResponse{
+		Prompts: prompts,
+	}, nil
+}
+
+func (host *nodeLanguageHost) About(ctx context.Context,
+	req *pulumirpc.AboutRequest,
+) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {
@@ -1037,18 +1276,44 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
-	yarnFile := filepath.Join(req.Info.ProgramDirectory, "yarn.lock")
-	npmFile := filepath.Join(req.Info.ProgramDirectory, "package-lock.json")
-	packageFile := filepath.Join(req.Info.ProgramDirectory, "package.json")
+	packagePathCheck := func(path string) bool {
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			return false
+		}
+		name := info.Name()
+		return name == "yarn.lock" || name == "package-lock.json"
+	}
+	packagePath, err := fsutil.WalkUp(req.Info.ProgramDirectory, packagePathCheck, nil)
+	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// users can run pulumi with unreadable root directories.
+	if errors.Is(err, fs.ErrPermission) {
+		err = nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate package-lock.json or yarn.lock file: %w", err)
+	}
+
+	if packagePath == "" {
+		return nil, fmt.Errorf(
+			"no package-lock.json or yarn.lock file found (searching upwards from %s)", req.Info.ProgramDirectory)
+	}
+
+	packagePath = filepath.Dir(packagePath)
+
+	yarnFile := filepath.Join(packagePath, "yarn.lock")
+	npmFile := filepath.Join(packagePath, "package-lock.json")
+	packageFile := filepath.Join(packagePath, "package.json")
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(req.Info.ProgramDirectory, yarnFile)
+		result, err = parseYarnLockFile(packagePath, yarnFile)
 		if err != nil {
 			return nil, err
 		}
 	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(req.Info.ProgramDirectory, npmFile)
+		result, err = parseNpmLockFile(packagePath, npmFile)
 		if err != nil {
 			return nil, err
 		}
@@ -1090,6 +1355,7 @@ func (host *nodeLanguageHost) GenerateProject(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var extraOptions []pcl.BindOption
 	if !req.Strict {
@@ -1099,7 +1365,7 @@ func (host *nodeLanguageHost) GenerateProject(
 	// for nodejs, prefer output-versioned invokes
 	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1135,6 +1401,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
@@ -1149,9 +1416,17 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files,
-		pcl.Loader(loader),
-		pcl.PreferOutputVersionedInvokes)
+	bindOptions := []pcl.BindOption{
+		pcl.Loader(schema.NewCachedLoader(loader)),
+		// for nodejs, prefer output-versioned invokes
+		pcl.PreferOutputVersionedInvokes,
+	}
+
+	if !req.Strict {
+		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
+	}
+
+	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1185,6 +1460,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var spec schema.PackageSpec
 	err = json.Unmarshal([]byte(req.Schema), &spec)
@@ -1192,7 +1468,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, loader)
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
@@ -1203,7 +1479,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 		}, nil
 	}
 
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies)
+	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies, req.Local)
 	if err != nil {
 		return nil, err
 	}
@@ -1282,10 +1558,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
 		yarnInstallCmd.Dir = req.PackageDirectory
-		yarnInstallCmd.Stdout = os.Stdout
-		yarnInstallCmd.Stderr = os.Stderr
-		err = yarnInstallCmd.Run()
-		if err != nil {
+		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn install: %w", err)
 		}
 
@@ -1295,10 +1568,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnTscCmd := exec.Command(yarn, "run", "tsc")
 		yarnTscCmd.Dir = req.PackageDirectory
-		yarnTscCmd.Stdout = os.Stdout
-		yarnTscCmd.Stderr = os.Stderr
-		err = yarnTscCmd.Run()
-		if err != nil {
+		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
@@ -1326,10 +1596,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmInstallCmd := exec.Command(npm, "install")
 		npmInstallCmd.Dir = req.PackageDirectory
-		npmInstallCmd.Stdout = os.Stdout
-		npmInstallCmd.Stderr = os.Stderr
-		err = npmInstallCmd.Run()
-		if err != nil {
+		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("npm install: %w", err)
 		}
 
@@ -1341,10 +1608,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmBuildCmd := exec.Command(npm, "run", "build")
 		npmBuildCmd.Dir = req.PackageDirectory
-		npmBuildCmd.Stdout = os.Stdout
-		npmBuildCmd.Stderr = os.Stderr
-		err = npmBuildCmd.Run()
-		if err != nil {
+		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("npm run build: %w", err)
 		}
 
@@ -1368,7 +1632,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		filepath.Join(req.PackageDirectory, "bin"),
 		"--pack-destination", req.DestinationDirectory)
 	npmPackCmd.Stdout = &stdoutBuffer
-	npmPackCmd.Stderr = os.Stderr
+	npmPackCmd.Stderr = struct{ io.Writer }{os.Stderr}
 	err = npmPackCmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("npm pack: %w", err)
@@ -1379,4 +1643,91 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	return &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, artifactName),
 	}, nil
+}
+
+// Nodejs sometimes sets stdout/stderr to non-blocking mode. When a nodejs subprocess is directly
+// handed the go process's stdout/stderr file descriptors, nodejs's non-blocking configuration goes
+// unnoticed by go, and a write from go can result in an error `write /dev/stdout: resource
+// temporarily unavailable`.
+//
+// The solution to this is to not provide nodejs with the go process's stdout/stderr file
+// descriptors, and instead proxy the writes through something else.
+// In https://github.com/pulumi/pulumi/pull/16504 we used Cmd.StdoutPipe/StderrPipe for this.
+// However this introduced a potential bug, as it is not safe to use these specific pipes along
+// with Cmd.Run. The issue is that these pipes will be closed as soon as the process exits, which
+// can lead to missing data when stdout/stderr are slow, or worse an error due to an attempted read
+// from a closed pipe. (Creating and closing our own os.Pipes for this would be fine.)
+//
+// A simpler workaround is to wrap stdout/stderr in an io.Writer. As with the pipes, this makes
+// exec.Cmd use a copying goroutine to shuffle the data from the subprocess to stdout/stderr.
+//
+// Cmd.Run will wait for all the data to be copied before returning, ensuring we do not miss any data.
+//
+// Non-blocking issue: https://github.com/golang/go/issues/58408#issuecomment-1423621323
+// StdoutPipe/StderrPipe issues: https://pkg.go.dev/os/exec#Cmd.StdoutPipe
+// Waiting for data: https://cs.opensource.google/go/go/+/refs/tags/go1.22.5:src/os/exec/exec.go;l=201
+func runWithOutput(cmd *exec.Cmd, stdout, stderr io.Writer) error {
+	cmd.Stdout = struct{ io.Writer }{stdout}
+	cmd.Stderr = struct{ io.Writer }{stderr}
+	return cmd.Run()
+}
+
+// oomSniffer is a scanner that detects OOM errors in the output of a nodejs process.
+type oomSniffer struct {
+	detected bool
+	timeout  time.Duration
+	waitChan chan struct{}
+}
+
+func newOOMSniffer() *oomSniffer {
+	return &oomSniffer{
+		timeout:  15 * time.Second,
+		waitChan: make(chan struct{}),
+	}
+}
+
+func (o *oomSniffer) Detected() bool {
+	return o.detected
+}
+
+// Wait waits for the OOM sniffer to either:
+//   - detect an OOM error
+//   - the timeout to expire
+//   - the reader to be closed
+//
+// Call Wait to ensure we've read all the output from the scanned process after it exits.
+func (o *oomSniffer) Wait() {
+	select {
+	case <-o.waitChan:
+	case <-time.After(o.timeout):
+	}
+}
+
+func (o *oomSniffer) Message() string {
+	return "Detected a possible out of memory error. Consider increasing the memory available to the nodejs process " +
+		"by setting the `nodeargs` runtime option in Pulumi.yaml to `nodeargs: --max-old-space-size=<size>` where " +
+		"`<size>` is the maximum memory in megabytes that can be allocated to nodejs. " +
+		"See https://www.pulumi.com/docs/concepts/projects/project-file/#runtime-options"
+}
+
+func (o *oomSniffer) Scan(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !o.detected && (strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
+				// Because we hook into the debugger API, the OOM error message can be obscured by
+				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
+				//nolint:lll
+				// https://github.com/nodejs/node/blob/cef2047b1fdd797d5125c4cafe9f17220a0774f7/deps/v8/src/debug/debug-scopes.cc#L447
+				strings.Contains(line, "Check failed: needs_context && current_scope_ == closure_scope_")) {
+				o.detected = true
+				close(o.waitChan)
+			}
+		}
+		contract.IgnoreError(scanner.Err())
+		if !o.detected {
+			close(o.waitChan)
+		}
+	}()
 }

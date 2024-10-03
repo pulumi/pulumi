@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package gen
 
 import (
@@ -133,32 +147,32 @@ func TestArgumentTypeName(t *testing.T) {
 	t.Parallel()
 
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
-	noneTypeName := g.argumentTypeName(nil, model.NoneType, false /*isInput*/)
+	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
 	assert.Equal(t, "", noneTypeName)
 
-	plainIntType := g.argumentTypeName(nil, model.IntType, false /*isInput*/)
+	plainIntType := g.argumentTypeName(model.IntType, false /*isInput*/)
 	assert.Equal(t, "int", plainIntType)
-	inputIntType := g.argumentTypeName(nil, model.IntType, true /*isInput*/)
+	inputIntType := g.argumentTypeName(model.IntType, true /*isInput*/)
 	assert.Equal(t, "pulumi.Int", inputIntType)
 
-	plainStringType := g.argumentTypeName(nil, model.StringType, false /*isInput*/)
+	plainStringType := g.argumentTypeName(model.StringType, false /*isInput*/)
 	assert.Equal(t, "string", plainStringType)
-	inputStringType := g.argumentTypeName(nil, model.StringType, true /*isInput*/)
+	inputStringType := g.argumentTypeName(model.StringType, true /*isInput*/)
 	assert.Equal(t, "pulumi.String", inputStringType)
 
-	plainBoolType := g.argumentTypeName(nil, model.BoolType, false /*isInput*/)
+	plainBoolType := g.argumentTypeName(model.BoolType, false /*isInput*/)
 	assert.Equal(t, "bool", plainBoolType)
-	inputBoolType := g.argumentTypeName(nil, model.BoolType, true /*isInput*/)
+	inputBoolType := g.argumentTypeName(model.BoolType, true /*isInput*/)
 	assert.Equal(t, "pulumi.Bool", inputBoolType)
 
-	plainNumberType := g.argumentTypeName(nil, model.NumberType, false /*isInput*/)
+	plainNumberType := g.argumentTypeName(model.NumberType, false /*isInput*/)
 	assert.Equal(t, "float64", plainNumberType)
-	inputNumberType := g.argumentTypeName(nil, model.NumberType, true /*isInput*/)
+	inputNumberType := g.argumentTypeName(model.NumberType, true /*isInput*/)
 	assert.Equal(t, "pulumi.Float64", inputNumberType)
 
-	plainDynamicType := g.argumentTypeName(nil, model.DynamicType, false /*isInput*/)
+	plainDynamicType := g.argumentTypeName(model.DynamicType, false /*isInput*/)
 	assert.Equal(t, "interface{}", plainDynamicType)
-	inputDynamicType := g.argumentTypeName(nil, model.DynamicType, true /*isInput*/)
+	inputDynamicType := g.argumentTypeName(model.DynamicType, true /*isInput*/)
 	assert.Equal(t, "pulumi.Any", inputDynamicType)
 
 	objectType := model.NewObjectType(map[string]model.Type{
@@ -166,9 +180,9 @@ func TestArgumentTypeName(t *testing.T) {
 		"bar": model.IntType,
 	})
 
-	plainObjectType := g.argumentTypeName(nil, objectType, false /*isInput*/)
+	plainObjectType := g.argumentTypeName(objectType, false /*isInput*/)
 	assert.Equal(t, "map[string]interface{}", plainObjectType)
-	inputObjectType := g.argumentTypeName(nil, objectType, true /*isInput*/)
+	inputObjectType := g.argumentTypeName(objectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.Map", inputObjectType)
 
 	uniformObjectType := model.NewObjectType(map[string]model.Type{
@@ -176,31 +190,31 @@ func TestArgumentTypeName(t *testing.T) {
 		"y": model.IntType,
 	})
 
-	plainUniformObjectType := g.argumentTypeName(nil, uniformObjectType, false /*isInput*/)
+	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
 	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
-	inputUniformObjectType := g.argumentTypeName(nil, uniformObjectType, true /*isInput*/)
+	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
-	plainMapType := g.argumentTypeName(nil, model.NewMapType(model.StringType), false /*isInput*/)
+	plainMapType := g.argumentTypeName(model.NewMapType(model.StringType), false /*isInput*/)
 	assert.Equal(t, "map[string]string", plainMapType)
-	inputMapType := g.argumentTypeName(nil, model.NewMapType(model.StringType), true /*isInput*/)
+	inputMapType := g.argumentTypeName(model.NewMapType(model.StringType), true /*isInput*/)
 	assert.Equal(t, "pulumi.StringMap", inputMapType)
 
-	plainIntListType := g.argumentTypeName(nil, model.NewListType(model.IntType), false /*isInput*/)
+	plainIntListType := g.argumentTypeName(model.NewListType(model.IntType), false /*isInput*/)
 	assert.Equal(t, "[]int", plainIntListType)
-	inputIntListType := g.argumentTypeName(nil, model.NewListType(model.IntType), true /*isInput*/)
+	inputIntListType := g.argumentTypeName(model.NewListType(model.IntType), true /*isInput*/)
 	assert.Equal(t, "pulumi.IntArray", inputIntListType)
 
-	plainDynamicListType := g.argumentTypeName(nil, model.NewListType(model.DynamicType), false /*isInput*/)
+	plainDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), false /*isInput*/)
 	assert.Equal(t, "[]interface{}", plainDynamicListType)
-	inputDynamicListType := g.argumentTypeName(nil, model.NewListType(model.DynamicType), true /*isInput*/)
+	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
-		g.argumentTypeName(nil, model.NewOutputType(model.StringType), false /*isInput*/),
-		g.argumentTypeName(nil, model.StringType, true /*isInput*/))
+		g.argumentTypeName(model.NewOutputType(model.StringType), false /*isInput*/),
+		g.argumentTypeName(model.StringType, true /*isInput*/))
 }
 
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {

@@ -514,6 +514,20 @@ class ResOpFailedEvent(BaseEvent):
         )
 
 
+class StartDebuggingEvent(BaseEvent):
+    """
+    StartDebuggingEvent is emitted when a debugger has been started and is waiting for the user
+    to attach to it using the DAP protocol.
+    """
+
+    def __init__(self, config: Mapping[str, Any]):
+        self.config = config
+
+    @classmethod
+    def from_json(cls, data: dict) -> "StartDebuggingEvent":
+        return cls(data.get("config", {}))
+
+
 class EngineEvent(BaseEvent):
     """
     EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
@@ -546,6 +560,7 @@ class EngineEvent(BaseEvent):
         res_outputs_event: Optional[ResOutputsEvent] = None,
         res_op_failed_event: Optional[ResOpFailedEvent] = None,
         policy_event: Optional[PolicyEvent] = None,
+        start_debugging_event: Optional[StartDebuggingEvent] = None,
     ):
         self.sequence = sequence
         self.timestamp = timestamp
@@ -558,6 +573,7 @@ class EngineEvent(BaseEvent):
         self.res_outputs_event = res_outputs_event
         self.res_op_failed_event = res_op_failed_event
         self.policy_event = policy_event
+        self.start_debugging_event = start_debugging_event
 
     @classmethod
     def from_json(cls, data: dict) -> "EngineEvent":
@@ -569,6 +585,7 @@ class EngineEvent(BaseEvent):
         res_outputs_event = data.get("resOutputsEvent")
         res_op_failed_event = data.get("resOpFailedEvent")
         policy_event = data.get("policyEvent")
+        start_debugging_event = data.get("startDebuggingEvent")
 
         return cls(
             sequence=data.get("sequence", 0),
@@ -604,4 +621,9 @@ class EngineEvent(BaseEvent):
                 else None
             ),
             policy_event=PolicyEvent.from_json(policy_event) if policy_event else None,
+            start_debugging_event=(
+                StartDebuggingEvent.from_json(start_debugging_event)
+                if start_debugging_event
+                else None
+            ),
         )

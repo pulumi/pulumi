@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -59,6 +60,7 @@ type LocalWorkspace struct {
 	remoteInheritSettings         bool
 	pulumiCommand                 PulumiCommand
 	remoteExecutorImage           *ExecutorImage
+	remoteAgentPoolID             string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -531,7 +533,7 @@ func (l *LocalWorkspace) ChangeStackSecretsProvider(
 		}
 		reader = strings.NewReader(*opts.NewPassphrase)
 	}
-	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, args...)
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, nil, nil, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("failed to change secrets provider: %w", err), stdout, stderr, errCode)
 	}
@@ -595,15 +597,26 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
+func (l *LocalWorkspace) ListStacks(ctx context.Context, opts ...optlist.Option) ([]StackSummary, error) {
 	var stacks []StackSummary
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
+	args := []string{"stack", "ls", "--json"}
+
+	optListOpts := &optlist.Options{}
+	for _, o := range opts {
+		o.ApplyOption(optListOpts)
+	}
+
+	if optListOpts.All {
+		args = append(args, "--all")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal config value: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal list stacks value: %w", err)
 	}
 	return stacks, nil
 }
@@ -757,9 +770,44 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 	return res, nil
 }
 
+func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) error {
+	stdoutWriters := []io.Writer{}
+	if opts != nil && opts.Stdout != nil {
+		stdoutWriters = append(stdoutWriters, opts.Stdout)
+	}
+	stderrWriters := []io.Writer{}
+	if opts != nil && opts.Stderr != nil {
+		stderrWriters = append(stderrWriters, opts.Stderr)
+	}
+	args := []string{"install"}
+	if opts != nil && opts.UseLanguageVersionTools {
+		// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+		if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 130}) {
+			return errors.New("UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
+		}
+		args = append(args, "--use-language-version-tools")
+	}
+	if opts != nil && opts.NoPlugins {
+		args = append(args, "--no-plugins")
+	}
+	if opts != nil && opts.NoDependencies {
+		args = append(args, "--no-dependencies")
+	}
+	if opts != nil && opts.Reinstall {
+		args = append(args, "--reinstall")
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 func (l *LocalWorkspace) runPulumiInputCmdSync(
 	ctx context.Context,
 	stdin io.Reader,
+	additionalOutputs []io.Writer,
+	additionalErrorOutputs []io.Writer,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -776,8 +824,8 @@ func (l *LocalWorkspace) runPulumiInputCmdSync(
 	return l.PulumiCommand().Run(ctx,
 		l.WorkDir(),
 		stdin,
-		nil, /* additionalOutputs */
-		nil, /* additionalErrorOutputs */
+		additionalOutputs,
+		additionalErrorOutputs,
 		env,
 		args...,
 	)
@@ -787,7 +835,7 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,
 ) (string, string, int, error) {
-	return l.runPulumiInputCmdSync(ctx, nil, args...)
+	return l.runPulumiInputCmdSync(ctx, nil, nil, nil, args...)
 }
 
 // supportsPulumiCmdFlag runs a command with `--help` to see if the specified flag is found within the resulting
@@ -873,6 +921,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
 		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
+		remoteAgentPoolID:             lwOpts.RemoteAgentPoolID,
 		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
@@ -970,6 +1019,8 @@ type localWorkspaceOptions struct {
 	RemoteSkipInstallDependencies bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
 	RemoteExecutorImage *ExecutorImage
+	// RemoteAgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
+	RemoteAgentPoolID string
 	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
 	RemoteInheritSettings bool
 }
@@ -1134,6 +1185,12 @@ func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceO
 func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteAgentPoolID(agentPoolID string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteAgentPoolID = agentPoolID
 	})
 }
 

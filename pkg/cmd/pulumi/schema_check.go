@@ -42,7 +42,7 @@ func newSchemaCheckCommand() *cobra.Command {
 			"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +
 			"schema spec as well as additional requirements imposed by the supported\n" +
 			"target languages.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			file := args[0]
 
 			// Read from stdin or a specified file

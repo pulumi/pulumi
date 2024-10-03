@@ -105,7 +105,9 @@ function getFactory(transformationContext: typescript.TransformationContext): Fa
     };
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
     const ts: typeof typescript = require("../../typescript-shim");
     const sourceFile = ts.createSourceFile("", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);

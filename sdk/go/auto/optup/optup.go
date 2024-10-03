@@ -143,6 +143,20 @@ func Refresh() Option {
 	})
 }
 
+// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
+func ContinueOnError() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ContinueOnError = true
+	})
+}
+
+// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+func AttachDebugger() Option {
+	return optionFunc(func(opts *Options) {
+		opts.AttachDebugger = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -195,6 +209,8 @@ type Options struct {
 	SuppressOutputs bool
 	// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
 	ContinueOnError bool
+	// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+	AttachDebugger bool
 }
 
 type optionFunc func(*Options)

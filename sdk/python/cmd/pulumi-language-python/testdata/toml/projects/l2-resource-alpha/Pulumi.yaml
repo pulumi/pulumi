@@ -1,0 +1,6 @@
+name: l2-resource-alpha
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv

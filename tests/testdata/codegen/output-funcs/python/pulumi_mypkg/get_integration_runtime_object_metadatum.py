@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import outputs
 
@@ -83,9 +88,6 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[str] = None,
     return AwaitableGetIntegrationRuntimeObjectMetadatumResult(
         next_link=pulumi.get(__ret__, 'next_link'),
         value=pulumi.get(__ret__, 'value'))
-
-
-@_utilities.lift_output_func(get_integration_runtime_object_metadatum)
 def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulumi.Input[str]] = None,
                                                     integration_runtime_name: Optional[pulumi.Input[str]] = None,
                                                     metadata_path: Optional[pulumi.Input[Optional[str]]] = None,
@@ -101,4 +103,13 @@ def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulum
     :param str metadata_path: Metadata path.
     :param str resource_group_name: The resource group name.
     """
-    ...
+    __args__ = dict()
+    __args__['factoryName'] = factory_name
+    __args__['integrationRuntimeName'] = integration_runtime_name
+    __args__['metadataPath'] = metadata_path
+    __args__['resourceGroupName'] = resource_group_name
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::getIntegrationRuntimeObjectMetadatum', __args__, opts=opts, typ=GetIntegrationRuntimeObjectMetadatumResult)
+    return __ret__.apply(lambda __response__: GetIntegrationRuntimeObjectMetadatumResult(
+        next_link=pulumi.get(__response__, 'next_link'),
+        value=pulumi.get(__response__, 'value')))

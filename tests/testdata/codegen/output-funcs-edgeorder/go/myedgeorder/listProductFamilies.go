@@ -7,8 +7,8 @@ import (
 	"context"
 	"reflect"
 
+	"example.com/pulumi-myedgeorder/sdk/go/myedgeorder/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"internal"
 )
 
 // The list of product families.
@@ -44,14 +44,20 @@ type ListProductFamiliesResult struct {
 
 func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutputArgs, opts ...pulumi.InvokeOption) ListProductFamiliesResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (ListProductFamiliesResult, error) {
+		ApplyT(func(v interface{}) (ListProductFamiliesResultOutput, error) {
 			args := v.(ListProductFamiliesArgs)
-			r, err := ListProductFamilies(ctx, &args, opts...)
-			var s ListProductFamiliesResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv ListProductFamiliesResult
+			secret, err := ctx.InvokePackageRaw("myedgeorder::listProductFamilies", args, &rv, "", opts...)
+			if err != nil {
+				return ListProductFamiliesResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(ListProductFamiliesResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(ListProductFamiliesResultOutput), nil
+			}
+			return output, nil
 		}).(ListProductFamiliesResultOutput)
 }
 

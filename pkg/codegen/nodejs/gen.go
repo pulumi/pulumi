@@ -21,6 +21,7 @@ package nodejs
 import (
 	"bytes"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,11 +45,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 const (
-	MinimumValidSDKVersion   string = "^3.42.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^14"
+	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
+	MinimumValidSDKVersion string = "^3.134.1"
+	// The minimum version of @pulumi/pulumi that supports parameterization.
+	MinimumValidParameterizationSDKVersion string = "^3.133.0"
+	MinimumTypescriptVersion               string = "^4.3.5"
+	MinimumNodeTypesVersion                string = "^14"
 )
 
 type typeDetails struct {
@@ -908,14 +911,26 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
 	}
 
-	// If it's a ComponentResource, set the remote option.
-	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/);\n", name)
-	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts);\n", name)
+	pkg, err := r.PackageReference.Definition()
+	if err != nil {
+		return resourceFileInfo{}, err
 	}
 
-	fmt.Fprintf(w, "    }\n")
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", false /*dependency*/")
+		}
+	}
+
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) {
@@ -1023,13 +1038,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnTypePlain {
 			// Unwrap magic property "res" for methods that return a plain non-object-type.
 			if objectReturnType == nil {
-				fmt.Fprintf(w, `, {property: "res"});`)
+				fmt.Fprintf(w, `, {property: "res"}`)
 			} else {
-				fmt.Fprintf(w, `, {});`)
+				fmt.Fprintf(w, `, {}`)
 			}
-		} else {
-			fmt.Fprintf(w, ");\n")
 		}
+
+		// If the call is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
+
+		fmt.Fprintf(w, ");\n")
 
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
@@ -1143,27 +1165,34 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 // the result of invokes to be a dictionary.
 //
 // We use invoke for functions with object return types and invokeSingle for everything else.
-func runtimeInvokeFunction(fun *schema.Function) string {
+func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
+	var functionName string
 	switch fun.ReturnType.(type) {
 	// If the function has no return type, it is a void function.
 	case nil:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
-		return "invoke"
+		functionName = "invoke"
 	// If the function has an object return type, it is also a normal invoke function.
 	// because the deserialization can handle it
 	case *schema.MapType:
-		return "invoke"
+		functionName = "invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle
 		// which expects an object with a single property to be returned
 		// then unwraps the value from that property
-		return "invokeSingle"
+		functionName = "invokeSingle"
 	}
+
+	if plain {
+		return functionName
+	}
+
+	return functionName + "Output"
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
 	info := functionFileInfo{functionName: name}
 
@@ -1182,43 +1211,67 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		if argsOptional {
 			optFlag = "?"
 		}
-		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
+		suffix := "Args"
+		if !plain {
+			suffix = "OutputArgs"
+		}
+
+		argsType := title(name) + suffix
+		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argsType)
+
+		if !plain && len(fun.Inputs.Properties) == 0 {
+			// for empty/unit args on output-versioned invokes, don't generate an empty argument
+			argsig = ""
+		}
 	}
 
 	funReturnType := mod.functionReturnType(fun)
 
-	fmt.Fprintf(w, "export function %s(", name)
+	fullFunctionName := name
+	if !plain {
+		fullFunctionName += "Output"
+		info.functionOutputVersionName = fullFunctionName
+	}
+
+	fmt.Fprintf(w, "export function %s(", fullFunctionName)
 	if fun.MultiArgumentInputs {
 		for _, prop := range fun.Inputs.Properties {
-			if prop.IsRequired() {
-				fmt.Fprintf(w, "%s: ", prop.Name)
-				fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
-			} else {
-				fmt.Fprintf(w, "%s?: ", prop.Name)
-				// since we already applied the '?' to the type, we can simplify
-				// the optional-ness of the type
-				propType := prop.Type.(*schema.OptionalType)
-				fmt.Fprintf(w, "%s, ", mod.typeString(propType.ElementType, false, nil))
+			propertyType := codegen.UnwrapType(prop.Type)
+			isInput := false
+			if !plain {
+				isInput = true
+				propertyType = &schema.InputType{ElementType: prop.Type}
 			}
+			fmt.Fprintf(w, "%s", prop.Name)
+			if prop.IsRequired() {
+				fmt.Fprintf(w, ": ")
+			} else {
+				fmt.Fprintf(w, "?: ")
+			}
+			fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
 		}
 	} else {
 		fmt.Fprintf(w, "%s", argsig)
 	}
 
-	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): Promise<%s> {\n", funReturnType)
+	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+	if !plain {
+		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+	}
+
+	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): %s {\n", returnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
 
 	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs {
+	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
-	fmt.Fprint(w, "\n")
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-	invokeCall := runtimeInvokeFunction(fun)
+	invokeCall := runtimeInvokeFunction(fun, plain)
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
 	if fun.Inputs != nil {
@@ -1230,44 +1283,96 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 			}
 
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
-				if codegen.IsNOptionalInput(p.Type) {
+				if codegen.IsNOptionalInput(p.Type) || !plain {
 					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
 				} else {
 					body = fmt.Sprintf("%s(%s)", name, body)
 				}
+
 				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
 			}
 			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
 	}
 
-	fmt.Fprint(w, "    }, opts);\n")
-	fmt.Fprint(w, "}\n")
+	fmt.Fprintf(w, "    }, opts")
+
+	// If the invoke is on a parameterized package, make sure we pass the parameter.
+	pkg, err := fun.PackageReference.Definition()
+	if err != nil {
+		return info, err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n}\n")
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
-		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
-			return info, err
-		}
 		info.functionArgsInterfaceName = argsInterfaceName
-	}
+		properties := fun.Inputs.Properties
+		if !plain {
+			argsInterfaceName = title(name) + "OutputArgs"
+			properties = fun.Inputs.InputShape.Properties
+			info.functionOutputVersionArgsInterfaceName = argsInterfaceName
+		} else {
+			info.functionArgsInterfaceName = argsInterfaceName
+		}
 
-	// if the return type is an inline object definition (not a reference), emit it.
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-			fmt.Fprintf(w, "\n")
-			resultInterfaceName := title(name) + "Result"
-			if err := mod.genPlainType(w, resultInterfaceName,
-				objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+		if len(properties) == 0 {
+			if plain {
+				// if there are no properties, generate an empty interface for plain invokes
+				// we would like to remove this, but it would be a breaking change
+				if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
+					return info, err
+				}
+			}
+
+			// this avoids generating an export for the interface that doesn't exist
+			info.functionOutputVersionArgsInterfaceName = ""
+		} else {
+			if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
 				return info, err
 			}
+		}
+	}
+
+	resultInterfaceName := title(name) + "Result"
+	// if the return type is an inline object definition (not a reference), emit it.
+	// only emit the plain result type T since output-versioned invokes will use Output<T> for the non-plain variant
+	if fun.ReturnType != nil {
+		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+			if plain {
+				fmt.Fprintf(w, "\n")
+				if err := mod.genPlainType(w, resultInterfaceName,
+					objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+					return info, err
+				}
+			}
+
 			info.functionResultInterfaceName = resultInterfaceName
 		}
 	}
 
-	return mod.genFunctionOutputVersion(w, fun, info)
+	return info, nil
+}
+
+func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
+	plainFunctionInfo, err := mod.genFunctionDefinition(w, fun, true /* plain */)
+	if err != nil {
+		return functionFileInfo{}, err
+	}
+
+	if fun.ReturnType == nil {
+		// no need to generate the output-versioned invoke
+		return plainFunctionInfo, nil
+	}
+
+	// generate output-versioned invoke
+	return mod.genFunctionDefinition(w, fun, false /* plain */)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -1279,103 +1384,6 @@ func functionArgsOptional(fun *schema.Function) bool {
 		}
 	}
 	return true
-}
-
-// Generates `function ${fn}Output(..)` version lifted to work on
-// `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(
-	w io.Writer,
-	fun *schema.Function,
-	info functionFileInfo,
-) (functionFileInfo, error) {
-	if fun.ReturnType == nil {
-		return info, nil
-	}
-
-	originalName := tokenToFunctionName(fun.Token)
-	fnOutput := originalName + "Output"
-	returnType := mod.functionReturnType(fun)
-	info.functionOutputVersionName = fnOutput
-	argTypeName := title(fnOutput) + "Args"
-
-	argsig := ""
-	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
-		argsOptional := functionArgsOptional(fun)
-		optFlag := ""
-		if argsOptional {
-			optFlag = "?"
-		}
-		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
-	}
-
-	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
-
-	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
-	}
-	if !fun.MultiArgumentInputs {
-		if argsig != "" {
-			fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(args).apply((a: any) => %s(a, opts))
-}
-`, fnOutput, argsig, returnType, originalName)
-		} else {
-			fmt.Fprintf(w, `export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(%s(opts))
-}
-`, fnOutput, returnType, originalName)
-		}
-	} else {
-		fmt.Fprintf(w, "export function %s(", fnOutput)
-		var properties []*schema.Property
-		if fun.Inputs != nil {
-			properties = fun.Inputs.Properties
-		}
-
-		for _, prop := range properties {
-			paramDeclaration := ""
-			propertyType := &schema.InputType{ElementType: prop.Type}
-			argumentType := mod.typeString(propertyType, true /* input */, nil)
-			if prop.IsRequired() {
-				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
-			} else {
-				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
-			}
-
-			fmt.Fprintf(w, "%s, ", paramDeclaration)
-		}
-
-		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", returnType)
-		fmt.Fprint(w, "    var args = {\n")
-		for _, p := range properties {
-			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
-		}
-		fmt.Fprint(w, "    };\n")
-		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
-		for _, p := range properties {
-			// Pass the argument to the invocation.
-			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
-		}
-		fmt.Fprint(w, "opts))\n")
-		fmt.Fprint(w, "}\n")
-	}
-
-	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
-		fmt.Fprintf(w, "\n")
-		info.functionOutputVersionArgsInterfaceName = argTypeName
-		if err := mod.genPlainType(w,
-			argTypeName,
-			fun.Inputs.Comment,
-			fun.Inputs.InputShape.Properties,
-			true,  /* input */
-			false, /* readonly */
-			0 /* level */); err != nil {
-			return info, err
-		}
-	}
-
-	return info, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -2348,27 +2356,32 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies)
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK)
 	if err != nil {
 		return err
 	}
 	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
+	if localSDK {
+		fs.Add("scripts/postinstall.js", genPostInstallScript())
+	}
 	return nil
 }
 
 type npmPackage struct {
 	Name             string                  `json:"name"`
 	Version          string                  `json:"version"`
+	Type             string                  `json:"type,omitempty"`
 	Description      string                  `json:"description,omitempty"`
 	Keywords         []string                `json:"keywords,omitempty"`
 	Homepage         string                  `json:"homepage,omitempty"`
 	Repository       string                  `json:"repository,omitempty"`
 	License          string                  `json:"license,omitempty"`
+	Main             string                  `json:"main,omitempty"`
 	Scripts          map[string]string       `json:"scripts,omitempty"`
 	Dependencies     map[string]string       `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
@@ -2377,7 +2390,7 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string) (string, error) {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = "@pulumi/" + pkg.Name
@@ -2397,12 +2410,35 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		version = pkg.Version.String()
 		pluginVersion = version
 	}
-	if pkg.SupportPack {
+	// Parameterized schemas _always_ respect schema version
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
 		pluginVersion = pkg.Version.String()
 		version = pluginVersion
+	}
+
+	var pulumiPlugin plugin.PulumiPluginJSON
+	if pkg.Parameterization != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Name:     pkg.Parameterization.BaseProvider.Name,
+			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Server:   pkg.Parameterization.BaseProvider.PluginDownloadURL,
+		}
+	} else {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pkg.Name,
+			Version:  pluginVersion,
+		}
+	}
+
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2418,12 +2454,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Pulumi: plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
-		},
+		Dependencies:    dependencies,
+		Pulumi:          pulumiPlugin,
+	}
+
+	if localSDK {
+		npminfo.Main = "bin/index.js"
+		npminfo.Scripts["postinstall"] = "node ./scripts/postinstall.js"
 	}
 
 	// Copy the overlay dependencies, if any.
@@ -2466,6 +2503,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
+		} else if pkg.Parameterization != nil {
+			npminfo.Dependencies[sdkPack] = MinimumValidParameterizationSDKVersion
 		} else {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
 		}
@@ -2475,6 +2514,23 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n", nil
+}
+
+func genPostInstallScript() []byte {
+	return []byte(`const fs = require("node:fs");
+const path = require("node:path")
+const process = require("node:process")
+const { execSync } = require('node:child_process');
+try {
+  const out = execSync('tsc')
+  console.log(out.toString())
+} catch (error) {
+  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
+  process.exit(1)
+}
+// TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
+fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
@@ -2745,7 +2801,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package,
-	extraFiles map[string][]byte, localDependencies map[string]string,
+	extraFiles map[string][]byte, localDependencies map[string]string, localSDK bool,
 ) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
@@ -2764,7 +2820,7 @@ func GeneratePackage(tool string, pkg *schema.Package,
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK); err != nil {
 		return nil, err
 	}
 	return files, nil
@@ -2778,6 +2834,13 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	if def.Parameterization != nil {
+		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
+import * as mutex from "async-mutex";
+`)
+	}
+
 	code := utilitiesFile
 
 	if url := def.PluginDownloadURL; url != "" {
@@ -2788,6 +2851,56 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	}
 
 	_, err = fmt.Fprintf(w, "%s", code)
+	if err != nil {
+		return err
+	}
+
+	if def.Parameterization != nil {
+
+		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+
+		_, err = fmt.Fprintf(w, `
+const _packageLock = new mutex.Mutex();
+var _packageRef : undefined | string = undefined;
+export async function getPackage() : Promise<string | undefined> {
+	if (_packageRef === undefined) {
+		if (!runtime.supportsParameterization()) {
+			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
+		}
+
+		await _packageLock.acquire();
+		if (_packageRef === undefined) {
+			const monitor = runtime.getMonitor();
+			const params = new resproto.Parameterization();
+			params.setName("%s");
+			params.setVersion("%s");
+			params.setValue(%s);
+
+			const req = new resproto.RegisterPackageRequest();
+			req.setName("%s");
+			req.setVersion("%s");
+			req.setDownloadUrl("%s");
+			req.setParameterization(params);
+			const resp : any = await new Promise((resolve, reject) => {
+				monitor!.registerPackage(req, (err: any, resp: any) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(resp);
+					}
+				});
+			});
+			_packageRef = resp.getRef();
+		}
+		_packageLock.release();
+	}
+	return _packageRef as string;
+}
+`,
+			def.Name, def.Version, parameterValue,
+			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.Parameterization.BaseProvider.PluginDownloadURL)
+	}
+
 	return err
 }
 

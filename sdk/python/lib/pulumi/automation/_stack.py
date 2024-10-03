@@ -14,13 +14,24 @@
 
 import json
 import os
+import shutil
 import tempfile
 import time
 import threading
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
+from typing import (
+    Dict,
+    List,
+    Any,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Callable,
+    Tuple,
+    TypedDict,
+)
 import grpc
 
 from ._cmd import CommandResult, OnOutput
@@ -98,6 +109,42 @@ class UpdateSummary:
         )
 
 
+class ImportResource(TypedDict, total=False):
+    """
+    ImportResource represents a resource to import into a stack.
+
+      - id: The import ID of the resource. The format is specific to resource type.
+      - type: The type token of the Pulumi resource
+      - name: The name of the resource
+      - logicalName: The logical name of the resource in the generated program
+      - parent: The name of an optional parent resource
+      - provider: The name of the provider resource
+      - version: The version of the provider plugin, if any is specified
+      - pluginDownloadUrl: The URL to download the provider plugin from
+      - properties: Specified which input properties to import with
+      - component: Whether the resource is a component resource
+      - remote: Whether the resource is a remote resource
+
+    If a resource does not specify any properties the default behaviour is to
+    import using all required properties.
+
+    If the resource is declared as a "component" (and optionally as "remote"). These resources
+    don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.
+    """
+
+    id: str
+    type: str
+    name: str
+    logicalName: str
+    parent: str
+    provider: str
+    version: str
+    pluginDownloadUrl: str
+    properties: str
+    component: bool
+    remote: bool
+
+
 class BaseResult(_Representable):
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
@@ -117,6 +164,15 @@ class UpResult(BaseResult):
         super().__init__(stdout, stderr)
         self.outputs = outputs
         self.summary = summary
+
+
+class ImportResult(BaseResult):
+    def __init__(
+        self, stdout: str, stderr: str, summary: UpdateSummary, generated_code: str
+    ):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+        self.generated_code = generated_code
 
 
 class RefreshResult(BaseResult):
@@ -228,6 +284,8 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
+        attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -257,6 +315,8 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -350,6 +410,9 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        import_file: Optional[str] = None,
+        attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -377,6 +440,9 @@ class Stack:
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
+        :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -385,6 +451,10 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
         args.extend(extra_args)
+
+        if import_file is not None:
+            args.append("--import-file")
+            args.append(import_file)
 
         if plan is not None:
             args.append("--save-plan")
@@ -537,10 +607,13 @@ class Stack:
         log_verbosity: Optional[int] = None,
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
+        exclude_protected: Optional[bool] = None,
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
+        remove: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -558,10 +631,13 @@ class Stack:
         :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param exclude_protected: Do not destroy protected resources. Destroy all other resources.
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
+        :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -594,9 +670,90 @@ class Stack:
         # load the project file.
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
+
+        # If `remove` was set, remove the stack now. We take this approach
+        # rather than passing `--remove` to `pulumi destroy` because the latter
+        # would make it impossible for us to retrieve a summary of the operation
+        # above for returning to the caller.
+        if remove:
+            self.workspace.remove_stack(self.name)
+
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
+
+    def import_resources(
+        self,
+        message: Optional[str] = None,
+        resources: Optional[List[ImportResource]] = None,
+        name_table: Optional[Dict[str, str]] = None,
+        protect: Optional[bool] = None,
+        generate_code: Optional[bool] = None,
+        converter: Optional[str] = None,
+        converter_args: Optional[List[str]] = None,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = True,
+    ) -> ImportResult:
+        """
+        Imports resources into the stack.
+
+        :param message: Message to associate with the import operation.
+        :param resources: The resources to import.
+        :param nameTable:
+            The name table maps language names to parent and provider URNs.
+            These names are used in the generated definitions,
+            and should match the corresponding declarations
+            in the source program. This table is required if any parents or providers are \
+            specified by the resources to import.
+        :param protect: Whether to protect the imported resources so that they are not deleted
+        :param generate_code: Whether to generate code for the imported resources
+        :param converter: The converter plugin to use for the import operation
+        :param converter_args: Additional arguments to pass to the converter plugin
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the ImportResult summary.
+        """
+        args = ["import", "--yes", "--skip-preview"]
+        if message is not None:
+            args.extend(["--message", message])
+
+        with tempfile.TemporaryDirectory(prefix="pulumi-import-") as temp_dir:
+            if resources is not None:
+                import_file_path = os.path.join(temp_dir, "import.json")
+                with open(import_file_path, mode="w", encoding="utf-8") as import_file:
+                    contents = {"resources": resources, "nameTable": name_table}
+                    json.dump(contents, import_file)
+                    args.extend(["--file", import_file_path])
+
+            if protect is not None:
+                value = "true" if protect else "false"
+                args.append(f"--protect={value}")
+
+            generated_code_path = os.path.join(temp_dir, "generated_code.txt")
+            if generate_code is False:
+                args.append("--generate-code=false")
+            else:
+                args.append(f"--out={generated_code_path}")
+
+            if converter is not None:
+                args.extend(["--from", converter])
+                if converter_args is not None:
+                    args.append("--")
+                    args.extend(converter_args)
+
+            import_result = self._run_pulumi_cmd_sync(args, on_output)
+            summary = self.info(show_secrets and not self._remote)
+            generated_code = ""
+            if generate_code is not False:
+                with open(generated_code_path, mode="r", encoding="utf-8") as codeFile:
+                    generated_code = codeFile.read()
+
+            assert summary is not None
+            return ImportResult(
+                stdout=import_result.stdout,
+                stderr=import_result.stderr,
+                generated_code=generated_code,
+                summary=summary,
+            )
 
     def add_environments(self, *environment_names: str) -> None:
         """
@@ -875,10 +1032,13 @@ def _parse_extra_args(**kwargs) -> List[str]:
     log_verbosity: Optional[int] = kwargs.get("log_verbosity")
     log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
     tracing: Optional[str] = kwargs.get("tracing")
+    exclude_protected: Optional[bool] = kwargs.get("exclude_protected")
     debug: Optional[bool] = kwargs.get("debug")
     suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
     suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
+    attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
+    refresh: Optional[bool] = kwargs.get("refresh")
 
     if message:
         extra_args.extend(["--message", message])
@@ -912,6 +1072,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--logtostderr"])
     if tracing:
         extra_args.extend(["--tracing", tracing])
+    if exclude_protected:
+        extra_args.extend(["--exclude-protected"])
     if debug:
         extra_args.extend(["--debug"])
     if suppress_outputs:
@@ -920,6 +1082,10 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--suppress-progress"])
     if continue_on_error:
         extra_args.extend(["--continue-on-error"])
+    if attach_debugger:
+        extra_args.extend(["--attach-debugger"])
+    if refresh:
+        extra_args.extend(["--refresh"])
     return extra_args
 
 

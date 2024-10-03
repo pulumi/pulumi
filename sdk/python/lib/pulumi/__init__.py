@@ -36,12 +36,19 @@ from .config import (
     ConfigTypeError,
 )
 
+from .deprecated import (
+    deprecated,
+)
+
 from .errors import (
     RunError,
 )
 
 from .invoke import (
     InvokeOptions,
+    InvokeTransform,
+    InvokeTransformArgs,
+    InvokeTransformResult,
 )
 
 from .metadata import (
@@ -117,10 +124,15 @@ __all__ = [
     "Config",
     "ConfigMissingError",
     "ConfigTypeError",
+    # deprecated
+    "deprecated",
     # errors
     "RunError",
     # invoke
     "InvokeOptions",
+    "InvokeTransform",
+    "InvokeTransformArgs",
+    "InvokeTransformResult",
     # metadata
     "get_organization",
     "get_project",

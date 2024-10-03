@@ -7,6 +7,14 @@ import typing
 # Export this package's modules as members:
 from .component import *
 from .provider import *
+
+# Make subpackages available:
+if typing.TYPE_CHECKING:
+    import pulumi_example.local as __local
+    local = __local
+else:
+    local = _utilities.lazy_import('pulumi_example.local')
+
 _utilities.register(
     resource_modules="""
 [

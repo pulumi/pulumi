@@ -50,7 +50,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		zones, err := aws.GetAvailabilityZones(ctx, nil, nil)
+		zones, err := aws.GetAvailabilityZones(ctx, &aws.GetAvailabilityZonesArgs{}, nil)
 		if err != nil {
 			return err
 		}
@@ -60,10 +60,10 @@ func main() {
 				AssignIpv6AddressOnCreation: pulumi.Bool(false),
 				VpcId:                       eksVpc.ID(),
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
-				CidrBlock:                   pulumi.String(fmt.Sprintf("10.100.%v.0/24", key0)),
+				CidrBlock:                   pulumi.Sprintf("10.100.%v.0/24", key0),
 				AvailabilityZone:            pulumi.String(val0),
 				Tags: pulumi.StringMap{
-					"Name": pulumi.String(fmt.Sprintf("pulumi-sn-%v", val0)),
+					"Name": pulumi.Sprintf("pulumi-sn-%v", val0),
 				},
 			})
 			if err != nil {

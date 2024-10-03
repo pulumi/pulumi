@@ -16,7 +16,7 @@ import unittest
 from typing import Optional
 
 import pulumi
-import pulumi._types as _types
+from pulumi import _types
 
 
 CAMEL_TO_SNAKE_CASE_TABLE = {
@@ -65,7 +65,7 @@ class MyDeclaredPropertiesOutputType:
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str:
+    def first_value(self) -> str:  # type: ignore
         """First value docstring."""
         ...
 
@@ -87,7 +87,7 @@ class MyDeclaredPropertiesOutputTypeDict(dict):
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str:
+    def first_value(self) -> str:  # type: ignore
         """First value docstring."""
         ...
 
@@ -109,7 +109,7 @@ class MyDeclaredPropertiesOutputTypeTranslated:
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str:
+    def first_value(self) -> str:  # type: ignore
         """First value docstring."""
         ...
 
@@ -134,7 +134,7 @@ class MyDeclaredPropertiesOutputTypeDictTranslated(dict):
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str:
+    def first_value(self) -> str:  # type: ignore
         """First value docstring."""
         ...
 

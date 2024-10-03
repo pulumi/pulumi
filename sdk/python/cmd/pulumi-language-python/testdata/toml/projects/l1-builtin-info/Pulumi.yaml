@@ -1,0 +1,6 @@
+name: l1-builtin-info
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv

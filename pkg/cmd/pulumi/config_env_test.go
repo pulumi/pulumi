@@ -28,15 +28,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-func cleanStdout(s string) string {
-	return strings.ReplaceAll(stripansi.Strip(s), "\r", "")
-}
 
 func newConfigEnvCmdForTest(
 	stdin io.Reader,
@@ -72,6 +69,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	createEnvironment func(
 		ctx context.Context,
 		org string,
+		project string,
 		name string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error),
@@ -88,15 +86,19 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		stdout:      stdout,
 		interactive: true,
 
-		readProject: func() (*workspace.Project, string, error) {
-			p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
-			if err != nil {
-				return nil, "", err
-			}
-			return p, "", nil
+		ws: &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
+				if err != nil {
+					return nil, "", err
+				}
+				return p, "", nil
+			},
 		},
 		requireStack: func(
 			ctx context.Context,
+			ws pkgWorkspace.Context,
+			lm backend.LoginManager,
 			stackName string,
 			lopt stackLoadOption,
 			opts display.Options,
@@ -201,6 +203,7 @@ func newConfigEnvCmdForInitTest(
 		func(
 			ctx context.Context,
 			org string,
+			project string,
 			name string,
 			yaml []byte,
 		) (apitype.EnvironmentDiagnostics, error) {
@@ -208,7 +211,7 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, envs)
+			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -225,10 +228,19 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, envs)
+			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},
 		newStackYAML,
 	)
+}
+
+// The library sending the confirmation prompt may be able to print the prompt
+// in full before recognizing the character we send to stdin for the test.
+// There's nothing really wrong with that other than it makes the tests flake.
+// This cleans the extra output from stdout in case it happens, as it either
+// happening or not happening is fine.
+func cleanStdoutIncludingPrompt(stdout string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
 }

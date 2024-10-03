@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -102,7 +103,9 @@ type searchCmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 type orgSearchCmd struct {
@@ -133,12 +136,13 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 		Type:          display.DisplayQuery,
 	}
 	// Try to read the current project
-	project, _, err := readProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, project, opts.Display)
+	backend, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
 	if err != nil {
 		return err
 	}
@@ -146,7 +150,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
 	if err != nil {
 		return err
 	}
@@ -190,7 +194,7 @@ func newSearchCmd() *cobra.Command {
 		Short: "Search for resources in Pulumi Cloud",
 		Long:  "Search for resources in Pulumi Cloud.",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {
 				return cmd.Help()

@@ -37,11 +37,16 @@ import {
     URN,
     rootStackResource,
 } from "../resource";
+import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
+
 import { mapAliasesForRequest } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-/** @internal */
+/**
+ * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+ *
+ * @internal
+ */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
@@ -49,6 +54,8 @@ type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 export interface ICallbackServer {
     registerTransform(callback: ResourceTransform): Promise<callproto.Callback>;
     registerStackTransform(callback: ResourceTransform): void;
+    registerStackInvokeTransform(callback: InvokeTransform): void;
+    registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
     shutdown(): void;
     // Wait for any pendind registerStackTransform calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -373,12 +380,113 @@ export class CallbackServer implements ICallbackServer {
         this.registerTransform(transform)
             .then(
                 (req) => {
-                    this._monitor.registerStackTransform(req, (err, _) => {
-                        if (err !== null) {
-                            // Remove this from the list of callbacks given we didn't manage to actually register it.
-                            this._callbacks.delete(req.getToken());
-                            return;
-                        }
+                    return new Promise((resolve, reject) => {
+                        this._monitor.registerStackTransform(req, (err, _) => {
+                            if (err !== null) {
+                                // Remove this from the list of callbacks given we didn't manage to actually register it.
+                                this._callbacks.delete(req.getToken());
+                                reject();
+                            } else {
+                                resolve();
+                            }
+                        });
+                    });
+                },
+                (err) => log.error(`failed to register stack transform: ${err}`),
+            )
+            .finally(() => {
+                this._pendingRegistrations--;
+                if (this._pendingRegistrations === 0) {
+                    const queue = this._awaitQueue;
+                    this._awaitQueue = [];
+                    for (const waiter of queue) {
+                        waiter();
+                    }
+                }
+            });
+    }
+
+    async registerStackInvokeTransformAsync(transform: InvokeTransform): Promise<callproto.Callback> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            const request = resproto.TransformInvokeRequest.deserializeBinary(bytes);
+
+            let opts = request.getOptions() || new resproto.TransformInvokeOptions();
+
+            const ropts: InvokeOptions = {};
+            ropts.pluginDownloadURL = opts.getPluginDownloadUrl() !== "" ? opts.getPluginDownloadUrl() : undefined;
+            ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
+            ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
+
+            const invokeArgs = request.getArgs();
+
+            const args: InvokeTransformArgs = {
+                token: request.getToken(),
+                args: invokeArgs === undefined ? {} : deserializeProperties(invokeArgs),
+                opts: ropts,
+            };
+
+            const result = await transform(args);
+
+            const response = new resproto.TransformInvokeResponse();
+            if (result === undefined) {
+                response.setArgs(request.getArgs());
+                response.setOptions(request.getOptions());
+            } else {
+                const margs = await serializeProperties("args", result.args);
+                response.setArgs(gstruct.Struct.fromJavaScript(margs));
+
+                // Copy the options over.
+                if (result.opts !== undefined) {
+                    opts = new resproto.TransformInvokeOptions();
+
+                    if (result.opts.pluginDownloadURL !== undefined) {
+                        opts.setPluginDownloadUrl(result.opts.pluginDownloadURL);
+                    }
+                    if (result.opts.provider !== undefined) {
+                        const providerURN = await result.opts.provider.urn.promise();
+                        const providerID = (await result.opts.provider.id.promise()) || unknownValue;
+                        opts.setProvider(`${providerURN}::${providerID}`);
+                    }
+                    if (result.opts.version !== undefined) {
+                        opts.setVersion(result.opts.version);
+                    }
+
+                    response.setOptions(opts);
+                }
+            }
+            return response;
+        };
+        const tryCb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            try {
+                return await cb(bytes);
+            } catch (e) {
+                throw new Error(`transform failed: ${e}`);
+            }
+        };
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, tryCb);
+        const req = new Callback();
+        req.setToken(uuid);
+        req.setTarget(await this._target);
+        return req;
+    }
+
+    registerStackInvokeTransform(transform: InvokeTransform): void {
+        this._pendingRegistrations++;
+
+        this.registerStackInvokeTransformAsync(transform)
+            .then(
+                (req) => {
+                    return new Promise((resolve, reject) => {
+                        this._monitor.registerStackInvokeTransform(req, (err, _) => {
+                            if (err !== null) {
+                                // Remove this from the list of callbacks given we didn't manage to actually register it.
+                                this._callbacks.delete(req.getToken());
+                                reject();
+                            } else {
+                                resolve();
+                            }
+                        });
                     });
                 },
                 (err) => log.error(`failed to register stack transform: ${err}`),

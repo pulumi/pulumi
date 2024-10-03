@@ -414,7 +414,11 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
 func (pc *Client) CreateStack(
-	ctx context.Context, stackID StackIdentifier, tags map[apitype.StackTagName]string, teams []string,
+	ctx context.Context,
+	stackID StackIdentifier,
+	tags map[apitype.StackTagName]string,
+	teams []string,
+	state *apitype.UntypedDeployment,
 ) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
@@ -431,6 +435,7 @@ func (pc *Client) CreateStack(
 		StackName: stackID.Stack.String(),
 		Tags:      tags,
 		Teams:     teams,
+		State:     state,
 	}
 
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
@@ -589,8 +594,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 type CreateUpdateDetails struct {
-	Messages         []apitype.Message
-	RequiredPolicies []apitype.RequiredPolicy
+	Messages                    []apitype.Message
+	RequiredPolicies            []apitype.RequiredPolicy
+	IsCopilotIntegrationEnabled bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -665,8 +671,9 @@ func (pc *Client) CreateUpdate(
 			UpdateKind:      kind,
 			UpdateID:        updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:         updateResponse.Messages,
-			RequiredPolicies: updateResponse.RequiredPolicies,
+			Messages:                    updateResponse.Messages,
+			RequiredPolicies:            updateResponse.RequiredPolicies,
+			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
@@ -952,6 +959,10 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCl
 		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
+	}
+
 	return resp.Body, nil
 }
 
@@ -1125,6 +1136,50 @@ func (pc *Client) UpdateStackTags(
 	}
 
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+}
+
+func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
+	deployment apitype.DeploymentSettings,
+) error {
+	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
+}
+
+func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
+	stack StackIdentifier, secret string,
+) (*apitype.SecretValue, error) {
+	request := apitype.SecretValue{Value: secret}
+	response := apitype.SecretValue{}
+	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack StackIdentifier) error {
+	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
+}
+
+func (pc *Client) GetGHAppIntegration(
+	ctx context.Context, stack StackIdentifier,
+) (*apitype.GitHubAppIntegration, error) {
+	var response apitype.GitHubAppIntegration
+
+	err := pc.restCall(ctx, "GET", fmt.Sprintf("/api/console/orgs/%s/integrations/github-app",
+		stack.Owner), nil, nil, &response)
+
+	return &response, err
+}
+
+func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
+	stack StackIdentifier,
+) (*apitype.DeploymentSettings, error) {
+	var response apitype.DeploymentSettings
+
+	err := pc.restCall(ctx, "GET", getStackPath(stack, "deployments", "settings"), nil, nil, &response)
+
+	return &response, err
 }
 
 func getDeploymentPath(stack StackIdentifier, components ...string) string {

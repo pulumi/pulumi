@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -32,9 +33,10 @@ type callbackFunction = func(ctx context.Context, req []byte) (proto.Message, er
 type callbackServer struct {
 	pulumirpc.UnsafeCallbacksServer
 
-	stop      chan bool
-	handle    rpcutil.ServeHandle
-	functions map[string]callbackFunction
+	stop          chan bool
+	handle        rpcutil.ServeHandle
+	functions     map[string]callbackFunction
+	functionsLock sync.RWMutex
 }
 
 func newCallbackServer() (*callbackServer, error) {
@@ -65,6 +67,8 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 		return nil, err
 	}
 	uuidString := uuid.String()
+	s.functionsLock.Lock()
+	defer s.functionsLock.Unlock()
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
 		Token:  uuidString,
@@ -75,7 +79,9 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 func (s *callbackServer) Invoke(
 	ctx context.Context, req *pulumirpc.CallbackInvokeRequest,
 ) (*pulumirpc.CallbackInvokeResponse, error) {
+	s.functionsLock.RLock()
 	function, ok := s.functions[req.Token]
+	s.functionsLock.RUnlock()
 	if !ok {
 		return nil, errors.New("callback function not found")
 	}

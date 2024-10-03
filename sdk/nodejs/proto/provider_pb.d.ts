@@ -9,9 +9,126 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
+export class ParameterizeRequest extends jspb.Message { 
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): ParameterizeRequest.ParametersArgs | undefined;
+    setArgs(value?: ParameterizeRequest.ParametersArgs): ParameterizeRequest;
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): ParameterizeRequest.ParametersValue | undefined;
+    setValue(value?: ParameterizeRequest.ParametersValue): ParameterizeRequest;
+
+    getParametersCase(): ParameterizeRequest.ParametersCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ParameterizeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ParameterizeRequest): ParameterizeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ParameterizeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ParameterizeRequest;
+    static deserializeBinaryFromReader(message: ParameterizeRequest, reader: jspb.BinaryReader): ParameterizeRequest;
+}
+
+export namespace ParameterizeRequest {
+    export type AsObject = {
+        args?: ParameterizeRequest.ParametersArgs.AsObject,
+        value?: ParameterizeRequest.ParametersValue.AsObject,
+    }
+
+
+    export class ParametersArgs extends jspb.Message { 
+        clearArgsList(): void;
+        getArgsList(): Array<string>;
+        setArgsList(value: Array<string>): ParametersArgs;
+        addArgs(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ParametersArgs.AsObject;
+        static toObject(includeInstance: boolean, msg: ParametersArgs): ParametersArgs.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ParametersArgs, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ParametersArgs;
+        static deserializeBinaryFromReader(message: ParametersArgs, reader: jspb.BinaryReader): ParametersArgs;
+    }
+
+    export namespace ParametersArgs {
+        export type AsObject = {
+            argsList: Array<string>,
+        }
+    }
+
+    export class ParametersValue extends jspb.Message { 
+        getName(): string;
+        setName(value: string): ParametersValue;
+        getVersion(): string;
+        setVersion(value: string): ParametersValue;
+        getValue(): Uint8Array | string;
+        getValue_asU8(): Uint8Array;
+        getValue_asB64(): string;
+        setValue(value: Uint8Array | string): ParametersValue;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ParametersValue.AsObject;
+        static toObject(includeInstance: boolean, msg: ParametersValue): ParametersValue.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ParametersValue, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ParametersValue;
+        static deserializeBinaryFromReader(message: ParametersValue, reader: jspb.BinaryReader): ParametersValue;
+    }
+
+    export namespace ParametersValue {
+        export type AsObject = {
+            name: string,
+            version: string,
+            value: Uint8Array | string,
+        }
+    }
+
+
+    export enum ParametersCase {
+        PARAMETERS_NOT_SET = 0,
+        ARGS = 1,
+        VALUE = 2,
+    }
+
+}
+
+export class ParameterizeResponse extends jspb.Message { 
+    getName(): string;
+    setName(value: string): ParameterizeResponse;
+    getVersion(): string;
+    setVersion(value: string): ParameterizeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ParameterizeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ParameterizeResponse): ParameterizeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ParameterizeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ParameterizeResponse;
+    static deserializeBinaryFromReader(message: ParameterizeResponse, reader: jspb.BinaryReader): ParameterizeResponse;
+}
+
+export namespace ParameterizeResponse {
+    export type AsObject = {
+        name: string,
+        version: string,
+    }
+}
+
 export class GetSchemaRequest extends jspb.Message { 
     getVersion(): number;
     setVersion(value: number): GetSchemaRequest;
+    getSubpackageName(): string;
+    setSubpackageName(value: string): GetSchemaRequest;
+    getSubpackageVersion(): string;
+    setSubpackageVersion(value: string): GetSchemaRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetSchemaRequest.AsObject;
@@ -26,6 +143,8 @@ export class GetSchemaRequest extends jspb.Message {
 export namespace GetSchemaRequest {
     export type AsObject = {
         version: number,
+        subpackageName: string,
+        subpackageVersion: string,
     }
 }
 
@@ -311,13 +430,13 @@ export class CallResponse extends jspb.Message {
     clearReturn(): void;
     getReturn(): google_protobuf_struct_pb.Struct | undefined;
     setReturn(value?: google_protobuf_struct_pb.Struct): CallResponse;
-
-    getReturndependenciesMap(): jspb.Map<string, CallResponse.ReturnDependencies>;
-    clearReturndependenciesMap(): void;
     clearFailuresList(): void;
     getFailuresList(): Array<CheckFailure>;
     setFailuresList(value: Array<CheckFailure>): CallResponse;
     addFailures(value?: CheckFailure, index?: number): CheckFailure;
+
+    getReturndependenciesMap(): jspb.Map<string, CallResponse.ReturnDependencies>;
+    clearReturndependenciesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallResponse.AsObject;
@@ -332,9 +451,9 @@ export class CallResponse extends jspb.Message {
 export namespace CallResponse {
     export type AsObject = {
         pb_return?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<CheckFailure.AsObject>,
 
         returndependenciesMap: Array<[string, CallResponse.ReturnDependencies.AsObject]>,
-        failuresList: Array<CheckFailure.AsObject>,
     }
 
 
@@ -379,6 +498,10 @@ export class CheckRequest extends jspb.Message {
     getRandomseed_asU8(): Uint8Array;
     getRandomseed_asB64(): string;
     setRandomseed(value: Uint8Array | string): CheckRequest;
+    getName(): string;
+    setName(value: string): CheckRequest;
+    getType(): string;
+    setType(value: string): CheckRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
@@ -396,6 +519,8 @@ export namespace CheckRequest {
         olds?: google_protobuf_struct_pb.Struct.AsObject,
         news?: google_protobuf_struct_pb.Struct.AsObject,
         randomseed: Uint8Array | string,
+        name: string,
+        type: string,
     }
 }
 
@@ -474,6 +599,10 @@ export class DiffRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): DiffRequest;
+    getName(): string;
+    setName(value: string): DiffRequest;
+    getType(): string;
+    setType(value: string): DiffRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DiffRequest.AsObject;
@@ -493,6 +622,8 @@ export namespace DiffRequest {
         news?: google_protobuf_struct_pb.Struct.AsObject,
         ignorechangesList: Array<string>,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -594,6 +725,10 @@ export class CreateRequest extends jspb.Message {
     setTimeout(value: number): CreateRequest;
     getPreview(): boolean;
     setPreview(value: boolean): CreateRequest;
+    getName(): string;
+    setName(value: string): CreateRequest;
+    getType(): string;
+    setType(value: string): CreateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateRequest.AsObject;
@@ -611,6 +746,8 @@ export namespace CreateRequest {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         timeout: number,
         preview: boolean,
+        name: string,
+        type: string,
     }
 }
 
@@ -655,6 +792,10 @@ export class ReadRequest extends jspb.Message {
     clearInputs(): void;
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ReadRequest;
+    getName(): string;
+    setName(value: string): ReadRequest;
+    getType(): string;
+    setType(value: string): ReadRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadRequest.AsObject;
@@ -672,6 +813,8 @@ export namespace ReadRequest {
         urn: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -735,6 +878,10 @@ export class UpdateRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): UpdateRequest;
+    getName(): string;
+    setName(value: string): UpdateRequest;
+    getType(): string;
+    setType(value: string): UpdateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateRequest.AsObject;
@@ -756,6 +903,8 @@ export namespace UpdateRequest {
         ignorechangesList: Array<string>,
         preview: boolean,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 
@@ -799,6 +948,10 @@ export class DeleteRequest extends jspb.Message {
     clearOldInputs(): void;
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): DeleteRequest;
+    getName(): string;
+    setName(value: string): DeleteRequest;
+    getType(): string;
+    setType(value: string): DeleteRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeleteRequest.AsObject;
@@ -817,6 +970,8 @@ export namespace DeleteRequest {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         timeout: number,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        name: string,
+        type: string,
     }
 }
 

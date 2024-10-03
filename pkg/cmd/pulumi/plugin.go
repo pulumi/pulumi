@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -55,13 +56,13 @@ func newPluginCmd() *cobra.Command {
 
 // getProjectPlugins fetches a list of plugins used by this project.
 func getProjectPlugins() ([]workspace.PluginSpec, error) {
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 }
 
 func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
-	proj, root, err := readProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, false, nil, nil)
+	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -104,10 +105,6 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	for _, plugin := range plugins {
 		info, err := workspace.GetPluginInfo(d, plugin.Kind, plugin.Name, plugin.Version, ctx.Host.GetProjectPlugins())
 		if err != nil {
-			err = info.SetFileMetadata(info.Path)
-			if err != nil {
-				return nil, err
-			}
 			contract.IgnoreError(err)
 		}
 		if info != nil {

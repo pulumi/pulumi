@@ -1,6 +1,21 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lifecycletest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
@@ -24,27 +39,33 @@ func TestResourceReferences(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := "created-id"
-					if preview {
+					if req.Preview {
 						id = ""
 					}
 
-					if urn.Name() == "resC" {
-						assert.True(t, news.DeepEquals(resource.PropertyMap{
+					if req.URN.Name() == "resC" {
+						assert.True(t, req.Properties.DeepEquals(resource.PropertyMap{
 							"resA": resource.MakeComponentResourceReference(urnA, ""),
 							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 						}))
 					}
 
-					return resource.ID(id), news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
 			return v, nil
@@ -81,7 +102,8 @@ func TestResourceReferences(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -99,28 +121,34 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := "created-id"
-					if preview {
+					if req.Preview {
 						id = ""
 					}
 
 					state := resource.PropertyMap{}
-					if urn.Name() == "resC" {
+					if req.URN.Name() == "resC" {
 						state = resource.PropertyMap{
 							"resA": resource.MakeComponentResourceReference(urnA, ""),
 							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 						}
 					}
 
-					return resource.ID(id), state, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: state,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
 			return v, nil
@@ -155,7 +183,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -172,26 +201,32 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := "created-id"
-					if preview {
+					if req.Preview {
 						id = ""
 					}
 
 					// If we have resource references here, the engine has not properly disabled them.
-					if urn.Name() == "resC" {
-						assert.Equal(t, resource.NewStringProperty(string(urnA)), news["resA"])
-						assert.Equal(t, refB.ResourceReferenceValue().ID, news["resB"])
+					if req.URN.Name() == "resC" {
+						assert.Equal(t, resource.NewStringProperty(string(urnA)), req.Properties["resA"])
+						assert.Equal(t, refB.ResourceReferenceValue().ID, req.Properties["resB"])
 					}
 
-					return resource.ID(id), news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
 			return v, nil
@@ -231,8 +266,14 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{DisableResourceReferences: true}},
-		Steps:   MakeBasicLifecycleSteps(t, 4),
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			UpdateOptions:    UpdateOptions{DisableResourceReferences: true},
+			SkipDisplayTests: true,
+		},
+		Steps: MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -245,19 +286,25 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := "created-id"
-					if preview {
+					if req.Preview {
 						id = ""
 					}
-					return resource.ID(id), news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
 			return v, nil
@@ -281,7 +328,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 			"urn": resource.NewStringProperty(string(resp.URN)),
-		}, "", "")
+		}, "", "", "")
 		assert.NoError(t, err)
 		assert.Empty(t, failures)
 		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])
@@ -295,7 +342,8 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)

@@ -321,7 +321,7 @@ func fixupPath(env []string, pulumiBin string) []string {
 	pathIndex := -1
 	for i, e := range env {
 		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
-		if strings.EqualFold(e[0:5], "PATH=") {
+		if len(e) >= 5 && strings.EqualFold(e[0:5], "PATH=") {
 			pathIndex = i
 			break
 		}

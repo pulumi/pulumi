@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -63,9 +68,9 @@ class TypeUses(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArgs']]] = None,
-                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArgs']]] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArgs']]] = None,
+                 bar: Optional[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]] = None,
+                 baz: Optional[pulumi.Input[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]] = None,
+                 foo: Optional[pulumi.Input[Union['ObjectArgs', 'ObjectArgsDict']]] = None,
                  __props__=None):
         """
         Create a TypeUses resource with the given unique name, props, and options.
@@ -95,9 +100,9 @@ class TypeUses(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArgs']]] = None,
-                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArgs']]] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArgs']]] = None,
+                 bar: Optional[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]] = None,
+                 baz: Optional[pulumi.Input[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]] = None,
+                 foo: Optional[pulumi.Input[Union['ObjectArgs', 'ObjectArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

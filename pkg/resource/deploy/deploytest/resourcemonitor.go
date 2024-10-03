@@ -99,6 +99,7 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 		if err != nil {
 			return nil, err
 		}
+		//nolint:gosec // ParseInt will return an error if the size is too large.
 		pos.Line = int32(l)
 	}
 	if col != "" {
@@ -106,6 +107,7 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 		if err != nil {
 			return nil, err
 		}
+		//nolint:gosec // ParseInt will return an error if the size is too large.
 		pos.Column = int32(c)
 	}
 
@@ -153,6 +155,7 @@ type ResourceOptions struct {
 	Transforms []*pulumirpc.Callback
 
 	SupportsResultReporting bool
+	PackageRef              string
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -283,6 +286,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SourcePosition:             sourcePosition,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
+		PackageRef:                 opts.PackageRef,
 	}
 
 	ctx := context.Background()
@@ -338,7 +342,7 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 }
 
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider, version, sourcePosition string,
+	inputs resource.PropertyMap, provider, version, sourcePosition string, packageRef string,
 ) (resource.URN, resource.PropertyMap, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -367,6 +371,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		Properties:     ins,
 		Version:        version,
 		SourcePosition: sourcePos,
+		PackageRef:     packageRef,
 	})
 	if err != nil {
 		return "", nil, err
@@ -382,7 +387,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 }
 
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
-	provider string, version string,
+	provider string, version string, packageRef string,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -395,10 +400,11 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
-		Tok:      string(tok),
-		Provider: provider,
-		Args:     ins,
-		Version:  version,
+		Tok:        string(tok),
+		Provider:   provider,
+		Args:       ins,
+		Version:    version,
+		PackageRef: packageRef,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -420,7 +426,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 
 func (rm *ResourceMonitor) Call(
 	tok tokens.ModuleMember, args resource.PropertyMap, argDependencies map[resource.PropertyKey][]resource.URN,
-	provider string, version string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
+	provider string, version string, packageRef string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
 	[]*pulumirpc.CheckFailure, error,
 ) {
 	// marshal inputs
@@ -452,6 +458,7 @@ func (rm *ResourceMonitor) Call(
 		Args:            mArgs,
 		ArgDependencies: mArgDependencies,
 		Version:         version,
+		PackageRef:      packageRef,
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -484,6 +491,27 @@ func (rm *ResourceMonitor) Call(
 func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) error {
 	_, err := rm.resmon.RegisterStackTransform(context.Background(), callback)
 	return err
+}
+
+func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Callback) error {
+	_, err := rm.resmon.RegisterStackInvokeTransform(context.Background(), callback)
+	return err
+}
+
+func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, checksums map[string][]byte,
+	parameterization *pulumirpc.Parameterization,
+) (string, error) {
+	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
+		Name:             pkg,
+		Version:          version,
+		DownloadUrl:      downloadURL,
+		Checksums:        checksums,
+		Parameterization: parameterization,
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Ref, nil
 }
 
 func prepareTestTimeout(timeout float64) string {

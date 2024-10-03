@@ -1,6 +1,21 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lifecycletest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
@@ -31,7 +46,7 @@ func TestDuplicateURN(t *testing.T) {
 		assert.Error(t, err)
 
 		// Reads use the same URN namespace as register so make sure this also errors
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
 
 		return nil
@@ -39,7 +54,7 @@ func TestDuplicateURN(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -69,12 +84,12 @@ func TestDuplicateAlias(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -90,7 +105,7 @@ func TestDuplicateAlias(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 }
 
@@ -100,13 +115,15 @@ func TestSecretMasked(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
-					return "id", resource.PropertyMap{
-						"shouldBeSecret": resource.NewStringProperty("bar"),
-					}, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID: "id",
+						Properties: resource.PropertyMap{
+							"shouldBeSecret": resource.NewStringProperty("bar"),
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -125,7 +142,8 @@ func TestSecretMasked(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
@@ -145,16 +163,19 @@ func TestReadReplaceStep(t *testing.T) {
 	// Create resource.
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
-				return "created-id", news, resource.StatusOK, nil
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "created-id",
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 			assert.NotNil(t, snap)
@@ -167,16 +188,18 @@ func TestReadReplaceStep(t *testing.T) {
 			// ReadReplace resource.
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, false).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -195,18 +218,20 @@ func TestRelinquishStep(t *testing.T) {
 	const resourceID = "my-resource-id"
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-				preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				// Should match the ReadResource resource ID.
-				return resourceID, news, resource.StatusOK, nil
+				return plugin.CreateResponse{
+					ID:         resourceID,
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
@@ -216,19 +241,18 @@ func TestRelinquishStep(t *testing.T) {
 
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(urn resource.URN, id resource.ID,
-						inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{
-							Outputs: resource.PropertyMap{},
-						}, resource.StatusOK, nil
+					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -246,19 +270,18 @@ func TestTakeOwnershipStep(t *testing.T) {
 
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(urn resource.URN, id resource.ID,
-				inputs, state resource.PropertyMap,
-			) (plugin.ReadResult, resource.Status, error) {
-				return plugin.ReadResult{
-					Outputs: resource.PropertyMap{},
-				}, resource.StatusOK, nil
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", "")
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 
@@ -271,18 +294,20 @@ func TestTakeOwnershipStep(t *testing.T) {
 			// Create new resource for this snapshot.
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-						preview bool,
-					) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						// Should match the ReadF resource ID.
-						return "my-resource-id", news, resource.StatusOK, nil
+						return plugin.CreateResponse{
+							ID:         "my-resource-id",
+							Properties: req.Properties,
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 					_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -321,17 +346,19 @@ func TestInitErrorsStep(t *testing.T) {
 		},
 	}).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-				preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
-				return "my-resource-id", news, resource.StatusOK, nil
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "my-resource-id",
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 
@@ -349,18 +376,16 @@ func TestReadNilOutputs(t *testing.T) {
 	const resourceID = "my-resource-id"
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(urn resource.URN, id resource.ID,
-				inputs, state resource.PropertyMap,
-			) (plugin.ReadResult, resource.Status, error) {
-				return plugin.ReadResult{}, resource.StatusOK, nil
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
 			assert.ErrorContains(t, err, "resource 'my-resource-id' does not exist")
 
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.ErrorContains(t, err,
 				"BAIL: step executor errored: step application failed: resource 'my-resource-id' does not exist")

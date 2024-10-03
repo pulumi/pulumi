@@ -18,6 +18,7 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,17 +88,20 @@ func TestEngineEvents(t *testing.T) {
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)
 
-			// Ensure that we have two "ResourcePre" events: one for the stack and one for our resource.
+			// Ensure that we have three "ResourcePre" events: one for the stack and one for our resource
+			// and one for the provider
 			preEventResourceTypes := []string{}
 			for _, e := range stackInfo.Events {
 				if e.ResourcePreEvent != nil {
+					fmt.Println(e.ResourcePreEvent.Metadata.Type)
 					preEventResourceTypes = append(preEventResourceTypes, e.ResourcePreEvent.Metadata.Type)
 				}
 			}
 
-			assert.Equal(t, 2, len(preEventResourceTypes))
+			assert.Equal(t, 3, len(preEventResourceTypes))
 			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
+			assert.Contains(t, preEventResourceTypes, "pulumi:providers:pulumi-nodejs")
 		},
 	})
 }
@@ -118,11 +122,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_abs")
 
 		// write a new Pulumi.yaml using the absolute path of the environment as "main"
@@ -148,11 +148,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
@@ -187,11 +183,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -326,11 +318,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 func TestStackOutputsJSON(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -870,7 +858,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	}
 
 	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
-	if azureKeyVault == "" {
+	if gcpKmsKey == "" {
 		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
 	}
 
@@ -1384,6 +1372,19 @@ func TestESMTSCompiled(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestMainOverridesPackageJSON(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "main-overrides-package-json"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+			assert.Equal(t, "This is the entrypoint from Pulumi.yaml", stack.Outputs["text"])
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNpmWorkspace(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.
@@ -1498,11 +1499,77 @@ func TestNestedPackageJSON(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
 	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
 
-	// There is no node_modules directory in the parent directory
-	parent := filepath.Dir(dir)
-	_, err := os.Stat(filepath.Join(parent, "node_modules"))
+	// There is no node_modules directory in the test directory (parent of program dir)
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules"))
 	require.True(t, os.IsNotExist(err))
 
+	// node_modules was created inside the program directory
+	_, err = os.Stat(filepath.Join(pt.GetTmpDir(), "infra", "node_modules"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPnpmWorkspace(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with pnpm
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "pnpm-workspace"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules", ".pnpm"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestInstallWithMain(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works for projects
+		// with a `main` property.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:            filepath.Join("nodejs", "pulumi-main"),
+		Quick:          true,
+		PrepareProject: preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
@@ -1556,6 +1623,15 @@ func TestCodePathsWorkspaceTSC(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsNoDependencies(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "codepaths-no-dependencies"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
 // Test that the resource stopwatch doesn't contain a negative time.
 func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
@@ -1565,11 +1641,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 
 	dir := filepath.Join("empty", "nodejs")
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -1595,11 +1667,7 @@ func TestAboutNodeJS(t *testing.T) {
 
 	dir := filepath.Join("about", "nodejs")
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -1626,11 +1694,7 @@ func TestTSConfigOption(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -1700,8 +1764,6 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourceNode(t *testing.T) {
-	t.Skip() // TODO[pulumi/pulumi#11677]
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("resource_refs_get_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -1983,6 +2045,86 @@ func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
 			}
 
 			assert.True(t, noError, "An error occurred when testing shadowing of reserved identifiers")
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodeOOM(t *testing.T) {
+	stderr := &bytes.Buffer{}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "oom"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("stdout: %s", stderr.String())
+			assert.Contains(t, stderr.String(), "Detected a possible out of memory error")
+		},
+	})
+}
+
+// Test a parameterized provider with nodejs.
+//
+//nolint:paralleltest // mutates environment
+func TestParameterizedNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	// Enable MultiArgumentInputs in the testprovider/echo schema
+	t.Setenv("PULUMI_TEST_MULTI_ARGUMENT_INPUTS", "true")
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("nodejs/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("nodejs", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "nodejs", "--local")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Verbose:       true,
+		DebugLogLevel: 10,
+		Dir:           filepath.Join("nodejs", "parameterized"),
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		NoParallel: true,
+		PrePrepareProject: func(project *engine.Projinfo) error {
+			// Patch up the local SDK's package.json so its pulumi dependency points to the local core SDK
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			if err != nil {
+				return err
+			}
+			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
+
+			fmt.Println("coreSDK", coreSDK)
+			fmt.Println("packagejson", packageJSON)
+
+			data, err := os.ReadFile(packageJSON)
+			if err != nil {
+				return err
+			}
+			var pkgJSON map[string]interface{}
+			err = json.Unmarshal(data, &pkgJSON)
+			if err != nil {
+				return err
+			}
+			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps["@pulumi/pulumi"] = "file:" + coreSDK
+			data, err = json.MarshalIndent(pkgJSON, "", "  ")
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(packageJSON, data, 0o600)
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 	})
 }

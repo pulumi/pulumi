@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,10 +36,13 @@ func TestRunQuery_nocreate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -53,7 +55,7 @@ func TestRunQuery_nocreate(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "Query mode does not support creating, updating, or deleting resources")
 
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
 		assert.ErrorContains(t, err, "Query mode does not support reading resources")
 		return nil
 	})
@@ -82,28 +84,30 @@ func TestRunQuery_call_invoke(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				InvokeF: func(
-					tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					name := inputs["name"]
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					name := req.Args["name"]
 					ret := "unexpected"
 					if name.IsString() {
 						ret = "Hello, " + name.StringValue() + "!"
 					}
 
-					return resource.NewPropertyMapFromMap(map[string]interface{}{
-						"message": ret,
-					}), nil, nil
+					return plugin.InvokeResponse{
+						Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
+							"message": ret,
+						}),
+					}, nil
 				},
-				CallF: func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember,
-					args resource.PropertyMap, info plugin.CallInfo, options plugin.CallOptions,
-				) (plugin.CallResult, error) {
+				CallF: func(
+					_ context.Context,
+					req plugin.CallRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
 					ret := "unexpected"
-					if args["name"].IsString() {
-						ret = "Hello, " + args["name"].StringValue() + "!"
+					if req.Args["name"].IsString() {
+						ret = "Hello, " + req.Args["name"].StringValue() + "!"
 					}
 
-					return plugin.CallResult{
+					return plugin.CallResponse{
 						Return: resource.NewPropertyMapFromMap(map[string]interface{}{
 							"message": ret,
 						}),
@@ -116,7 +120,7 @@ func TestRunQuery_call_invoke(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 			"name": resource.NewStringProperty("bar"),
-		}, nil, "", "")
+		}, nil, "", "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, (resource.PropertyMap{
 			"message": resource.NewStringProperty("Hello, bar!"),
@@ -124,7 +128,7 @@ func TestRunQuery_call_invoke(t *testing.T) {
 
 		outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
 			"name": resource.NewStringProperty("bar"),
-		}, "", "")
+		}, "", "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, (resource.PropertyMap{
 			"message": resource.NewStringProperty("Hello, bar!"),

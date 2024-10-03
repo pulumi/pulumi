@@ -49,11 +49,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
@@ -501,9 +499,9 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
-			s := *state
+			s := state.Copy()
 			s.Protect = protectResources
-			resources = append(resources, &s)
+			resources = append(resources, s)
 		}
 	}
 
@@ -544,9 +542,10 @@ func newImportCmd() *cobra.Command {
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var previewOnly bool
 	var showConfig bool
 	var skipPreview bool
@@ -618,7 +617,7 @@ func newImportCmd() *cobra.Command {
 			"            {\n" +
 			"                ...\n" +
 			"            }\n" +
-			"        ]\n" +
+			"        ],\n" +
 			"    }\n" +
 			"\n" +
 			"The name table maps language names to parent and provider URNs. These names are\n" +
@@ -649,32 +648,34 @@ func newImportCmd() *cobra.Command {
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			ssml := newStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
 			if err != nil {
-				return result.FromError(fmt.Errorf("get working directory: %w", err))
+				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
 			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 			if err != nil {
-				return result.FromError(fmt.Errorf("create plugin context: %w", err))
+				return fmt.Errorf("create plugin context: %w", err)
 			}
 
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
+					return errors.New("an inline resource may not be specified in conjunction with an import file")
 				}
 				if from != "" {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf("a converter may not be specified in conjunction with an import file")
+					return errors.New("a converter may not be specified in conjunction with an import file")
 				}
 				f, err := readImportFile(importFilePath)
 				if err != nil {
-					return result.FromError(fmt.Errorf("could not read import file: %w", err))
+					return fmt.Errorf("could not read import file: %w", err)
 				}
 				importFile = f
 			} else if from != "" {
@@ -683,7 +684,7 @@ func newImportCmd() *cobra.Command {
 				}
 				converter, err := loadConverterPlugin(pCtx, from, log)
 				if err != nil {
-					return result.Errorf("load converter plugin: %w", err)
+					return fmt.Errorf("load converter plugin: %w", err)
 				}
 				defer contract.IgnoreClose(converter)
 
@@ -713,13 +714,13 @@ func newImportCmd() *cobra.Command {
 					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
 					from, nil, installProvider)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				mapperServer := convert.NewMapperServer(mapper)
 				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
@@ -727,42 +728,42 @@ func newImportCmd() *cobra.Command {
 					Args:         args,
 				})
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				printDiagnostics(sink, resp.Diagnostics)
 				if resp.Diagnostics.HasErrors() {
 					// If we've got error diagnostics then state conversion failed, we've printed the error above so
 					// just return a plain message here.
-					return result.Error("conversion failed")
+					return errors.New("conversion failed")
 				}
 
 				f, err := makeImportFileFromResourceList(resp.Resources)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 				importFile = f
 			} else {
 				msg := "an inline resource must be specified if no converter or import file is used, missing "
 				if len(args) == 0 {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "type, name, and id")
+					return errors.New(msg + "type, name, and id")
 				}
 				if len(args) == 1 {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "name and id")
+					return errors.New(msg + "name and id")
 				}
 				if len(args) == 2 {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "id")
+					return errors.New(msg + "id")
 				}
 				if len(args) > 3 {
 					contract.IgnoreError(cmd.Help())
-					return result.Errorf("only expected at most three arguments")
+					return errors.New("only expected at most three arguments")
 				}
 				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 				importFile = f
 			}
@@ -776,29 +777,29 @@ func newImportCmd() *cobra.Command {
 			if outputFilePath != "" {
 				f, err := os.Create(outputFilePath)
 				if err != nil {
-					return result.Errorf("could not open output file: %v", err)
+					return fmt.Errorf("could not open output file: %v", err)
 				}
 				defer contract.IgnoreClose(f)
 				output = f
 			}
 
 			// Fetch the project.
-			proj, root, err := readProject()
+			ws := pkgWorkspace.Instance
+			proj, root, err := ws.ReadProject()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only" +
-						" must be passed in to proceed when running in non-interactive mode"))
+				return errors.New("--yes or --skip-preview or --preview-only" +
+					" must be passed in to proceed when running in non-interactive mode")
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			displayType := display.DisplayProgress
@@ -815,6 +816,7 @@ func newImportCmd() *cobra.Command {
 				Type:             displayType,
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
+				JSONDisplay:      jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -825,9 +827,9 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(ws, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -837,14 +839,14 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			wrapper := func(
@@ -861,8 +863,6 @@ func newImportCmd() *cobra.Command {
 				programGenerator = wrapper(dotnet.GenerateProgram)
 			case "java":
 				programGenerator = wrapper(javagen.GenerateProgram)
-			case "yaml":
-				programGenerator = wrapper(yamlgen.GenerateProgram)
 			default:
 				programGenerator = func(
 					program *pcl.Program, loader schema.ReferenceLoader,
@@ -878,7 +878,7 @@ func newImportCmd() *cobra.Command {
 						return nil, nil, err
 					}
 					defer contract.IgnoreClose(pCtx.Host)
-					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+					programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
 					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 					if err != nil {
 						return nil, nil, err
@@ -891,7 +891,11 @@ func newImportCmd() *cobra.Command {
 					}
 					defer contract.IgnoreClose(grpcServer)
 
-					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr())
+					// by default, binding the PCL program for generating import definition is not strict
+					// this is because we might generate unbound variables in the generated code that reference
+					// a parent resource or a provider
+					strict := false
+					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
 					if err != nil {
 						return nil, nil, err
 					}
@@ -902,21 +906,21 @@ func newImportCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -929,17 +933,18 @@ func newImportCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:      parallel,
-				Debug:         debug,
-				UseLegacyDiff: useLegacyDiff(),
-				Experimental:  hasExperimentalCommands(),
+				Parallel:             parallel,
+				Debug:                debug,
+				UseLegacyDiff:        useLegacyDiff(),
+				UseLegacyRefreshDiff: useLegacyRefreshDiff(),
+				Experimental:         hasExperimentalCommands(),
 			}
 
-			_, res := s.Import(ctx, backend.UpdateOperation{
+			_, err = s.Import(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -953,7 +958,7 @@ func newImportCmd() *cobra.Command {
 			if generateCode {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				validImports, err := generateImportedDefinitions(
@@ -963,16 +968,16 @@ func newImportCmd() *cobra.Command {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
 						err = fmt.Errorf("internal error: %w", err)
 					}
-					return result.FromError(err)
+					return err
 				}
 
 				if validImports {
 					// we only want to output the helper string if there is a set of valid imports to convert into code
-					// this protects against invalid package types or import errors that will not actually result in
+					// this protects against invalid package types or import errors that will not actually result
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" {
+					if outputFilePath == "" && !jsonDisplay {
 						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
 							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
@@ -986,9 +991,9 @@ func newImportCmd() *cobra.Command {
 				}
 			}
 
-			if res != nil {
-				if res.Error() == context.Canceled {
-					return result.FromError(errors.New("import cancelled"))
+			if err != nil {
+				if err == context.Canceled {
+					return errors.New("import cancelled")
 				}
 
 				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
@@ -996,14 +1001,14 @@ func newImportCmd() *cobra.Command {
 				if from != "" {
 					path, err := writeImportFileToTemp(importFile)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					pCtx.Diag.Infof(diag.Message("",
 						"Generated import file written out, edit and rerun import with --file %s"),
 						path, path)
 				}
 
-				return PrintEngineResult(res)
+				return err
 			}
 			return nil
 		}),
@@ -1042,7 +1047,7 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
@@ -1051,6 +1056,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not calculate a preview before performing the import")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the import diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

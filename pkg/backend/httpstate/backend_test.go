@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -51,7 +52,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -86,7 +87,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	previous := cmdutil.FullyQualifyStackNames
@@ -105,15 +106,33 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
+		current := ""
+		mock := &pkgWorkspace.MockContext{
+			GetStoredCredentialsF: func() (workspace.Credentials, error) {
+				return workspace.Credentials{
+					Current: current,
+				}, nil
+			},
+		}
+
 		// Validate trailing slash gets cut
-		assert.Equal(t, "https://api-test1.pulumi.com", ValueOrDefaultURL("https://api-test1.pulumi.com/"))
+		assert.Equal(t, "https://api-test1.pulumi.com", ValueOrDefaultURL(mock, "https://api-test1.pulumi.com/"))
 
 		// Validate no-op case
-		assert.Equal(t, "https://api-test2.pulumi.com", ValueOrDefaultURL("https://api-test2.pulumi.com"))
+		assert.Equal(t, "https://api-test2.pulumi.com", ValueOrDefaultURL(mock, "https://api-test2.pulumi.com"))
 
 		// Validate trailing slash in pre-set env var is unchanged
 		t.Setenv("PULUMI_API", "https://api-test3.pulumi.com/")
-		assert.Equal(t, "https://api-test3.pulumi.com/", ValueOrDefaultURL(""))
+		assert.Equal(t, "https://api-test3.pulumi.com/", ValueOrDefaultURL(mock, ""))
+		t.Setenv("PULUMI_API", "")
+
+		// Validate current credentials URL is used
+		current = "https://api-test4.pulumi.com"
+		assert.Equal(t, "https://api-test4.pulumi.com", ValueOrDefaultURL(mock, ""))
+
+		// Unless the current credentials URL is a filestate url
+		current = "s3://test"
+		assert.Equal(t, "https://api.pulumi.com", ValueOrDefaultURL(mock, ""))
 	})
 }
 
@@ -224,7 +243,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
-	s, err := b.CreateStack(ctx, ref, "", nil)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
 	// make up a bad stack

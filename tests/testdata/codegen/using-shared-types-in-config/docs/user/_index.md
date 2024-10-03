@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -216,11 +216,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -260,7 +260,7 @@ example, err := credentials.NewUser(ctx, "userResource", &credentials.UserArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var userResource = new User("userResource", UserArgs.builder()        
+var userResource = new User("userResource", UserArgs.builder()
     .shared(SharedArgs.builder()
         .foo("string")
         .build())
@@ -275,9 +275,9 @@ var userResource = new User("userResource", UserArgs.builder()
 <pulumi-choosable type="language" values="python">
 
 ```python
-user_resource = credentials.User("userResource", shared=credentials.SharedArgs(
-    foo="string",
-))
+user_resource = credentials.User("userResource", shared={
+    "foo": "string",
+})
 ```
 
 </pulumi-choosable>
@@ -317,6 +317,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The User resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

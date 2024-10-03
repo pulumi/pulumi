@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -216,11 +216,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -247,9 +247,9 @@ var exampleServerResource = new Example.ExampleServer("exampleServerResource", n
 
 ```go
 example, err := example.NewExampleServer(ctx, "exampleServerResource", &example.ExampleServerArgs{
-	Properties: example.ServerPropertiesForReplica{
-		CreateMode: "Replica",
-		Version:    "string",
+	Properties: &example.ServerPropertiesForReplicaArgs{
+		CreateMode: pulumi.String("Replica"),
+		Version:    pulumi.String("string"),
 	},
 })
 ```
@@ -262,7 +262,7 @@ example, err := example.NewExampleServer(ctx, "exampleServerResource", &example.
 <pulumi-choosable type="language" values="java">
 
 ```java
-var exampleServerResource = new ExampleServer("exampleServerResource", ExampleServerArgs.builder()        
+var exampleServerResource = new ExampleServer("exampleServerResource", ExampleServerArgs.builder()
     .properties(ServerPropertiesForReplicaArgs.builder()
         .createMode("Replica")
         .version("string")
@@ -278,10 +278,10 @@ var exampleServerResource = new ExampleServer("exampleServerResource", ExampleSe
 <pulumi-choosable type="language" values="python">
 
 ```python
-example_server_resource = example.ExampleServer("exampleServerResource", properties=example.ServerPropertiesForReplicaArgs(
-    create_mode="Replica",
-    version="string",
-))
+example_server_resource = example.ExampleServer("exampleServerResource", properties={
+    "create_mode": "Replica",
+    "version": "string",
+})
 ```
 
 </pulumi-choosable>
@@ -323,6 +323,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The ExampleServer resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

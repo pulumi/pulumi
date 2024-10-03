@@ -91,7 +91,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{})
 }
 
 var (
@@ -282,7 +282,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 	mutation, err := manager.BeginMutation(provSame)
 	assert.NoError(t, err)
-	_, _, err = provSame.Apply(false)
+	_, _, err = provSame.Apply()
 	assert.NoError(t, err)
 	err = mutation.End(provSame, true)
 	assert.NoError(t, err)
@@ -367,7 +367,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
 		assert.NoError(t, err)
-		_, _, err = provSame.Apply(false)
+		_, _, err = provSame.Apply()
 		assert.NoError(t, err)
 		err = mutation.End(provSame, true)
 		assert.NoError(t, err)
@@ -427,7 +427,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
 		assert.NoError(t, err)
-		_, _, err = provSame.Apply(false)
+		_, _, err = provSame.Apply()
 		assert.NoError(t, err)
 		err = mutation.End(provSame, true)
 		assert.NoError(t, err)
@@ -439,7 +439,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		prov2Same := deploy.NewSameStep(nil, nil, provider2, prov2Updated)
 		mutation, err = manager.BeginMutation(prov2Same)
 		assert.NoError(t, err)
-		_, _, err = prov2Same.Apply(false)
+		_, _, err = prov2Same.Apply()
 		assert.NoError(t, err)
 		err = mutation.End(prov2Same, true)
 		assert.NoError(t, err)
@@ -449,7 +449,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
 		mutation, err = manager.BeginMutation(aSame)
 		assert.NoError(t, err)
-		_, _, err = aSame.Apply(false)
+		_, _, err = aSame.Apply()
 		assert.NoError(t, err)
 		err = mutation.End(aSame, true)
 		assert.NoError(t, err)

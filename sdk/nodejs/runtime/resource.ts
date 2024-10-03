@@ -29,6 +29,7 @@ import {
     CustomResourceOptions,
     expandProviders,
     ID,
+    pkgFromType,
     ProviderResource,
     Resource,
     ResourceOptions,
@@ -89,35 +90,74 @@ function marshalSourcePosition(sourcePosition?: SourcePosition) {
 }
 
 interface ResourceResolverOperation {
-    // A resolver for a resource's URN.
+    /**
+     * A resolver for a resource's URN.
+     */
     resolveURN: (urn: URN, err?: Error) => void;
-    // A resolver for a resource's ID (for custom resources only).
+
+    /**
+     * A resolver for a resource's ID (for custom resources only).
+     */
     resolveID: ((v: ID, performApply: boolean, err?: Error) => void) | undefined;
-    // A collection of resolvers for a resource's properties.
+
+    /**
+     * A collection of resolvers for a resource's properties.
+     */
     resolvers: OutputResolvers;
-    // A parent URN, fully resolved, if any.
+
+    /**
+     * A fully-resolved parent URN, if any.
+     */
     parentURN: URN | undefined;
-    // A provider reference, fully resolved, if any.
+
+    /**
+     * A fully-resolved provider reference, if any.
+     */
     providerRef: string | undefined;
-    // A map of provider references, fully resolved, if any.
+
+    /**
+     * A map of fully-resolved provider references, if any.
+     */
     providerRefs: Map<string, string>;
-    // All serialized properties, fully awaited, serialized, and ready to go.
+
+    /**
+     * All serialized properties, fully awaited, serialized, and ready to go.
+     */
     serializedProps: Record<string, any>;
-    // A set of URNs that this resource is directly dependent upon.  These will all be URNs of
-    // custom resources, not component resources.
+
+    /**
+     * A set of URNs that this resource is directly dependent upon. These will
+     * all be URNs of custom resources, not component resources.
+     */
     allDirectDependencyURNs: Set<URN>;
-    // Set of URNs that this resource is directly dependent upon, keyed by the property that causes
-    // the dependency.  All urns in this map must exist in [allDirectDependencyURNs].  These will
-    // all be URNs of custom resources, not component resources.
+
+    /**
+     * A set of URNs that this resource is directly dependent upon, keyed by the
+     * property that causes the dependency. All URNs in this map must exist in
+     * {@link allDirectDependencyURNs}. These will all be URNs of custom
+     * resources, not component resources.
+     */
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
-    // A list of aliases applied to this resource.
+
+    /**
+     * A list of aliases applied to this resource.
+     */
     aliases: (Alias | URN)[];
-    // An ID to import, if any.
+
+    /**
+     * An ID to import, if any.
+     */
     import: ID | undefined;
-    // Any important feature support from the monitor.
+
+    /**
+     * Any important feature support from the monitor.
+     */
     monitorSupportsStructuredAliases: boolean;
-    // If set, the providers Delete method will not be called for this resource
-    // if specified is being deleted as well.
+
+    /**
+     * If set, the provider's `Delete` method will not be called for this
+     * resource if the URN specified is being deleted as well.
+     */
     deletedWithURN: URN | undefined;
 }
 
@@ -246,8 +286,9 @@ export function getResource(
 }
 
 /**
- * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
- * will not be part of the resulting stack's state, as they are presumed to belong to another.
+ * Reads an existing custom resource's state from the resource monitor.  Note
+ * that resources read in this way will not be part of the resulting stack's
+ * state, as they are presumed to belong to another.
  */
 export function readResource(
     res: Resource,
@@ -257,6 +298,7 @@ export function readResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    packageRef?: Promise<string | undefined>,
 ): void {
     if (!opts.id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
@@ -280,7 +322,15 @@ export function readResource(
                 `ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
-
+            let packageRefStr = undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we can clear some of the resource options
+                    opts.version = undefined;
+                    opts.pluginDownloadURL = undefined;
+                }
+            }
             // Create a resource request and do the RPC.
             const req = new resproto.ReadResourceRequest();
             req.setType(t);
@@ -296,6 +346,7 @@ export function readResource(
             req.setAcceptresources(!utils.disableResourceReferences);
             req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setPackageref(packageRefStr || "");
 
             // Now run the operation, serializing the invocation if necessary.
             const opLabel = `monitor.readResource(${label})`;
@@ -423,9 +474,11 @@ export function mapAliasesForRequest(
 }
 
 /**
- * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
- * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
- * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+ * registerResource registers a new resource object with a given type `t` and
+ * `name`. It returns the auto-generated URN and the ID that will resolve after
+ * the deployment has completed.  All properties will be initialized to property
+ * objects that the registration operation will resolve at the right time (or
+ * remain unresolved for deployments).
  */
 export function registerResource(
     res: Resource,
@@ -438,6 +491,7 @@ export function registerResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    packageRef?: Promise<string | undefined>,
 ): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
@@ -463,7 +517,7 @@ export function registerResource(
             await awaitStackRegistrations();
 
             const callbacks: Callback[] = [];
-            if (opts.xTransforms !== undefined && opts.xTransforms.length > 0) {
+            if (opts.transforms !== undefined && opts.transforms.length > 0) {
                 if (!getStore().supportsTransforms) {
                     throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
                 }
@@ -473,12 +527,24 @@ export function registerResource(
                     throw new Error("Callback server could not initialize");
                 }
 
-                for (const transform of opts.xTransforms) {
+                for (const transform of opts.transforms) {
                     callbacks.push(await callbackServer.registerTransform(transform));
                 }
             }
 
+            // If we have a package reference, we need to wait for it to resolve.
+            let packageRefStr = undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we can clear some of the resource options
+                    opts.version = undefined;
+                    opts.pluginDownloadURL = undefined;
+                }
+            }
+
             const req = new resproto.RegisterResourceRequest();
+            req.setPackageref(packageRefStr || "");
             req.setType(t);
             req.setName(name);
             req.setParent(resop.parentURN || "");
@@ -641,9 +707,11 @@ export function registerResource(
     );
 }
 
-/** @internal
- * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
- * properties.
+/**
+ * Prepares for an RPC that will manufacture a resource, and hence deals with
+ * input and output properties.
+ *
+ * @internal
  */
 export async function prepareResource(
     label: string,
@@ -805,7 +873,7 @@ export async function prepareResource(
                 componentOpts.providers = [componentOpts.provider];
             } else if ((<ProviderResource[]>componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
                 const pkg = componentOpts.provider.getPackage();
-                const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                const message = `There is a conflict between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
                 const deprecationd =
                     "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details";
                 log.warn(message + deprecationd);
@@ -885,7 +953,9 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export async function getAllTransitivelyReferencedResourceURNs(
     resources: Set<Resource>,
     exclude: Set<Resource>,
@@ -933,8 +1003,9 @@ export async function getAllTransitivelyReferencedResourceURNs(
 }
 
 /**
- * Recursively walk the resources passed in, returning them and all resources reachable from
- * [Resource.__childResources] through any **Component** resources we encounter.
+ * Recursively walk the resources passed in, returning them and all resources
+ * reachable from {@link Resource.__childResources} through any **component**
+ * resources we encounter.
  */
 async function getTransitivelyReferencedChildResourcesOfComponentResources(
     resources: Set<Resource>,
@@ -976,7 +1047,8 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(
 }
 
 /**
- * Gathers explicit dependent Resources from a list of Resources (possibly Promises and/or Outputs).
+ * Gathers explicit dependent Resources from a list of Resources (possibly
+ * Promises and/or Outputs).
  */
 async function gatherExplicitDependencies(
     dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined,
@@ -1012,7 +1084,8 @@ async function gatherExplicitDependencies(
 }
 
 /**
- * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
+ * Finishes a resource creation RPC operation by resolving its outputs to the
+ * resulting RPC payload.
  */
 async function resolveOutputs(
     res: Resource,
@@ -1052,7 +1125,8 @@ async function resolveOutputs(
 }
 
 /**
- * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
+ * Completes a resource registration, attaching an optional set of computed
+ * outputs.
  */
 export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
@@ -1124,17 +1198,19 @@ function isAny(o: any): o is any {
 }
 
 /**
- * listResourceOutputs returns the resource outputs (if any) for a stack, or an error if the stack
- * cannot be found. Resources are retrieved from the latest stack snapshot, which may include
- * ongoing updates.
+ * Returns the resource outputs (if any) for a stack, or an error if the stack
+ * cannot be found. Resources are retrieved from the latest stack snapshot,
+ * which may include ongoing updates. For example:
  *
- * @param stackName Name of stack to retrieve resource outputs for. Defaults to the current stack.
- * @param typeFilter A [type
- * guard](https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards)
- * that specifies which resource types to list outputs of.
- *
- * @example
+ * ```typescript
  * const buckets = pulumi.runtime.listResourceOutput(aws.s3.Bucket.isInstance);
+ * ```
+ *
+ * @param stackName
+ *  Name of stack to retrieve resource outputs for. Defaults to the current stack.
+ * @param typeFilter
+ *  A [type guard](https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards)
+ *  that specifies which resource types to list outputs of.
  */
 export function listResourceOutputs<U extends Resource>(
     typeFilter?: (o: any) => o is U,
@@ -1157,15 +1233,20 @@ export function listResourceOutputs<U extends Resource>(
 }
 
 /**
- * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
- * entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
- * causes problems with some resource providers, so for now we will serialize all of them.  The issue
- * pulumi/pulumi#335 tracks coming up with a long-term solution here.
+ * resourceChain is used to serialize all resource requests.  If we don't do
+ * this, all resource operations will be entirely asynchronous, meaning the
+ * dataflow graph that results will determine ordering of operations.  This
+ * causes problems with some resource providers, so for now we will serialize
+ * all of them.  The issue pulumi/pulumi#335 tracks coming up with a long-term
+ * solution here.
  */
 let resourceChain: Promise<void> = Promise.resolve();
 let resourceChainLabel: string | undefined = undefined;
 
-// runAsyncResourceOp runs an asynchronous resource operation, possibly serializing it as necessary.
+/**
+ * Runs an asynchronous resource operation, possibly serializing it as
+ * necessary.
+ */
 function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial?: boolean): void {
     // Serialize the invocation if necessary.
     if (serial === undefined) {
@@ -1197,16 +1278,4 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
-}
-
-/**
- * Extract the pkg from the type token of the form "pkg:module:member".
- * @internal
- */
-export function pkgFromType(type: string): string | undefined {
-    const parts = type.split(":");
-    if (parts.length === 3) {
-        return parts[0];
-    }
-    return undefined;
 }

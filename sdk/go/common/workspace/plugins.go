@@ -54,7 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 const (
@@ -67,8 +67,13 @@ var enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH")
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
 // format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
 //
-// For example, when set to "^foo.*=https://foo,^bar.*=https://bar", plugin names that start with "foo" will use
-// https://foo as the download URL and names that start with "bar" will use https://bar.
+// For example, when set to "^https://foo=https://bar,^github://=https://buzz", HTTPS plugin URLs that start with
+// "foo" will use https://bar as the download URL and plugins hosted on github will use https://buzz
+//
+// Note that named regular expression groups can be used to capture parts of URLs and then reused for building
+// redirects. For example
+// ^github://api.github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)=https://foo.com/downloads/${org}/${repo}
+// will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var pluginDownloadURLOverrides string
 
 // pluginDownloadURLOverridesParsed is the parsed array from `pluginDownloadURLOverrides`.
@@ -83,20 +88,40 @@ type pluginDownloadURLOverride struct {
 // pluginDownloadOverrideArray represents an array of overrides.
 type pluginDownloadOverrideArray []pluginDownloadURLOverride
 
-// get returns the URL and true if name matches an override's regular expression,
-// otherwise an empty string and false.
-func (overrides pluginDownloadOverrideArray) get(name string) (string, bool) {
+// get returns the URL and true if url matches an override's regular expression,
+// otherwise an empty string and false. The input url may contain placeholders
+// that match regular expression's named subgroups, the placeholders will be
+// replaced by matches values.
+func (overrides pluginDownloadOverrideArray) get(url string) (string, bool) {
 	for _, override := range overrides {
-		if override.reg.MatchString(name) {
-			return override.url, true
+		if match := override.reg.FindStringSubmatch(url); match != nil {
+			result := override.url
+			for i, name := range override.reg.SubexpNames() {
+				// Replace placeholders that match a group index like $1
+				placeholder := fmt.Sprintf("$%d", i)
+				result = strings.ReplaceAll(result, placeholder, match[i])
+				// Replace placeholders that match a group name like ${org}
+				if i != 0 && name != "" {
+					placeholder := fmt.Sprintf("${%s}", name)
+					result = strings.ReplaceAll(result, placeholder, match[i])
+				}
+			}
+			return result, true
 		}
 	}
 	return "", false
 }
 
 func init() {
+	// Default to Plugin Download URL overrides passed as compile-time flags (if any).
+	overrides := pluginDownloadURLOverrides
+	// Environment variable takes precedence over compile-time flags.
+	if v := env.PluginDownloadURLOverrides.Value(); v != "" {
+		overrides = v
+	}
+	// Parse overrides into a strongly-typed collection.
 	var err error
-	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(pluginDownloadURLOverrides); err != nil {
+	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(overrides); err != nil {
 		panic(fmt.Errorf("error parsing `pluginDownloadURLOverrides`: %w", err))
 	}
 }
@@ -171,6 +196,9 @@ type PluginSource interface {
 	// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 	// plugins we can get from github releases.
 	GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
+	// A base URL that can uniquely identify the source. Has the same structure as the PluginDownloadURL
+	// schema option. Example: "github://api.github.com/pulumi/pulumi-aws".
+	URL() string
 }
 
 // standardAssetName returns the standard name for the asset that contains the given plugin.
@@ -186,12 +214,6 @@ type getPulumiSource struct {
 
 func newGetPulumiSource(name string, kind apitype.PluginKind) *getPulumiSource {
 	return &getPulumiSource{name: name, kind: kind}
-}
-
-func (source *getPulumiSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return nil, errors.New("GetLatestVersion is not supported for plugins from get.pulumi.com")
 }
 
 func (source *getPulumiSource) Download(
@@ -311,6 +333,10 @@ func (source *gitlabSource) Download(
 	return getHTTPResponse(req)
 }
 
+func (source *gitlabSource) URL() string {
+	return fmt.Sprintf("gitlab://%s/%s", source.host, source.project)
+}
+
 // githubSource can download a plugin from github releases
 type githubSource struct {
 	host         string
@@ -320,6 +346,9 @@ type githubSource struct {
 	kind         apitype.PluginKind
 
 	token string
+
+	// If true we explicitly disabled the token due to 401 errors and won't try it again
+	tokenDisabled bool
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
@@ -367,6 +396,15 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 			repository = "pulumi-yaml"
 		}
 	}
+
+	if kind == apitype.ToolPlugin {
+		// Convention for tool plugins is to have them in a repository named "pulumi-tool-<name>".
+		if !strings.HasPrefix(name, "pulumi-tool-") {
+			// if it is not already fully qualified, we will prefix it with "pulumi-tool-"
+			repository = "pulumi-tool-" + name
+		}
+	}
+
 	if len(parts) == 2 {
 		repository = parts[1]
 	}
@@ -398,8 +436,12 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 
 func (source *githubSource) getHTTPResponse(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-	req *http.Request,
+	url, accept string,
 ) (io.ReadCloser, int64, error) {
+	req, err := source.newHTTPRequest(url, accept)
+	if err != nil {
+		return nil, -1, err
+	}
 	resp, length, err := getHTTPResponse(req)
 	if err == nil {
 		return resp, length, nil
@@ -408,6 +450,12 @@ func (source *githubSource) getHTTPResponse(
 	// Wrap 403 rate limit errors with a more helpful message.
 	var downErr *downloadError
 	if !errors.As(err, &downErr) || downErr.code != 403 {
+		// If we see a 401 error and were using a token we'll disable that token and try again
+		if downErr != nil && downErr.code == 401 && source.token != "" {
+			source.token = ""
+			source.tokenDisabled = true
+			return source.getHTTPResponse(getHTTPResponse, url, accept)
+		}
 		return nil, -1, err
 	}
 
@@ -425,7 +473,12 @@ func (source *githubSource) getHTTPResponse(
 
 	addAuth := ""
 	if source.token == "" {
-		addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+		if source.tokenDisabled {
+			addAuth = " Your current GITHUB_TOKEN doesn't allow access to the repository, so we disabled it for this request." +
+				" You can set GITHUB_TOKEN to a different token to make a request with a higher rate limit."
+		} else {
+			addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+		}
 	}
 
 	logging.Errorf("GitHub rate limit exceeded for %s%s%s", req.URL, tryAgain, addAuth)
@@ -439,11 +492,7 @@ func (source *githubSource) GetLatestVersion(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := source.newHTTPRequest(releaseURL, "application/json")
-	if err != nil {
-		return nil, err
-	}
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -471,12 +520,7 @@ func (source *githubSource) Download(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-
-	req, err := source.newHTTPRequest(releaseURL, "application/json")
-	if err != nil {
-		return nil, -1, err
-	}
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -506,12 +550,11 @@ func (source *githubSource) Download(
 	}
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
+	return source.getHTTPResponse(getHTTPResponse, assetURL, "application/octet-stream")
+}
 
-	req, err = source.newHTTPRequest(assetURL, "application/octet-stream")
-	if err != nil {
-		return nil, -1, err
-	}
-	return source.getHTTPResponse(getHTTPResponse, req)
+func (source *githubSource) URL() string {
+	return fmt.Sprintf("github://%s/%s/%s", source.host, source.organization, source.repository)
 }
 
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
@@ -568,6 +611,10 @@ func (source *httpSource) Download(
 	return getHTTPResponse(req)
 }
 
+func (source *httpSource) URL() string {
+	return source.url
+}
+
 // fallbackSource handles our current default logic of trying the pulumi public github then get.pulumi.com.
 type fallbackSource struct {
 	name string
@@ -621,6 +668,14 @@ func (source *fallbackSource) Download(
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
 	return pulumi.Download(version, opSy, arch, getHTTPResponse)
+}
+
+func (source *fallbackSource) URL() string {
+	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
+	if err != nil {
+		return ""
+	}
+	return public.URL()
 }
 
 type checksumError struct {
@@ -702,6 +757,10 @@ func (source *checksumSource) Download(
 	}, length, nil
 }
 
+func (source *checksumSource) URL() string {
+	return source.source.URL()
+}
+
 // ProjectPlugin Information about a locally installed plugin specified by the project.
 type ProjectPlugin struct {
 	Name    string             // the simple name of the plugin.
@@ -717,6 +776,28 @@ func (pp ProjectPlugin) Spec() PluginSpec {
 		Kind:    pp.Kind,
 		Version: pp.Version,
 	}
+}
+
+// A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
+// that must be applied to that plugin in order to produce the package.
+type PackageDescriptor struct {
+	// A specification for the plugin that provides the package.
+	PluginSpec
+
+	// An optional parameterization to apply to the providing plugin to produce
+	// the package.
+	Parameterization *Parameterization
+}
+
+// A Parameterization may be applied to a supporting plugin to yield a package.
+type Parameterization struct {
+	// The name of the package that will be produced by the parameterization.
+	Name string
+	// The version of the package that will be produced by the parameterization.
+	Version semver.Version
+	// A plugin-dependent bytestring representing the value of the parameter to be
+	// passed to the plugin.
+	Value []byte
 }
 
 // PluginSpec provides basic specification for a plugin.
@@ -846,7 +927,7 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 		logging.V(6).Infof("unable to get plugin dir size for %s: %v", path, err)
 	}
 
-	// Next get the access times from the plugin binary itself.
+	// Next get the access times from the plugin folder.
 	tinfo := times.Get(file)
 
 	if tinfo.HasChangeTime() {
@@ -869,44 +950,53 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	return nil
 }
 
-func (spec PluginSpec) GetSource() (PluginSource, error) {
-	baseSource, err := func() (PluginSource, error) {
-		// The plugin has a set URL use that.
-		if spec.PluginDownloadURL != "" {
-			// Support schematised URLS if the URL has a "schema" part we recognize
-			url, err := url.Parse(spec.PluginDownloadURL)
-			if err != nil {
-				return nil, err
-			}
-
-			switch url.Scheme {
-			case "github":
-				return newGithubSource(url, spec.Name, spec.Kind)
-			case "gitlab":
-				return newGitlabSource(url, spec.Name, spec.Kind)
-			case "http", "https":
-				return newHTTPSource(spec.Name, spec.Kind, url), nil
-			default:
-				return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
-			}
-		}
-
-		// If the plugin name matches an override, download the plugin from the override URL.
-		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
-			return newHTTPSource(spec.Name, spec.Kind, urlMustParse(url)), nil
-		}
-
-		// Use our default fallback behaviour of github then get.pulumi.com
-		return newFallbackSource(spec.Name, spec.Kind), nil
-	}()
+func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL string) (PluginSource, error) {
+	url, err := url.Parse(pluginDownloadURL)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(spec.Checksums) != 0 {
-		return newChecksumSource(baseSource, spec.Checksums), nil
+	switch url.Scheme {
+	case "github":
+		return newGithubSource(url, name, kind)
+	case "gitlab":
+		return newGitlabSource(url, name, kind)
+	case "http", "https":
+		return newHTTPSource(name, kind, url), nil
+	default:
+		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}
-	return baseSource, nil
+}
+
+func (spec PluginSpec) GetSource() (PluginSource, error) {
+	var source PluginSource
+	var err error
+
+	// The plugin has a set URL use that.
+	if spec.PluginDownloadURL != "" {
+		source, err = newPluginSource(spec.Name, spec.Kind, spec.PluginDownloadURL)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Use our default fallback behaviour of github then get.pulumi.com
+		source = newFallbackSource(spec.Name, spec.Kind)
+	}
+
+	// If the plugin URL matches an override, download the plugin from the override URL.
+	if url, ok := pluginDownloadURLOverridesParsed.get(source.URL()); ok {
+		source, err = newPluginSource(spec.Name, spec.Kind, url)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Apply checksums if defined.
+	if len(spec.Checksums) != 0 {
+		source = newChecksumSource(source, spec.Checksums)
+	}
+
+	return source, nil
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
@@ -1458,12 +1548,22 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(ctx, finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
-			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
+			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
+			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+				Toolchain:  toolchain.Pip,
+				Root:       finalDir,
+				Virtualenv: "venv",
+			})
+			if err != nil {
+				return fmt.Errorf("getting python toolchain: %w", err)
+			}
+			if err := tc.InstallDependencies(ctx, finalDir, false, /*useLanguageVersionTools */
+				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}
@@ -1769,15 +1869,15 @@ func getPluginInfoAndPath(
 			Name:    spec.Name,
 			Kind:    spec.Kind,
 			Version: spec.Version,
-			Path:    plugin.Path,
+			Path:    filepath.Clean(plugin.Path),
 		}
-		path := getPluginPath(info)
 		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata && path != "" {
-			if err := info.SetFileMetadata(path); err != nil {
+		if !skipMetadata {
+			if err := info.SetFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}
+		path := getPluginPath(info)
 		return info, path, nil
 	}
 
@@ -1841,11 +1941,18 @@ func getPluginInfoAndPath(
 		pluginPath = ambientPath
 	}
 	if pluginPath != "" {
-		return &PluginInfo{
+		info := &PluginInfo{
 			Kind: kind,
 			Name: name,
 			Path: filepath.Dir(pluginPath),
-		}, pluginPath, nil
+		}
+		// computing plugin sizes can be very expensive (nested node_modules)
+		if !skipMetadata {
+			if err := info.SetFileMetadata(info.Path); err != nil {
+				return nil, "", err
+			}
+		}
+		return info, pluginPath, nil
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.

@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -220,11 +220,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -232,7 +232,20 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var rubberTreeResource = new Plant.Tree.V1.RubberTree("rubberTreeResource", new()
+{
+    Diameter = Plant.Tree.V1.Diameter.Sixinch,
+    Type = Plant.Tree.V1.RubberTreeVariety.Burgundy,
+    Container = new Plant.Inputs.ContainerArgs
+    {
+        Size = Plant.ContainerSize.FourInch,
+        Brightness = Plant.ContainerBrightness.ZeroPointOne,
+        Color = Plant.ContainerColor.Red,
+        Material = "string",
+    },
+    Farm = Plant.Tree.V1.Farm.Pulumi_Planters_Inc_,
+    Size = Plant.Tree.V1.TreeSize.Small,
+});
 ```
 
 </pulumi-choosable>
@@ -243,7 +256,18 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := tree.NewRubberTree(ctx, "rubberTreeResource", &tree.RubberTreeArgs{
+	Diameter: tree.DiameterSixinch,
+	Type:     tree.RubberTreeVarietyBurgundy,
+	Container: &plantprovider.ContainerArgs{
+		Size:       plant.ContainerSizeFourInch,
+		Brightness: plant.ContainerBrightnessZeroPointOne,
+		Color:      pulumi.String(plant.ContainerColorRed),
+		Material:   pulumi.String("string"),
+	},
+	Farm: pulumi.String(tree.Farm_Pulumi_Planters_Inc_),
+	Size: tree.TreeSizeSmall,
+})
 ```
 
 </pulumi-choosable>
@@ -254,12 +278,12 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()        
-    .diameter("sixinch")
+var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()
+    .diameter(6)
     .type("Burgundy")
     .container(ContainerArgs.builder()
-        .size("FourInch")
-        .brightness("ZeroPointOne")
+        .size(4)
+        .brightness(0.1)
         .color("red")
         .material("string")
         .build())
@@ -276,7 +300,17 @@ var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.bui
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+rubber_tree_resource = plant.tree.v1.RubberTree("rubberTreeResource",
+    diameter=plant.tree.v1.Diameter.SIXINCH,
+    type=plant.tree.v1.RubberTreeVariety.BURGUNDY,
+    container={
+        "size": plant.ContainerSize.FOUR_INCH,
+        "brightness": plant.ContainerBrightness.ZERO_POINT_ONE,
+        "color": plant.ContainerColor.RED,
+        "material": "string",
+    },
+    farm=plant.tree.v1.Farm.PULUMI_PLANTERS_INC_,
+    size=plant.tree.v1.TreeSize.SMALL)
 ```
 
 </pulumi-choosable>
@@ -287,7 +321,18 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const rubberTreeResource = new plant.tree.v1.RubberTree("rubberTreeResource", {
+    diameter: plant.tree.v1.Diameter.Sixinch,
+    type: plant.tree.v1.RubberTreeVariety.Burgundy,
+    container: {
+        size: plant.ContainerSize.FourInch,
+        brightness: plant.ContainerBrightness.ZeroPointOne,
+        color: plant.ContainerColor.Red,
+        material: "string",
+    },
+    farm: plant.tree.v1.Farm.Pulumi_Planters_Inc_,
+    size: plant.tree.v1.TreeSize.Small,
+});
 ```
 
 </pulumi-choosable>
@@ -301,11 +346,11 @@ Coming soon!
 type: plant:tree/v1:RubberTree
 properties:
     container:
-        brightness: ZeroPointOne
+        brightness: 0.1
         color: red
         material: string
-        size: FourInch
-    diameter: sixinch
+        size: 4
+    diameter: 6
     farm: Pulumi Planters Inc.
     size: small
     type: Burgundy
@@ -321,6 +366,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The RubberTree resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
@@ -699,7 +750,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 Get an existing RubberTree resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 <div>

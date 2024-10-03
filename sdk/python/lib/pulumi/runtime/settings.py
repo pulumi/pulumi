@@ -328,9 +328,15 @@ async def monitor_supports_alias_specs() -> bool:
 
 
 def _sync_monitor_supports_transforms() -> bool:
-    if "transforms" not in SETTINGS.feature_support:
-        return False
-    return SETTINGS.feature_support["transforms"]
+    return SETTINGS.feature_support.get("transforms", False)
+
+
+def _sync_monitor_supports_invoke_transforms() -> bool:
+    return SETTINGS.feature_support.get("invokeTransforms", False)
+
+
+def _sync_monitor_supports_parameterization() -> bool:
+    return SETTINGS.feature_support.get("parameterization", False)
 
 
 def reset_options(
@@ -385,4 +391,6 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("deletedWith"),
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
+        monitor_supports_feature("invokeTransforms"),
+        monitor_supports_feature("parameterization"),
     )

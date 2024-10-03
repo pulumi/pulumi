@@ -26,7 +26,7 @@ type stateBuilder struct {
 }
 
 func newStateBuilder(state *resource.State) *stateBuilder {
-	return &stateBuilder{*state, state, false}
+	return &stateBuilder{*(state.Copy()), state, false}
 }
 
 func (sb *stateBuilder) withUpdatedURN(update func(resource.URN) resource.URN) *stateBuilder {

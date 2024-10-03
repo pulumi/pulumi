@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -124,7 +123,13 @@ func (g *constructorSyntaxGenerator) writeValue(
 				}
 
 				g.indent(buffer)
-				write("%s = ", p.Name)
+				propertyName := p.Name
+				// quote property names that start with a dollar sign: $ref => "$ref"
+				if strings.HasPrefix(propertyName, "$") {
+					propertyName = fmt.Sprintf("%q", propertyName)
+				}
+
+				write("%s = ", propertyName)
 				if p.ConstValue != nil {
 					// constant values used for discriminator properties of object need to be exact
 					// we write them out here as strings to generate correct programs
@@ -149,28 +154,47 @@ func (g *constructorSyntaxGenerator) writeValue(
 		_, _, resourceNameFromToken, _ := pcl.DecomposeToken(valueType.Token, hcl.Range{})
 		write("%s", camelCase(resourceNameFromToken))
 	case *schema.EnumType:
-		cases := make([]string, len(valueType.Elements))
-		for index, c := range valueType.Elements {
-			if c.DeprecationMessage != "" {
-				continue
+		if valueType.ElementType == schema.NumberType || valueType.ElementType == schema.IntType {
+			var value interface{}
+			for _, elem := range valueType.Elements {
+				if elem.DeprecationMessage != "" {
+					continue
+				}
+
+				value = elem.Value
+				break
 			}
 
-			if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-				cases[index] = stringCase
-			} else if intCase, ok := c.Value.(int); ok {
-				cases[index] = strconv.Itoa(intCase)
+			if value != nil {
+				write(fmt.Sprintf("%v", value))
 			} else {
-				if c.Name != "" {
-					cases[index] = c.Name
+				// all of them enum cases deprecated
+				// choose the first one
+				write(fmt.Sprintf("%v", valueType.Elements[0].Value))
+			}
+		} else {
+			cases := make([]string, len(valueType.Elements))
+			for index, c := range valueType.Elements {
+				if c.DeprecationMessage != "" {
+					continue
+				}
+
+				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
+					cases[index] = stringCase
+				} else {
+					if c.Name != "" {
+						cases[index] = c.Name
+					}
 				}
 			}
+
+			if len(cases) > 0 {
+				write(fmt.Sprintf("%q", cases[0]))
+			} else {
+				write("null")
+			}
 		}
 
-		if len(cases) > 0 {
-			write(fmt.Sprintf("%q", cases[0]))
-		} else {
-			write("null")
-		}
 	case *schema.UnionType:
 		if isUnionOfObjects(valueType) && len(valueType.ElementTypes) >= 1 {
 			writeValue(valueType.ElementTypes[0])

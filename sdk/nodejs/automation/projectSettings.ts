@@ -13,7 +13,8 @@
 // limitations under the License.
 
 /**
- * A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project.
+ * A Pulumi project manifest. It describes metadata applying to all sub-stacks
+ * created from the project.
  */
 export interface ProjectSettings {
     name: string;
@@ -29,7 +30,7 @@ export interface ProjectSettings {
 }
 
 /**
- * A description of the Project's program runtime and associated metadata.
+ * A description of the project's program runtime and associated metadata.
  */
 export interface ProjectRuntimeInfo {
     name: string;

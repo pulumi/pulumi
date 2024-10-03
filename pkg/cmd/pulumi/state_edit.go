@@ -28,11 +28,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
 )
 
@@ -53,27 +53,28 @@ This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
-				return result.Error("pulumi state edit must be run in interactive mode")
+				return errors.New("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
-			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{
+			ws := pkgWorkspace.Instance
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 			if err := stateEdit.Run(ctx, s); err != nil {
-				return result.FromError(err)
+				return err
 			}
 			return nil
 		}),
 	}
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",
-		"Remove the stack and its config file after all resources in the stack have been deleted")
+		"The name of the stack to operate on. Defaults to the current stack")
 	return cmd
 }
 

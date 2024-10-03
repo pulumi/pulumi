@@ -18,7 +18,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -99,6 +102,15 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 	}, nil
 }
 
+type InstallDependenciesRequest struct {
+	Info                    ProgramInfo
+	UseLanguageVersionTools bool
+}
+
+func (options InstallDependenciesRequest) String() string {
+	return fmt.Sprintf("Info=[%s], UseLanguageVersionTools=%t", options.Info, options.UseLanguageVersionTools)
+}
+
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be
 // dynamically loaded as plugins, although this interface hides this fact from the calling code.
 type LanguageRuntime interface {
@@ -118,10 +130,13 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(info ProgramInfo) error
+	InstallDependencies(request InstallDependenciesRequest) error
+
+	// RuntimeOptions returns additional options that can be set for the runtime.
+	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
 	// About returns information about the language runtime.
-	About() (AboutInfo, error)
+	About(info ProgramInfo) (AboutInfo, error)
 
 	// GetProgramDependencies returns information about the dependencies for the given program.
 	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
@@ -138,11 +153,13 @@ type LanguageRuntime interface {
 	GeneratePackage(
 		directory string, schema string, extraFiles map[string][]byte,
 		loaderTarget string, localDependencies map[string]string,
+		local bool,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
 	// source code.
-	GenerateProgram(program map[string]string, loaderTarget string) (map[string][]byte, hcl.Diagnostics, error)
+	GenerateProgram(program map[string]string, loaderTarget string,
+		strict bool) (map[string][]byte, hcl.Diagnostics, error)
 
 	// Pack packs a library package into a language specific artifact in the given destination directory.
 	Pack(packageDirectory string, destinationDirectory string) (string, error)
@@ -184,6 +201,130 @@ type RunInfo struct {
 	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
 	DryRun            bool                  // true if we are performing a dry-run (preview).
 	QueryMode         bool                  // true if we're only doing a query.
-	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel          int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	Organization      string                // the organization name housing the program being run (might be empty).
+	LoaderAddress     string                // the RPC address of the host's schema loader.
+	AttachDebugger    bool                  // true if we are starting the program under a debugger.
+}
+
+type RuntimeOptionType int
+
+const (
+	PromptTypeString RuntimeOptionType = iota
+	PromptTypeInt32
+)
+
+// RuntimeOptionValue represents a single value that can be selected for a runtime option.
+// The value can be either a string or an int32.
+type RuntimeOptionValue struct {
+	PromptType  RuntimeOptionType
+	StringValue string
+	Int32Value  int32
+	DisplayName string
+}
+
+func (v RuntimeOptionValue) Value() interface{} {
+	if v.PromptType == PromptTypeString {
+		return v.StringValue
+	}
+	return v.Int32Value
+}
+
+func (v RuntimeOptionValue) String() string {
+	if v.PromptType == PromptTypeString {
+		return v.StringValue
+	}
+	return strconv.Itoa(int(v.Int32Value))
+}
+
+func RuntimeOptionValueFromString(promptType RuntimeOptionType, value string) (RuntimeOptionValue, error) {
+	switch promptType {
+	case PromptTypeString:
+		return RuntimeOptionValue{PromptType: PromptTypeString, StringValue: value}, nil
+	case PromptTypeInt32:
+		return RuntimeOptionValue{PromptType: PromptTypeInt32, Int32Value: 0}, nil
+	default:
+		return RuntimeOptionValue{}, fmt.Errorf("unknown prompt type %d", promptType)
+	}
+}
+
+// RuntimeOptionPrompt is a prompt for a runtime option. The prompt can have multiple choices or
+// be free-form if Choices is empty.
+// Key is the key as used in runtime.options.<Key> in the Pulumi.yaml file.
+type RuntimeOptionPrompt struct {
+	Key         string
+	Description string
+	Choices     []RuntimeOptionValue
+	Default     *RuntimeOptionValue
+	PromptType  RuntimeOptionType
+}
+
+func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOptionPrompt, error) {
+	choices := make([]RuntimeOptionValue, 0, len(p.Choices))
+	for _, choice := range p.Choices {
+		choices = append(choices, RuntimeOptionValue{
+			PromptType:  RuntimeOptionType(choice.PromptType),
+			StringValue: choice.StringValue,
+			Int32Value:  choice.Int32Value,
+			DisplayName: choice.DisplayName,
+		})
+	}
+
+	var defaultValue *RuntimeOptionValue
+	if p.Default != nil {
+		defaultValue = &RuntimeOptionValue{
+			PromptType:  RuntimeOptionType(p.Default.PromptType),
+			StringValue: p.Default.StringValue,
+			Int32Value:  p.Default.Int32Value,
+			DisplayName: p.Default.DisplayName,
+		}
+	}
+
+	return RuntimeOptionPrompt{
+		Key:         p.Key,
+		Description: p.Description,
+		Choices:     choices,
+		Default:     defaultValue,
+		PromptType:  RuntimeOptionType(p.PromptType),
+	}, nil
+}
+
+// MakeRuntimeOptionPromptChoices creates a list of runtime option values from a list of executable names.
+// If an executable is not found, it will be listed with a `[not found]` suffix at the end of the list.
+func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue {
+	type packagemanagers struct {
+		name  string
+		found bool
+	}
+	pms := []packagemanagers{}
+	for _, pm := range executables {
+		found := true
+		if _, err := exec.LookPath(pm); err != nil {
+			found = false
+		}
+		pms = append(pms, packagemanagers{name: pm, found: found})
+	}
+
+	sort.SliceStable(pms, func(i, j int) bool {
+		// Don't reorder if both are found or both are not found.
+		if pms[i].found == pms[j].found {
+			return false
+		}
+		// pms[i] is less than pms[j] if pms[i] is found.
+		return pms[i].found
+	})
+
+	choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{}
+	for _, pm := range pms {
+		displayName := pm.name
+		if !pm.found {
+			displayName += " [not found]"
+		}
+		choices = append(choices, &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			StringValue: pm.name,
+			DisplayName: displayName,
+		})
+	}
+	return choices
 }

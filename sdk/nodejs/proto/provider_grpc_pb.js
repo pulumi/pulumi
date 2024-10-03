@@ -264,6 +264,28 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ParameterizeRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ParameterizeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ParameterizeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ParameterizeRequest(buffer_arg) {
+  return pulumi_provider_pb.ParameterizeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ParameterizeResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ParameterizeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ParameterizeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ParameterizeResponse(buffer_arg) {
+  return pulumi_provider_pb.ParameterizeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginAttach(arg) {
   if (!(arg instanceof pulumi_plugin_pb.PluginAttach)) {
     throw new Error('Expected argument of type pulumirpc.PluginAttach');
@@ -334,6 +356,30 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+//
+// Providers can be parameterized with either multiple extension packages (which don't define their own provider
+// resources), or with a replacement package (which does define its own provider resource).
+//
+// Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+// called once. Extension packages may even be called multiple times for the same package name, but with different
+// versions.
+//
+// Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+// should return the sub-package name and version (which for `ParametersValue` should match the given input).
+//
+// For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+parameterize: {
+    path: '/pulumirpc.ResourceProvider/Parameterize',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.ParameterizeRequest,
+    responseType: pulumi_provider_pb.ParameterizeResponse,
+    requestSerialize: serialize_pulumirpc_ParameterizeRequest,
+    requestDeserialize: deserialize_pulumirpc_ParameterizeRequest,
+    responseSerialize: serialize_pulumirpc_ParameterizeResponse,
+    responseDeserialize: deserialize_pulumirpc_ParameterizeResponse,
+  },
   // GetSchema fetches the schema for this resource provider.
 getSchema: {
     path: '/pulumirpc.ResourceProvider/GetSchema',
@@ -371,6 +417,12 @@ diffConfig: {
     responseDeserialize: deserialize_pulumirpc_DiffResponse,
   },
   // Configure configures the resource provider with "globals" that control its behavior.
+//
+// :::{warning}
+// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+// ConfigureRequest.args.
+// :::
 configure: {
     path: '/pulumirpc.ResourceProvider/Configure',
     requestStream: false,

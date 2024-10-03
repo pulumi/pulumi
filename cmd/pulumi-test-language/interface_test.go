@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,17 +105,68 @@ func TestProviderVersions(t *testing.T) {
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
 
-			schema, err := provider.GetSchema(0)
+			schema, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var schemaJSON struct {
 				Version string `json:"version"`
 			}
-			err = json.Unmarshal(schema, &schemaJSON)
+			err = json.Unmarshal(schema.Schema, &schemaJSON)
 			require.NoError(t, err)
 
 			assert.Equal(t, version.String(), schemaJSON.Version,
 				"provider %s reports different versions in schema %s and plugin info %s", pkg, version, schemaJSON.Version)
 		}
+	}
+}
+
+// Ensure all providers have valid schemas.
+func TestProviderSchemas(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range languageTests {
+		// Internal tests are allowed to have invalid schemas.
+		if strings.HasPrefix(name, "internal-") {
+			continue
+		}
+
+		loader := &providerLoader{providers: test.providers}
+
+		for _, provider := range test.providers {
+			resp, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			require.NoError(t, err)
+
+			var pkg schema.PackageSpec
+			err = json.Unmarshal(resp.Schema, &pkg)
+			require.NoError(t, err)
+
+			_, diags, err := schema.BindSpec(pkg, loader)
+			for _, diag := range diags {
+				t.Logf("%s: %v", pkg.Name, diag)
+			}
+			require.NoError(t, err, "bind schema for provider %s: %v", pkg.Name, err)
+			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", pkg.Name, diags)
+		}
+	}
+}
+
+// Ensure all tests have valid programs that can be bound.
+func TestBindPrograms(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range languageTests {
+		// Internal tests are allowed to have invalid programs.
+		if strings.HasPrefix(name, "internal-") {
+			continue
+		}
+
+		src := filepath.Join("testdata", name)
+		loader := &providerLoader{providers: test.providers}
+		_, diags, err := pcl.BindDirectory(src, loader)
+		for _, diag := range diags {
+			t.Logf("%s: %v", name, diag)
+		}
+		require.NoError(t, err, "bind program for test %s: %v", name, err)
+		require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 	}
 }

@@ -66,8 +66,13 @@ type ImportOptions struct {
 //
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
-func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
-	preview bool,
+func NewImportDeployment(
+	ctx *plugin.Context,
+	opts *Options,
+	events Events,
+	target *Target,
+	projectName tokens.PackageName,
+	imports []Import,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -79,7 +84,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, olds, err := buildResourceMap(prev, preview)
+	_, olds, err := buildResourceMap(prev, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +95,13 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	builtins := newBuiltinProvider(nil, nil, ctx.Diag)
 
 	// Create a new provider registry.
-	reg := providers.NewRegistry(ctx.Host, preview, builtins)
+	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{
 		ctx:          ctx,
+		opts:         opts,
+		events:       events,
 		target:       target,
 		prev:         prev,
 		olds:         olds,
@@ -103,7 +110,6 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		isImport:     true,
 		schemaLoader: schema.NewPluginLoader(ctx.Host),
 		source:       NewErrorSource(projectName),
-		preview:      preview,
 		providers:    reg,
 		newPlans:     newResourcePlan(target.Config),
 		news:         &gsync.Map[resource.URN, *resource.State]{},
@@ -152,11 +158,11 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			}
 
 			// Clear the ID because Same asserts that the new state has no ID.
-			new := *r
+			new := r.Copy()
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
 			i.deployment.goals.Store(r.URN, &resource.Goal{})
-			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
+			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, new)) {
 				return false
 			}
 		}
@@ -178,7 +184,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", false, "", nil, nil, "")
+		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -219,8 +225,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, false, errors.New("incorrect package type specified")
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
-		typ, name := providers.MakeProviderType(req.Package()), req.Name()
+		req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
@@ -249,7 +255,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		typ, name := providers.MakeProviderType(req.Package()), req.Name()
+		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
@@ -268,15 +274,18 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
+		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
+			URN:  urn,
+			News: inputs,
+		})
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "", false, "", nil, nil, "")
+			nil, nil, nil, "", false, "", nil, nil, "", nil)
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
-		if issueCheckErrors(i.deployment, state, urn, failures) {
+		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
 			return nil, false, nil
 		}
 
@@ -348,11 +357,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			if oldID == imp.ID {
 				// Clear the ID because Same asserts that the new state has no ID.
-				new := *old
+				new := old.Copy()
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
 				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
 				continue
 			}
 		}
@@ -366,19 +375,19 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			if oldID == imp.ID {
 				// Clear the ID because Same asserts that the new state has no ID.
-				new := *old
+				new := old.Copy()
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
 				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
 				continue
 			}
 		}
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
-			typ, name := providers.MakeProviderType(req.Package()), req.Name()
+			req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 
@@ -392,7 +401,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := resource.NewState(
 			urn.Type(), urn, !imp.Component, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "")
+			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})
 

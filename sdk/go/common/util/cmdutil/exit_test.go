@@ -1,3 +1,17 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cmdutil
 
 import (
@@ -123,6 +137,62 @@ func TestErrorMessage(t *testing.T) {
 				},
 			},
 			want: "great sadness",
+		},
+		{
+			desc: "error trees (left-nested)",
+			give: errors.Join(
+				errors.Join(
+					errors.New("foo"),
+					errors.New("bar"),
+				),
+				errors.New("baz"),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "error trees (right-nested)",
+			give: errors.Join(
+				errors.New("foo"),
+				errors.Join(
+					errors.New("bar"),
+					errors.New("baz"),
+				),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "error trees (mixed)",
+			give: errors.Join(
+				errors.Join(
+					errors.New("foo"),
+					errors.Join(
+						errors.New("bar"),
+						errors.New("baz"),
+					),
+				),
+				errors.Join(
+					errors.Join(
+						errors.New("quux"),
+						errors.New("frob"),
+					),
+					errors.New("urk"),
+					errors.New("blog"),
+				),
+			),
+			want: "7 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz" +
+				"\n    4) quux" +
+				"\n    5) frob" +
+				"\n    6) urk" +
+				"\n    7) blog",
 		},
 		{
 			desc: "multi error inside single wrapped error",

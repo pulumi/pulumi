@@ -16,6 +16,7 @@ import os
 import pathlib
 import traceback
 from typing import (
+    Awaitable,
     TYPE_CHECKING,
     Any,
     Callable,
@@ -196,6 +197,7 @@ async def prepare_resource(
     serialized_props = await rpc.serialize_properties(
         props,
         property_dependencies_resources,
+        res,
         translate,
         typ,
         keep_output_values=remote,
@@ -694,6 +696,7 @@ def read_resource(
     props: "Inputs",
     opts: "ResourceOptions",
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> None:
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
@@ -745,7 +748,7 @@ def read_resource(
             # because a "read" resource does not actually have any dependencies at all in the cloud
             # provider sense, because a read resource already exists. We do not need to track this
             # dependency.
-            resolved_id = await rpc.serialize_property(opts.id, [])
+            resolved_id = await rpc.serialize_property(opts.id, [], None)
             log.debug(f"read prepared: ty={ty}, name={name}, id={opts.id}")
 
             # These inputs will end up in the snapshot, so if there are any additional secret
@@ -758,6 +761,18 @@ def read_resource(
                 os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
                 in {"TRUE", "1"}
             )
+
+            # If we have a package reference, we need to wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # If we have a package reference we can clear some of the invoke
+                # options.
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Read using package reference {package_ref_str}")
+
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
                 name=name,
@@ -772,6 +787,7 @@ def read_resource(
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 sourcePosition=source_position,
+                packageRef=package_ref_str or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -852,6 +868,7 @@ def register_resource(
     props: "Inputs",
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
@@ -906,11 +923,20 @@ def register_resource(
             nonlocal opts
             opts = opts if opts is not None else ResourceOptions()
 
+            # If we have a package reference, we need to wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # If we have a package reference we can clear some of the resource options
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             callbacks: List[callback_pb2.Callback] = []
-            if opts.x_transforms:
+            if opts.transforms:
                 if not _sync_monitor_supports_transforms():
                     raise Exception(
                         "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
@@ -918,7 +944,7 @@ def register_resource(
                 callback_server = await _get_callbacks()
                 if callback_server is None:
                     raise Exception("Callback server not initialized")
-                for transform in opts.x_transforms:
+                for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
 
             property_dependencies = {}
@@ -991,6 +1017,7 @@ def register_resource(
                 sourcePosition=source_position,
                 transforms=callbacks,
                 supportsResultReporting=True,
+                packageRef=package_ref_str or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

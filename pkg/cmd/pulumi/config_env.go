@@ -24,6 +24,7 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,9 +35,7 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
-		interactive:      cmdutil.Interactive(),
-		color:            cmdutil.GetGlobalColorization(),
-		readProject:      readProject,
+		ws:               pkgWorkspace.Instance,
 		requireStack:     requireStack,
 		loadProjectStack: loadProjectStack,
 		saveProjectStack: saveProjectStack,
@@ -66,10 +65,13 @@ type configEnvCmd struct {
 	interactive bool
 	color       colors.Colorization
 
-	readProject func() (*workspace.Project, string, error)
+	ssml stackSecretsManagerLoader
+	ws   pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
+		ws pkgWorkspace.Context,
+		lm backend.LoginManager,
 		stackName string,
 		lopt stackLoadOption,
 		opts display.Options,
@@ -82,16 +84,23 @@ type configEnvCmd struct {
 	stackRef *string
 }
 
+func (cmd *configEnvCmd) initArgs() {
+	cmd.interactive = cmdutil.Interactive()
+	cmd.color = cmdutil.GetGlobalColorization()
+
+	cmd.ssml = newStackSecretsManagerLoaderFromEnv()
+}
+
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
-	project, _, err := cmd.readProject()
+	project, _, err := cmd.ws.ReadProject()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.ws, DefaultLoginManager, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -138,7 +147,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 			}, nil)
 		} else {
 			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
-				"Try adding one with `pulumi config env add [envName]`.\n")
+				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
 		}
 
 	}
@@ -165,7 +174,17 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return err
 	}
 
-	if err := listConfig(ctx, cmd.stdout, project, *stack, projectStack, showSecrets, false, false); err != nil {
+	if err := listConfig(
+		ctx,
+		cmd.ssml,
+		cmd.stdout,
+		project,
+		*stack,
+		projectStack,
+		showSecrets,
+		false, /*jsonOut*/
+		false, /*openEnvironment*/
+	); err != nil {
 		return err
 	}
 

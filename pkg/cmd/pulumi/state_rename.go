@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -29,19 +30,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn resource.URN) []resource.URN {
-	var updatedDependencies []resource.URN
-	for _, dependency := range dependencies {
-		if dependency == oldUrn {
-			// replace old URN with new URN
-			updatedDependencies = append(updatedDependencies, newUrn)
-		} else {
-			updatedDependencies = append(updatedDependencies, dependency)
-		}
-	}
-	return updatedDependencies
-}
 
 // stateReurnOperation changes the URN for a resource and mutates/rewrites references to it in the snapshot.
 func stateReurnOperation(
@@ -75,38 +63,59 @@ func stateReurnOperation(
 	for _, existingResource := range snap.Resources {
 		// update resources other than the input resource
 		if existingResource.URN != inputResource.URN {
-			// Update dependencies
-			existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldURN, newURN)
-			// Update property dependencies
-			for property, dependencies := range existingResource.PropertyDependencies {
-				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldURN, newURN)
-			}
+			var updatedDeps []resource.URN
+			updatedPropDeps := map[resource.PropertyKey][]resource.URN{}
 
-			// Update parent, if any.
-			if existingResource.Parent == oldURN {
-				existingResource.Parent = newURN
-				// We also need to update this resources URN now
-				oldChildURN := existingResource.URN
-				newChildURN := resource.NewURN(
-					oldChildURN.Stack(), oldChildURN.Project(),
-					newURN.QualifiedType(), oldChildURN.Type(),
-					oldChildURN.Name())
-				err := stateReurnOperation(oldChildURN, newChildURN, opts, snap)
-				if err != nil {
-					return fmt.Errorf("failed to update %s with new parent %s: %w", oldChildURN, newURN, err)
+			// We handle providers separately later on, so ignore the return here.
+			_, allDeps := existingResource.GetAllDependencies()
+			for _, dep := range allDeps {
+				switch dep.Type {
+				case resource.ResourceParent:
+					if dep.URN == oldURN {
+						existingResource.Parent = newURN
+
+						// We also need to update this resources URN now
+						oldChildURN := existingResource.URN
+						newChildURN := resource.NewURN(
+							oldChildURN.Stack(), oldChildURN.Project(),
+							newURN.QualifiedType(), oldChildURN.Type(),
+							oldChildURN.Name())
+						err := stateReurnOperation(oldChildURN, newChildURN, opts, snap)
+						if err != nil {
+							return fmt.Errorf("failed to update %s with new parent %s: %w", oldChildURN, newURN, err)
+						}
+					}
+				case resource.ResourceDependency:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					updatedDeps = append(updatedDeps, dep.URN)
+				case resource.ResourcePropertyDependency:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					updatedPropDeps[dep.Key] = append(updatedPropDeps[dep.Key], dep.URN)
+				case resource.ResourceDeletedWith:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					existingResource.DeletedWith = dep.URN
 				}
 			}
+
+			existingResource.Dependencies = updatedDeps
+			existingResource.PropertyDependencies = updatedPropDeps
 		}
 	}
 
 	updateProvider := func(newRef providers.Reference) error {
 		// Loop through all resources and rename references to the provider.
 		for _, curResource := range snap.Resources {
-
 			if curResource.Provider == "" {
 				// Skip resources that don't use a provider.
 				continue
 			}
+
 			curResourceProviderRef, err := providers.ParseReference(curResource.Provider)
 			if err != nil {
 				return err
@@ -165,8 +174,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 			yes = yes || skipConfirmations()
 
 			if len(args) < 2 && !cmdutil.Interactive() {
@@ -180,7 +190,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				var snap *deploy.Snapshot
 				err := surveyStack(
 					func() (err error) {
-						urn, err = getURNFromState(ctx, stack, &snap, "Select a resource to rename:")
+						urn, err = getURNFromState(ctx, ws, DefaultLoginManager, stack, &snap, "Select a resource to rename:")
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
@@ -220,7 +230,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			err := runTotalStateEdit(ctx, stack, showPrompt,
+			err := runTotalStateEdit(ctx, ws, DefaultLoginManager, stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
 				})

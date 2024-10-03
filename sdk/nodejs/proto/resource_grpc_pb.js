@@ -91,6 +91,28 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterPackageRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterPackageRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterPackageRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterPackageRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterPackageRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterPackageResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterPackageResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterPackageResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterPackageResponse(buffer_arg) {
+  return pulumi_resource_pb.RegisterPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -248,7 +270,8 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
-  registerStackTransform: {
+  // Register a resource transform for the stack
+registerStackTransform: {
     path: '/pulumirpc.ResourceMonitor/RegisterStackTransform',
     requestStream: false,
     responseStream: false,
@@ -258,6 +281,29 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_Callback,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Register an invoke transform for the stack
+registerStackInvokeTransform: {
+    path: '/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerPackage: {
+    path: '/pulumirpc.ResourceMonitor/RegisterPackage',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterPackageRequest,
+    responseType: pulumi_resource_pb.RegisterPackageResponse,
+    requestSerialize: serialize_pulumirpc_RegisterPackageRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterPackageRequest,
+    responseSerialize: serialize_pulumirpc_RegisterPackageResponse,
+    responseDeserialize: deserialize_pulumirpc_RegisterPackageResponse,
   },
 };
 

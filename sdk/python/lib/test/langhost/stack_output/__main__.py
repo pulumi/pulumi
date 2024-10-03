@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Dict
 import pulumi
 
 
@@ -22,7 +23,7 @@ class TestClass:
 
 my_test_class_instance = TestClass()
 
-recursive = {"a": 1}
+recursive: Dict[str, Any] = {"a": 1}
 recursive["b"] = 2
 recursive["c"] = recursive
 

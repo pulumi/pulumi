@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -219,11 +219,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -329,7 +329,7 @@ example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesAr
 <pulumi-choosable type="language" values="java">
 
 ```java
-var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()        
+var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()
     .bar(SomeOtherObjectArgs.builder()
         .baz("string")
         .build())
@@ -361,28 +361,28 @@ var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()
 
 ```python
 type_uses_resource = example.TypeUses("typeUsesResource",
-    bar=example.SomeOtherObjectArgs(
-        baz="string",
-    ),
-    baz=example.ObjectWithNodeOptionalInputsArgs(
-        foo="string",
-        bar=0,
-    ),
-    foo=example.ObjectArgs(
-        bar="string",
-        configs=[example.ConfigMapArgs(
-            config="string",
-        )],
-        foo=resource,
-        others=[[example.SomeOtherObjectArgs(
-            baz="string",
-        )]],
-        still_others={
-            "string": [example.SomeOtherObjectArgs(
-                baz="string",
-            )],
+    bar={
+        "baz": "string",
+    },
+    baz={
+        "foo": "string",
+        "bar": 0,
+    },
+    foo={
+        "bar": "string",
+        "configs": [{
+            "config": "string",
+        }],
+        "foo": resource,
+        "others": [[{
+            "baz": "string",
+        }]],
+        "still_others": {
+            "string": [{
+                "baz": "string",
+            }],
         },
-    ),
+    },
     qux=example.RubberTreeVariety.BURGUNDY)
 ```
 
@@ -459,6 +459,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

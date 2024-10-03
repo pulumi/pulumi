@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,10 @@ func TestZeroPanic(t *testing.T) {
 	var p Promise[int]
 	assert.PanicsWithValue(t, "Promise must be initialized", func() {
 		p.Result(context.Background()) //nolint:errcheck // Result is expected to panic
+	})
+
+	assert.PanicsWithValue(t, "Promise must be initialized", func() {
+		p.TryResult() //nolint:errcheck // TryResult is expected to panic
 	})
 }
 
@@ -210,4 +214,16 @@ func TestTryResultRace(t *testing.T) {
 	i, err := result.Result(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, 42, i)
+}
+
+func TestRunError(t *testing.T) {
+	t.Parallel()
+
+	// Run should return a promise that is rejected if the function returns an error.
+	result := Run(func() (int, error) {
+		return 0, errors.New("boom")
+	})
+
+	_, err := result.Result(context.Background())
+	assert.Error(t, err)
 }

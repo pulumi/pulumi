@@ -18,17 +18,18 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -334,7 +335,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	prompt := func(yes bool, valueType string, defaultValue string, secret bool,
 		isValidFn func(value string) error, opts display.Options,
 	) (string, error) {
-		if strings.HasPrefix(valueType, "aws:region:") {
+		if strings.Contains(valueType, "(aws:region)") {
 			return "", nil
 		}
 		return defaultValue, nil
@@ -431,6 +432,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		chdir(t, tempdir)
 
 		args := newArgs{
+			chooseTemplate:    chooseTemplate,
 			interactive:       false,
 			yes:               true,
 			secretsProvider:   "default",
@@ -867,7 +869,7 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				}, nil
 
 			default:
-				return nil, errors.Errorf("invalid stack reference %q", s)
+				return nil, fmt.Errorf("invalid stack reference %q", s)
 			}
 		},
 	}
@@ -1055,32 +1057,64 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
 	tests := []struct {
-		input    string
+		argument string
+		prompted string
 		expected string
 	}{
 		{
 			"typescript",
+			"",
 			"typescript",
 		},
 		{
 			"https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
+			"",
 			"https://github.com/pulumi/templates/tree/master/yaml",
+		},
+		{
+			"",
+			"python",
+			"python",
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
-		t.Run(tt.input, func(t *testing.T) {
+		name := tt.argument
+		if name == "" {
+			name = tt.prompted
+		}
+		t.Run(name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
 			chdir(t, tempdir)
+			uniqueProjectName := filepath.Base(tempdir) + "test"
+
+			chooseTemplateMock := func(templates []workspace.Template, opts display.Options,
+			) (workspace.Template, error) {
+				for _, template := range templates {
+					if template.Name == tt.prompted {
+						return template, nil
+					}
+				}
+				return workspace.Template{}, errors.New("template not found")
+			}
+
+			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+			) (map[string]interface{}, error) {
+				return nil, nil
+			}
 
 			args := newArgs{
-				interactive:       false,
-				generateOnly:      true,
-				yes:               true,
-				name:              projectName,
-				prompt:            promptForValue,
-				secretsProvider:   "default",
-				templateNameOrURL: tt.input,
+				interactive:          tt.prompted != "",
+				generateOnly:         true,
+				yes:                  true,
+				templateMode:         true,
+				name:                 projectName,
+				prompt:               promptMock(uniqueProjectName, stackName),
+				promptRuntimeOptions: runtimeOptionsMock,
+				chooseTemplate:       chooseTemplateMock,
+				secretsProvider:      "default",
+				templateNameOrURL:    tt.argument,
 			}
 
 			err := runNew(context.Background(), args)
@@ -1118,4 +1152,36 @@ func TestSanitizeTemplate(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestPulumiPromptRuntimeOptions(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+	) (map[string]interface{}, error) {
+		return map[string]interface{}{"someOption": "someValue"}, nil
+	}
+
+	args := newArgs{
+		interactive:          false,
+		generateOnly:         true,
+		yes:                  true,
+		templateMode:         true,
+		name:                 projectName,
+		prompt:               promptForValue,
+		promptRuntimeOptions: runtimeOptionsMock,
+		secretsProvider:      "default",
+		templateNameOrURL:    "python",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	require.NoError(t, err)
+	proj := loadProject(t, tempdir)
+	require.Equal(t, 1, len(proj.Runtime.Options()))
+	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }

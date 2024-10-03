@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pulumi
 from typing import Optional
+import pulumi
 
 
 @pulumi.input_type
@@ -28,7 +28,7 @@ class MyResourceArgs:
 
     @in_prop.setter
     def in_prop(self, value: pulumi.Input[str]):
-        pulumi.set(self, "in_prop")
+        pulumi.set(self, "in_prop", value)
 
 
 class MyResource(pulumi.ComponentResource):

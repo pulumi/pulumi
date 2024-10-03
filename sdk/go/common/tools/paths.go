@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/user"
 	"path/filepath"
 	"time"
-
-	user "github.com/tweekmonster/luser"
 )
 
 // EnsureDir ensures that a target directory exists (like `mkdir -p`), returning a non-nil error if any problem occurs.

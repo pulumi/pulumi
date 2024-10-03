@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,24 +52,44 @@ type BackendClient interface {
 
 // Options controls the deployment process.
 type Options struct {
-	Events                    Events     // an optional events callback interface.
-	Parallel                  int        // the degree of parallelism for resource operations (<=1 for serial).
-	Refresh                   bool       // whether or not to refresh before executing the deployment.
-	RefreshOnly               bool       // whether or not to exit after refreshing.
-	Targets                   UrnTargets // If specified, only operate on specified resources.
-	ReplaceTargets            UrnTargets // If specified, mark the specified resources for replacement.
-	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
-	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.
-	DisableResourceReferences bool       // true to disable resource reference support.
-	DisableOutputValues       bool       // true to disable output value support.
-	GeneratePlan              bool       // true to enable plan generation.
+	// true if the process is a dry run (that is, won't make any changes), such as
+	// during a preview action or when previewing another action like refresh or
+	// destroy.
+	DryRun bool
+	// the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int32
+	// whether or not to refresh before executing the deployment.
+	Refresh bool
+	// whether or not to exit after refreshing (i.e. this is specifically a
+	// refresh operation).
+	RefreshOnly bool
+	// if specified, only operate on the specified resources.
+	Targets UrnTargets
+	// if specified, mark the specified resources for replacement.
+	ReplaceTargets UrnTargets
+	// true if target dependents should be computed automatically.
+	TargetDependents bool
+	// whether or not to use legacy diffing behavior.
+	UseLegacyDiff bool
+	// true if the deployment should use legacy refresh diffing behavior and
+	// report only output changes, as opposed to computing diffs against desired
+	// state.
+	UseLegacyRefreshDiff bool
+	// true to disable resource reference support.
+	DisableResourceReferences bool
+	// true to disable output value support.
+	DisableOutputValues bool
+	// true to enable plan generation.
+	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
+	// true to debug the program.
+	EnableDebugging bool
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
 // deployment process.
-func (o Options) DegreeOfParallelism() int {
+func (o Options) DegreeOfParallelism() int32 {
 	if o.Parallel <= 1 {
 		return 1
 	}
@@ -249,6 +269,10 @@ func (m *resourcePlans) plan() *Plan {
 type Deployment struct {
 	// the plugin context (for provider operations).
 	ctx *plugin.Context
+	// options for this deployment.
+	opts *Options
+	// event handlers for this deployment.
+	events Events
 	// the deployment target.
 	target *Target
 	// the old resource snapshot for comparison.
@@ -267,8 +291,6 @@ type Deployment struct {
 	source Source
 	// the policy packs to run during this deployment's generation.
 	localPolicyPackPaths []string
-	// true if this deployment is to be previewed.
-	preview bool
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -375,7 +397,14 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
 			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
-				res.Outputs = res.Inputs
+				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
+				res.Outputs = make(resource.PropertyMap)
+				for k, v := range res.Inputs {
+					if k == "__internal" {
+						continue
+					}
+					res.Outputs[k] = v
+				}
 			}
 		}
 	}
@@ -414,8 +443,16 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 //
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
-func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Plan, source Source,
-	localPolicyPackPaths []string, preview bool, backendClient BackendClient,
+func NewDeployment(
+	ctx *plugin.Context,
+	opts *Options,
+	events Events,
+	target *Target,
+	prev *Snapshot,
+	plan *Plan,
+	source Source,
+	localPolicyPackPaths []string,
+	backendClient BackendClient,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -429,7 +466,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
-	oldResources, olds, err := buildResourceMap(prev, preview)
+	oldResources, olds, err := buildResourceMap(prev, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -449,17 +486,18 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg := providers.NewRegistry(ctx.Host, preview, builtins)
+	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	return &Deployment{
 		ctx:                  ctx,
+		opts:                 opts,
+		events:               events,
 		target:               target,
 		prev:                 prev,
 		plan:                 plan,
 		olds:                 olds,
 		source:               source,
 		localPolicyPackPaths: localPolicyPackPaths,
-		preview:              preview,
 		depGraph:             depGraph,
 		providers:            reg,
 		goals:                newGoals,
@@ -553,7 +591,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
-func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, error) {
+func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
-	return deploymentExec.Execute(ctx, opts, preview)
+	return deploymentExec.Execute(ctx)
 }

@@ -9,7 +9,7 @@
 
 {{ htmlSafe .Comment }}
 
-{{- if ne (len .ExamplesSection) 0 }}
+{{- if ne (len .ExamplesSection.Examples) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
@@ -19,16 +19,9 @@
 Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
 
 ### Constructor syntax
-
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
 <div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 </div>
-{{- end }}
 
 {{/*
     Render the specific snippet to construct the resource, e.g.
@@ -112,21 +105,14 @@ Resources are created with functions called constructors. To learn more about de
 </pulumi-choosable>
 </div>
 
-{{ if ne (len .CreationExampleSyntax) 0 }}
+{{ if and (ne (len .CreationExampleSyntax) 0) (and (ne (index .CreationExampleSyntax "typescript") "") (ne (index .CreationExampleSyntax "python") "") (ne (index .CreationExampleSyntax "java") "") (ne (index .CreationExampleSyntax "go") "") (ne (index .CreationExampleSyntax "csharp") "") (ne (index .CreationExampleSyntax "yaml") "")) }}
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
-
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
 <div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 </div>
-{{- end }}
 
 {{ range $lang, $code := .CreationExampleSyntax }}
 <div>
@@ -147,6 +133,12 @@ The following reference example uses placeholder values for all [input propertie
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The {{ .Header.Title }} resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
@@ -171,14 +163,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{- end }}
 
 {{ htmlSafe .Comment }}
-{{- if ne (len .ExamplesSection) 0 }}
+{{- if ne (len .ExamplesSection.Examples) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
 #### Using {{ .Title }}
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="{{ $.LangChooserLanguages }}"></pulumi-chooser>
 </div>
 
 <!-- TS/JS -->
@@ -228,16 +220,9 @@ The following arguments are supported:
 ## Look up Existing {{.Header.Title}} Resource {#look-up}
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
-
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
 <div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 </div>
-{{- end }}
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -334,13 +319,13 @@ The following state arguments are supported:
 
 ## Supporting Types
 
-{{- if ge (len .NestedTypes) 200 }}
-> **Note:** There are over 200 nested types for this resource.
-Only the first 200 types are included in this documentation.
+{{- if ge (len .NestedTypes) .MaxNestedTypes }}
+> **Note:** There are over {{ .MaxNestedTypes }} nested types for this resource.
+Only the first {{ .MaxNestedTypes }} types are included in this documentation.
 {{ end }}
 
 {{ range $index, $elem := .NestedTypes }}
-{{ if lt $index 200 }}
+{{ if lt $index $.MaxNestedTypes }}
 <h4 id="{{ $elem.AnchorID }}">
 {{ htmlSafe $elem.Name }}<pulumi-choosable type="language" values="python,go" class="inline">, {{ htmlSafe $elem.Name }}<wbr>Args</pulumi-choosable>
 </h4>

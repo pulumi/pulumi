@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -99,7 +98,7 @@ func (eng *hostServer) Log(ctx context.Context, req *pulumirpc.LogRequest) (*emp
 	case pulumirpc.LogSeverity_ERROR:
 		sev = diag.Error
 	default:
-		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
 	if req.Ephemeral {
@@ -128,4 +127,24 @@ func (eng *hostServer) SetRootResource(ctx context.Context,
 	var response pulumirpc.SetRootResourceResponse
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil
+}
+
+func (eng *hostServer) StartDebugging(ctx context.Context,
+	req *pulumirpc.StartDebuggingRequest,
+) (*emptypb.Empty, error) {
+	// fire an engine event to start the debugger
+	info := DebuggingInfo{
+		Config: req.Config.AsMap(),
+	}
+	// log a status message
+	eng.host.LogStatus(
+		diag.Info, resource.URN(""),
+		fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
+
+	err := eng.host.StartDebugging(info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }

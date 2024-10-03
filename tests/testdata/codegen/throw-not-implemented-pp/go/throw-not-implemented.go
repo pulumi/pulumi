@@ -10,7 +10,7 @@ func notImplemented(message string) pulumi.AnyOutput {
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("result", notImplemented("expression here is not implemented yet"))
+		ctx.Export("result", pulumi.Any(notImplemented("expression here is not implemented yet")))
 		return nil
 	})
 }

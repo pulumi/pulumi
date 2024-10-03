@@ -68,7 +68,7 @@ jobs:
           python -m pip install wheel setuptools
           python setup.py build bdist_wheel --python-tag py3
       - name: Upload pulumi.whl
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts-python-sdk
           path: sdk/python/lib/dist/*.whl
@@ -118,7 +118,7 @@ jobs:
           cd sdk/nodejs/bin
           npm pack
       - name: Upload pulumi-node-sdk.tgz
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts-nodejs-sdk
           path: sdk/nodejs/bin/*.tgz

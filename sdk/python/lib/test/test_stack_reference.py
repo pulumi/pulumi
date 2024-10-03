@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import asyncio
-import pytest
 import unittest
+import pytest
 
 import pulumi
 from pulumi.runtime import mocks

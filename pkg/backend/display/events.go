@@ -1,9 +1,24 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package display
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"time"
 
@@ -65,6 +80,16 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Color:     string(p.Color),
 			Severity:  string(p.Severity),
 			Ephemeral: p.Ephemeral,
+		}
+
+	case engine.StartDebuggingEvent:
+		p, ok := e.Payload().(engine.StartDebuggingEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+
+		apiEvent.StartDebuggingEvent = &apitype.StartDebuggingEvent{
+			Config: p.Config,
 		}
 
 	case engine.PolicyViolationEvent:
@@ -134,7 +159,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
-			DurationSeconds: int(p.Duration.Seconds()),
+			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 		}
@@ -172,6 +197,20 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 
 	case engine.PolicyLoadEvent:
 		apiEvent.PolicyLoadEvent = &apitype.PolicyLoadEvent{}
+
+	case engine.ProgressEvent:
+		p, ok := e.Payload().(engine.ProgressEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ProgressEvent = &apitype.ProgressEvent{
+			Type:      apitype.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
+		}
 
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
@@ -382,6 +421,17 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.PolicyLoadEvent != nil:
 		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
+
+	case apiEvent.ProgressEvent != nil:
+		p := apiEvent.ProgressEvent
+		event = engine.NewEvent(engine.ProgressEventPayload{
+			Type:      engine.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
+		})
 
 	default:
 		return event, errors.New("unknown event type")

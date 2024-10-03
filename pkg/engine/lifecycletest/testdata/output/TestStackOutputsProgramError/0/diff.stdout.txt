@@ -1,0 +1,9 @@
+<{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    first : <{%reset%}><{%fg 2%}>"step 0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    second: <{%reset%}><{%fg 2%}>"step 0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

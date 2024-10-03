@@ -45,6 +45,11 @@ type DiagnosticEvent struct {
 	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
+// StartDebuggingEvent is emitted to start a debugging session.
+type StartDebuggingEvent struct {
+	Config map[string]interface{} `json:"config,omitempty"`
+}
+
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
 	ResourceURN          string `json:"resourceUrn,omitempty"`
@@ -200,6 +205,34 @@ type ResOpFailedEvent struct {
 // PolicyLoadEvent is emitted when a policy starts loading
 type PolicyLoadEvent struct{}
 
+// ProgressEvent is emitted when a potentially long-running engine process is in
+// progress.
+type ProgressEvent struct {
+	// The type of process (e.g. plugin download, plugin install).
+	Type ProgressType `json:"type"`
+	// A unique identifier for the process.
+	ID string `json:"id"`
+	// A message accompanying the process.
+	Message string `json:"message"`
+	// The number of items completed so far (e.g. bytes received, items installed,
+	// etc.)
+	Completed int64 `json:"received"`
+	// The total number of items that must be completed.
+	Total int64 `json:"total"`
+	// True if and only if the process has completed.
+	Done bool `json:"done"`
+}
+
+// ProgressType is the type of process occurring.
+type ProgressType string
+
+const (
+	// PluginDownload represents a download of a plugin.
+	PluginDownload ProgressType = "plugin-download"
+	// PluginInstall represents the installation of a plugin.
+	PluginInstall ProgressType = "plugin-install"
+)
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -227,6 +260,8 @@ type EngineEvent struct {
 	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
 	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
 	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
+	StartDebuggingEvent    *StartDebuggingEvent    `json:"startDebuggingEvent,omitempty"`
+	ProgressEvent          *ProgressEvent          `json:"progressEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

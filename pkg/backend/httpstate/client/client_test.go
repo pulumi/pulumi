@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -270,5 +271,91 @@ func TestGetCapabilities(t *testing.T) {
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
+	})
+}
+
+func TestDeploymentSettingsApi(t *testing.T) {
+	t.Parallel()
+	t.Run("get-stack-deployment-settings", func(t *testing.T) {
+		t.Parallel()
+
+		payload := `{
+    "sourceContext": {
+        "git": {
+            "repoUrl": "git@github.com:pulumi/test-repo.git",
+            "branch": "main",
+            "repoDir": ".",
+            "gitAuth": {
+                "basicAuth": {
+                    "userName": "jdoe",
+                    "password": {
+                        "secret": "[secret]",
+                        "ciphertext": "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8="
+                    }
+                }
+            }
+        }
+    },
+    "operationContext": {
+        "oidc": {
+            "aws": {
+                "duration": "1h0m0s",
+                "policyArns": [
+                    "policy:arn"
+                ],
+                "roleArn": "the_role",
+                "sessionName": "the_session_name"
+            }
+        },
+        "options": {
+            "skipIntermediateDeployments": true
+        }
+    },
+    "agentPoolID": "51035bee-a4d6-4b63-9ff6-418775c5da8d"
+}`
+
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, req.RequestURI, "/api/stacks/owner/project/stack/deployments/settings")
+			return payload
+		})
+		defer s.Close()
+
+		c := newMockClient(s)
+		stack, _ := tokens.ParseStackName("stack")
+		resp, err := c.GetStackDeploymentSettings(context.Background(), StackIdentifier{
+			Owner:   "owner",
+			Project: "project",
+			Stack:   stack,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.SourceContext)
+		assert.NotNil(t, resp.SourceContext.Git)
+		assert.Equal(t, "main", resp.SourceContext.Git.Branch)
+		assert.Equal(t, "git@github.com:pulumi/test-repo.git", resp.SourceContext.Git.RepoURL)
+		assert.Equal(t, ".", resp.SourceContext.Git.RepoDir)
+		assert.NotNil(t, resp.SourceContext.Git.GitAuth)
+		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
+		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
+		assert.Equal(t, "jdoe", resp.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
+		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
+		assert.Equal(t, "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8=",
+			resp.SourceContext.Git.GitAuth.BasicAuth.Password.Ciphertext)
+		assert.NotNil(t, resp.Operation)
+		assert.NotNil(t, resp.Operation.Options)
+		assert.True(t, resp.Operation.Options.SkipIntermediateDeployments)
+		assert.False(t, resp.Operation.Options.DeleteAfterDestroy)
+		assert.False(t, resp.Operation.Options.RemediateIfDriftDetected)
+		assert.False(t, resp.Operation.Options.SkipInstallDependencies)
+		assert.NotNil(t, resp.Operation.OIDC)
+		assert.Nil(t, resp.Operation.OIDC.Azure)
+		assert.Nil(t, resp.Operation.OIDC.GCP)
+		assert.NotNil(t, resp.Operation.OIDC.AWS)
+		assert.Equal(t, "the_session_name", resp.Operation.OIDC.AWS.SessionName)
+		assert.Equal(t, "the_role", resp.Operation.OIDC.AWS.RoleARN)
+		duration, _ := time.ParseDuration("1h0m0s")
+		assert.Equal(t, apitype.DeploymentDuration(duration), resp.Operation.OIDC.AWS.Duration)
+		assert.Equal(t, []string{"policy:arn"}, resp.Operation.OIDC.AWS.PolicyARNs)
+		assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *resp.AgentPoolID)
 	})
 }

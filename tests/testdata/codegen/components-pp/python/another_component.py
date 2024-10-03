@@ -10,6 +10,6 @@ class AnotherComponent(pulumi.ComponentResource):
         first_password = random.RandomPassword(f"{name}-firstPassword",
             length=16,
             special=True,
-            opts=pulumi.ResourceOptions(parent=self))
+            opts = pulumi.ResourceOptions(parent=self))
 
         self.register_outputs()

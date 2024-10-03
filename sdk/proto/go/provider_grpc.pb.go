@@ -23,6 +23,20 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceProviderClient interface {
+	// Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+	//
+	// Providers can be parameterized with either multiple extension packages (which don't define their own provider
+	// resources), or with a replacement package (which does define its own provider resource).
+	//
+	// Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+	// called once. Extension packages may even be called multiple times for the same package name, but with different
+	// versions.
+	//
+	// Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+	// should return the sub-package name and version (which for `ParametersValue` should match the given input).
+	//
+	// For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+	Parameterize(ctx context.Context, in *ParameterizeRequest, opts ...grpc.CallOption) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
 	// CheckConfig validates the configuration for this resource provider.
@@ -30,6 +44,12 @@ type ResourceProviderClient interface {
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
+	//
+	// :::{warning}
+	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+	// ConfigureRequest.args.
+	// :::
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
@@ -83,6 +103,15 @@ type resourceProviderClient struct {
 
 func NewResourceProviderClient(cc grpc.ClientConnInterface) ResourceProviderClient {
 	return &resourceProviderClient{cc}
+}
+
+func (c *resourceProviderClient) Parameterize(ctx context.Context, in *ParameterizeRequest, opts ...grpc.CallOption) (*ParameterizeResponse, error) {
+	out := new(ParameterizeResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Parameterize", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *resourceProviderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error) {
@@ -283,6 +312,20 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
 type ResourceProviderServer interface {
+	// Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+	//
+	// Providers can be parameterized with either multiple extension packages (which don't define their own provider
+	// resources), or with a replacement package (which does define its own provider resource).
+	//
+	// Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+	// called once. Extension packages may even be called multiple times for the same package name, but with different
+	// versions.
+	//
+	// Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+	// should return the sub-package name and version (which for `ParametersValue` should match the given input).
+	//
+	// For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+	Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
 	// CheckConfig validates the configuration for this resource provider.
@@ -290,6 +333,12 @@ type ResourceProviderServer interface {
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
+	//
+	// :::{warning}
+	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+	// ConfigureRequest.args.
+	// :::
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
@@ -342,6 +391,9 @@ type ResourceProviderServer interface {
 type UnimplementedResourceProviderServer struct {
 }
 
+func (UnimplementedResourceProviderServer) Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Parameterize not implemented")
+}
 func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
 }
@@ -410,6 +462,24 @@ type UnsafeResourceProviderServer interface {
 
 func RegisterResourceProviderServer(s grpc.ServiceRegistrar, srv ResourceProviderServer) {
 	s.RegisterService(&ResourceProvider_ServiceDesc, srv)
+}
+
+func _ResourceProvider_Parameterize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ParameterizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Parameterize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/Parameterize",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Parameterize(ctx, req.(*ParameterizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ResourceProvider_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -764,6 +834,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.ResourceProvider",
 	HandlerType: (*ResourceProviderServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Parameterize",
+			Handler:    _ResourceProvider_Parameterize_Handler,
+		},
 		{
 			MethodName: "GetSchema",
 			Handler:    _ResourceProvider_GetSchema_Handler,

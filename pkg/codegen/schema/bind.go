@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -187,12 +187,16 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(typeDiags)
 
+	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
+	diags = diags.Extend(parameterizationDiags)
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
+	pkg.Parameterization = parameterization
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -225,6 +229,9 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		} else {
 			version = &v
 		}
+	}
+	if info.Meta != nil && info.Meta.SupportPack && info.Version == "" {
+		diags = diags.Append(errorf("#/version", "version must be provided when package supports packing"))
 	}
 
 	// Parse the module format, if any.
@@ -700,8 +707,11 @@ func (t *types) bindTypeDef(token string) (Type, hcl.Diagnostics, error) {
 		// for identity. Types are interned based on their string representation, and the string representation of an
 		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 		// that reference object types (e.g. arrays, maps, unions)
-		obj := &ObjectType{Token: token, IsOverlay: spec.IsOverlay}
-		obj.InputShape = &ObjectType{Token: token, PlainShape: obj, IsOverlay: spec.IsOverlay}
+		obj := &ObjectType{Token: token, IsOverlay: spec.IsOverlay, OverlaySupportedLanguages: spec.OverlaySupportedLanguages}
+		obj.InputShape = &ObjectType{
+			Token: token, PlainShape: obj, IsOverlay: spec.IsOverlay,
+			OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		}
 		t.typeDefs[token] = obj
 
 		diags, err := t.bindObjectTypeDetails(path, obj, token, spec.ObjectTypeSpec)
@@ -990,6 +1000,7 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 		if v < math.MinInt32 || v > math.MaxInt32 {
 			return 0, typeError("integer")
 		}
+		//nolint:gosec // int -> int32 conversion is guarded above.
 		return int32(v), nil
 	case NumberType:
 		v, ok := value.(float64)
@@ -1165,6 +1176,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.Properties = properties
 	obj.properties = propertyMap
 	obj.IsOverlay = spec.IsOverlay
+	obj.OverlaySupportedLanguages = spec.OverlaySupportedLanguages
 
 	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
@@ -1183,6 +1195,7 @@ func (t *types) bindAnonymousObjectType(path, token string, spec ObjectTypeSpec)
 	obj := &ObjectType{}
 	obj.InputShape = &ObjectType{PlainShape: obj}
 	obj.IsOverlay = spec.IsOverlay
+	obj.OverlaySupportedLanguages = spec.OverlaySupportedLanguages
 
 	diags, err := t.bindObjectTypeDetails(path, obj, token, spec)
 	if err != nil {
@@ -1309,7 +1322,9 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 		}
 		idx := strings.LastIndex(function.Token, "/")
 		if idx == -1 || function.Token[:idx] != resourceToken {
-			diags = diags.Append(errorf(methodPath, "invalid function token format %s", token))
+			d := errorf(methodPath, "invalid function token format %s", token)
+			d.Detail = fmt.Sprintf(`expected a token of the shape: "%s/<method name>"`, resourceToken)
+			diags = diags.Append(d)
 			continue
 		}
 		if function.Inputs == nil || function.Inputs.Properties == nil || len(function.Inputs.Properties) == 0 ||
@@ -1326,9 +1341,45 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 	return result, diags, nil
 }
 
+func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Diagnostics) {
+	if spec == nil {
+		return nil, nil
+	}
+
+	if spec.BaseProvider.Name == "" {
+		return nil, hcl.Diagnostics{errorf(
+			"#/parameterization/baseProvider/name",
+			"provider name must be specified")}
+	}
+
+	ver, err := semver.Parse(spec.BaseProvider.Version)
+	if err != nil {
+		return nil, hcl.Diagnostics{errorf(
+			"#/parameterization/baseProvider/version",
+			"invalid version %q: %v", spec.BaseProvider.Version, err)}
+	}
+
+	return &Parameterization{
+		BaseProvider: BaseProvider{
+			Name:              spec.BaseProvider.Name,
+			Version:           ver,
+			PluginDownloadURL: spec.BaseProvider.PluginDownloadURL,
+		},
+		Parameter: spec.Parameter,
+	}, nil
+}
+
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, error) {
 	properties, _, diags, err := types.bindProperties("#/config/variables", spec.Variables,
 		"#/config/defaults", spec.Required, false)
+
+	// If any property is called "version" error that it's reserved.
+	for _, property := range properties {
+		if property.Name == "version" {
+			diags = diags.Append(errorf("#/config/variables/version", "version is a reserved configuration key"))
+		}
+	}
+
 	return properties, diags, err
 }
 
@@ -1428,18 +1479,19 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	}
 
 	*decl = Resource{
-		PackageReference:   t.externalPackage(),
-		Token:              token,
-		Comment:            spec.Description,
-		InputProperties:    inputProperties,
-		Properties:         properties,
-		StateInputs:        stateInputs,
-		Aliases:            aliases,
-		DeprecationMessage: spec.DeprecationMessage,
-		Language:           language,
-		IsComponent:        spec.IsComponent,
-		Methods:            methods,
-		IsOverlay:          spec.IsOverlay,
+		PackageReference:          t.externalPackage(),
+		Token:                     token,
+		Comment:                   spec.Description,
+		InputProperties:           inputProperties,
+		Properties:                properties,
+		StateInputs:               stateInputs,
+		Aliases:                   aliases,
+		DeprecationMessage:        spec.DeprecationMessage,
+		Language:                  language,
+		IsComponent:               spec.IsComponent,
+		Methods:                   methods,
+		IsOverlay:                 spec.IsOverlay,
+		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 	}
 	return diags, nil
 }
@@ -1456,6 +1508,13 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 		return diags, err
 	}
 	decl.IsProvider = true
+
+	// If any input property is called "version" error that it's reserved.
+	for _, property := range decl.InputProperties {
+		if property.Name == "version" {
+			diags = diags.Append(errorf("#/provider/properties/version", "version is a reserved property name"))
+		}
+	}
 
 	// Since non-primitive provider configuration is currently JSON serialized, we can't handle it without
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
@@ -1632,18 +1691,19 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	}
 
 	fn := &Function{
-		PackageReference:         t.externalPackage(),
-		Token:                    token,
-		Comment:                  spec.Description,
-		Inputs:                   inputs,
-		MultiArgumentInputs:      len(spec.MultiArgumentInputs) > 0,
-		InlineObjectAsReturnType: inlineObjectAsReturnType,
-		Outputs:                  outputs,
-		ReturnType:               returnType,
-		ReturnTypePlain:          returnTypePlain,
-		DeprecationMessage:       spec.DeprecationMessage,
-		Language:                 language,
-		IsOverlay:                spec.IsOverlay,
+		PackageReference:          t.externalPackage(),
+		Token:                     token,
+		Comment:                   spec.Description,
+		Inputs:                    inputs,
+		MultiArgumentInputs:       len(spec.MultiArgumentInputs) > 0,
+		InlineObjectAsReturnType:  inlineObjectAsReturnType,
+		Outputs:                   outputs,
+		ReturnType:                returnType,
+		ReturnTypePlain:           returnTypePlain,
+		DeprecationMessage:        spec.DeprecationMessage,
+		Language:                  language,
+		IsOverlay:                 spec.IsOverlay,
+		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 	}
 	t.functionDefs[token] = fn
 

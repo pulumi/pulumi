@@ -32,7 +32,7 @@ func TestCopyDirectory(t *testing.T) {
 
 	dst := t.TempDir()
 
-	err = copyDirectory(os.DirFS(src), ".", dst, nil)
+	err = copyDirectory(os.DirFS(src), ".", dst, nil, nil)
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(filepath.Join(dst, "file.txt"))
@@ -55,7 +55,7 @@ func TestCopyDirectoryWithEdit(t *testing.T) {
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 
-	err = copyDirectory(os.DirFS(src), ".", dst, edits)
+	err = copyDirectory(os.DirFS(src), ".", dst, edits, nil)
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(filepath.Join(dst, "file1.txt"))
@@ -82,7 +82,7 @@ func TestCopyDirectoryWithMultilineEdit(t *testing.T) {
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 
-	err = copyDirectory(os.DirFS(src), ".", dst, edits)
+	err = copyDirectory(os.DirFS(src), ".", dst, edits, nil)
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(filepath.Join(dst, "file1.txt"))

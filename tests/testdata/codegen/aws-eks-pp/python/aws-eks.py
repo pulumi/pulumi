@@ -18,10 +18,10 @@ eks_igw = aws.ec2.InternetGateway("eksIgw",
     })
 eks_route_table = aws.ec2.RouteTable("eksRouteTable",
     vpc_id=eks_vpc.id,
-    routes=[aws.ec2.RouteTableRouteArgs(
-        cidr_block="0.0.0.0/0",
-        gateway_id=eks_igw.id,
-    )],
+    routes=[{
+        "cidr_block": "0.0.0.0/0",
+        "gateway_id": eks_igw.id,
+    }],
     tags={
         "Name": "pulumi-vpc-rt",
     })
@@ -51,20 +51,20 @@ eks_security_group = aws.ec2.SecurityGroup("eksSecurityGroup",
         "Name": "pulumi-cluster-sg",
     },
     ingress=[
-        aws.ec2.SecurityGroupIngressArgs(
-            cidr_blocks=["0.0.0.0/0"],
-            from_port=443,
-            to_port=443,
-            protocol="tcp",
-            description="Allow pods to communicate with the cluster API Server.",
-        ),
-        aws.ec2.SecurityGroupIngressArgs(
-            cidr_blocks=["0.0.0.0/0"],
-            from_port=80,
-            to_port=80,
-            protocol="tcp",
-            description="Allow internet access to pods",
-        ),
+        {
+            "cidr_blocks": ["0.0.0.0/0"],
+            "from_port": 443,
+            "to_port": 443,
+            "protocol": "tcp",
+            "description": "Allow pods to communicate with the cluster API Server.",
+        },
+        {
+            "cidr_blocks": ["0.0.0.0/0"],
+            "from_port": 80,
+            "to_port": 80,
+            "protocol": "tcp",
+            "description": "Allow internet access to pods",
+        },
     ])
 # EKS Cluster Role
 eks_role = aws.iam.Role("eksRole", assume_role_policy=json.dumps({
@@ -111,11 +111,11 @@ eks_cluster = aws.eks.Cluster("eksCluster",
     tags={
         "Name": "pulumi-eks-cluster",
     },
-    vpc_config=aws.eks.ClusterVpcConfigArgs(
-        public_access_cidrs=["0.0.0.0/0"],
-        security_group_ids=[eks_security_group.id],
-        subnet_ids=subnet_ids,
-    ))
+    vpc_config={
+        "public_access_cidrs": ["0.0.0.0/0"],
+        "security_group_ids": [eks_security_group.id],
+        "subnet_ids": subnet_ids,
+    })
 node_group = aws.eks.NodeGroup("nodeGroup",
     cluster_name=eks_cluster.name,
     node_group_name="pulumi-eks-nodegroup",
@@ -124,11 +124,11 @@ node_group = aws.eks.NodeGroup("nodeGroup",
     tags={
         "Name": "pulumi-cluster-nodeGroup",
     },
-    scaling_config=aws.eks.NodeGroupScalingConfigArgs(
-        desired_size=2,
-        max_size=2,
-        min_size=1,
-    ))
+    scaling_config={
+        "desired_size": 2,
+        "max_size": 2,
+        "min_size": 1,
+    })
 pulumi.export("clusterName", eks_cluster.name)
 pulumi.export("kubeconfig", pulumi.Output.json_dumps({
     "apiVersion": "v1",

@@ -36,17 +36,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testProgressEvents(t *testing.T, path string, accept, interactive bool, width, height int, raw bool) {
+func defaultOpts() Options {
+	return Options{
+		Color:                colors.Raw,
+		ShowConfig:           true,
+		ShowReplacementSteps: true,
+		ShowSameResources:    true,
+		ShowReads:            true,
+		DeterministicOutput:  true,
+		ShowLinkToCopilot:    false,
+		RenderOnDirty:        true,
+	}
+}
+
+func testProgressEvents(
+	t testing.TB,
+	path string,
+	accept bool,
+	suffix string,
+	testOpts Options,
+	width, height int,
+	raw bool,
+) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
-
-	suffix := ".non-interactive"
-	if interactive {
-		suffix = fmt.Sprintf(".interactive-%vx%v", width, height)
-		if !raw {
-			suffix += "-cooked"
-		}
-	}
 
 	var expectedStdout []byte
 	var expectedStderr []byte
@@ -63,25 +76,24 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	opts := testOpts
+	opts.Stdout = &stdout
+	opts.Stderr = &stderr
+	opts.term = terminal.NewMockTerminal(&stdout, width, height, raw)
+
 	go ShowProgressEvents(
 		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
-		Options{
-			IsInteractive:        interactive,
-			Color:                colors.Raw,
-			ShowConfig:           true,
-			ShowReplacementSteps: true,
-			ShowSameResources:    true,
-			ShowReads:            true,
-			Stdout:               &stdout,
-			Stderr:               &stderr,
-			term:                 terminal.NewMockTerminal(&stdout, width, height, true),
-			deterministicOutput:  true,
-		}, false)
+		opts, false)
 
 	for _, e := range events {
 		eventChannel <- e
 	}
 	<-doneChannel
+
+	if _, ok := t.(*testing.B); ok {
+		// Benchmark mode: don't check the output.
+		return
+	}
 
 	if !accept {
 		assert.Equal(t, string(expectedStdout), stdout.String())
@@ -95,8 +107,9 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	}
 }
 
+//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	t.Parallel()
+	t.Setenv("TERM", "vt102")
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -109,7 +122,6 @@ func TestProgressEvents(t *testing.T) {
 		{width: 200, height: 80},
 	}
 
-	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -126,20 +138,104 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
-						testProgressEvents(t, path, accept, true, width, height, true)
+						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
+						opts := defaultOpts()
+						opts.IsInteractive = true
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
 					})
 
 					t.Run("cooked", func(t *testing.T) {
-						testProgressEvents(t, path, accept, true, width, height, false)
+						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
+						opts := defaultOpts()
+						opts.IsInteractive = true
+						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
+					})
+
+					t.Run("plain", func(t *testing.T) {
+						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
+						opts := defaultOpts()
+						opts.ShowResourceChanges = true
+						testSimpleRenderer(t, path, accept, suffix, opts, width, height)
 					})
 				})
 			}
+
+			t.Run("no-show-sames", func(t *testing.T) {
+				opts := defaultOpts()
+				opts.IsInteractive = true
+				opts.ShowSameResources = false
+				testProgressEvents(t, path, accept, ".interactive-no-show-sames", opts, 80, 24, true)
+			})
 		})
 
 		t.Run(entry.Name()+"non-interactive", func(t *testing.T) {
 			t.Parallel()
 
-			testProgressEvents(t, path, accept, false, 80, 24, false)
+			opts := defaultOpts()
+			testProgressEvents(t, path, accept, ".non-interactive", opts, 80, 24, false)
+		})
+	}
+}
+
+func BenchmarkProgressEvents(t *testing.B) {
+	t.Setenv("TERM", "vt102")
+	t.ReportAllocs()
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	dimensions := []struct{ width, height int }{
+		{width: 80, height: 24},
+		{width: 100, height: 80},
+		{width: 200, height: 80},
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+
+		t.Run(entry.Name()+"interactive", func(t *testing.B) {
+			for _, dim := range dimensions {
+				width, height := dim.width, dim.height
+				t.Run(fmt.Sprintf("%vx%v", width, height), func(t *testing.B) {
+					t.Run("raw", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
+							opts := defaultOpts()
+							opts.IsInteractive = true
+							testProgressEvents(t, path, false, suffix, opts, width, height, true)
+						}
+					})
+
+					t.Run("cooked", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
+							opts := defaultOpts()
+							opts.IsInteractive = true
+							testProgressEvents(t, path, false, suffix, opts, width, height, false)
+						}
+					})
+
+					t.Run("plain", func(t *testing.B) {
+						for i := 0; i < t.N; i++ {
+							suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
+							opts := defaultOpts()
+							opts.ShowResourceChanges = true
+							testSimpleRenderer(t, path, false, suffix, opts, width, height)
+						}
+					})
+				})
+			}
+		})
+
+		t.Run(entry.Name()+"non-interactive", func(t *testing.B) {
+			for i := 0; i < t.N; i++ {
+				opts := defaultOpts()
+				testProgressEvents(t, path, false, ".non-interactive", opts, 80, 24, false)
+			}
 		})
 	}
 }
@@ -187,9 +283,7 @@ func TestStatusDisplayFlags(t *testing.T) {
 				URN: name,
 				Op:  tt.stepOp,
 				Old: &engine.StepEventStateMetadata{
-					State: &resource.State{
-						RetainOnDelete: true,
-					},
+					RetainOnDelete: true,
 				},
 			}
 
@@ -271,7 +365,7 @@ func TestProgressPolicyPacks(t *testing.T) {
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
-			deterministicOutput:  true,
+			DeterministicOutput:  true,
 		}, false)
 
 	// Send policy pack event to the channel
@@ -280,4 +374,61 @@ func TestProgressPolicyPacks(t *testing.T) {
 	<-doneChannel
 
 	assert.Contains(t, stdout.String(), "Loading policy packs...")
+}
+
+func testSimpleRenderer(
+	t testing.TB,
+	path string,
+	accept bool,
+	suffix string,
+	testOpts Options,
+	width, height int,
+) {
+	events, err := loadEvents(path)
+	require.NoError(t, err)
+
+	fileName := path + suffix + ".txt"
+	var expectedStdout []byte
+	if !accept {
+		expectedStdout, err = os.ReadFile(fileName)
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+
+	opts := testOpts
+	opts.Stdout = &stdout
+
+	go RenderProgressEvents(
+		"test",
+		"update",
+		tokens.MustParseStackName("stack"),
+		"project",
+		"link",
+		eventChannel,
+		doneChannel,
+		opts,
+		false,
+		width,
+		height,
+	)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if _, ok := t.(*testing.B); ok {
+		// Benchmark mode: don't check the output.
+		return
+	}
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+	} else {
+		err = os.WriteFile(fileName, stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
 }

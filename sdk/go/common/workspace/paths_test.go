@@ -142,3 +142,66 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	_, _, err = DetectProjectAndPath()
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
+
+//nolint:paralleltest // These tests use and change the current working directory
+func TestDetectProjectStackDeploymentPath(t *testing.T) {
+	tmpDir := mkTempDir(t)
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+	err = os.Chdir(tmpDir)
+	assert.NoError(t, err)
+
+	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
+	yamlContents := `
+name: some_project
+description: Some project
+runtime: nodejs`
+
+	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	assert.NoError(t, err)
+
+	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
+	yamlDeployContents := ""
+
+	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
+	assert.NoError(t, err)
+
+	path, err := DetectProjectStackDeploymentPath("stack")
+	assert.NoError(t, err)
+	assert.Equal(t, yamlDeployPath, path)
+}
+
+func TestDetectPolicyPackPathAt(t *testing.T) {
+	t.Parallel()
+	tmpDir := mkTempDir(t)
+
+	// No policy pack file, return empty string
+	path, err := DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+
+	// Create a PolicyPack.yaml
+	policyPackPath := filepath.Join(tmpDir, "PulumiPolicy.yaml")
+	yamlContents := "runtime: nodejs\n"
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(yamlContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Check that we can also detect a PolicyPack.json
+	require.NoError(t, os.Remove(policyPackPath))
+	policyPackPath = filepath.Join(tmpDir, "PulumiPolicy.json")
+	jsonContents := `{"runtime": "nodejs"}`
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(jsonContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Return an empty string if the path is a directory
+	require.NoError(t, os.Remove(policyPackPath))
+	require.NoError(t, os.Mkdir(policyPackPath, 0o700))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+}

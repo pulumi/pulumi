@@ -44,7 +44,7 @@ jobs:
       - name: Install Pulumictl
         uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo: pulumi/pulumictl
           tag: v0.0.46

@@ -1,0 +1,86 @@
+{
+    "name": "typedDictExample",
+    "types": {
+        "typedDictExample:index:MyType": {
+            "properties": {
+                "myProp": {
+                    "type": "string"
+                },
+                "myOtherProp": {
+                    "type": "number"
+                },
+                "externalProp": {
+                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                }
+            },
+            "required": [
+                "myProp"
+            ],
+            "type": "object"
+        },
+        "typedDictExample:index:MyOutputType": {
+            "properties": {
+                "someResult": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "someResult"
+            ],
+            "type": "object"
+        }
+    },
+    "functions": {
+        "typedDictExample:index:MyFunction": {
+            "inputs": {
+                "properties": {
+                    "simpleProp": {
+                        "type": "string"
+                    },
+                    "myType": {
+                        "$ref": "#/types/typedDictExample:index:MyType"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "myType"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "simpleOutput": {
+                        "type": "string"
+                    },
+                    "myOutput": {
+                        "$ref": "#/types/typedDictExample:index:MyOutputType"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "simpleOutput",
+                    "myOutput"
+                ]
+            }
+        }
+    },
+    "resources": {
+        "typedDictExample:index:Component": {
+            "isComponent": true,
+            "inputProperties": {
+                "myType": {
+                    "type": "object",
+                    "$ref": "#/types/typedDictExample:index:MyType"
+                }
+            }
+        }
+    },
+    "language": {
+        "python": {
+            "requires": {
+                "pulumi": ">=3.0.0,<4.0.0",
+                "pulumi-kubernetes": ">=3.0.0,<4.0.0"
+            },
+            "inputTypes": "classes-and-dicts"
+        }
+    }
+}

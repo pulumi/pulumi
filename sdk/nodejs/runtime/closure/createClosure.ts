@@ -27,136 +27,208 @@ import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
 import * as v8 from "./v8";
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface ObjectInfo {
-    // information about the prototype of this object/function.  If this is an object, we only store
-    // this if the object's prototype is not Object.prototype.  If this is a function, we only store
-    // this if the function's prototype is not Function.prototype.
+    /**
+     * Information about the prototype of this object/function. If this is an
+     * object, we only store this if the object's prototype is not
+     * `Object.prototype`. If this is a function, we only store this if the
+     * function's prototype is not `Function.prototype`.
+     */
     proto?: Entry;
 
-    // information about the properties of the object.  We store all properties of the object,
-    // regardless of whether they have string or symbol names.
+    /**
+     * Information about the properties of the object. We store all properties
+     * of the object, regardless of whether they have string or symbol names.
+     */
     env: PropertyMap;
 }
 
-// Information about a javascript function.  Note that this derives from ObjectInfo as all functions
-// are objects in JS, and thus can have their own proto and properties.
-/** @internal */
+/**
+ * Information about a JavaScript function. Note that this derives from
+ * {@link ObjectInfo} as all functions are objects in JavaScript, and thus can
+ * have their own proto and properties.
+ *
+ * @internal
+ */
 export interface FunctionInfo extends ObjectInfo {
-    // a serialization of the function's source code as text.
+    /**
+     * A serialization of the function's source code as text.
+     */
     code: string;
 
-    // the captured lexical environment of names to values, if any.
+    /**
+     * The captured lexical environment of names to values, if any.
+     */
     capturedValues: PropertyMap;
 
-    // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
+    /**
+     * Whether or not the real `this` (i.e. not a lexically-captured `this`) is
+     * used in the function.
+     */
     usesNonLexicalThis: boolean;
 
-    // name that the function was declared with.  used only for trying to emit a better
-    // name into the serialized code for it.
+    /**
+     * The name that the function was declared with. Used only for trying to
+     * emit a better name into the serialized code for it.
+     */
     name: string | undefined;
 
-    // Number of parameters this function is declared to take.  Used to generate a serialized
-    // function with the same number of parameters.  This is valuable as some 3rd party libraries
-    // (like senchalabs: https://github.com/senchalabs/connect/blob/fa8916e6350e01262e86ccee82f490c65e04c728/index.js#L232-L241)
-    // will introspect function param count to decide what to do.
+    /**
+     * The number of parameters this function is declared to take.  Used to
+     * generate a serialized function with the same number of parameters. This
+     * is valuable as some third-party libraries (like senchalabs:
+     * https://github.com/senchalabs/connect/blob/fa8916e6350e01262e86ccee82f490c65e04c728/index.js#L232-L241)
+     * will introspect function parameter counts to decide what to do.
+     */
     paramCount: number;
 }
 
-// Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
-// simple.
-/** @internal */
+/**
+ * Similar to {@link PropertyDescriptor}. Helps describe an Entry in the case
+ * where it is not simple.
+ *
+ * @internal
+ */
 export interface PropertyInfo {
-    // If the property has a value we should directly provide when calling .defineProperty
+    /**
+     * If the property has a value we should directly provide when calling `.defineProperty`
+     */
     hasValue: boolean;
 
-    // same as PropertyDescriptor
+    // These have the same meanings as in `PropertyDescriptor`.
+
     configurable?: boolean;
     enumerable?: boolean;
     writable?: boolean;
 
     // The entries we've made for custom getters/setters if the property is defined that
     // way.
+    //
     get?: Entry;
     set?: Entry;
 }
 
-// Information about a property.  Specifically the actual entry containing the data about it and
-// then an optional PropertyInfo in the case that this isn't just a common property.
-/** @internal */
+/**
+ * Information about a property. Specifically the actual entry containing the
+ * data about it and then an optional {@link PropertyInfo} in the case that this
+ * isn't just a common property.
+ *
+ * @internal
+ */
 export interface PropertyInfoAndValue {
     info?: PropertyInfo;
     entry: Entry;
 }
 
-// A mapping between the name of a property (symbolic or string) to information about the
-// value for that property.
-/** @internal */
+/**
+ * A mapping between the name of a property (symbolic or string) to information about the
+ * value for that property.
+ *
+ * @internal
+ */
 export type PropertyMap = Map<Entry, PropertyInfoAndValue>;
 
 /**
- * Entry is the environment slot for a named lexically captured variable.
+ * Entry is the environment slot for a named lexically-captured variable.
+ *
+ * @internal
  */
-/** @internal */
 export interface Entry {
-    // a value which can be safely json serialized.
+    /**
+     * A value which can be safely json serialized.
+     */
     json?: any;
 
-    // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
+    /**
+     * A RegExp, which will be serialized as `new RegExp(re.source, re.flags)`
+     */
     regexp?: { source: string; flags: string };
 
-    // a closure we are dependent on.
+    /**
+     * A closure we are dependent on.
+     */
     function?: FunctionInfo;
 
-    // An object which may contain nested closures.
-    // Can include an optional proto if the user is not using the default Object.prototype.
+    /**
+     * An object which may contain nested closures. Can include an optional
+     * proto if the user is not using the default `Object.prototype`.
+     */
     object?: ObjectInfo;
 
-    // an array which may contain nested closures.
+    /**
+     * An array which may contain nested closures.
+     */
     array?: Entry[];
 
-    // a reference to a requirable module name.
+    /**
+     * A reference to a requirable module name.
+     */
     module?: string;
 
-    // A promise value.  this will be serialized as the underlyign value the promise
-    // points to.  And deserialized as Promise.resolve(<underlying_value>)
+    /**
+     * A promise value. This will be serialized as the underlying value the promise
+     * points to, and deserialized as `Promise.resolve(<underlying_value>)`
+     */
     promise?: Entry;
 
-    // an Output<T> property.  It will be serialized over as a get() method that
-    // returns the raw underlying value.
+    /**
+     * An `Output<T>` property. This will be serialized over as a `get()` method that
+     * returns the raw underlying value.
+     */
     output?: Entry;
 
-    // a simple expression to use to represent this instance.  For example "global.Number";
+    /**
+     * A simple expression to use to represent this instance. For example "global.Number";
+     */
     expr?: string;
 }
 
 interface Context {
-    // The cache stores a map of objects to the entries we've created for them.  It's used so that
-    // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
-    // object multiple times while walking the memory graph, we only emit it once.
+    /**
+     * The cache stores a map of objects to the entries we've created for them.
+     * It's used so that we only ever create a single environemnt entry for a
+     * single object. i.e. if we hit the same object multiple times while
+     * walking the memory graph, we only emit it once.
+     */
     cache: Map<Object, Entry>;
 
-    // The 'frames' we push/pop as we're walking the object graph serializing things.
-    // These frames allow us to present a useful error message to the user in the context
-    // of their code as opposed the async callstack we have while serializing.
+    /**
+     * The 'frames' we push/pop as we're walking the object graph serializing
+     * things. These frames allow us to present a useful error message to the
+     * user in the context of their code as opposed the async callstack we have
+     * while serializing.
+     */
     frames: ContextFrame[];
 
-    // A mapping from a class method/constructor to the environment entry corresponding to the
-    // __super value.  When we emit the code for any class member we will end up adding
-    //
-    //  with ( { __super: <...> })
-    //
-    // We will also rewrite usages of "super" in the methods to refer to __super.  This way we can
-    // accurately serialize out the class members, while preserving functionality.
+    /**
+     * A mapping from a class method/constructor to the environment entry corresponding to the
+     * `__super` value.  When we emit the code for any class member we will end up adding
+     *
+     * ```
+     * with ( { __super: <...> })
+     * ```
+     *
+     * We will also rewrite usages of "super" in the methods to refer to
+     * `__super`.  This way we can accurately serialize out the class members,
+     * while preserving functionality.
+     */
     classInstanceMemberToSuperEntry: Map<Function, Entry>;
+
     classStaticMemberToSuperEntry: Map<Function, Entry>;
 
-    // A list of 'simple' functions.  Simple functions do not capture anything, do not have any
-    // special properties on them, and do not have a custom prototype.  If we run into multiple
-    // functions that are simple, and share the same code, then we can just emit the function once
-    // for them.  A good example of this is the __awaiter function.  Normally, there will be one
-    // __awaiter per .js file that uses 'async/await'.  Instead of needing to generate serialized
-    // functions for each of those, we can just serialize out the function once.
+    /**
+     * A list of "simple" functions. Simple functions do not capture anything,
+     * do not have any special properties on them, and do not have a custom
+     * prototype. If we run into multiple functions that are simple, and share
+     * the same code, then we can just emit the function once for them.  A good
+     * example of this is the `__awaiter` function. Normally, there will be one
+     * `__awaiter` per `.js` file that uses `async`/`await`. Instead of needing
+     * to generate serialized functions for each of those, we can just serialize
+     * out the function once.
+     */
     simpleFunctions: FunctionInfo[];
 
     /**
@@ -187,9 +259,16 @@ interface ContextFrame {
 }
 
 interface ClosurePropertyDescriptor {
-    /** name of the property for a normal property. either 'name' or 'symbol' will be present.  but not both. */
+    /**
+     * The name of the property for a normal property. Either `name` or `symbol`
+     * will be present, but not both.
+     * */
     name?: string;
-    /** symbol-name of the property.  either 'name' or 'symbol' will be present.  but not both. */
+
+    /**
+     * The symbol name of the property. Either `name` or `symbol` will be
+     * present, but not both.
+     */
     symbol?: symbol;
 
     configurable?: boolean;
@@ -200,14 +279,16 @@ interface ClosurePropertyDescriptor {
     set?: (v: any) => void;
 }
 
-/*
- * SerializedOutput is the type we convert real deployment time outputs to when we serialize them
- * into the environment for a closure.  The output will go from something you call 'apply' on to
- * transform during deployment, to something you call .get on to get the raw underlying value from
- * inside a cloud callback.
+/**
+ * {@link SerializedOutput} is the type we convert real deployment-time outputs
+ * to when we serialize them into the environment for a closure.  The output
+ * will go from something you call `apply` on to transform during deployment, to
+ * something you call `.get` on to get the raw underlying value from inside a
+ * cloud callback.
  *
- * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
- * dependency on the actual shape (including the names of properties like 'value').
+ * IMPORTANT: Do not change the structure of this type. Closure serialization
+ * code takes a dependency on the actual shape (including the names of
+ * properties like `value`).
  */
 class SerializedOutput<T> {
     public constructor(private readonly value: T) {}
@@ -229,10 +310,10 @@ export interface ClosureInfo {
 }
 
 /**
- * createFunctionInfo serializes a function and its closure environment into a form that is
- * amenable to persistence as simple JSON.  Like toString, it includes the full text of the
- * function's source code, suitable for execution. Unlike toString, it actually includes information
- * about the captured environment.
+ * Serializes a function and its closure environment into a form that is
+ * amenable to persistence as simple JSON. Like {@link toString}, it includes
+ * the full text of the function's source code, suitable for execution. Unlike
+ * `toString`, it actually includes information about the captured environment.
  *
  * @internal
  */
@@ -380,8 +461,8 @@ export async function createClosureInfoAsync(
 (<any>createClosureInfoAsync).doNotCapture = true;
 
 /**
- * analyzeFunctionInfoAsync does the work to create an asynchronous dataflow graph that resolves to a
- * final FunctionInfo.
+ * Does the work to create an asynchronous dataflow graph that resolves to a
+ * final {@link FunctionInfo}.
  */
 async function analyzeFunctionInfoAsync(
     func: Function,
@@ -881,9 +962,10 @@ function getOrCreateNameEntryAsync(
 }
 
 /**
- * serializeAsync serializes an object, deeply, into something appropriate for an environment
- * entry.  If propNames is provided, and is non-empty, then only attempt to serialize out those
- * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
+ * Deeply serializes an object into something appropriate for an environment
+ * entry.  If `propNames` is provided, and is non-empty, then only attempt to
+ * serialize out those specific properties.  If `propNames` is not provided, or
+ * is empty, serialize out all properties.
  */
 async function getOrCreateEntryAsync(
     obj: any,
@@ -1120,7 +1202,7 @@ async function getOrCreateEntryAsync(
         // actually is.  On the other end, we'll use Object.create(deserializedProto) to set
         // things up properly.
         //
-        // We don't need to capture the prototype if the user is not capturing 'this' either.
+        // We don't need to capture the prototype if the user is not capturing `this` either.
         if (!object.proto) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
@@ -1215,7 +1297,7 @@ async function getOrCreateEntryAsync(
 
                 const infos = propChains.map((chain) => chain.infos[0]);
                 if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
-                    // the referenced function captured 'this'.  Have to serialize out
+                    // the referenced function captured `this`.  Have to serialize out
                     // this entire object.  Undo the work we did to just serialize out a
                     // few properties.
                     object.env.clear();
@@ -1247,7 +1329,7 @@ async function getOrCreateEntryAsync(
         }
 
         // if we're accessing a getter/setter, and that getter/setter uses
-        // 'this', then we need to serialize out this object entirely.
+        // `this`, then we need to serialize out this object entirely.
 
         if (
             usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
@@ -1391,9 +1473,11 @@ async function getOrCreateEntryAsync(
     }
 }
 
-// Is this a constructor derived from a noCapture constructor.  if so, we don't want to
-// emit it.  We would be unable to actually hook up the "super()" call as one of the base
-// constructors was set to not be captured.
+/**
+ * Returns true if this is a constructor derived from a `noCapture` constructor.
+ * If so, we don't want to emit it.  We would be unable to actually hook up the
+ * `super()` call as one of the base constructors was set to not be captured.
+ */
 function isDerivedNoCaptureConstructor(func: Function): boolean {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
         if (hasTrueBooleanMember(current, "doNotCapture")) {
@@ -1418,6 +1502,7 @@ function getBuiltInModules(): Promise<Map<any, string>> {
         // available at the unqualified names listed below.
 
         const excludes = [
+            "punycode", // deprecated in documentation since 7.0, logs a warning in 21.0
             "sys", // deprecated since 1.0
             "wasi", // experimental
         ];
@@ -1435,14 +1520,17 @@ function getBuiltInModules(): Promise<Map<any, string>> {
     }
 }
 
-// findNormalizedModuleName attempts to find a global name bound to the object, which can be used as
-// a stable reference across serialization.  For built-in modules (i.e. "os", "fs", etc.) this will
-// return that exact name of the module.  Otherwise, this will return the relative path to the
-// module from the current working directory of the process.  This will normally be something of the
-// form ./node_modules/<package_name>...
-//
-// This function will also always return modules in a normalized form (i.e. all path components will
-// be '/').
+/**
+ * Attempts to find a global name bound to the object, which can be used as a
+ * stable reference across serialization.  For built-in modules (i.e. `os`,
+ * `fs`, etc.) this will return that exact name of the module.  Otherwise, this
+ * will return the relative path to the module from the current working
+ * directory of the process.  This will normally be something of the form
+ * `./node_modules/<package_name>...`
+ *
+ * This function will also always return modules in a normalized form (i.e. all path components will
+ * be `/`).
+ */
 async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefined> {
     // First, check the built-in modules
     const modules = await getBuiltInModules();

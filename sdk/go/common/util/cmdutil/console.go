@@ -22,16 +22,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/rivo/uniseg"
 	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -66,17 +62,34 @@ func InteractiveTerminal() bool {
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.
+	//nolint:gosec // os.Stdin.Fd() == 0 && os.Stdout.Fd() == 1: uintptr -> int conversion is always safe
 	return term.IsTerminal(int(os.Stdin.Fd())) &&
 		term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return readConsolePlain(os.Stdout, os.Stdin, prompt)
 	}
 
 	return readConsoleFancy(os.Stdout, os.Stdin, prompt, false /* secret */)
+}
+
+// ReadConsoleWithDefault reads the console with the given prompt text with support for a default value.
+func ReadConsoleWithDefault(prompt string, defaultValue string) (string, error) {
+	promptMessage := fmt.Sprintf("%s [%s]", prompt, defaultValue)
+	value, err := ReadConsole(promptMessage)
+	if err != nil {
+		return "", err
+	}
+
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value, nil
 }
 
 // readConsolePlain prints the given prompt (if any),
@@ -101,25 +114,6 @@ func readConsolePlain(stdout io.Writer, stdin io.Reader, prompt string) (string,
 		raw.WriteByte(b[0])
 	}
 	return RemoveTrailingNewline(raw.String()), nil
-}
-
-func readConsoleFancy(stdout io.Writer, stdin io.Reader, prompt string, secret bool) (string, error) {
-	final, err := tea.NewProgram(
-		newReadConsoleModel(prompt, secret),
-		tea.WithInput(stdin),
-		tea.WithOutput(stdout),
-	).Run()
-	if err != nil {
-		return "", err
-	}
-
-	model, ok := final.(readConsoleModel)
-	contract.Assertf(ok, "expected readConsoleModel, got %T", final)
-	if model.Canceled {
-		return "", io.EOF
-	}
-
-	return model.Value, nil
 }
 
 // IsTruthy returns true if the given string represents a CLI input interpreted as "true".
@@ -326,86 +320,4 @@ func max(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// readConsoleModel drives a bubbletea widget that reads from the console.
-type readConsoleModel struct {
-	input  textinput.Model
-	secret bool
-
-	// Canceled is set to true when the model finishes
-	// if the user canceled the operation by pressing Ctrl-C or Esc.
-	Canceled bool
-
-	// Value is the user's response to the prompt.
-	Value string
-}
-
-var _ tea.Model = readConsoleModel{}
-
-func newReadConsoleModel(prompt string, secret bool) readConsoleModel {
-	input := textinput.New()
-	input.Cursor.Style = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("205")) // 205 = hot pink cursor
-	if secret {
-		input.EchoMode = textinput.EchoPassword
-	}
-	if prompt != "" {
-		input.Prompt = prompt + ": "
-	}
-	input.Focus() // required to receive input
-
-	return readConsoleModel{
-		input:  input,
-		secret: secret,
-	}
-}
-
-// Init initializes the model.
-// We don't have any initialization to do, so we just return nil.
-func (readConsoleModel) Init() tea.Cmd { return nil }
-
-// Update handles a single tick of the bubbletea loop.
-func (m readConsoleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		// If the user pressed enter, Ctrl-C, or Esc,
-		// it's time to stop the bubbletea loop.
-		//
-		// Only Enter is considered a success.
-		//nolint:exhaustive // We only want special handling for these keys.
-		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
-			m.Value = m.input.Value()
-			m.Canceled = msg.Type != tea.KeyEnter
-
-			m.input.Blur() // hide the cursor
-			if m.secret {
-				// If we're in secret mode, don't include
-				// the '*' characters in the final output
-				// so as not to leak the length of the input.
-				m.input.EchoMode = textinput.EchoNone
-			}
-
-			var cmds []tea.Cmd
-			if !m.Canceled {
-				// If the user accepts the input,
-				// we'll primnt the prompt to the terminal
-				// before exiting this loop.
-				cmds = append(cmds, tea.Println(m.input.View()))
-			}
-			cmds = append(cmds, tea.Quit)
-
-			return m, tea.Sequence(cmds...)
-		}
-	}
-
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
-}
-
-// View renders the prompt.
-func (m readConsoleModel) View() string {
-	return m.input.View()
 }

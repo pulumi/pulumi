@@ -15,8 +15,8 @@
 from typing import Any, Optional
 import asyncio
 import functools
-import grpc
 import logging
+import grpc
 import pytest
 
 import pulumi

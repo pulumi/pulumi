@@ -15,8 +15,10 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/blang/semver"
@@ -29,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -75,6 +77,50 @@ func TransformFunction(
 		return &pulumirpc.TransformResponse{
 			Properties: mret,
 			Options:    opts,
+		}, nil
+	}
+}
+
+func TransformInvokeFunction(
+	f func(
+		token string, props resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error),
+) func([]byte) (proto.Message, error) {
+	return func(request []byte) (proto.Message, error) {
+		var transformationRequest pulumirpc.TransformInvokeRequest
+		err := proto.Unmarshal(request, &transformationRequest)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		margs, err := plugin.UnmarshalProperties(transformationRequest.Args, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling properties: %w", err)
+		}
+
+		ret, opts, err := f(
+			transformationRequest.Token, margs, transformationRequest.Options)
+		if err != nil {
+			return nil, err
+		}
+		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return &pulumirpc.TransformInvokeResponse{
+			Args:    mret,
+			Options: opts,
 		}, nil
 	}
 }
@@ -183,7 +229,8 @@ func TestRemoteTransforms(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
@@ -250,7 +297,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -294,7 +341,7 @@ func TestRemoteTransformErrorResponse(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -311,12 +358,13 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(
-					monitor *deploytest.ResourceMonitor, typ string, name string, parent resource.URN,
-					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
-					assert.Equal(t, "pkgA:m:typC", typ)
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "pkgA:m:typC", string(req.Type))
 
-					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -327,7 +375,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ConstructResult{
+					return plugin.ConstructResponse{
 						URN: resp.URN,
 					}, nil
 				},
@@ -366,7 +414,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -483,7 +531,7 @@ func TestRemoteTransformsOptions(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -510,10 +558,12 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(
-					urn resource.URN, props resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "some-id", props, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "some-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -581,7 +631,7 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -614,12 +664,13 @@ func TestRemoteComponentTransforms(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(
-					monitor *deploytest.ResourceMonitor, typ string, name string, parent resource.URN,
-					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
-					assert.Equal(t, "pkgA:m:typC", typ)
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "pkgA:m:typC", string(req.Type))
 
-					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -630,7 +681,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ConstructResult{
+					return plugin.ConstructResponse{
 						URN: resp.URN,
 					}, nil
 				},
@@ -669,7 +720,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -684,4 +735,234 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	assert.Equal(t, resource.PropertyMap{
 		"foo": resource.NewNumberProperty(2),
 	}, res.Inputs)
+}
+
+func TestTransformsProviderOpt(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "some-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var explicitProvider string
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "explicit", true)
+		require.NoError(t, err)
+		explicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				fmt.Println("provider: ", opts.Provider)
+				if opts.Provider == "" {
+					opts.Provider = implicitProvider
+				}
+
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransform(callback)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitProvider", true, deploytest.ResourceOptions{
+			Provider: explicitProvider,
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "implicitProvider", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitProvidersMap", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": explicitProvider},
+		})
+		require.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("xmy:component:resource", "component", false, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": explicitProvider},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "parentedResource", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("ymy:component:resource", "another-component", false, deploytest.ResourceOptions{
+			Provider: explicitProvider,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "parentedResource", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 7 resources
+	sort.Slice(snap.Resources, func(i, j int) bool {
+		return snap.Resources[i].URN < snap.Resources[j].URN
+	})
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvider"), snap.Resources[0].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[0].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap"), snap.Resources[1].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[1].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::implicitProvider"), snap.Resources[2].URN)
+	assert.Equal(t, implicitProvider, snap.Resources[2].Provider)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:test::test::xmy:component:resource$pkgA:m:typA::parentedResource"),
+		snap.Resources[5].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[5].Provider)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource"),
+		snap.Resources[7].URN)
+	assert.Equal(t, implicitProvider, snap.Resources[7].Provider)
+}
+
+func TestTransformInvoke(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{Properties: req.Args}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformInvokeFunction(func(token string,
+				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+				args["foo"] = resource.NewStringProperty("bar")
+
+				return args, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackInvokeTransform(callback)
+		require.NoError(t, err)
+
+		input := resource.PropertyMap{
+			"foo": resource.NewStringProperty("baz"),
+			"bar": resource.NewStringProperty("qux"),
+		}
+
+		result, _, err := monitor.Invoke("pkgA:m:typA", input, implicitProvider, "0.0.0", "")
+		require.NoError(t, err)
+
+		assert.Equal(t, "bar", result["foo"].StringValue())
+		assert.Equal(t, "qux", result["bar"].StringValue())
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	_ = p.Run(t, nil)
+}
+
+func TestTransformInvokeTransformProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{Properties: req.Args}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformInvokeFunction(func(token string,
+				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+				if opts.Provider == "" {
+					opts.Provider = implicitProvider
+				}
+
+				return args, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackInvokeTransform(callback)
+		require.NoError(t, err)
+
+		input := resource.PropertyMap{}
+
+		_, _, err = monitor.Invoke("pkgA:m:typA", input, "", "", "")
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
 }

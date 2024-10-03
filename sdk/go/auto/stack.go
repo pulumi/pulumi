@@ -110,6 +110,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
+
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
 	"google.golang.org/grpc"
@@ -275,6 +277,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.SuppressProgress {
 		sharedArgs = append(sharedArgs, "--suppress-progress")
 	}
+	if preOpts.ImportFile != "" {
+		sharedArgs = append(sharedArgs, "--import-file="+preOpts.ImportFile)
+	}
+	if preOpts.AttachDebugger {
+		sharedArgs = append(sharedArgs, "--attach-debugger")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -409,6 +417,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.ContinueOnError {
 		sharedArgs = append(sharedArgs, "--continue-on-error")
 	}
+	if upOpts.AttachDebugger {
+		sharedArgs = append(sharedArgs, "--attach-debugger")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -468,6 +479,103 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 	if len(history) > 0 {
 		res.Summary = history[0]
+	}
+
+	return res, nil
+}
+
+// ImportResources imports resources into a stack using the given resources and options.
+func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (ImportResult, error) {
+	var res ImportResult
+
+	importOpts := &optimport.Options{}
+	for _, o := range opts {
+		o.ApplyOption(importOpts)
+	}
+
+	tempDir, err := os.MkdirTemp("", "pulumi-import-")
+	if err != nil {
+		return res, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	// clean-up the temp directory after we are done
+	defer os.RemoveAll(tempDir)
+
+	args := []string{"import", "--yes", "--skip-preview"}
+
+	if importOpts.Resources != nil {
+		importFilePath := filepath.Join(tempDir, "import.json")
+		importContent := map[string]interface{}{
+			"resources": importOpts.Resources,
+		}
+
+		if importOpts.NameTable != nil {
+			importContent["nameTable"] = importOpts.NameTable
+		}
+
+		importContentBytes, err := json.Marshal(importContent)
+		if err != nil {
+			return res, fmt.Errorf("failed to marshal import content: %w", err)
+		}
+
+		if err := os.WriteFile(importFilePath, importContentBytes, 0o600); err != nil {
+			return res, fmt.Errorf("failed to write import file: %w", err)
+		}
+
+		args = append(args, "--file", importFilePath)
+	}
+
+	if importOpts.Protect != nil && !*importOpts.Protect {
+		// the protect flag is true by default so only add the flag if it's explicitly set to false
+		args = append(args, "--protect=false")
+	}
+
+	generatedCodePath := filepath.Join(tempDir, "generated_code.txt")
+	if importOpts.GenerateCode != nil && !*importOpts.GenerateCode {
+		// the generate code flag is true by default so only add the flag if it's explicitly set to false
+		args = append(args, "--generate-code=false")
+	} else {
+		args = append(args, "--out", generatedCodePath)
+	}
+
+	if importOpts.Converter != nil {
+		args = append(args, "--from", *importOpts.Converter)
+		if importOpts.ConverterArgs != nil {
+			args = append(args, "--")
+			args = append(args, importOpts.ConverterArgs...)
+		}
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		importOpts.ProgressStreams,      /* additionalOutputs */
+		importOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to import resources: %w", err), stdout, stderr, code)
+	}
+
+	history, err := s.History(ctx, 1 /*pageSize*/, 1, /*page*/
+		opthistory.ShowSecrets(importOpts.ShowSecrets && !s.isRemote()))
+	if err != nil {
+		return res, fmt.Errorf("failed to import resources: %w", err)
+	}
+
+	generatedCode, err := os.ReadFile(generatedCodePath)
+	if err != nil {
+		return res, fmt.Errorf("failed to read generated code: %w", err)
+	}
+
+	var summary UpdateSummary
+	if len(history) > 0 {
+		summary = history[0]
+	}
+
+	res = ImportResult{
+		Summary:       summary,
+		StdOut:        stdout,
+		StdErr:        stderr,
+		GeneratedCode: string(generatedCode),
 	}
 
 	return res, nil
@@ -651,6 +759,77 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	return args
 }
 
+func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (PreviewResult, error) {
+	var res PreviewResult
+
+	// 3.105.0 added this flag (https://github.com/pulumi/pulumi/releases/tag/v3.105.0)
+	if minVer := (semver.Version{Major: 3, Minor: 105}); s.Workspace().PulumiCommand().Version().LT(minVer) {
+		return res, fmt.Errorf("PreviewRefresh requires Pulumi CLI version >= %s", minVer)
+	}
+
+	destroyOpts := &optdestroy.Options{}
+	for _, o := range opts {
+		o.ApplyOption(destroyOpts)
+	}
+
+	args := destroyOptsToCmd(destroyOpts, s)
+	args = append(args, "--preview-only")
+
+	var summaryEvents []apitype.SummaryEvent
+	eventChannel := make(chan events.EngineEvent)
+	eventsDone := make(chan bool)
+	go func() {
+		for {
+			event, ok := <-eventChannel
+			if !ok {
+				close(eventsDone)
+				return
+			}
+			if event.SummaryEvent != nil {
+				summaryEvents = append(summaryEvents, *event.SummaryEvent)
+			}
+		}
+	}()
+
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
+	t, err := tailLogs("destroy", eventChannels)
+	if err != nil {
+		return res, fmt.Errorf("failed to tail logs: %w", err)
+	}
+	defer t.Close()
+	args = append(args, "--event-log", t.Filename)
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		destroyOpts.ProgressStreams,      /* additionalOutputs */
+		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to preview destroy: %w", err), stdout, stderr, code)
+	}
+
+	// Close the file watcher wait for all events to send
+	t.Close()
+	<-eventsDone
+
+	if len(summaryEvents) == 0 {
+		return res, newAutoError(errors.New("failed to get preview refresh summary"), stdout, stderr, code)
+	}
+	if len(summaryEvents) > 1 {
+		return res, newAutoError(errors.New("got multiple preview refresh summaries"), stdout, stderr, code)
+	}
+
+	res = PreviewResult{
+		ChangeSummary: summaryEvents[0].ResourceChanges,
+		StdOut:        stdout,
+		StdErr:        stderr,
+	}
+
+	return res, nil
+}
+
 // Destroy deletes all resources in a stack, leaving all history and configuration intact.
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
@@ -660,10 +839,72 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
+	args := destroyOptsToCmd(destroyOpts, s)
+	args = append(args, "--yes", "--skip-preview")
+
+	if len(destroyOpts.EventStreams) > 0 {
+		eventChannels := destroyOpts.EventStreams
+		t, err := tailLogs("destroy", eventChannels)
+		if err != nil {
+			return res, fmt.Errorf("failed to tail logs: %w", err)
+		}
+		defer t.Close()
+		args = append(args, "--event-log", t.Filename)
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		destroyOpts.ProgressStreams,      /* additionalOutputs */
+		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to destroy stack: %w", err), stdout, stderr, code)
+	}
+
+	historyOpts := []opthistory.Option{}
+	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
+	// load the project file.
+	if s.isRemote() {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
+	if err != nil {
+		return res, fmt.Errorf("failed to destroy stack: %w", err)
+	}
+
+	var summary UpdateSummary
+	if len(history) > 0 {
+		summary = history[0]
+	}
+
+	// If `remove` was set, remove the stack now. We take this approach rather
+	// than passing `--remove` to `pulumi destroy` because the latter would make
+	// it impossible for us to retrieve a summary of the operation above for
+	// returning to the caller.
+	if destroyOpts.Remove {
+		if err := s.Workspace().RemoveStack(ctx, s.Name()); err != nil {
+			return res, fmt.Errorf("failed to remove stack: %w", err)
+		}
+	}
+
+	res = DestroyResult{
+		Summary: summary,
+		StdOut:  stdout,
+		StdErr:  stderr,
+	}
+
+	return res, nil
+}
+
+func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	args := slice.Prealloc[string](len(destroyOpts.Target))
 
 	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
-	args = append(args, "destroy", "--yes", "--skip-preview")
+	args = append(args, "destroy")
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
@@ -701,55 +942,10 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	args = append(args, "--exec-kind="+execKind)
 
-	if len(destroyOpts.EventStreams) > 0 {
-		eventChannels := destroyOpts.EventStreams
-		t, err := tailLogs("destroy", eventChannels)
-		if err != nil {
-			return res, fmt.Errorf("failed to tail logs: %w", err)
-		}
-		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
-	}
-
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(
-		ctx,
-		destroyOpts.ProgressStreams,      /* additionalOutputs */
-		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
-		args...,
-	)
-	if err != nil {
-		return res, newAutoError(fmt.Errorf("failed to destroy stack: %w", err), stdout, stderr, code)
-	}
-
-	historyOpts := []opthistory.Option{}
-	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
-		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
-	}
-	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
-	// load the project file.
-	if s.isRemote() {
-		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
-	}
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
-	if err != nil {
-		return res, fmt.Errorf("failed to destroy stack: %w", err)
-	}
-
-	var summary UpdateSummary
-	if len(history) > 0 {
-		summary = history[0]
-	}
-
-	res = DestroyResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
-	}
-
-	return res, nil
+	return args
 }
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
@@ -977,6 +1173,14 @@ type UpResult struct {
 	Summary UpdateSummary
 }
 
+// ImportResult contains information about a Stack.Import operation,
+type ImportResult struct {
+	StdOut        string
+	StdErr        string
+	GeneratedCode string
+	Summary       UpdateSummary
+}
+
 // GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
 func (ur *UpResult) GetPermalink() (string, error) {
 	return GetPermalink(ur.StdOut)
@@ -1147,6 +1351,7 @@ func (s *Stack) remoteArgs() []string {
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
 	var executorImage *ExecutorImage
+	var remoteAgentPoolID string
 	var skipInstallDependencies bool
 	var inheritSettings bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
@@ -1156,6 +1361,7 @@ func (s *Stack) remoteArgs() []string {
 		envvars = lws.remoteEnvVars
 		skipInstallDependencies = lws.remoteSkipInstallDependencies
 		executorImage = lws.remoteExecutorImage
+		remoteAgentPoolID = lws.remoteAgentPoolID
 		inheritSettings = lws.remoteInheritSettings
 	}
 	if !remote {
@@ -1219,6 +1425,10 @@ func (s *Stack) remoteArgs() []string {
 				args = append(args, "--remote-executor-image-password="+executorImage.Credentials.Password)
 			}
 		}
+	}
+
+	if remoteAgentPoolID != "" {
+		args = append(args, "--remote-agent-pool-id="+remoteAgentPoolID)
 	}
 
 	if skipInstallDependencies {
@@ -1352,7 +1562,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		ConfigSecretKeys: req.GetConfigSecretKeys(),
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
-		Parallel:         int(req.GetParallel()),
+		Parallel:         req.GetParallel(),
 		DryRun:           req.GetDryRun(),
 		Organization:     req.GetOrganization(),
 	}
@@ -1369,7 +1579,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 				if pErr, ok := r.(error); ok {
 					err = fmt.Errorf("go inline source runtime error, an unhandled error occurred: %w", pErr)
 				} else {
-					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
+					err = fmt.Errorf("go inline source runtime error, an unhandled panic occurred: %v", r)
 				}
 			}
 		}()

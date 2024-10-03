@@ -18,6 +18,10 @@ import unittest
 from typing import Mapping, Optional, Sequence, cast
 
 from pulumi.runtime import rpc, rpc_manager, settings
+from pulumi.runtime._serialization import (
+    _deserialize,
+    _serialize,
+)
 
 import pulumi
 from pulumi import Output
@@ -171,7 +175,9 @@ class OutputFromInputTests(unittest.TestCase):
             foo: Optional[pulumi.Input[str]] = None,
             bar: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
             baz: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
-            nested: Optional[pulumi.Input[pulumi.InputType["NestedArgs"]]] = None
+            nested: Optional[
+                pulumi.Input[pulumi.InputType["OutputFromInputTests.NestedArgs"]]
+            ] = None,
         ):
             if foo is not None:
                 pulumi.set(self, "foo", foo)
@@ -199,7 +205,11 @@ class OutputFromInputTests(unittest.TestCase):
 
         @property
         @pulumi.getter
-        def nested(self) -> Optional[pulumi.Input[pulumi.InputType["NestedArgs"]]]:
+        def nested(
+            self,
+        ) -> Optional[
+            pulumi.Input[pulumi.InputType["OutputFromInputTests.NestedArgs"]]
+        ]:
             return pulumi.get(self, "nested")
 
     @pulumi.input_type
@@ -279,6 +289,12 @@ class OutputHoistingTests(unittest.TestCase):
         x = o.x
         x_val = await x.future()
         self.assertEqual(x_val, "hello")
+
+    @pulumi_test
+    def test_attr_doesnt_hoist_dunders(self):
+        o = Output.from_input(Obj("hello"))
+        x = hasattr(o, "__fields__")
+        self.assertEqual(x, False)
 
     @pulumi_test
     async def test_no_iter(self):
@@ -475,3 +491,77 @@ class OutputJsonLoadsTests(unittest.TestCase):
         self.assertEqual(await x.future(), [0, 1])
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), True)
+
+
+class OutputSerializationTests(unittest.TestCase):
+    @pulumi_test
+    async def test_get_raises(self):
+        i = Output.from_input("hello")
+        with self.assertRaisesRegex(
+            Exception,
+            "Cannot call '.get' during update or preview. To manipulate the value of this Output, use '.apply' instead.",
+        ):
+            i.get()
+
+    @pulumi_test
+    async def test_get_state_raises(self):
+        i = Output.from_input("hello")
+        with self.assertRaisesRegex(
+            Exception, "__getstate__ can only be called during serialization"
+        ):
+            i.__getstate__()
+
+    @pulumi_test
+    async def test_get_state_allow_secrets(self):
+        i = Output.from_input("hello")
+        result, contains_secrets = _serialize(True, lambda: i.__getstate__())
+        self.assertEqual(result, {"value": "hello"})
+        self.assertFalse(contains_secrets)
+
+    @pulumi_test
+    async def test_get_state_disallow_secrets(self):
+        i = Output.from_input("hello")
+        result, contains_secrets = _serialize(False, lambda: i.__getstate__())
+        self.assertEqual(result, {"value": "hello"})
+        self.assertFalse(contains_secrets)
+
+    @pulumi_test
+    async def test_get_state_allow_secrets_secret(self):
+        i = Output.secret("shh")
+        result, contains_secrets = _serialize(True, lambda: i.__getstate__())
+        self.assertEqual(result, {"value": "shh"})
+        self.assertTrue(contains_secrets)
+
+    @pulumi_test
+    async def test_get_state_disallow_secrets_secret_raises(self):
+        i = Output.secret("shh")
+        with self.assertRaisesRegex(Exception, "Secret outputs cannot be captured"):
+            _serialize(False, lambda: i.__getstate__())
+
+    @pulumi_test
+    async def test_get_after_set_state(self):
+        i = Output.from_input("hello")
+        _deserialize(lambda: i.__setstate__({"value": "world"}))
+        self.assertEqual(i.get(), "world")
+
+    @pulumi_test
+    async def test_raises_after_set_state(self):
+        i = Output.from_input("hello")
+        _deserialize(lambda: i.__setstate__({"value": "world"}))
+
+        def expected_msg(name: str):
+            return (
+                f"'{name}' is not allowed from inside a cloud-callback. "
+                + "Use 'get' to retrieve the value of this Output directly."
+            )
+
+        with self.assertRaisesRegex(Exception, expected_msg("apply")):
+            i.apply(lambda x: x)
+        with self.assertRaisesRegex(Exception, expected_msg("resources")):
+            i.resources()
+        with self.assertRaisesRegex(Exception, expected_msg("future")):
+            i.future()
+        with self.assertRaisesRegex(Exception, expected_msg("is_known")):
+            i.is_known()
+        with self.assertRaisesRegex(Exception, expected_msg("is_secret")):
+            i.is_secret()

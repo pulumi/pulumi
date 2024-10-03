@@ -17,6 +17,7 @@ import os
 import unittest
 from typing import List, Optional
 import asyncio
+from semver import VersionInfo
 
 import pytest
 
@@ -28,17 +29,25 @@ from pulumi.automation import (
     ConfigMap,
     ConfigValue,
     EngineEvent,
+    InvalidVersionError,
     LocalWorkspace,
     LocalWorkspaceOptions,
     OpType,
     PluginInfo,
     ProjectSettings,
     PulumiCommand,
+    CommandResult,
     StackSummary,
     Stack,
     StackSettings,
     StackAlreadyExistsError,
+    StackNotFoundError,
     fully_qualified_stack_name,
+)
+from pulumi.resource import (
+    ComponentResource,
+    CustomResource,
+    ResourceOptions,
 )
 
 from .test_utils import get_test_org, get_test_suffix, stack_namer
@@ -375,6 +384,35 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_import_resources(self):
+        ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
+        stack_name = stack_namer("import")
+        stack = Stack.create(stack_name, ws)
+        random_plugin_version = "4.16.3"
+        ws.install_plugin("random", random_plugin_version)
+        result = stack.import_resources(
+            protect=False,
+            resources=[
+                {
+                    "type": "random:index/randomPassword:RandomPassword",
+                    "name": "randomPassword",
+                    "id": "supersecret",
+                }
+            ],
+        )
+
+        self.assertEqual(result.summary.result, "succeeded")
+        expected_generated_code_path = get_test_path(
+            "data", "import", "expected_generated_code.yaml"
+        )
+        expected_generated_code = ""
+        with open(expected_generated_code_path, "r") as codeFile:
+            expected_generated_code = codeFile.read()
+        self.assertEqual(result.generated_code, expected_generated_code)
+        stack.destroy()
+        ws.remove_stack(stack_name)
+        ws.remove_plugin("random", random_plugin_version)
+
     def test_config_all_functions_path(self):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
@@ -448,7 +486,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "ten": ConfigValue(value="ten"),
         }
         stack.set_all_config(config)
-        stack.remove_all_config([key for key in config])
+        stack.remove_all_config(list(config))
 
         ws.remove_stack(stack_name)
 
@@ -526,6 +564,130 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(result, project_name)
 
         ws.remove_stack(stack_name)
+
+    def test_list_stacks(self):
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
+            stdout=json.dumps(
+                [
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                    },
+                    {
+                        "name": "testorg1/testproj1/teststack2",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack2",
+                    },
+                ]
+            ),
+            stderr="",
+            code=0,
+        )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_stacks()
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+        )
+        self.assertEqual(stacks[1].name, "testorg1/testproj1/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+            stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2"
+        )
+
+    def test_list_stacks_with_correct_params(self):
+        captured_args = []
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: (
+            captured_args.append(args[0]),
+            CommandResult(
+                stdout=json.dumps(
+                    [
+                        {
+                            "name": "testorg1/testproj1/teststack1",
+                            "current": False,
+                            "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                        },
+                        {
+                            "name": "testorg1/testproj2/teststack2",
+                            "current": False,
+                            "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                        },
+                    ]
+                ),
+                stderr="",
+                code=0,
+            ),
+        )[1]
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        ws.list_stacks()
+        self.assertEqual(captured_args[0], ["stack", "ls", "--json"])
+
+    def test_list_all_stacks(self):
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
+            stdout=json.dumps(
+                [
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                    },
+                    {
+                        "name": "testorg1/testproj2/teststack2",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                    },
+                ]
+            ),
+            stderr="",
+            code=0,
+        )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_stacks(include_all=True)
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+        )
+        self.assertEqual(stacks[1].name, "testorg1/testproj2/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+            stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2"
+        )
+
+    def test_list_all_stacks_with_correct_params(self):
+        captured_args = []
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: (
+            captured_args.append(args[0]),
+            CommandResult(
+                stdout=json.dumps(
+                    [
+                        {
+                            "name": "testorg1/testproj1/teststack1",
+                            "current": False,
+                            "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                        },
+                        {
+                            "name": "testorg1/testproj2/teststack2",
+                            "current": False,
+                            "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                        },
+                    ]
+                ),
+                stderr="",
+                code=0,
+            ),
+        )[1]
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        ws.list_stacks(include_all=True)
+        self.assertEqual(captured_args[0], ["stack", "ls", "--json", "--all"])
 
     def test_stack_status_methods(self):
         project_name = "python_test"
@@ -625,6 +787,44 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_stack_lifecycle_inline_program_remove_without_destroy(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        stack.up()
+
+        # we shouldn't be able to remove the stack without force
+        # since the stack has an active resource
+        with self.assertRaises(CommandError):
+            stack.workspace.remove_stack(stack_name)
+
+        stack.workspace.remove_stack(stack_name, force=True)
+
+        # we shouldn't be able to select the stack after it's been removed
+        # we expect this error
+        with self.assertRaises(StackNotFoundError):
+            stack.workspace.select_stack(stack_name)
+
+    def test_stack_lifecycle_inline_program_destroy_with_remove(self):
+        # Arrange.
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        stack.up()
+
+        # Act.
+        stack.destroy(remove=True)
+
+        # Assert.
+        with self.assertRaises(StackNotFoundError):
+            stack.workspace.select_stack(stack_name)
+
     def test_stack_lifecycle_async_inline_program(self):
         project_name = "async_inline_python"
         stack_name = stack_namer(project_name)
@@ -665,6 +865,60 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_stack_lifecycle_inline_program_with_exclude_protected(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+
+        def destroy_program():
+            class MyComponentResource(ComponentResource):
+                def __init__(
+                    self,
+                    name: str,
+                    opts: Optional[ResourceOptions] = None,
+                ):
+                    super(MyComponentResource, self).__init__(
+                        "my:module:MyResource", name, None, opts
+                    )
+
+            config = Config()
+            protect = config.get_bool("protect", False)
+
+            MyComponentResource("protected", opts=ResourceOptions(protect=protect))
+            MyComponentResource("unprotected")
+
+        stack = create_stack(
+            stack_name, program=destroy_program, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.set_all_config({"protect": ConfigValue(value="true")})
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi destroy with exclude protected
+            destroy_res = stack.destroy(exclude_protected=True)
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+            self.assertRegex(
+                destroy_res.stdout, "All unprotected resources were destroyed"
+            )
+
+            # unprotect resources
+            stack.remove_config("protect")
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi destroy without exclude protected
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+
         finally:
             stack.workspace.remove_stack(stack_name)
 
@@ -718,6 +972,30 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace()
         self.assertIsNotNone(ws.pulumi_version)
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
+
+    def test_refresh(self):
+        ws = LocalWorkspace()
+
+        project_name = "testrefresh"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        # pulumi up
+        stack.up()
+
+        # preview with refresh
+        pre_res = stack.preview(refresh=True)
+        self.assertRegex(pre_res.stdout, r".*refreshing.*")
+
+        # up with refresh
+        up_res = stack.up(refresh=True)
+        self.assertRegex(up_res.stdout, r".*refreshing.*")
+
+        # destroy with refresh
+        destroy_res = stack.destroy(refresh=True)
+        self.assertRegex(destroy_res.stdout, r".*refreshing.*")
 
     def test_pulumi_command(self):
         p = PulumiCommand()
@@ -1008,12 +1286,75 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_install(self):
+        class MockCmd(PulumiCommand):
+            # high enough to support --use-language-version-tools
+            version = VersionInfo(3, 130, 0)
+
+            def run(self, *args, **kwargs):
+                self.args = args
+                self.kwars = kwargs
+                return CommandResult(stdout="", stderr="", code=0)
+
+        mock_cmd = MockCmd()
+        ws = LocalWorkspace(pulumi_command=mock_cmd)
+        ws.install()
+        self.assertEqual(mock_cmd.args[0], ["install"])
+        ws.install(no_dependencies=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--no-dependencies"])
+        ws.install(no_plugins=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--no-plugins"])
+        ws.install(reinstall=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--reinstall"])
+        ws.install(use_language_version_tools=True)
+        self.assertEqual(mock_cmd.args[0], ["install", "--use-language-version-tools"])
+        ws.install(
+            no_dependencies=True,
+            no_plugins=True,
+            reinstall=True,
+            use_language_version_tools=True,
+        )
+        self.assertEqual(
+            mock_cmd.args[0],
+            [
+                "install",
+                "--use-language-version-tools",
+                "--no-plugins",
+                "--no-dependencies",
+                "--reinstall",
+            ],
+        )
+
+        # not high enough to support --use-language-version-tools
+        mock_cmd.version = VersionInfo(3, 100, 0)
+        self.assertRaises(
+            InvalidVersionError, ws.install, use_language_version_tools=True
+        )
+
+        # not high enough to support install
+        mock_cmd.version = VersionInfo(3, 90)
+        self.assertRaises(InvalidVersionError, ws.install)
+
 
 def pulumi_program():
     config = Config()
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
+
+
+def pulumi_program_with_resource():
+    class MyComponentResource(ComponentResource):
+        def __init__(
+            self,
+            name: str,
+            opts: Optional[ResourceOptions] = None,
+        ):
+            super(MyComponentResource, self).__init__(
+                "my:module:MyResource", name, None, opts
+            )
+
+    MyComponentResource("res")
 
 
 async def async_pulumi_program():

@@ -1,0 +1,5 @@
+.ensure.phony
+_build
+_generated
+_tools
+venv/

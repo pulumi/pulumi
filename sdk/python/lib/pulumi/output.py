@@ -40,6 +40,11 @@ from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 from .runtime.settings import SETTINGS
+from .runtime._serialization import (
+    _serialization_enabled,
+    _secrets_allowed,
+    _set_contained_secrets,
+)
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -110,7 +115,11 @@ class Output(Generic[T_co]):
                 return
             # else remove it from the deque
             with SETTINGS.lock:
-                SETTINGS.outputs.remove(fut)
+                try:
+                    SETTINGS.outputs.remove(fut)
+                except ValueError:
+                    # if it's not in the deque then it's already been removed in wait_for_rpcs
+                    pass
 
         future.add_done_callback(cleanup)
 
@@ -150,17 +159,79 @@ class Output(Generic[T_co]):
 
     # End private implementation details.
 
+    def __getstate__(self):
+        """
+        Serialize this Output into a dictionary for pickling, only when serialization is enabled.
+        """
+
+        if not _serialization_enabled():
+            raise Exception("__getstate__ can only be called during serialization")
+
+        value, is_secret = _sync_await(asyncio.gather(self.future(), self.is_secret()))
+
+        if is_secret:
+            if _secrets_allowed():
+                _set_contained_secrets(True)
+            else:
+                raise Exception("Secret outputs cannot be captured")
+
+        return {"value": value}
+
+    def __setstate__(self, state):
+        """
+        Deserialize this Output from a dictionary, only when serialization is enabled.
+        """
+
+        if not _serialization_enabled():
+            raise Exception("__setstate__ can only be called during deserialization")
+
+        value = state["value"]
+
+        # Replace '.get' with a function that returns the value without raising an error.
+        self.get = lambda: value
+
+        def error(name: str):
+            def f(*args: Any, **kwargs: Any):
+                raise Exception(
+                    f"'{name}' is not allowed from inside a cloud-callback. "
+                    + "Use 'get' to retrieve the value of this Output directly."
+                )
+
+            return f
+
+        # Replace '.apply' and other methods on Output with implementations that raise an error.
+        self.apply = error("apply")
+        self.resources = error("resources")
+        self.future = error("future")
+        self.is_known = error("is_known")
+        self.is_secret = error("is_secret")
+
+    def get(self) -> T_co:
+        """
+        Retrieves the underlying value of this Output.
+
+        This function is only callable in code that runs post-deployment. At this point all Output
+        values will be known and can be safely retrieved. During pulumi deployment or preview
+        execution this must not be called (and will raise an error). This is because doing so would
+        allow Output values to flow into Resources while losing the data that would allow the
+        dependency graph to be changed.
+        """
+        raise Exception(
+            "Cannot call '.get' during update or preview. To manipulate the value of this Output, "
+            + "use '.apply' instead."
+        )
+
     def is_secret(self) -> Awaitable[bool]:
         return self._is_secret
 
     def apply(
-        self, func: Callable[[T_co], Input[U]], run_with_unknowns: Optional[bool] = None
+        self, func: Callable[[T_co], Input[U]], run_with_unknowns: bool = False
     ) -> "Output[U]":
         """
         Transforms the data of the output with the provided func.  The result remains an
         Output so that dependent resources can be properly tracked.
 
-        'func' is not allowed to make resources.
+        'func' should not be used to create resources unless necessary as 'func' may not be run during some program executions.
 
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
@@ -250,12 +321,31 @@ class Output(Generic[T_co]):
 
     def __getattr__(self, item: str) -> "Output[Any]":  # type: ignore
         """
-        Syntax sugar for retrieving attributes off of outputs.
+        Syntactic sugar for retrieving attributes off of outputs.
+
+        Note that strictly speaking, this implementation of __getattr__ violates
+        the contract expected by Python. __getattr__ is expected to raise
+        (synchronously) an AttributeError if the attribute is not found.
+        However, we return an Output value, which is asynchronous and represents
+        a future value. If we try to lift an attribute that does not exist
+        therefore, we'll violate the contract by returning an Output that will
+        later blow up with an AttributeError. This means that builtins such as
+        hasattr generally won't work correctly on Outputs.
+
+        This is generally fine for most Pulumi use cases, but it can cause
+        problems when interacting with other libraries that expect attribute
+        access to behave correctly. To try and strike a balance that works in a
+        majority of cases, we raise an AttributeError immediately if the
+        attribute is one of a set that we expect not to need to lift in order to
+        make provider SDKs ergonomic (e.g., things that "look reserved" such as
+        class-private identifiers and dunder methods).
 
         :param str item: An attribute name.
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
+        if item.startswith("__"):
+            raise AttributeError(f"'Output' object has no attribute '{item}'")
 
         def lift(v: Any) -> Any:
             return UNKNOWN if isinstance(v, Unknown) else getattr(v, item)
@@ -264,7 +354,7 @@ class Output(Generic[T_co]):
 
     def __getitem__(self, key: Any) -> "Output[Any]":
         """
-        Syntax sugar for looking up attributes dynamically off of outputs.
+        Syntactic sugar for looking up attributes dynamically off of outputs.
 
         :param Any key: Key for the attribute dictionary.
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
@@ -285,15 +375,23 @@ class Output(Generic[T_co]):
             "'Output' object is not iterable, consider iterating the underlying value inside an 'apply'"
         )
 
+    @overload
     @staticmethod
-    def from_input(val: Input[T_co]) -> "Output[T_co]":
+    def from_input(val: "Output[U]") -> "Output[U]": ...
+
+    @overload
+    @staticmethod
+    def from_input(val: Input[U]) -> "Output[U]": ...
+
+    @staticmethod
+    def from_input(val: Input[U]) -> "Output[U]":
         """
         Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values through nested
         lists, dicts, and input classes.  Nested objects of other types (including Resources) are not deeply unwrapped.
 
-        :param Input[T_co] val: An Input to be converted to an Output.
+        :param Input[U] val: An Input to be converted to an Output.
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
-        :rtype: Output[T_co]
+        :rtype: Output[U]
         """
 
         # Is it an output already? Recurse into the value contained within it.
@@ -313,7 +411,7 @@ class Output(Generic[T_co]):
                 # directly with no arguments.
                 lambda d: typ(**d) if d else typ()
             )
-            return cast(Output[T_co], o_typ)
+            return cast(Output[U], o_typ)
 
         # Is a (non-empty) dict, list, or tuple? Recurse into the values within them.
         if val and isinstance(val, dict):
@@ -328,17 +426,17 @@ class Output(Generic[T_co]):
                 return Output.all(**d)
 
             o_dict: Output[dict] = Output.all(*keys).apply(liftValues)
-            return cast(Output[T_co], o_dict)
+            return cast(Output[U], o_dict)
 
         if val and isinstance(val, list):
             o_list: Output[list] = Output.all(*val)
-            return cast(Output[T_co], o_list)
+            return cast(Output[U], o_list)
 
         if val and isinstance(val, tuple):
             # We can splat a tuple into all, but we'll always get back a list...
             o_list = Output.all(*val)
             # ...so we need to convert back to a tuple.
-            return cast(Output[T_co], o_list.apply(tuple))
+            return cast(Output[U], o_list.apply(tuple))
 
         # If it's not an output, tuple, list, or dict, it must be known and not secret
         is_known_fut: asyncio.Future[bool] = asyncio.Future()
@@ -361,7 +459,7 @@ class Output(Generic[T_co]):
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
     @staticmethod
-    def _from_input_shallow(val: Input[T]) -> "Output[T]":
+    def _from_input_shallow(val: Input[U]) -> "Output[U]":
         """
         Like `from_input`, but does not recur deeply. Instead, checks if `val` is an `Output` value
         and returns it as is. Otherwise, promotes a known value or future to `Output`.
@@ -392,7 +490,7 @@ class Output(Generic[T_co]):
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
     @staticmethod
-    def unsecret(val: "Output[T]") -> "Output[T]":
+    def unsecret(val: "Output[U]") -> "Output[U]":
         """
         Takes an existing Output, deeply unwraps the nested values and returns a new Output without any secrets included
 
@@ -405,7 +503,7 @@ class Output(Generic[T_co]):
         return Output(val._resources, val._future, val._is_known, is_secret)
 
     @staticmethod
-    def secret(val: Input[T]) -> "Output[T]":
+    def secret(val: Input[U]) -> "Output[U]":
         """
         Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values as necessary
         given the type. It also marks the returned Output as a secret, so its contents will be persisted in an encrypted
@@ -425,15 +523,24 @@ class Output(Generic[T_co]):
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     @overload
     @staticmethod
-    def all(*args: Input[T]) -> "Output[List[T]]":  # type: ignore
-        ...
+    def all(*args: "Output[Any]") -> "Output[List[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]": ...
+    def all(**kwargs: "Output[Any]") -> "Output[Dict[str, Any]]": ...  # type: ignore
+
+    @overload
+    @staticmethod
+    def all(*args: Input[Any]) -> "Output[List[Any]]": ...  # type: ignore
+
+    @overload
+    @staticmethod
+    def all(**kwargs: Input[Any]) -> "Output[Dict[str, Any]]": ...  # type: ignore
 
     @staticmethod
-    def all(*args: Input[T], **kwargs: Input[T]):
+    def all(
+        *args: Input[Any], **kwargs: Input[Any]
+    ) -> "Output[list[Any] | dict[str, Any]]":
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
@@ -486,19 +593,15 @@ class Output(Generic[T_co]):
             }
             return await _gather_from_dict(value_futures_dict)
 
-        from_input = cast(
-            Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input
-        )
-
         if args and kwargs:
             raise ValueError(
                 "Output.all() was supplied a mix of named and unnamed inputs"
             )
         # First, map all inputs to outputs using `from_input`.
         all_outputs: Union[list, dict] = (
-            {k: from_input(v) for k, v in kwargs.items()}
+            {k: Output.from_input(v) for k, v in kwargs.items()}
             if kwargs
-            else [from_input(x) for x in args]
+            else [Output.from_input(x) for x in args]
         )
 
         # Aggregate the list or dict of futures into a future of list or dict.

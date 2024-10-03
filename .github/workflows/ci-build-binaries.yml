@@ -32,7 +32,7 @@ on:
         description: "Version to produce"
         type: string
       version-set:
-        required: false
+        required: true
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
       enable-coverage:
@@ -86,6 +86,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
           cache: true
           cache-dependency-path: |
             pkg/go.sum
@@ -94,17 +95,13 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v6
         with:
           install-only: true
           distribution: goreleaser-pro
-          # TODO[pulumi/pulumi#13312: Change this to not pin to a version after
-          # addressing the root cause of why GoReleaser v1.19.0 fails to read
-          # the configuration.
-          version: v1.18.2
-      - name: Set up bin dir
+      - name: Prepare bin dir for goreleaser
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOS: ${{ inputs.os }}
           GOARCH: ${{ inputs.arch }}
         run: ./scripts/prep-for-goreleaser.sh local
@@ -129,11 +126,13 @@ jobs:
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
-            | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
-      - uses: actions/upload-artifact@v2
+            | goreleaser release -f - -p 5 --skip=validate --clean --snapshot
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.os != 'js' }}
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
-          retention-days: 1
+          overwrite: true
+          retention-days: 7
           path: |
             goreleaser/*.tar.gz
             goreleaser/*.zip

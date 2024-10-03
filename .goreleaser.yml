@@ -1,4 +1,5 @@
 dist: goreleaser
+version: 2
 
 project_name: pulumi
 
@@ -17,6 +18,10 @@ builds:
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version=v{{.Env.PULUMI_VERSION}}
   mod_timestamp: '{{ .CommitTimestamp }}'
+  tags:
+    # Enforce the pure Go implementation of os/user, even when cgo is available.
+    # See https://pkg.go.dev/os/user#pkg-overview.
+    - osusergo
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go
@@ -35,6 +40,18 @@ builds:
   dir: sdk/python/cmd/pulumi-language-python
   main: ./
   gobinary: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
+  id: pulumi-display-wasm
+  binary: pulumi-display
+  dir: pkg
+  main: ./backend/display/wasm
+  goos: ['js']
+  goarch: ['wasm']
+  hooks:
+    post:
+      # Check the size of the WASM module.
+      - |
+        sh -c "[ `du -k {{ .Path }} | cut -f1` -le 79182 ] || (echo 'error: WASM module > 77M'; exit 1)"
 
 archives:
 - id: pulumi
@@ -42,18 +59,16 @@ archives:
   format_overrides:
     - goos: windows
       format: zip
-  replacements:
-    amd64: x64
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
       dst: '.'
       strip_parent: true
       # binaries
-    - src: bin/{{ .Os }}-{{ .Arch }}/*
+    - src: 'bin/{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}/*'
       dst: '.'
       strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}'
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"

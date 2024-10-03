@@ -16,6 +16,7 @@ package dotnet
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -164,4 +165,19 @@ func LowerCamelCase(s string) string {
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
+}
+
+func extractNugetPackageNameAndVersion(nugetFilePath string) (string, string, bool) {
+	filename := filepath.Base(nugetFilePath)
+	parts := strings.Split(filename, ".")
+	if len(parts) >= 5 {
+		patch := parts[len(parts)-2]
+		minor := parts[len(parts)-3]
+		major := parts[len(parts)-4]
+		version := fmt.Sprintf("%s.%s.%s", major, minor, patch)
+		pkg := strings.TrimSuffix(filename, fmt.Sprintf(".%s.nupkg", version))
+		return pkg, version, true
+	}
+
+	return "", "", false
 }

@@ -332,9 +332,18 @@ type mockResmon struct {
 
 	RegisterResourceOutputsF func(ctx context.Context,
 		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
+
+	AbortChanF func() <-chan bool
 }
 
 var _ SourceResourceMonitor = (*mockResmon)(nil)
+
+func (rm *mockResmon) AbortChan() <-chan bool {
+	if rm.AbortChanF != nil {
+		return rm.AbortChanF()
+	}
+	panic("not implemented")
+}
 
 func (rm *mockResmon) Address() string {
 	if rm.AddressF != nil {
@@ -614,7 +623,7 @@ type mockHost struct {
 
 	ListAnalyzersF func() []plugin.Analyzer
 
-	ProviderF func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+	ProviderF func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
 
 	CloseProviderF func(provider plugin.Provider) error
 
@@ -679,9 +688,9 @@ func (h *mockHost) ListAnalyzers() []plugin.Analyzer {
 	panic("unimplemented")
 }
 
-func (h *mockHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (h *mockHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	if h.ProviderF != nil {
-		return h.ProviderF(pkg, version)
+		return h.ProviderF(descriptor)
 	}
 	panic("unimplemented")
 }
@@ -738,6 +747,10 @@ func (h *mockHost) Close() error {
 	panic("unimplemented")
 }
 
+func (h *mockHost) StartDebugging(plugin.DebuggingInfo) error {
+	panic("unimplemented")
+}
+
 type mockLanguageRuntime struct {
 	CloseF func() error
 
@@ -747,9 +760,11 @@ type mockLanguageRuntime struct {
 
 	GetPluginInfoF func() (workspace.PluginInfo, error)
 
-	InstallDependenciesF func(info plugin.ProgramInfo) error
+	InstallDependenciesF func(options plugin.InstallDependenciesRequest) error
 
-	AboutF func() (plugin.AboutInfo, error)
+	RuntimeOptionsPromptsF func(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error)
+
+	AboutF func(info plugin.ProgramInfo) (plugin.AboutInfo, error)
 
 	GetProgramDependenciesF func(
 		info plugin.ProgramInfo, transitiveDependencies bool,
@@ -767,6 +782,7 @@ type mockLanguageRuntime struct {
 	GeneratePackageF func(
 		directory string, schema string,
 		extraFiles map[string][]byte, loaderTarget string, localDependencies map[string]string,
+		local bool,
 	) (hcl.Diagnostics, error)
 
 	GenerateProgramF func(
@@ -810,16 +826,23 @@ func (rt *mockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
+func (rt *mockLanguageRuntime) InstallDependencies(request plugin.InstallDependenciesRequest) error {
 	if rt.InstallDependenciesF != nil {
-		return rt.InstallDependenciesF(info)
+		return rt.InstallDependenciesF(request)
 	}
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) About() (plugin.AboutInfo, error) {
+func (rt *mockLanguageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {
+	if rt.RuntimeOptionsPromptsF != nil {
+		return rt.RuntimeOptionsPromptsF(info)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if rt.AboutF != nil {
-		return rt.AboutF()
+		return rt.AboutF(info)
 	}
 	panic("unimplemented")
 }
@@ -856,15 +879,16 @@ func (rt *mockLanguageRuntime) GenerateProject(
 func (rt *mockLanguageRuntime) GeneratePackage(
 	directory string, schema string, extraFiles map[string][]byte,
 	loaderTarget string, localDependencies map[string]string,
+	local bool,
 ) (hcl.Diagnostics, error) {
 	if rt.GeneratePackageF != nil {
-		return rt.GeneratePackageF(directory, schema, extraFiles, loaderTarget, localDependencies)
+		return rt.GeneratePackageF(directory, schema, extraFiles, loaderTarget, localDependencies, local)
 	}
 	panic("unimplemented")
 }
 
 func (rt *mockLanguageRuntime) GenerateProgram(
-	program map[string]string, loaderTarget string,
+	program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	if rt.GenerateProgramF != nil {
 		return rt.GenerateProgramF(program, loaderTarget)

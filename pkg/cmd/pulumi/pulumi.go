@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -34,7 +35,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	user "github.com/tweekmonster/luser"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -141,7 +142,7 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 type loggingWriter struct{}
 
 func (loggingWriter) Write(bytes []byte) (int, error) {
-	logging.Infof(string(bytes))
+	logging.Infof("%s", string(bytes))
 	return len(bytes), nil
 }
 
@@ -178,7 +179,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		PersistentPreRun: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -344,6 +345,7 @@ func NewPulumiCmd() *cobra.Command {
 				newLogoutCmd(),
 				newWhoAmICmd(),
 				newOrgCmd(),
+				newDeploymentCmd(),
 			},
 		},
 		{
@@ -415,6 +417,11 @@ func NewPulumiCmd() *cobra.Command {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
 		contract.IgnoreError(err)
 	}
+
+	// Since we define a custom command for generating shell completions
+	// (`gen-completion` / `newGenCompletionCmd`), we disable Cobra's default
+	// completion command as a recommended best practice.
+	cmd.CompletionOptions.DisableDefaultCmd = true
 
 	return cmd
 }
@@ -496,7 +503,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 			// If we're skipping the check,
 			// still log this to the internal logging system
 			// that users don't see by default.
-			logging.Warningf(msg)
+			logging.Warningf("%s", msg)
 			return nil
 		}
 		return diag.RawMessage("", msg)
@@ -508,7 +515,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
 // allowed without warning. It caches data from the server for a day.
 func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
-	client := client.NewClient(httpstate.DefaultURL(), "", false, cmdutil.Diag())
+	client := client.NewClient(httpstate.DefaultURL(pkgWorkspace.Instance), "", false, cmdutil.Diag())
 	latest, oldest, dev, err := client.GetCLIVersionInfo(ctx)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, semver.Version{}, err

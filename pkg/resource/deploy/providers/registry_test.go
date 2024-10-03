@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -36,7 +37,7 @@ import (
 
 type testPluginHost struct {
 	t             *testing.T
-	provider      func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
 	closeProvider func(provider plugin.Provider) error
 }
 
@@ -75,8 +76,8 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	return host.provider(pkg, version)
+func (host *testPluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+	return host.provider(descriptor)
 }
 
 func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
@@ -107,6 +108,10 @@ func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.Progr
 	return nil, nil
 }
 
+func (host *testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
+	return nil
+}
+
 type testProvider struct {
 	plugin.UnimplementedProvider
 
@@ -123,43 +128,52 @@ func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
 
-func (prov *testProvider) GetSchema(version int) ([]byte, error) {
-	return []byte("{}"), nil
+func (prov *testProvider) GetSchema(
+	context.Context, plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	return plugin.GetSchemaResponse{Schema: []byte("{}")}, nil
 }
 
-func (prov *testProvider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return prov.checkConfig(urn, olds, news, allowUnknowns)
+func (prov *testProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
+	props, failures, err := prov.checkConfig(req.URN, req.Olds, req.News, req.AllowUnknowns)
+	return plugin.CheckConfigResponse{Properties: props, Failures: failures}, err
 }
 
-func (prov *testProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	return prov.diffConfig(urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+func (prov *testProvider) DiffConfig(
+	_ context.Context, req plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	return prov.diffConfig(req.URN, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
 }
 
-func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
-	if err := prov.config(inputs); err != nil {
-		return err
+func (prov *testProvider) Configure(
+	_ context.Context, req plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	if err := prov.config(req.Inputs); err != nil {
+		return plugin.ConfigureResponse{}, err
 	}
 	prov.configured = true
-	return nil
+	return plugin.ConfigureResponse{}, nil
 }
 
-func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (prov *testProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    "testProvider",
 		Version: &prov.version,
 	}, nil
 }
 
-func (prov *testProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (prov *testProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (prov *testProvider) GetMappings(key string) ([]string, error) {
-	return []string{}, nil
+func (prov *testProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
 
 type providerLoader struct {
@@ -171,14 +185,14 @@ type providerLoader struct {
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
 		t: t,
-		provider: func(pkg tokens.Package, ver *semver.Version) (plugin.Provider, error) {
+		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
-				if l.pkg != pkg {
+				if string(l.pkg) != descriptor.Name {
 					continue
 				}
 
-				if ver != nil && l.version.LT(*ver) {
+				if descriptor.Version != nil && l.version.LT(*descriptor.Version) {
 					continue
 				}
 				if best == nil || l.version.GT(best.version) {
@@ -318,7 +332,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		ver, err := GetProviderVersion(old.Inputs)
 		assert.NoError(t, err)
 		if ver != nil {
-			info, err := p.GetPluginInfo()
+			info, err := p.GetPluginInfo(context.Background())
 			assert.NoError(t, err)
 			assert.True(t, info.Version.GTE(*ver))
 		}
@@ -371,10 +385,14 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: olds,
+			News: news,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, news, inputs)
-		assert.Empty(t, failures)
+		assert.Equal(t, news, check.Properties)
+		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
@@ -382,15 +400,19 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs, timeout, false)
+		create, err := r.Create(context.Background(), plugin.CreateRequest{
+			URN:        urn,
+			Properties: check.Properties,
+			Timeout:    timeout,
+		})
 		assert.NoError(t, err)
-		assert.NotEqual(t, "", id)
-		assert.NotEqual(t, UnconfiguredID, id)
-		assert.NotEqual(t, UnknownID, id)
-		assert.Equal(t, resource.PropertyMap{}, outs)
-		assert.Equal(t, resource.StatusOK, status)
+		assert.NotEqual(t, "", create.ID)
+		assert.NotEqual(t, UnconfiguredID, create.ID)
+		assert.NotEqual(t, UnknownID, create.ID)
+		assert.Equal(t, resource.PropertyMap{}, create.Properties)
+		assert.Equal(t, resource.StatusOK, create.Status)
 
-		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
+		p2, ok := r.GetProvider(Reference{urn: urn, id: create.ID})
 		assert.True(t, ok)
 		assert.Equal(t, p, p2)
 		assert.True(t, p2.(*testProvider).configured)
@@ -407,10 +429,14 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: olds,
+			News: news,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, news, inputs)
-		assert.Empty(t, failures)
+		assert.Equal(t, news, check.Properties)
+		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
@@ -419,7 +445,12 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+			URN:        urn,
+			ID:         id,
+			OldOutputs: olds,
+			NewInputs:  news,
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -429,10 +460,16 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, nil, olds, inputs, timeout, nil, false)
+		update, err := r.Update(context.Background(), plugin.UpdateRequest{
+			URN:        urn,
+			ID:         id,
+			OldOutputs: olds,
+			NewInputs:  check.Properties,
+			Timeout:    timeout,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{}, outs)
-		assert.Equal(t, resource.StatusOK, status)
+		assert.Equal(t, resource.PropertyMap{}, update.Properties)
+		assert.Equal(t, resource.StatusOK, update.Status)
 
 		p3, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
@@ -450,9 +487,15 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Delete
-		status, err := r.Delete(urn, id, resource.PropertyMap{}, resource.PropertyMap{}, timeout)
+		resp, err := r.Delete(context.Background(), plugin.DeleteRequest{
+			URN:     urn,
+			ID:      id,
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{},
+			Timeout: timeout,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, resource.StatusOK, status)
+		assert.Equal(t, resource.StatusOK, resp.Status)
 
 		_, ok = r.GetProvider(Reference{urn: urn, id: id})
 		assert.False(t, ok)
@@ -525,10 +568,14 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: olds,
+			News: news,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, news, inputs)
-		assert.Empty(t, failures)
+		assert.Equal(t, news, check.Properties)
+		assert.Empty(t, check.Failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
@@ -546,10 +593,14 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: olds,
+			News: news,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, news, inputs)
-		assert.Empty(t, failures)
+		assert.Equal(t, news, check.Properties)
+		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
@@ -558,7 +609,12 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+			URN:        urn,
+			ID:         id,
+			OldOutputs: olds,
+			NewInputs:  news,
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -579,10 +635,14 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: olds,
+			News: news,
+		})
 		assert.NoError(t, err)
-		assert.Equal(t, news, inputs)
-		assert.Empty(t, failures)
+		assert.Equal(t, news, check.Properties)
+		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
@@ -591,7 +651,12 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+			URN:        urn,
+			ID:         id,
+			OldOutputs: olds,
+			NewInputs:  news,
+		})
 		assert.NoError(t, err)
 		assert.True(t, diff.Replace())
 
@@ -616,10 +681,14 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: olds,
+		News: news,
+	})
 	assert.Error(t, err)
-	assert.Empty(t, failures)
-	assert.Nil(t, inputs)
+	assert.Empty(t, check.Failures)
+	assert.Nil(t, check.Properties)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
@@ -638,10 +707,14 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: olds,
+		News: news,
+	})
 	assert.Error(t, err)
-	assert.Empty(t, failures)
-	assert.Nil(t, inputs)
+	assert.Empty(t, check.Failures)
+	assert.Nil(t, check.Properties)
 }
 
 func TestCRUDWrongVersion(t *testing.T) {
@@ -660,10 +733,14 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: olds,
+		News: news,
+	})
 	assert.Error(t, err)
-	assert.Empty(t, failures)
-	assert.Nil(t, inputs)
+	assert.Empty(t, check.Failures)
+	assert.Nil(t, check.Properties)
 }
 
 func TestCRUDBadVersionNotString(t *testing.T) {
@@ -682,11 +759,15 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: olds,
+		News: news,
+	})
 	assert.NoError(t, err)
-	assert.Len(t, failures, 1)
-	assert.Equal(t, "version", string(failures[0].Property))
-	assert.Nil(t, inputs)
+	assert.Len(t, check.Failures, 1)
+	assert.Equal(t, "version", string(check.Failures[0].Property))
+	assert.Nil(t, check.Properties)
 }
 
 func TestCRUDBadVersion(t *testing.T) {
@@ -705,11 +786,15 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: olds,
+		News: news,
+	})
 	assert.NoError(t, err)
-	assert.Len(t, failures, 1)
-	assert.Equal(t, "version", string(failures[0].Property))
-	assert.Nil(t, inputs)
+	assert.Len(t, check.Failures, 1)
+	assert.Equal(t, "version", string(check.Failures[0].Property))
+	assert.Nil(t, check.Properties)
 }
 
 //nolint:paralleltest
@@ -788,11 +873,15 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 			// Check
-			inputs, failures, err := r.Check(providerURN, olds, news, false, nil)
+			check, err := r.Check(context.Background(), plugin.CheckRequest{
+				URN:  providerURN,
+				Olds: olds,
+				News: news,
+			})
 			assert.NoError(t, err)
-			assert.Len(t, failures, 1)
-			assert.Equal(t, "version", string(failures[0].Property))
-			assert.Nil(t, inputs)
+			assert.Len(t, check.Failures, 1)
+			assert.Equal(t, "version", string(check.Failures[0].Property))
+			assert.Nil(t, check.Properties)
 		}(i)
 	}
 }
@@ -815,85 +904,85 @@ func TestRegistry(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetSchema((0))
+			_, _ = r.GetSchema(context.Background(), plugin.GetSchemaRequest{})
 		})
 	})
 	t.Run("GetMapping", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _, _ = r.GetMapping("", "")
+			_, _ = r.GetMapping(context.Background(), plugin.GetMappingRequest{})
 		})
 	})
 	t.Run("GetMappings", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetMappings("")
+			_, _ = r.GetMappings(context.Background(), plugin.GetMappingsRequest{})
 		})
 	})
 	t.Run("CheckConfig", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _, _ = r.CheckConfig("", resource.PropertyMap{}, resource.PropertyMap{}, true)
+			_, _ = r.CheckConfig(context.Background(), plugin.CheckConfigRequest{AllowUnknowns: true})
 		})
 	})
 	t.Run("DiffConfig", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.DiffConfig("", resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{}, true, nil)
+			_, _ = r.DiffConfig(context.Background(), plugin.DiffConfigRequest{AllowUnknowns: true})
 		})
 	})
 	t.Run("Configure", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_ = r.Configure(resource.PropertyMap{})
+			_, _ = r.Configure(context.Background(), plugin.ConfigureRequest{})
 		})
 	})
 	t.Run("Read", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, _, err := r.Read("", "", resource.PropertyMap{}, resource.PropertyMap{})
+		_, err := r.Read(context.Background(), plugin.ReadRequest{})
 		assert.ErrorContains(t, err, "provider resources may not be read")
 	})
 	t.Run("Construct", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.Construct(plugin.ConstructInfo{}, "", "", "", resource.PropertyMap{}, plugin.ConstructOptions{})
+		_, err := r.Construct(context.Background(), plugin.ConstructRequest{})
 		assert.ErrorContains(t, err, "provider resources may not be constructed")
 	})
 	t.Run("Invoke", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _, _ = r.Invoke("", resource.PropertyMap{})
+			_, _ = r.Invoke(context.Background(), plugin.InvokeRequest{})
 		})
 	})
 	t.Run("StreamInvoke", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.StreamInvoke("", resource.PropertyMap{}, nil)
+		_, err := r.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{})
 		assert.ErrorContains(t, err, "the provider registry does not implement streaming invokes")
 	})
 	t.Run("Call", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.Call("", resource.PropertyMap{}, plugin.CallInfo{}, plugin.CallOptions{})
+			_, _ = r.Call(context.Background(), plugin.CallRequest{})
 		})
 	})
 	t.Run("GetPluginInfo", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.GetPluginInfo()
+		_, err := r.GetPluginInfo(context.Background())
 		assert.ErrorContains(t, err, "the provider registry does not report plugin info")
 	})
 	t.Run("SignalCancellation", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		assert.Nil(t, r.SignalCancellation())
+		assert.Nil(t, r.SignalCancellation(context.Background()))
 	})
 }

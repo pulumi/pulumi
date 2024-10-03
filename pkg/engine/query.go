@@ -72,7 +72,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) error {
 	contract.Assertf(proj != nil, "query project cannot be nil")
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
-		opts.Host, diag, statusDiag, false, tracingSpan, nil)
+		opts.Host, diag, statusDiag, nil, false, tracingSpan, nil)
 	if err != nil {
 		return err
 	}
@@ -93,8 +93,16 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) error {
 func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
 	opts QueryOptions,
 ) (deploy.QuerySource, error) {
-	allPlugins, defaultProviderVersions, err := installPlugins(cancel, q.GetProject(), opts.pwd, opts.main,
-		nil, opts.plugctx, false /*returnInstallErrors*/)
+	allPlugins, defaultProviderVersions, err := installPlugins(
+		cancel,
+		q.GetProject(),
+		opts.pwd,
+		opts.main,
+		nil, /*target*/
+		nil, /*opts*/
+		opts.plugctx,
+		false, /*returnInstallErrors*/
+	)
 	if err != nil {
 		return nil, err
 	}

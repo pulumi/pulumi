@@ -1,5 +1,3 @@
-//go:generate go run bundler.go
-
 // Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:generate go run bundler.go
 
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
@@ -360,6 +360,7 @@ type resourceDocArgs struct {
 	// language chooser shortcode. Use this to customize the languages shown for a
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
+	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
 	LangChooserLanguages string
 
 	// CreationExampleSyntax is a map from language to the rendered HTML for the
@@ -369,7 +370,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 	DeprecationMessage string
 
 	// Import
@@ -407,6 +408,8 @@ type resourceDocArgs struct {
 	// NestedTypes is a slice of the nested types used in the input and
 	// output properties.
 	NestedTypes []docNestedType
+	// Maximum number of nested types to show.
+	MaxNestedTypes int
 
 	// A list of methods associated with the resource.
 	Methods []methodDocArgs
@@ -482,6 +485,42 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	newctx.children = children
 	return &newctx
+}
+
+// getSupportedLanguages returns the list of supported languages based on the overlay configuration.
+// If `isOverlay` is false or `overlaySupportedLanguages` is empty/nil, it returns the default list of supported languages.
+// Otherwise, it filters the `overlaySupportedLanguages` to ensure that they are a subset of the default supported languages.
+func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupportedLanguages []string) []string {
+	if !isOverlay || len(overlaySupportedLanguages) == 0 {
+		return dctx.supportedLanguages
+	}
+	var supportedLanguages []string
+	allLanguages := codegen.NewStringSet(dctx.supportedLanguages...)
+	for _, lang := range overlaySupportedLanguages {
+		if allLanguages.Has(lang) {
+			supportedLanguages = append(supportedLanguages, lang)
+		}
+	}
+
+	return supportedLanguages
+}
+
+// getSupportedSnippetLanguages returns a comma separated string containing the supported snippet languages for the given type
+// based on the overlay configuration.
+// If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
+// Internally this calls the getSupportedLanguages function to retrieve the supported languages and replaces "nodejs"
+// with "typescript" because snippet languages expect "typescript" instead of "nodejs".
+func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
+	supportedLanguages := dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages)
+	supportedSnippetLanguages := make([]string, len(supportedLanguages))
+	for idx, lang := range supportedLanguages {
+		if lang == "nodejs" {
+			lang = "typescript"
+		}
+		supportedSnippetLanguages[idx] = lang
+	}
+
+	return strings.Join(supportedSnippetLanguages, ",")
 }
 
 func resourceName(r *schema.Resource) string {
@@ -753,7 +792,12 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("nodejs")
 
 	var argsType string
+
 	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
+		optsType = "ComponentResourceOptions"
+	}
+
 	// The args type for k8s package differs from the rest depending on whether we are dealing with
 	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
@@ -766,10 +810,6 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
 			argsType = name
-		}
-
-		if mod.isComponentResource() {
-			optsType = "ComponentResourceOptions"
 		}
 	} else {
 		argsType = name + "Args"
@@ -865,9 +905,9 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	optsType := "CustomResourceOptions"
 
-	if isKubernetesPackage(mod.pkg) && mod.isComponentResource() {
+	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
 		optsType = "ComponentResourceOptions"
 	}
 
@@ -930,9 +970,9 @@ func (mod *modContext) genConstructorYaml() []formalParam {
 
 func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool) []formalParam {
 	name := resourceName(r)
-	optsType := "CustomResourceOptions"
 
-	if mod.isComponentResource() {
+	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
 		optsType = "ComponentResourceOptions"
 	}
 
@@ -1062,7 +1102,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	return params
 }
 
-func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
+func (mod *modContext) genNestedTypes(member interface{}, resourceType, isProvider bool) []docNestedType {
 	dctx := mod.docGenContext
 	tokens := nestedTypeUsageInfo{}
 	// Collect all of the types for this "member" as a map of resource names
@@ -1089,7 +1129,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
 				for _, lang := range dctx.supportedLanguages {
-					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
+					props[lang] = mod.getProperties(typ.Properties, lang, true, true, isProvider)
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
@@ -1745,59 +1785,67 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	if !r.IsProvider && err == nil {
 		if example, found := dctx.constructorSyntaxData.typescript.resources[r.Token]; found {
 			if strings.Contains(example, "notImplemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["typescript"] = example
-		} else {
-			creationExampleSyntax["typescript"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.python.resources[r.Token]; found {
 			if strings.Contains(example, "not_implemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["python"] = example
-		} else {
-			creationExampleSyntax["python"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.csharp.resources[r.Token]; found {
 			if strings.Contains(example, "NotImplemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["csharp"] = example
-		} else {
-			creationExampleSyntax["csharp"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.golang.resources[r.Token]; found {
 			modified := strings.ReplaceAll(example, "_, err =", "example, err :=")
 			modified = strings.ReplaceAll(modified, "_, err :=", "example, err :=")
 			if strings.Contains(modified, "notImplemented") || strings.Contains(modified, "PANIC") {
-				modified = "Coming soon!"
+				modified = ""
 			}
 			creationExampleSyntax["go"] = modified
-		} else {
-			creationExampleSyntax["go"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.java.resources[r.Token]; found {
 			creationExampleSyntax["java"] = example
-		} else {
-			creationExampleSyntax["java"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
-		} else {
-			creationExampleSyntax["yaml"] = "Coming soon!"
 		}
 	}
 
-	docInfo := dctx.decomposeDocstring(r.Comment)
+	// Set a cap on how many auxiliary types the docs will include. We do that to limit the maximum size of
+	// a doc page. The default limit is rather high - we tried setting it to 200 for everyone but got
+	// pushback from third-party consumers who have legitimate use cases with more that 200 types.
+	// Therefore, we currently apply a smaller limit of 200 to packages that we know have some bloat in
+	// their types (AWS and AWS Native).
+	// See https://github.com/pulumi/pulumi/issues/15507#issuecomment-2064361317
+	//
+	// Schema Tools will print a warning every time a new resources gets an increase in number of types
+	// that is beyond 200. This should help us catch new instances and make decisions whether to include all
+	// types or add a limit. The default is including all types up to 1000.
+	maxNestedTypes := 1000
+	switch mod.pkg.Name() {
+	case "aws", "aws-native":
+		maxNestedTypes = 200
+	}
+
+	supportedSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages)
+	docInfo := dctx.decomposeDocstring(r.Comment, supportedSnippetLanguages)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:                docInfo.description,
-		DeprecationMessage:     r.DeprecationMessage,
-		ExamplesSection:        docInfo.examples,
+		Comment:            docInfo.description,
+		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: supportedSnippetLanguages,
+		},
 		ImportDocs:             docInfo.importDetails,
 		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
@@ -1811,11 +1859,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		LookupParams:     mod.genLookupParams(r, stateParam),
 		StateInputs:      stateInputs,
 		StateParam:       stateParam,
-		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
+		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/, r.IsProvider),
+		MaxNestedTypes:   maxNestedTypes,
 
 		Methods: mod.genMethods(r),
 
-		PackageDetails: packageDetails,
+		PackageDetails:       packageDetails,
+		LangChooserLanguages: supportedSnippetLanguages,
 	}
 
 	return data
@@ -2389,7 +2439,7 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 	return constructorSyntax
 }
 
-// collapseToken converts an exact token to a token more suitable for
+// collapseYAMLToken converts an exact token to a token more suitable for
 // display. For example, it converts
 //
 //	  fizz:index/buzz:Buzz => fizz:Buzz

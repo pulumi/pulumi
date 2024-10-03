@@ -1,3 +1,17 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package schema
 
 import (
@@ -24,6 +38,14 @@ type PackageReference interface {
 
 	// Description returns the packages description.
 	Description() string
+
+	// Publisher returns the package publisher.
+	Publisher() string
+	// Repository returns the package repository.
+	Repository() string
+
+	// SupportPack specifies the package definition can be packed by language plugins
+	SupportPack() bool
 
 	// Types returns the package's types.
 	Types() PackageTypes
@@ -145,6 +167,18 @@ func (p packageDefRef) Version() *semver.Version {
 
 func (p packageDefRef) Description() string {
 	return p.pkg.Description
+}
+
+func (p packageDefRef) Publisher() string {
+	return p.pkg.Publisher
+}
+
+func (p packageDefRef) Repository() string {
+	return p.pkg.Repository
+}
+
+func (p packageDefRef) SupportPack() bool {
+	return p.pkg.SupportPack
 }
 
 func (p packageDefRef) Types() PackageTypes {
@@ -335,6 +369,36 @@ func (p *PartialPackage) Description() string {
 		return p.def.Description
 	}
 	return p.types.pkg.Description
+}
+
+func (p *PartialPackage) Publisher() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Publisher
+	}
+	return p.types.pkg.Publisher
+}
+
+func (p *PartialPackage) Repository() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Repository
+	}
+	return p.types.pkg.Repository
+}
+
+func (p *PartialPackage) SupportPack() bool {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.SupportPack
+	}
+	return p.types.pkg.SupportPack
 }
 
 func (p *PartialPackage) Types() PackageTypes {

@@ -5,15 +5,14 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 export function getAsset(a?: number, opts?: pulumi.InvokeOptions): Promise<pulumi.asset.Asset | pulumi.asset.Archive> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingle("std:index:GetAsset", {
         "a": a,
     }, opts);
 }
 export function getAssetOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOptions): pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive> {
-    var args = {
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
+    return pulumi.runtime.invokeSingleOutput("std:index:GetAsset", {
         "a": a,
-    };
-    return pulumi.output(args).apply((resolvedArgs: any) => getAsset(resolvedArgs.a, opts))
+    }, opts);
 }

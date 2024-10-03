@@ -39,18 +39,21 @@ func newGenSdkCommand() *cobra.Command {
 	var language string
 	var out string
 	var version string
+	var local bool
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source>",
-		Args:  cobra.ExactArgs(1),
+		Use:   "gen-sdk <schema_source> [provider parameters]",
+		Args:  cobra.MinimumNArgs(1),
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
-<schema_source> can be a package name, the path to a plugin binary, or the path to a schema file.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+<schema_source> can be a package name or the path to a plugin binary or folder.
+If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
+			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-			pkg, err := schemaFromSchemaSource(source)
+			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])
 			if err != nil {
 				return err
 			}
@@ -74,14 +77,14 @@ func newGenSdkCommand() *cobra.Command {
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := genSDK(lang, out, pkg, overlays)
+					err := genSDK(lang, out, pkg, overlays, local)
 					if err != nil {
 						return err
 					}
 				}
 				return nil
 			}
-			return genSDK(language, out, pkg, overlays)
+			return genSDK(language, out, pkg, overlays, local)
 		}),
 	}
 	cmd.Flags().StringVarP(&language, "language", "", "all",
@@ -90,11 +93,12 @@ func newGenSdkCommand() *cobra.Command {
 		"The directory to write the SDK to")
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
 	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
+	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
 
-func genSDK(language, out string, pkg *schema.Package, overlays string) error {
+func genSDK(language, out string, pkg *schema.Package, overlays string, local bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current working directory: %w", err)
@@ -135,7 +139,9 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			return dotnet.GeneratePackage(t, p, e, nil)
 		})
 	case "java":
-		generatePackage = writeWrapper(javagen.GeneratePackage)
+		generatePackage = writeWrapper(func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+			return javagen.GeneratePackage(t, p, e, local)
+		})
 	default:
 		generatePackage = func(directory string, pkg *schema.Package, extraFiles map[string][]byte) error {
 			// Ensure the target directory is clean, but created.
@@ -172,7 +178,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil)
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
 			if err != nil {
 				return err
 			}

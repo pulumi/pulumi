@@ -1,8 +1,23 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -19,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestDestroyTarget(t *testing.T) {
@@ -91,10 +107,11 @@ func destroySpecificTargets(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -102,10 +119,11 @@ func destroySpecificTargets(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				DiffF: func(
+					_ context.Context,
+					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -123,6 +141,9 @@ func destroySpecificTargets(
 	}
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.T = t
+	// Skip the display tests, as destroys can happen in different orders, and thus create a flaky test here.
+	p.Options.SkipDisplayTests = true
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -194,7 +215,6 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 	//          E  F  G  H  I  J
 	//             |__|
 	//             K  L
-
 	p := &TestPlan{}
 
 	urns, old, programF := generateComplexTestDependencyGraph(t, p)
@@ -202,23 +222,21 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					outputs := oldOutputs.Copy()
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					outputs := req.OldOutputs.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
-					return outputs, resource.StatusOK, nil
+					return plugin.UpdateResponse{
+						Properties: outputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -226,7 +244,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.TargetDependents = targetDependents
-
+	p.Options.T = t
 	updateTargets := globTargets
 	for _, target := range targets {
 		updateTargets = append(updateTargets,
@@ -292,7 +310,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 			return err
 		},
 	}}
-	p.Run(t, old)
+	p.RunWithName(t, old, strings.Join(updateTargets, ","))
 }
 
 func contains(list []string, entry string) bool {
@@ -312,23 +330,21 @@ func updateInvalidTarget(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					outputs := oldOutputs.Copy()
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					outputs := req.OldOutputs.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
-					return outputs, resource.StatusOK, nil
+					return plugin.UpdateResponse{
+						Properties: outputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -364,7 +380,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -426,7 +442,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -468,55 +484,337 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	p.Run(t, snap1)
 }
 
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// depends on a resource whose creation was skipped.
 func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testing.T) {
 	t.Parallel()
 
-	loaders := []*deploytest.ProviderLoader{
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
 		return nil
 	})
-	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to depend on it. Target
+	// B, but not A. This should fail because A's create will be skipped, meaning
+	// that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
 	}
 
-	p.Steps = []TestStep{{Op: Update}}
-	p.Run(t, nil)
-
-	resA := p.NewURN("pkgA:m:typA", "resA", "")
-	resB := p.NewURN("pkgA:m:typA", "resB", "")
-
-	// Now, create a resource resB.  But reference it from A. This will cause a dependency we can't
-	// satisfy.
-	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true,
-			deploytest.ResourceOptions{
-				Dependencies: []resource.URN{resB},
-			})
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
 		assert.NoError(t, err)
 
 		return nil
 	})
-	host2F := deploytest.NewPluginHostF(nil, nil, program2F, loaders...)
 
-	p.Options.HostF = host2F
-	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
-	p.Steps = []TestStep{{
-		Op:            Update,
-		ExpectFailure: true,
-	}}
-	p.Run(t, nil)
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// property-depends on a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDependency(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to have a property that
+	// depends on it. Target B, but not A. This should fail because A's create
+	// will be skipped, meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"prop": {resA.URN},
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// is deleted with a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to be deleted with it.
+	// Target B, but not A. This should fail because A's create will be skipped,
+	// meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed
+// because they are not targeted, are handled correctly when a targeted resource
+// is parented to a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffBChanged := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN.Name() == "b" {
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		}
+
+		return plugin.DiffResponse{}, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+	beforeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var resBOldURN resource.URN
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+		resBOldURN = resB.URN
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, beforeLoaders...)
+
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to be parented by it.
+	// Target B, but not A. This should fail because A's create will be skipped,
+	// meaning that B's dependency cannot be satisfied.
+	afterLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{DiffF: diffBChanged}, nil
+		}),
+	}
+
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			Parent:    resA.URN,
+			AliasURNs: []resource.URN{resBOldURN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
 }
 
 func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *testing.T) {
@@ -551,7 +849,7 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 	host1F := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
@@ -580,7 +878,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -647,24 +945,25 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// No resources will change.
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 				},
 
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
+	p.Options.T = t
+	p.Options.SkipDisplayTests = true
 	getURN := func(name string) resource.URN {
 		return pickURN(t, urns, complexTestDependencyGraphNames, name)
 	}
@@ -878,10 +1177,11 @@ func destroySpecificTargetsWithChildren(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -889,10 +1189,8 @@ func destroySpecificTargetsWithChildren(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -910,6 +1208,8 @@ func destroySpecificTargetsWithChildren(
 	}
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.T = t
+	p.Options.SkipDisplayTests = true
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -938,7 +1238,7 @@ func destroySpecificTargetsWithChildren(
 		},
 	}}
 
-	p.Run(t, old)
+	p.RunWithName(t, old, strings.Join(targets, ","))
 }
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
@@ -990,6 +1290,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 
 	// Check that update succeeds despite the default provider not being targeted.
 	options := TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1029,12 +1330,13 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, _ []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					news["__defaults"] = resource.NewStringProperty("exists")
-					return news, nil, nil
+					req.News["__defaults"] = resource.NewStringProperty("exists")
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
 			}, nil
 		}),
@@ -1068,12 +1370,13 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	project := p.GetProject()
 
 	// Set up stack with initial two resources.
-	options := TestUpdateOptions{HostF: hostF}
-	origSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	options := TestUpdateOptions{T: t, HostF: hostF}
+	origSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Target only `resA` and run a targeted update.
 	options = TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1081,7 +1384,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 			}),
 		},
 	}
-	finalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil)
+	finalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
 	// Check that `resB` (untargeted) is the same between the two snapshots.
@@ -1150,6 +1453,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	project := p.GetProject()
 
 	old, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: p.Options.HostF,
 	}, false, p.BackendClient, nil)
 	assert.NoError(t, err)
@@ -1168,6 +1472,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1208,6 +1513,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1254,6 +1560,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1324,26 +1631,28 @@ func TestTargetDependents(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only resA and check only A is created
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	// Check we only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only resA and check
 	// only A is created but also turn on --target-dependents.
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	// Check we still only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
@@ -1395,26 +1704,28 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only the explicit provider and check that only the provider is created
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we only have two resources, stack, and provider
 	require.Equal(t, 2, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only the provider
 	// but turn on  --target-dependents and check the provider, A, and B are created
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
@@ -1490,7 +1801,8 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 	project := p.GetProject()
 
 	// Target implicitX and explicitX and ensure that those, their children and the providers are created.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1499,14 +1811,15 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 			}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we only have the 5 resources expected, the stack, the two providers and the two X resources.
 	require.Equal(t, 5, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again) but turn on
 	// --target-dependents and check we get 7 resources, the same set as above plus the two Z resources.
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1515,7 +1828,7 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.Equal(t, 7, len(snap.Resources))
 }
@@ -1557,9 +1870,10 @@ func TestTargetUntargetedParent(t *testing.T) {
 	//nolint:paralleltest // Requires serial access to TestPlan
 	t.Run("target update", func(t *testing.T) {
 		// Create all resources.
-		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "0")
 		require.NoError(t, err)
 		// Check we have 4 resources in the stack (stack, parent, provider, child)
 		require.Equal(t, 4, len(snap.Resources))
@@ -1569,14 +1883,15 @@ func TestTargetUntargetedParent(t *testing.T) {
 		inputs = resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		}
-		snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
 					"**child**",
 				}),
 			},
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		assert.Equal(t, 4, len(snap.Resources))
 		parentURN := snap.Resources[1].URN
@@ -1589,6 +1904,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 		// Create all resources from scratch (nil snapshot) but only target the child. This should error that the parent
 		// needs to be created.
 		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
@@ -1612,10 +1928,12 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1634,7 +1952,7 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1648,18 +1966,19 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err) // Expect error because we didn't specify the dependency as a target or TargetDependents
 	validateSnap(snap)
 }
@@ -1672,10 +1991,12 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1694,7 +2015,7 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1708,18 +2029,19 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err) // Expect error because we didn't specify the child as a target or TargetDependents
 	validateSnap(snap)
 }
@@ -1732,15 +2054,15 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1754,7 +2076,7 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1767,20 +2089,21 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
 	// Now run the targeted destroy. We expect an error because the resA errored on delete.
 	// The state should still contain resA.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -1793,16 +2116,16 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA::resB", string(urn))
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA::resB", string(req.URN))
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1822,7 +2145,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1836,14 +2159,15 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	originalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(originalSnap)
 
 	// Now run the targeted destroy specifying TargetDependents.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err := TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1851,14 +2175,15 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1866,7 +2191,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -1879,16 +2204,16 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB", string(urn))
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB", string(req.URN))
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1908,7 +2233,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1922,14 +2247,15 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	originalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(originalSnap)
 
 	// Now run the targeted destroy specifying TargetDependents.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err := TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1937,14 +2263,15 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1952,7 +2279,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -2013,9 +2340,10 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 4 resources in the stack (stack, parent, provider, child)
 	require.Equal(t, 4, len(snap.Resources))
@@ -2024,14 +2352,15 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	inputs = resource.PropertyMap{
 		"foo": resource.NewStringProperty("bar"),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF2,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"**target**",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	assert.Equal(t, 4, len(snap.Resources))
 	unrelatedURN := snap.Resources[3].URN
@@ -2101,9 +2430,10 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 	//nolint:paralleltest // Requires serial access to TestPlan
 	t.Run("target update", func(t *testing.T) {
 		// Create all resources.
-		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "0")
 		require.NoError(t, err)
 		// Check we have 5 resources in the stack (stack, newResource, parent, provider, child)
 		require.Equal(t, 5, len(snap.Resources))
@@ -2113,14 +2443,15 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		inputs = resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		}
-		snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+			T:     t,
 			HostF: hostF2,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
 					"**child**",
 				}),
 			},
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		assert.Equal(t, 5, len(snap.Resources))
 		parentURN := snap.Resources[3].URN
@@ -2135,6 +2466,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		// Create all resources from scratch (nil snapshot) but only target the child. This should error that the parent
 		// needs to be created.
 		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
@@ -2188,13 +2520,13 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{HostF: hostF}
+	options := TestUpdateOptions{T: t, HostF: hostF}
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 5 resources in the stack (stack, provider A, target, provider B, unrelated)
 	require.Equal(t, 5, len(snap.Resources))
@@ -2209,7 +2541,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 			"**target**",
 		}),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
@@ -2261,13 +2593,13 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{HostF: hostF}
+	options := TestUpdateOptions{T: t, HostF: hostF}
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 6 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2)
 	require.Equal(t, 6, len(snap.Resources))
@@ -2282,10 +2614,1167 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 			"**target**",
 		}),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated1 has not been registered yet")
 	// Check we have 7 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2, new
 	// provider B)
 	assert.Equal(t, 7, len(snap.Resources))
+}
+
+// Tests that resources which are modified (e.g. omitted from a program) but not
+// targeted are preserved correctly during targeted operations. Specifically, if
+// a resource is removed from the program but not targeted, resources which
+// depend on that resource should not break. This includes checking parents,
+// dependencies, property dependencies, deleted-with relationships and aliases.
+// Parents and aliases are of particular interest because they result in URN
+// changes.
+func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	targetName := "target"
+
+	// Dependencies in the presence of renames and aliases
+	// ---------------------------------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B depends on A
+	// * C depends on B
+	// * TARGET is unrelated to all other resources
+	//
+	// Actions:
+	//
+	// * A is removed from the program
+	// * B is renamed, changing its URN, but aliased to its previous URN
+	// * An update targeting TARGET is performed
+	t.Run("aliases", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange.
+		var bBeforeURN resource.URN
+
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+			assert.NoError(t, err)
+			bBeforeURN = b.URN
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{b.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		p := &TestPlan{}
+		project := p.GetProject()
+
+		snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
+			HostF: beforeHostF,
+		}, false, p.BackendClient, nil, "0")
+		assert.NoError(t, err)
+
+		afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "not-b", true, deploytest.ResourceOptions{
+				Aliases: []*pulumirpc.Alias{
+					{
+						Alias: &pulumirpc.Alias_Urn{
+							Urn: string(bBeforeURN),
+						},
+					},
+				},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{b.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+		// Act.
+		snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+			T:     t,
+			HostF: afterHostF,
+			UpdateOptions: UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+			},
+		}, false, p.BackendClient, nil, "1")
+
+		// Assert.
+		assert.NoError(t, err)
+		assert.NoError(t, snap.VerifyIntegrity())
+	})
+
+	// Chains caused by parent-child relationships
+	// -------------------------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B is a child of A
+	// * C is a child of B
+	// * TARGET is unrelated to all other resources
+	//
+	t.Run("parents", func(t *testing.T) {
+		t.Parallel()
+
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				Parent: a.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Parent: b.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Parent: b.URN,
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	// Chains caused by parent-child relationships and aliasing
+	// --------------------------------------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B is a child of A
+	// * C is a child of B
+	// * TARGET is unrelated to all other resources
+	//
+	//nolint:paralleltest // Not parallel since bBeforeURN and cBeforeURN are shared between tests.
+	t.Run("parents/aliasing", func(t *testing.T) {
+		var bBeforeURN, cBeforeURN resource.URN
+
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				Parent: a.URN,
+			})
+			assert.NoError(t, err)
+			bBeforeURN = b.URN
+
+			c, err := monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Parent: b.URN,
+			})
+			assert.NoError(t, err)
+			cBeforeURN = c.URN
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is aliased to its previous URN (since the change of parent would
+		//   otherwise change it)
+		// * An update targeting TARGET is performed
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+					Aliases: []*pulumirpc.Alias{
+						{
+							Alias: &pulumirpc.Alias_Urn{
+								Urn: string(bBeforeURN),
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Parent: b.URN,
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * B is removed from the program
+		// * C is aliased to its previous URN (since the change of parent would
+		//   otherwise change it)
+		// * An update targeting TARGET is performed
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Aliases: []*pulumirpc.Alias{
+						{
+							Alias: &pulumirpc.Alias_Urn{
+								Urn: string(cBeforeURN),
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is removed from the program
+		// * C is aliased to its previous URN (since the change of parent would
+		//   otherwise change it)
+		// * An update targeting TARGET is performed
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Aliases: []*pulumirpc.Alias{
+						{
+							Alias: &pulumirpc.Alias_Urn{
+								Urn: string(cBeforeURN),
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	// Chains caused by dependencies
+	// -----------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B depends on A
+	// * C depends on B
+	// * TARGET is unrelated to all other resources
+	t.Run("dependencies", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{b.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Dependencies: []resource.URN{b.URN},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	// Chains caused by property dependencies
+	// --------------------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B depends on A through property "prop"
+	// * C depends on B through property "prop"
+	// * TARGET is unrelated to all other resources
+	t.Run("property dependencies", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{
+					"prop": {a.URN},
+				},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{
+					"prop": {b.URN},
+				},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					PropertyDeps: map[resource.PropertyKey][]resource.URN{
+						"prop": {b.URN},
+					},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	// Chains caused by deleted-with relationships
+	// -------------------------------------------
+	//
+	// Setup:
+	//
+	// * A
+	// * B is deleted with A
+	// * C is deleted with B
+	// * TARGET is unrelated to all other resources
+	t.Run("deleted with", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				DeletedWith: a.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				DeletedWith: b.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					DeletedWith: b.URN,
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		// Actions:
+		//
+		// * A is removed from the program
+		// * B is removed from the program
+		// * An update targeting TARGET is performed
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+}
+
+// This test is a regression test for https://github.com/pulumi/pulumi/issues/14254. This was "fixed" by
+// https://github.com/pulumi/pulumi/pull/15716 but we didn't notice. This test is to ensure that the issue stays fixed
+// because we _almost_ regressed it in https://github.com/pulumi/pulumi/pull/17245.
+//
+// The test checks that if a resource has an explicit provider and we then run an update that changes the resource to
+// use the default provider _but DON'T_ target it that we preserve its explicit provider reference in state. We do NOT
+// want to change state to refer to the default provider as that can then cause provider replace diffs in a later
+// update.
+func TestUntargetedProviderChange(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+
+	explicitProvider := true
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		var provider providers.Reference
+		if explicitProvider {
+			resp, err := monitor.RegisterResource("pulumi:providers:pkgB", "explicit", true)
+			assert.NoError(t, err)
+
+			provID := resp.ID
+
+			if provID == "" {
+				provID = providers.UnknownID
+			}
+			provider, err = providers.NewReference(resp.URN, provID)
+			assert.NoError(t, err)
+		}
+
+		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
+			Inputs:   inputs,
+			Provider: provider.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Create all resources.
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	// Check we have 5 resources in the stack (stack, provider A, target, provider B, unrelated)
+	require.Equal(t, 5, len(snap.Resources))
+	unrelated := snap.Resources[4]
+	assert.Equal(t, "unrelated", unrelated.URN.Name())
+	providerRef := unrelated.Provider
+
+	// Run an update to target the target, that also happens to change the unrelated provider.
+	explicitProvider = false
+	inputs = resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	options.UpdateOptions = UpdateOptions{
+		Targets: deploy.NewUrnTargets([]string{
+			"**target**",
+		}),
+	}
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err,
+		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
+	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
+	assert.Equal(t, 6, len(snap.Resources))
+	// unrelated shouldn't have had its provider changed
+	unrelated = snap.Resources[5]
+	assert.Equal(t, "unrelated", unrelated.URN.Name())
+	assert.Equal(t, providerRef, unrelated.Provider)
 }

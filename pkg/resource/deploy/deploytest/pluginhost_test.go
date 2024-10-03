@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -35,7 +35,6 @@ func TestNewAnalyzerLoaderWithHost(t *testing.T) {
 	assert.Equal(t, apitype.PluginKind("analyzer"), a.kind)
 	assert.Equal(t, "pkgA", a.name)
 	assert.Equal(t, semver.Version{}, a.version)
-	assert.Equal(t, "", a.path)
 	assert.Equal(t, false, a.useGRPC)
 }
 
@@ -124,7 +123,12 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Parallel()
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
-		_, err := host.Provider(tokens.Package("pkgA"), &expectedVersion)
+		_, err := host.Provider(workspace.PackageDescriptor{
+			PluginSpec: workspace.PluginSpec{
+				Name:    "pkgA",
+				Version: &expectedVersion,
+			},
+		})
 		assert.ErrorContains(t, err, "Could not find plugin for (pkgA, 1.0.0)")
 	})
 	t.Run("error: plugin host is shutting down", func(t *testing.T) {
@@ -132,7 +136,12 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Provider", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Provider(tokens.Package("pkgA"), &semver.Version{})
+			_, err := host.Provider(workspace.PackageDescriptor{
+				PluginSpec: workspace.PluginSpec{
+					Name:    "pkgA",
+					Version: &semver.Version{},
+				},
+			})
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("LanguageRuntime", func(t *testing.T) {

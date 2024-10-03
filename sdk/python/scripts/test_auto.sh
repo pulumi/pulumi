@@ -8,6 +8,7 @@ coverage run -m pytest lib/test/automation
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then
-        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast.xml
+        UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
+        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-auto-$UUID.xml
     fi
 fi

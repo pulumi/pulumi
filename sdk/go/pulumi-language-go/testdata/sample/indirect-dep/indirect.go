@@ -1,3 +1,0 @@
-package indirect
-
-func Baz() {}

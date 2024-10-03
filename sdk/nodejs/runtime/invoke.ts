@@ -26,8 +26,9 @@ import {
     serializeProperties,
     serializePropertiesReturnDeps,
     unwrapRpcSecret,
+    containsUnknownValues,
 } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
+import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
 
 import { DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
@@ -38,54 +39,129 @@ import * as resourceproto from "../proto/resource_pb";
 import * as providerproto from "../proto/provider_pb";
 
 /**
- * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
- * behaves differently in the case that options contains `{async:true}` or not.
+ * Dynamically invokes the function `tok`, which is offered by a provider
+ * plugin. `invoke` behaves differently in the case that options contains
+ * `{async:true}` or not.
  *
  * In the case where `{async:true}` is present in the options bag:
  *
- * 1. the result of `invoke` will be a Promise resolved to the result value of the provider plugin.
- * 2. the `props` inputs can be a bag of computed values (including, `T`s, `Promise<T>`s,
- *    `Output<T>`s etc.).
+ * 1. the result of `invoke` will be a Promise resolved to the result value of
+ *    the provider plugin.
  *
+ * 2. the `props` inputs can be a bag of computed values (including, `T`s,
+ *   `Promise<T>`s, `Output<T>`s etc.).
  *
- * In the case where `{async:true}` is not present in the options bag:
+ * In the case where `{ async:true }` is not present in the options bag:
  *
- * 1. the result of `invoke` will be a Promise resolved to the result value of the provider call.
- *    However, that Promise will *also* have the respective values of the Provider result exposed
- *    directly on it as properties.
+ * 1. the result of `invoke` will be a Promise resolved to the result value of
+ *    the provider call. However, that Promise will *also* have the respective
+ *    values of the Provider result exposed directly on it as properties.
  *
- * 2. The inputs must be a bag of simple values, and the result is the result that the Provider
- *    produced.
+ * 2. The inputs must be a bag of simple values, and the result is the result
+ *    that the Provider produced.
  *
  * Simple values are:
+ *
  *  1. `undefined`, `null`, string, number or boolean values.
  *  2. arrays of simple values.
  *  3. objects containing only simple values.
  *
  * Importantly, simple values do *not* include:
+ *
  *  1. `Promise`s
  *  2. `Output`s
  *  3. `Asset`s or `Archive`s
  *  4. `Resource`s.
  *
- * All of these contain async values that would prevent `invoke from being able to operate
- * synchronously.
+ * All of these contain async values that would prevent `invoke from being able
+ * to operate synchronously.
  */
-export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts);
+export function invoke(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Promise<any> {
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
+        // ignore secrets for plain invoke
+        const { result } = response;
+        return result;
+    });
+}
+
+/**
+ * Similar to the plain `invoke` but returns the response as an output, maintaining
+ * secrets of the response, if any.
+ */
+export function invokeOutput<T>(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`invoke(${tok})`);
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets } = response;
+            resolve(<T>result, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
+}
+
+function extractSingleValue(result: Inputs | undefined): any {
+    if (result === undefined) {
+        return result;
+    }
+    // assume outputs has at least one key
+    const keys = Object.keys(result);
+    // return the first key's value from the outputs
+    return result[keys[0]];
 }
 
 /*
- * `invokeSingle` dynamically invokes the function, `tok`, which is offered by a provider plugin.
- * Similar to `invoke`, but returns a single value instead of an object with a single key.
+ * Dynamically invokes the function `tok`, which is offered by a
+ * provider plugin. Similar to `invoke`, but returns a single value instead of
+ * an object with a single key.
  */
-export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts).then((outputs) => {
-        // assume outputs have a single key
-        const keys = Object.keys(outputs);
-        // return the first key's value from the outputs
-        return outputs[keys[0]];
+export function invokeSingle(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Promise<any> {
+    return invokeAsync(tok, props, opts, packageRef).then((response) => {
+        // ignore secrets for plain invoke
+        const { result } = response;
+        return extractSingleValue(result);
     });
+}
+
+/**
+ * Similar to the plain `invokeSingle` but returns the response as an output, maintaining
+ * secrets of the response, if any.
+ */
+export function invokeSingleOutput<T>(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
+    invokeAsync(tok, props, opts, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, [], undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
 }
 
 export async function streamInvoke(
@@ -108,7 +184,7 @@ export async function streamInvoke(
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = createInvokeRequest(tok, serialized, provider, opts);
+        const req = await createInvokeRequest(tok, serialized, provider, opts);
 
         // Call `streamInvoke`.
         const result = monitor.streamInvoke(req, {});
@@ -135,14 +211,35 @@ export async function streamInvoke(
     }
 }
 
-async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
+async function invokeAsync(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions,
+    packageRef?: Promise<string | undefined>,
+): Promise<{
+    result: Inputs | undefined;
+    isKnown: boolean;
+    containsSecrets: boolean;
+}> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    await awaitStackRegistrations();
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
         const serialized = await serializeProperties(`invoke:${tok}`, props);
+        if (containsUnknownValues(serialized)) {
+            // if any of the input properties are unknown,
+            // make sure the entire response is marked as unknown
+            return {
+                result: {},
+                isKnown: false,
+                containsSecrets: false,
+            };
+        }
+
         log.debug(
             `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
         );
@@ -151,7 +248,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = createInvokeRequest(tok, serialized, provider, opts);
+        const req = await createInvokeRequest(tok, serialized, provider, opts, packageRef);
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
@@ -179,16 +276,26 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         );
 
         // Finally propagate any other properties that were given to us as outputs.
-        return deserializeResponse(tok, resp);
+        const deserialized = deserializeResponse(tok, resp);
+        return {
+            ...deserialized,
+            isKnown: true,
+        };
     } finally {
         done();
     }
 }
 
-// StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
-// with facilities to gracefully cancel and clean up the stream.
+/**
+ * {@link StreamInvokeResponse} represents a (potentially infinite) streaming
+ * response to `streamInvoke`, with facilities to gracefully cancel and clean up
+ * the stream.
+ */
 export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(private source: AsyncIterable<T>, private cancelSource: () => void) {}
+    constructor(
+        private source: AsyncIterable<T>,
+        private cancelSource: () => void,
+    ) {}
 
     // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
     public cancel() {
@@ -200,19 +307,35 @@ export class StreamInvokeResponse<T> implements AsyncIterable<T> {
     }
 }
 
-function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions) {
+async function createInvokeRequest(
+    tok: string,
+    serialized: any,
+    provider: string | undefined,
+    opts: InvokeOptions,
+    packageRef?: Promise<string | undefined>,
+) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
-
+    let packageRefStr = undefined;
+    if (packageRef !== undefined) {
+        packageRefStr = await packageRef;
+        if (packageRefStr !== undefined) {
+            // If we have a package reference we can clear some of the resource options
+            opts.version = undefined;
+            opts.pluginDownloadURL = undefined;
+        }
+    }
     const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider || "");
     req.setVersion(opts.version || "");
+    req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setAcceptresources(!utils.disableResourceReferences);
+    req.setPackageref(packageRefStr || "");
     return req;
 }
 
@@ -223,7 +346,10 @@ function getProvider(tok: string, opts: InvokeOptions) {
 function deserializeResponse(
     tok: string,
     resp: { getFailuresList(): Array<providerproto.CheckFailure>; getReturn(): gstruct.Struct | undefined },
-): Inputs | undefined {
+): {
+    result: Inputs | undefined;
+    containsSecrets: boolean;
+} {
     const failures = resp.getFailuresList();
     if (failures?.length) {
         let reasons = "";
@@ -238,14 +364,38 @@ function deserializeResponse(
         throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
     }
 
-    const ret = resp.getReturn();
-    return ret === undefined ? ret : deserializeProperties(ret);
+    let containsSecrets = false;
+    const result = resp.getReturn();
+    if (result === undefined) {
+        return {
+            result,
+            containsSecrets,
+        };
+    }
+
+    const properties = deserializeProperties(result);
+    // Keep track of whether we need to mark the resulting output a secret.
+    // and unwrap each individual value if it is a secret.
+    for (const key of Object.keys(properties)) {
+        containsSecrets = containsSecrets || isRpcSecret(properties[key]);
+        properties[key] = unwrapRpcSecret(properties[key]);
+    }
+
+    return {
+        result: properties,
+        containsSecrets,
+    };
 }
 
 /**
- * `call` dynamically calls the function, `tok`, which is offered by a provider plugin.
+ * Dynamically calls the function `tok`, which is offered by a provider plugin.
  */
-export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
+export function call<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -282,6 +432,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                     provider,
                     version,
                     pluginDownloadURL,
+                    packageRef,
                 );
 
                 const monitor = getMonitor();
@@ -318,21 +469,8 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 );
 
                 // Deserialize the response and resolve the output.
-                const deserialized = deserializeResponse(tok, resp);
-                let isSecret = false;
+                const { result, containsSecrets } = deserializeResponse(tok, resp);
                 const deps: Resource[] = [];
-
-                // Keep track of whether we need to mark the resulting output a secret.
-                // and unwrap each individual value.
-                if (deserialized !== undefined) {
-                    for (const k of Object.keys(deserialized)) {
-                        const v = deserialized[k];
-                        if (isRpcSecret(v)) {
-                            isSecret = true;
-                            deserialized[k] = unwrapRpcSecret(v);
-                        }
-                    }
-                }
 
                 // Combine the individual dependencies into a single set of dependency resources.
                 const rpcDeps = resp.getReturndependenciesMap();
@@ -351,7 +489,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
-                resolver(<any>deserialized, true, isSecret, deps);
+                resolver(<any>result, true, containsSecrets, deps);
             } catch (e) {
                 resolver(<any>undefined, true, false, undefined, e);
             } finally {
@@ -432,12 +570,22 @@ async function createCallRequest(
     provider?: string,
     version?: string,
     pluginDownloadURL?: string,
+    packageRef?: Promise<string | undefined>,
 ) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
+    let packageRefStr = undefined;
+    if (packageRef !== undefined) {
+        packageRefStr = await packageRef;
+        if (packageRefStr !== undefined) {
+            // If we have a package reference we can clear some of the resource options
+            version = undefined;
+            pluginDownloadURL = undefined;
+        }
+    }
 
     const req = new resourceproto.ResourceCallRequest();
     req.setTok(tok);
@@ -445,6 +593,7 @@ async function createCallRequest(
     req.setProvider(provider || "");
     req.setVersion(version || "");
     req.setPlugindownloadurl(pluginDownloadURL || "");
+    req.setPackageref(packageRefStr || "");
 
     const argDependencies = req.getArgdependenciesMap();
     for (const [key, propertyDeps] of serializedDeps) {

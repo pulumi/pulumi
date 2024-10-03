@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,7 +70,7 @@ const (
 	ArchiveURIProperty    = "uri"    // the dynamic property for an archive's URI.
 )
 
-func FromAssets(assets map[string]interface{}) (*Archive, error) {
+func FromAssetsWithWD(assets map[string]interface{}, wd string) (*Archive, error) {
 	if assets == nil {
 		// when provided assets are nil, create an empty archive
 		assets = make(map[string]interface{})
@@ -85,16 +86,32 @@ func FromAssets(assets map[string]interface{}) (*Archive, error) {
 		}
 	}
 	a := &Archive{Sig: ArchiveSig, Assets: assets}
-	err := a.EnsureHash()
+	err := a.EnsureHashWithWD(wd)
 	return a, err
 }
 
+func FromAssets(assets map[string]interface{}) (*Archive, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return FromAssetsWithWD(assets, wd)
+}
+
 func FromPath(path string) (*Archive, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return FromPathWithWD(path, wd)
+}
+
+func FromPathWithWD(path string, wd string) (*Archive, error) {
 	if path == "" {
 		return nil, errors.New("path cannot be empty when constructing a path archive")
 	}
 	a := &Archive{Sig: ArchiveSig, Path: path}
-	err := a.EnsureHash()
+	err := a.EnsureHashWithWD(wd)
 	return a, err
 }
 
@@ -313,11 +330,20 @@ type Reader interface {
 
 // Open returns an ArchiveReader that can be used to iterate over the named blobs that comprise the archive.
 func (a *Archive) Open() (Reader, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return a.OpenWithWD(wd)
+}
+
+// Open returns an ArchiveReader that can be used to iterate over the named blobs that comprise the archive.
+func (a *Archive) OpenWithWD(wd string) (Reader, error) {
 	contract.Assertf(a.HasContents(), "cannot read an archive that has no contents")
 	if a.IsAssets() {
-		return a.readAssets()
+		return a.readAssets(wd)
 	} else if a.IsPath() {
-		return a.readPath()
+		return a.readPath(wd)
 	} else if a.IsURI() {
 		return a.readURI()
 	}
@@ -330,6 +356,7 @@ type assetsArchiveReader struct {
 	keys        []string
 	archive     Reader
 	archiveRoot string
+	wd          string
 }
 
 func (r *assetsArchiveReader) Next() (string, *asset.Blob, error) {
@@ -363,14 +390,14 @@ func (r *assetsArchiveReader) Next() (string, *asset.Blob, error) {
 		switch t := r.assets[name].(type) {
 		case *asset.Asset:
 			// An asset can be produced directly.
-			blob, err := t.Read()
+			blob, err := t.ReadWithWD(r.wd)
 			if err != nil {
 				return "", nil, fmt.Errorf("failed to expand archive asset '%v': %w", name, err)
 			}
 			return name, blob, nil
 		case *Archive:
 			// An archive must be flattened into its constituent blobs. Open the archive for reading and loop.
-			archive, err := t.Open()
+			archive, err := t.OpenWithWD(r.wd)
 			if err != nil {
 				return "", nil, fmt.Errorf("failed to expand sub-archive '%v': %w", name, err)
 			}
@@ -387,7 +414,7 @@ func (r *assetsArchiveReader) Close() error {
 	return nil
 }
 
-func (a *Archive) readAssets() (Reader, error) {
+func (a *Archive) readAssets(wd string) (Reader, error) {
 	// To read a map-based archive, just produce a map from each asset to its associated reader.
 	m, isassets := a.GetAssets()
 	contract.Assertf(isassets, "Expected an asset map-based archive")
@@ -402,6 +429,7 @@ func (a *Archive) readAssets() (Reader, error) {
 	r := &assetsArchiveReader{
 		assets: m,
 		keys:   keys,
+		wd:     wd,
 	}
 	return r, nil
 }
@@ -444,10 +472,14 @@ func (r *directoryArchiveReader) Close() error {
 	return nil
 }
 
-func (a *Archive) readPath() (Reader, error) {
+func (a *Archive) readPath(wd string) (Reader, error) {
 	// To read a path-based archive, read that file and use its extension to ascertain what format to use.
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
+
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(wd, path)
+	}
 
 	format := detectArchiveFormat(path)
 
@@ -572,8 +604,18 @@ func (a *Archive) Bytes(format Format) ([]byte, error) {
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
 // copying as is feasible, however if the desired format is different from the source, it will need to translate.
 func (a *Archive) Archive(format Format, w io.Writer) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return a.ArchiveWithWD(format, w, wd)
+}
+
+// Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
+// copying as is feasible, however if the desired format is different from the source, it will need to translate.
+func (a *Archive) ArchiveWithWD(format Format, w io.Writer, wd string) error {
 	// If the source format is the same, just return that.
-	if sf, ss, err := a.ReadSourceArchive(); sf != NotArchive && sf == format {
+	if sf, ss, err := a.ReadSourceArchiveWithWD(wd); sf != NotArchive && sf == format {
 		if err != nil {
 			return err
 		}
@@ -583,11 +625,11 @@ func (a *Archive) Archive(format Format, w io.Writer) error {
 
 	switch format {
 	case TarArchive:
-		return a.archiveTar(w)
+		return a.archiveTar(w, wd)
 	case TarGZIPArchive:
-		return a.archiveTarGZIP(w)
+		return a.archiveTarGZIP(w, wd)
 	case ZIPArchive:
-		return a.archiveZIP(w)
+		return a.archiveZIP(w, wd)
 	default:
 		contract.Failf("Illegal archive type: %v", format)
 		return nil
@@ -631,9 +673,9 @@ func addNextFileToTar(r Reader, tw *tar.Writer, seenFiles map[string]bool) error
 	return err
 }
 
-func (a *Archive) archiveTar(w io.Writer) error {
+func (a *Archive) archiveTar(w io.Writer, wd string) error {
 	// Open the archive.
-	reader, err := a.Open()
+	reader, err := a.OpenWithWD(wd)
 	if err != nil {
 		return err
 	}
@@ -652,9 +694,9 @@ func (a *Archive) archiveTar(w io.Writer) error {
 	return tw.Close()
 }
 
-func (a *Archive) archiveTarGZIP(w io.Writer) error {
+func (a *Archive) archiveTarGZIP(w io.Writer, wd string) error {
 	z := gzip.NewWriter(w)
-	return a.archiveTar(z)
+	return a.archiveTar(z, wd)
 }
 
 // addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive
@@ -700,9 +742,9 @@ func addNextFileToZIP(r Reader, zw *zip.Writer, seenFiles map[string]bool) error
 	return nil
 }
 
-func (a *Archive) archiveZIP(w io.Writer) error {
+func (a *Archive) archiveZIP(w io.Writer, wd string) error {
 	// Open the archive.
-	reader, err := a.Open()
+	reader, err := a.OpenWithWD(wd)
 	if err != nil {
 		return err
 	}
@@ -723,7 +765,19 @@ func (a *Archive) archiveZIP(w io.Writer) error {
 
 // ReadSourceArchive returns a stream to the underlying archive, if there is one.
 func (a *Archive) ReadSourceArchive() (Format, io.ReadCloser, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return NotArchive, nil, err
+	}
+	return a.ReadSourceArchiveWithWD(wd)
+}
+
+// ReadSourceArchiveWithWD returns a stream to the underlying archive, if there is one.
+func (a *Archive) ReadSourceArchiveWithWD(wd string) (Format, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(wd, path)
+		}
 		if format := detectArchiveFormat(path); format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
@@ -739,12 +793,23 @@ func (a *Archive) ReadSourceArchive() (Format, io.ReadCloser, error) {
 
 // EnsureHash computes the SHA256 hash of the archive's contents and stores it on the object.
 func (a *Archive) EnsureHash() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return a.EnsureHashWithWD(wd)
+}
+
+// EnsureHash computes the SHA256 hash of the archive's contents and stores it on the object.
+func (a *Archive) EnsureHashWithWD(wd string) error {
+	contract.Requiref(wd != "", "wd", "must not be empty")
+
 	if a.Hash == "" {
 		hash := sha256.New()
 
 		// Attempt to compute the hash in the most efficient way.  First try to open the archive directly and copy it
 		// to the hash.  This avoids traversing any of the contents and just treats it as a byte stream.
-		f, r, err := a.ReadSourceArchive()
+		f, r, err := a.ReadSourceArchiveWithWD(wd)
 		if err != nil {
 			return err
 		}
@@ -757,7 +822,7 @@ func (a *Archive) EnsureHash() error {
 		} else {
 			// Otherwise, it's not an archive; we'll need to transform it into one.  Pick tar since it avoids
 			// any superfluous compression which doesn't actually help us in this situation.
-			err := a.Archive(TarArchive, hash)
+			err := a.ArchiveWithWD(TarArchive, hash, wd)
 			if err != nil {
 				return err
 			}
@@ -906,6 +971,10 @@ func (r *zipArchiveReader) Next() (string, *asset.Blob, error) {
 			return "", nil, fmt.Errorf("failed to read ZIP inner file %v: %w", file.Name, err)
 		}
 
+		if file.UncompressedSize64 > math.MaxInt64 {
+			return "", nil, fmt.Errorf("file %v is too large to read", file.Name)
+		}
+		//nolint:gosec // uint64 -> int64 overflow is checked above.
 		blob := asset.NewRawBlob(body, int64(file.UncompressedSize64))
 		name := filepath.Clean(file.Name)
 		return name, blob, nil

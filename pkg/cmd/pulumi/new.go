@@ -22,8 +22,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -57,25 +57,33 @@ const (
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error)
 
+type chooseTemplateFunc func(templates []workspace.Template, opts display.Options) (workspace.Template, error)
+
+type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
+	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
+
 type newArgs struct {
-	configArray       []string
-	configPath        bool
-	description       string
-	dir               string
-	force             bool
-	generateOnly      bool
-	interactive       bool
-	name              string
-	offline           bool
-	prompt            promptForValueFunc
-	secretsProvider   string
-	stack             string
-	templateNameOrURL string
-	yes               bool
-	listTemplates     bool
-	aiPrompt          string
-	aiLanguage        httpstate.PulumiAILanguage
-	templateMode      bool
+	configArray          []string
+	configPath           bool
+	description          string
+	dir                  string
+	force                bool
+	generateOnly         bool
+	interactive          bool
+	name                 string
+	offline              bool
+	prompt               promptForValueFunc
+	promptRuntimeOptions runtimeOptionsFunc
+	chooseTemplate       chooseTemplateFunc
+	secretsProvider      string
+	stack                string
+	templateNameOrURL    string
+	yes                  bool
+	listTemplates        bool
+	aiPrompt             string
+	aiLanguage           httpstate.PulumiAILanguage
+	templateMode         bool
+	runtimeOptions       []string
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -88,6 +96,9 @@ func runNew(ctx context.Context, args newArgs) error {
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: args.interactive,
 	}
+
+	ssml := newStackSecretsManagerLoaderFromEnv()
+	ws := pkgWorkspace.Instance
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
@@ -127,7 +138,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = currentBackend(ctx, nil, opts)
+		b, err = currentBackend(ctx, ws, DefaultLoginManager, nil, opts)
 		if err != nil {
 			return err
 		}
@@ -149,12 +160,12 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	if args.templateNameOrURL == "" {
 		// Try to read the current project
-		project, _, err := readProject()
+		project, _, err := ws.ReadProject()
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
 
-		b, err := currentBackend(ctx, project, opts)
+		b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 		if err != nil {
 			return err
 		}
@@ -201,7 +212,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else {
-		if template, err = chooseTemplate(templates, opts); err != nil {
+		if template, err = args.chooseTemplate(templates, opts); err != nil {
 			return err
 		}
 	}
@@ -282,7 +293,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		validate := func(s string) error {
 			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
 		}
-		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
+		args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
 		}
@@ -293,7 +304,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 			args.description, template.ProjectDescription, template.Description)
 		args.description, err = args.prompt(
-			args.yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
+			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
 		if err != nil {
 			return err
 		}
@@ -311,24 +322,30 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := readProject()
+	proj, root, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
-	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
-		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-			proj.Runtime.SetOption("virtualenv", "venv")
-		}
-	}
 
+	// Set the pulumi:template tag to the template name or URL.
+	templateTag := template.Name
+	if args.templateNameOrURL != "" {
+		templateTag = sanitizeTemplate(args.templateNameOrURL)
+	}
 	proj.AddConfigStackTags(map[string]string{
-		apitype.ProjectTemplateTag: sanitizeTemplate(args.templateNameOrURL),
+		apitype.ProjectTemplateTag: templateTag,
 	})
+
+	for _, opt := range args.runtimeOptions {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		proj.Runtime.SetOption(parts[0], parts[1])
+	}
 
 	if err = workspace.SaveProject(proj); err != nil {
 		return fmt.Errorf("saving project: %w", err)
@@ -346,7 +363,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(ctx, b, args.prompt,
+		if s, err = promptAndCreateStack(ctx, ws, b, args.prompt,
 			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -354,12 +371,56 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Println()
 	}
 
+	// Query the language runtime for additional options.
+	if args.promptRuntimeOptions != nil {
+		span := opentracing.SpanFromContext(ctx)
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			nil,
+			false,
+			span,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		defer pluginCtx.Close()
+		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
+			args.yes, args.interactive, args.prompt)
+		if err != nil {
+			return err
+		}
+		if len(options) > 0 {
+			// Save the new options
+			for k, v := range options {
+				proj.Runtime.SetOption(k, v)
+			}
+			if err = workspace.SaveProject(proj); err != nil {
+				return fmt.Errorf("saving project: %w", err)
+			}
+		}
+	}
+
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
 		err = handleConfig(
-			ctx, args.prompt, proj, s,
-			args.templateNameOrURL, template, args.configArray,
-			args.yes, args.configPath, opts)
+			ctx,
+			ssml,
+			ws,
+			args.prompt,
+			proj,
+			s,
+			args.templateNameOrURL,
+			template,
+			args.configArray,
+			args.yes,
+			args.configPath,
+			opts,
+		)
 		if err != nil {
 			return err
 		}
@@ -379,6 +440,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			nil,
 			cmdutil.Diag(),
 			cmdutil.Diag(),
+			nil,
 			false,
 			span,
 			nil,
@@ -444,14 +506,21 @@ func useSpecifiedDir(dir string) (string, error) {
 	return cwd, nil
 }
 
+// isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
+func isInteractive() bool {
+	test, ok := os.LookupEnv("PULUMI_TEST_INTERACTIVE")
+	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
+}
+
 // newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	args := newArgs{
-		interactive: cmdutil.Interactive(),
-		prompt:      promptForValue,
+		prompt:               promptForValue,
+		chooseTemplate:       chooseTemplate,
+		promptRuntimeOptions: promptRuntimeOptions,
 	}
 
 	getTemplates := func() ([]workspace.Template, error) {
@@ -515,7 +584,7 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
@@ -536,6 +605,7 @@ func newNewCmd() *cobra.Command {
 			}
 
 			args.yes = args.yes || skipConfirmations()
+			args.interactive = isInteractive()
 			return runNew(ctx, args)
 		}),
 	}
@@ -605,6 +675,10 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
 		"Run in template mode, which will skip prompting for AI or Template functionality",
+	)
+	cmd.PersistentFlags().StringSliceVar(
+		&args.runtimeOptions, "runtime-options", []string{},
+		"Additional options for the language runtime (format: key1=value1,key2=value2)",
 	)
 
 	return cmd
@@ -722,7 +796,7 @@ func getStack(ctx context.Context, b backend.Backend,
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptForValueFunc,
+func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, prompt promptForValueFunc,
 	stack string, root string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string,
 ) (backend.Stack, error) {
@@ -734,7 +808,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, stackName, root, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -748,7 +822,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 	}
 
 	for {
-		stackName, err := prompt(yes, "stack name", "dev", false, b.ValidateStackName, opts)
+		stackName, err := prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -756,7 +830,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -771,19 +845,19 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 
 // stackInit creates the stack.
 func stackInit(
-	ctx context.Context, b backend.Backend, stackName string,
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
 	root string, setCurrent bool, secretsProvider string,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(ctx, b, stackRef, root, nil, setCurrent, secretsProvider)
+	return createStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stack backend.Stack, c config.Map) error {
-	project, _, err := readProject()
+func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
@@ -800,6 +874,106 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 	return saveProjectStack(stack, ps)
 }
 
+func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
+) (map[string]interface{}, error) {
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
+	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
+	}
+	defer lang.Close()
+
+	options := make(map[string]interface{}, len(info.Options()))
+	for k, v := range info.Options() {
+		options[k] = v
+	}
+
+	// Keep querying for prompts until there are no more.
+	for {
+		// Update the program info with the latest runtime options.
+		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
+		prompts, err := lang.RuntimeOptionsPrompts(programInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
+		}
+
+		if len(prompts) == 0 {
+			break
+		}
+
+		surveycore.DisableColor = true
+		for _, optionPrompt := range prompts {
+			if yes {
+				if optionPrompt.Default == nil {
+					return nil, fmt.Errorf("must provide a runtime option for '%s' in non-interactive mode", optionPrompt.Key)
+				}
+				options[optionPrompt.Key] = optionPrompt.Default.Value()
+				continue
+			}
+
+			if len(optionPrompt.Choices) == 1 {
+				// We got exactly one choice, so use that as default value without prompting the user.
+				choice := optionPrompt.Choices[0]
+				options[optionPrompt.Key] = choice.Value()
+			} else if len(optionPrompt.Choices) > 0 {
+				// Pick one among the choices
+				choices := make([]string, 0, len(optionPrompt.Choices))
+				// Map choice display string to the actual value
+				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
+				for _, choice := range optionPrompt.Choices {
+					displayName := choice.DisplayName
+					if displayName == "" {
+						displayName = choice.String()
+					}
+					choices = append(choices, displayName)
+					choiceMap[displayName] = choice.Value()
+				}
+
+				var response string
+				message := opts.Color.Colorize(colors.SpecPrompt + "\r" + optionPrompt.Description + colors.Reset)
+				if err := survey.AskOne(&survey.Select{
+					Message: message,
+					Options: choices,
+				}, &response, surveyIcons(opts.Color), nil); err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = choiceMap[response]
+			} else {
+				// Free form input
+				val, err := prompt(yes, optionPrompt.Description, "", false, makePromptValidator(optionPrompt), opts)
+				if err != nil {
+					return nil, err
+				}
+				r, err := plugin.RuntimeOptionValueFromString(optionPrompt.PromptType, val)
+				if err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = r.Value()
+			}
+		}
+	}
+
+	return options, nil
+}
+
+func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
+	return func(value string) error {
+		switch prompt.PromptType {
+		case plugin.PromptTypeInt32:
+			_, err := strconv.ParseInt(value, 10, 32)
+			if err != nil {
+				return fmt.Errorf("expected an integer value, got %q", value)
+			}
+		case plugin.PromptTypeString:
+			// No validation needed for strings.
+		default:
+			return fmt.Errorf("unexpected prompt type: %v", prompt.PromptType)
+		}
+		return nil
+	}
+}
+
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
@@ -810,9 +984,9 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(programInfo); err != nil {
-		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
-			"then run `pulumi up` to perform an initial deployment: %w", err)
+	if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo}); err != nil {
+		//revive:disable:error-strings // This error message is user facing.
+		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)
 	}
 
 	return nil
@@ -844,11 +1018,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 
 	if generateOnly {
 		// We didn't install dependencies, so instruct the user to do so.
-		if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			commands = append(commands, "npm install")
-		} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-			commands = append(commands, pythonCommands()...)
-		}
+		commands = append(commands, "pulumi install")
 		// We didn't create a stack so show that as a command to run before `pulumi up`.
 		commands = append(commands, "pulumi stack init")
 	}
@@ -882,37 +1052,6 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
-}
-
-// pythonCommands returns the set of Python commands to create a virtual environment, activate it, and
-// install dependencies.
-func pythonCommands() []string {
-	var commands []string
-
-	// Create the virtual environment.
-	switch runtime.GOOS {
-	case "windows":
-		commands = append(commands, "python -m venv venv")
-	default:
-		commands = append(commands, "python3 -m venv venv")
-	}
-
-	// Activate the virtual environment. Only active in the user's current shell, so we can't
-	// just run it for the user here.
-	switch runtime.GOOS {
-	case "windows":
-		commands = append(commands, "venv\\Scripts\\activate")
-	default:
-		commands = append(commands, "source venv/bin/activate")
-	}
-
-	// Update pip, setuptools, and wheel within the virtualenv.
-	commands = append(commands, "python -m pip install --upgrade pip setuptools wheel")
-
-	// Install dependencies within the virtualenv.
-	commands = append(commands, "python -m pip install -r requirements.txt")
-
-	return commands
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
@@ -975,6 +1114,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	ssml stackSecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -1009,11 +1149,11 @@ func promptForConfig(
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
-	sm, needsSave, err := getStackSecretsManager(stack, ps, nil)
+	sm, state, err := ssml.getSecretsManager(ctx, stack, ps)
 	if err != nil {
 		return nil, err
 	}
-	if needsSave {
+	if state != stackSecretsManagerUnchanged {
 		if err = saveProjectStack(stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
@@ -1062,7 +1202,7 @@ func promptForConfig(
 		// Prepare the prompt.
 		promptText := prettyKey(k)
 		if templateConfigValue.Description != "" {
-			promptText = promptText + ": " + templateConfigValue.Description
+			promptText = templateConfigValue.Description + " (" + promptText + ")"
 		}
 
 		// Prompt.

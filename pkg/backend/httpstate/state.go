@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -185,7 +186,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 			return tok, assumedExpires(), err
 		}
 
-		ts, err := newTokenSource(ctx, token, assumedExpires(), duration, renewLease)
+		ts, err := newTokenSource(ctx, clockwork.NewRealClock(), token, assumedExpires(), duration, renewLease)
 		if err != nil {
 			return nil, err
 		}
@@ -227,6 +228,10 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
 		if err := snapshot.VerifyIntegrity(); err != nil {
+			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead())
+			}
+
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
@@ -303,9 +308,10 @@ func persistEngineEvents(
 		close(done)
 	}()
 
-	// Need to filter the engine events here to exclude any internal events.
+	// We need to filter the engine events here to exclude any internal and
+	// ephemeral events, since these by definition should not be persisted.
 	events = channel.FilterRead(events, func(e engine.Event) bool {
-		return !e.Internal()
+		return !e.Internal() && !e.Ephemeral()
 	})
 
 	var eventBatch []engine.Event

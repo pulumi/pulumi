@@ -330,14 +330,10 @@ func (data *resourceRowData) ColorizedColumns() []string {
 // addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
 // RetainOnDelete and the step will discard the resource.
 func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
-	// If there's no old status, we don't need to report retain.
-	if step.Old == nil || step.Old.State == nil {
+	if step.Old == nil || !step.Old.RetainOnDelete {
 		return status
 	}
 
-	if !step.Old.State.RetainOnDelete {
-		return status
-	}
 	switch step.Op {
 	// Deletes and Replacements should indicate retain on delete behavior as they can leave
 	// untracked resources in the environment.
@@ -345,7 +341,6 @@ func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
 		status += "[retain]"
 	}
 
-	// The resource's update status behavior is not affected by the RetainOnDelete flag.
 	return status
 }
 
@@ -435,18 +430,17 @@ func (data *resourceRowData) getInfoColumn() string {
 }
 
 func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
-	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
-		if step.DetailedDiff != nil {
-			diff = engine.TranslateDetailedDiff(&step)
-		} else if diffOutputs {
-			if step.Old.Outputs != nil && step.New.Outputs != nil {
-				diff = step.Old.Outputs.Diff(step.New.Outputs)
+		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+		if step.Op != deploy.OpSame {
+			if step.DetailedDiff != nil {
+				diff = engine.TranslateDetailedDiff(&step, false)
+			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
+				diff = step.Old.Inputs.Diff(step.New.Inputs)
 			}
-		} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-			diff = step.Old.Inputs.Diff(step.New.Inputs)
 		}
 
 		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but

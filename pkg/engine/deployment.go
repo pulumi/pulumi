@@ -42,7 +42,7 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, disableProviderPreview bool,
+	diag, statusDiag diag.Sink, debugging plugin.DebugEventEmitter, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -55,7 +55,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 
 	// Create a context for plugins.
 	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config)
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config, debugging)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -133,27 +133,42 @@ type deploymentOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
-	DOT        bool         // true if we should print the DOT file for this deployment.
-	Events     eventEmitter // the channel to write events from the engine to.
-	Diag       diag.Sink    // the sink to use for diag'ing.
-	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
+	// true if we should print the DOT file for this deployment.
+	DOT bool
+	// the channel to write events from the engine to.
+	Events eventEmitter
+	// the sink to use for diag'ing.
+	Diag diag.Sink
+	// the sink to use for diag'ing status messages.
+	StatusDiag diag.Sink
 
-	isImport bool            // True if this is an import.
-	imports  []deploy.Import // Resources to import, if this is an import.
+	// True if this is an import operation.
+	isImport bool
+	// Resources to import, if this is an import.
+	imports []deploy.Import
 
-	// true if we're executing a refresh.
+	// true if this deployment is (only) a refresh operation. This should not be
+	// confused with UpdateOptions.Refresh, which will be true whenever a refresh
+	// is happening as part of an operation (e.g. `up --refresh`).
 	isRefresh bool
+
+	// true if this deployment is a dry run, such as a preview action or a preview
+	// operation preceding e.g. a refresh or destroy.
+	DryRun bool
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type deploymentSourceFunc func(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
+	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
-func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOptions,
-	dryRun bool,
+func newDeployment(
+	ctx *Context,
+	info *deploymentContext,
+	actions runActions,
+	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
 	contract.Assertf(info.Update != nil, "update info cannot be nil")
@@ -172,8 +187,10 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
+	// Create a context for plugins.
+	debuggingEventEmitter := newDebuggingEventEmitter(opts.Events)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debuggingEventEmitter, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +210,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, dryRun)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -201,14 +218,38 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
+	deplOpts := &deploy.Options{
+		DryRun:                    opts.DryRun,
+		Parallel:                  opts.Parallel,
+		Refresh:                   opts.Refresh,
+		RefreshOnly:               opts.isRefresh,
+		ReplaceTargets:            opts.ReplaceTargets,
+		Targets:                   opts.Targets,
+		TargetDependents:          opts.TargetDependents,
+		UseLegacyDiff:             opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
+		DisableResourceReferences: opts.DisableResourceReferences,
+		DisableOutputValues:       opts.DisableOutputValues,
+		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
+		ContinueOnError:           opts.ContinueOnError,
+	}
+
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
+			localPolicyPackPaths, ctx.BackendClient)
 	} else {
-		_, defaultProviderInfo, pluginErr := installPlugins(cancelCtx, proj, pwd, main, target, plugctx,
-			false /*returnInstallErrors*/)
+		_, defaultProviderInfo, pluginErr := installPlugins(
+			cancelCtx,
+			proj,
+			pwd,
+			main,
+			target,
+			opts,
+			plugctx,
+			false, /*returnInstallErrors*/
+		)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}
@@ -242,7 +283,8 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 			}
 		}
 
-		depl, err = deploy.NewImportDeployment(plugctx, target, proj.Name, opts.imports, dryRun)
+		depl, err = deploy.NewImportDeployment(
+			plugctx, deplOpts, actions, target, proj.Name, opts.imports)
 	}
 
 	if err != nil {
@@ -253,17 +295,27 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		Ctx:        info,
 		Plugctx:    plugctx,
 		Deployment: depl,
+		Actions:    actions,
 		Options:    opts,
 	}, nil
 }
 
 type deployment struct {
-	Ctx        *deploymentContext // deployment context information.
-	Plugctx    *plugin.Context    // the context containing plugins and their state.
-	Deployment *deploy.Deployment // the deployment created by this command.
-	Options    *deploymentOptions // the options used while deploying.
+	// deployment context information.
+	Ctx *deploymentContext
+	// the context containing plugins and their state.
+	Plugctx *plugin.Context
+	// the deployment created by this command.
+	Deployment *deploy.Deployment
+	// the actions to run during the deployment.
+	Actions runActions
+	// the options used while deploying.
+	Options *deploymentOptions
 }
 
+// runActions represents a set of actions to run as part of a deployment,
+// including callbacks that will be used to emit events at various points in the
+// deployment process.
 type runActions interface {
 	deploy.Events
 
@@ -272,9 +324,7 @@ type runActions interface {
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
-func (deployment *deployment) run(cancelCtx *Context, actions runActions,
-	preview bool,
-) (*deploy.Plan, display.ResourceChanges, error) {
+func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.ResourceChanges, error) {
 	// Create a new context for cancellation and tracing.
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -284,7 +334,8 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	}
 
 	// Emit an appropriate prelude event.
-	deployment.Options.Events.preludeEvent(preview, deployment.Ctx.Update.GetTarget().Config)
+	deployment.Options.Events.preludeEvent(
+		deployment.Options.DryRun, deployment.Ctx.Update.GetTarget().Config)
 
 	// Execute the deployment.
 	start := time.Now()
@@ -293,21 +344,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	var newPlan *deploy.Plan
 	var walkError error
 	go func() {
-		opts := deploy.Options{
-			Events:                    actions,
-			Parallel:                  deployment.Options.Parallel,
-			Refresh:                   deployment.Options.Refresh,
-			RefreshOnly:               deployment.Options.isRefresh,
-			ReplaceTargets:            deployment.Options.ReplaceTargets,
-			Targets:                   deployment.Options.Targets,
-			TargetDependents:          deployment.Options.TargetDependents,
-			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
-			DisableResourceReferences: deployment.Options.DisableResourceReferences,
-			DisableOutputValues:       deployment.Options.DisableOutputValues,
-			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
-			ContinueOnError:           deployment.Options.ContinueOnError,
-		}
-		newPlan, walkError = deployment.Deployment.Execute(ctx, opts, preview)
+		newPlan, walkError = deployment.Deployment.Execute(ctx)
 		close(done)
 	}()
 
@@ -333,7 +370,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	}
 
 	duration := time.Since(start)
-	changes := actions.Changes()
+	changes := deployment.Actions.Changes()
 
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}
@@ -348,7 +385,8 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	}
 
 	// Emit a summary event.
-	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policies)
+	deployment.Options.Events.summaryEvent(
+		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
 
 	return newPlan, changes, err
 }

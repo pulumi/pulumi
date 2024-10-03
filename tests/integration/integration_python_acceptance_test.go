@@ -19,6 +19,7 @@ package ints
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -28,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 func boolPointer(b bool) *bool {
@@ -225,11 +226,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
 		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
@@ -272,7 +269,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			absVenvPath = filepath.Join(e.RootPath, venvPath)
 		}
 
-		if !python.IsVirtualEnv(absVenvPath) {
+		if !toolchain.IsVirtualEnv(absVenvPath) {
 			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
 				absVenvPath)
 		}
@@ -302,11 +299,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		dir := filepath.Join("python", "venv")
 		e.ImportDirectory(dir)
@@ -323,6 +316,92 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		assert.NotContains(t, stdout, "fork/exec")
 		assert.NotContains(t, stderr, "fork/exec")
 	})
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestAutomaticVenvCreationPoetry(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry"))
+
+	// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
+	subdir := filepath.Join(e.RootPath, "subdir")
+	err := os.Mkdir(subdir, 0o755)
+	require.NoError(t, err)
+	e.CWD = subdir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "teststack")
+	e.RunCommand("pulumi", "preview")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallParentDirectory(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-parent"))
+	// Run from the subdir with the Pulumi.yaml file
+	e.CWD = filepath.Join(e.RootPath, "subfolder")
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallWithMain(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-main"))
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestPoetryInstallWithMainAndParent(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("python", "poetry-main-and-parent"))
+
+	e.RunCommand("pulumi", "install")
+
+	localPoetryVenv := filepath.Join(e.RootPath, "src", ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -377,4 +456,163 @@ func TestPyrightSupport(t *testing.T) {
 		ExpectFailure:          true,
 		ExtraRuntimeValidation: validation,
 	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTypecheckerMissingError(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the pyright failure.
+		found := false
+		expected := "The typechecker option is set to pyright, but pyright is not installed." +
+			" Please add an entry for pyright to requirements.txt"
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				if strings.Contains(event.DiagnosticEvent.Message, expected) {
+					found = true
+				}
+			}
+		}
+		assert.True(t, found, "Did not find expected pyright diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("python", "pyright-missing"),
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
+
+func TestNewPythonUsesPip(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
+
+	require.Contains(t, stdout, "pulumi install")
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "venv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Modifies env
+func TestNewPythonUsesPipNonInteractive(t *testing.T) {
+	// Force interactive mode to properly test `--yes`.
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--yes", "--generate-only")
+
+	require.Contains(t, stdout, "pulumi install")
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "venv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Modifies env
+func TestNewPythonChoosePoetry(t *testing.T) {
+	// The windows acceptance tests are run using git bash, but the survey library does not support this
+	// https://github.com/AlecAivazis/survey/issues/148
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping: survey library does not support git bash on Windows")
+	}
+
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.Stdin = strings.NewReader("poetry\n")
+	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain": "poetry",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestNewPythonRuntimeOptions(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "mytestenv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
+func TestNewPythonConvertRequirementsTxt(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Add a poetry.toml to make poetry create the virtualenv inside the temp
+	// directory. That way it gets cleaned up with the test.
+	poetryToml := `[virtualenvs]
+in-project = true`
+	err := os.WriteFile(filepath.Join(e.RootPath, "poetry.toml"), []byte(poetryToml), 0o600)
+	require.NoError(t, err)
+
+	template := "python"
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=poetry",
+	)
+
+	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
+	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
+
+	b, err := os.ReadFile(filepath.Join(e.RootPath, "pyproject.toml"))
+	require.NoError(t, err)
+	require.Equal(t, `[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool]
+[tool.poetry]
+package-mode = false
+[tool.poetry.dependencies]
+pulumi = ">=3.0.0,<4.0.0"
+python = "^3.8"
+`, string(b))
 }

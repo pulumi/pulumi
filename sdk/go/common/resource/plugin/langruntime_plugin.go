@@ -24,10 +24,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -167,12 +167,12 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		if v := info.GetVersion(); v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
+				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
 			}
 			version = &sv
 		}
 		if !apitype.IsPluginKind(info.Kind) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
+			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
 			Name:              info.Name,
@@ -226,9 +226,11 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		ConfigPropertyMap: configPropertyMap,
 		DryRun:            info.DryRun,
 		QueryMode:         info.QueryMode,
-		Parallel:          int32(info.Parallel),
+		Parallel:          info.Parallel,
 		Organization:      info.Organization,
 		Info:              minfo,
+		LoaderTarget:      info.LoaderAddress,
+		AttachDebugger:    info.AttachDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -253,7 +255,9 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind: apitype.LanguagePlugin,
 	}
 
-	plugInfo.Path = h.plug.Bin
+	if h.plug != nil {
+		plugInfo.Path = h.plug.Bin
+	}
 
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
@@ -282,24 +286,25 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(info ProgramInfo) error {
+func (h *langhost) InstallDependencies(request InstallDependenciesRequest) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) executing",
-		h.runtime, info)
+		h.runtime, request)
 
-	minfo, err := info.Marshal()
+	minfo, err := request.Info.Marshal()
 	if err != nil {
 		return err
 	}
 
 	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:  info.ProgramDirectory(),
-		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
-		Info:       minfo,
+		Directory:               request.Info.ProgramDirectory(),
+		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
+		Info:                    minfo,
+		UseLanguageVersionTools: request.UseLanguageVersionTools,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-			h.runtime, info, rpcError)
+			h.runtime, request, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -318,7 +323,7 @@ func (h *langhost) InstallDependencies(info ProgramInfo) error {
 			}
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-				h.runtime, info, rpcError)
+				h.runtime, request, rpcError)
 			return rpcError
 		}
 
@@ -332,13 +337,53 @@ func (h *langhost) InstallDependencies(info ProgramInfo) error {
 	}
 
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success",
-		h.runtime, info)
+		h.runtime, request)
 	return nil
 }
 
-func (h *langhost) About() (AboutInfo, error) {
+func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {
+	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() executing", h.runtime)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return []RuntimeOptionPrompt{}, err
+	}
+
+	resp, err := h.client.RuntimeOptionsPrompts(h.ctx.Request(), &pulumirpc.RuntimeOptionsRequest{
+		Info: minfo,
+	})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() not implemented, returning no prompts", h.runtime)
+			return []RuntimeOptionPrompt{}, nil
+		}
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() failed: err=%v", h.runtime, rpcError)
+		return []RuntimeOptionPrompt{}, rpcError
+	}
+
+	prompts := []RuntimeOptionPrompt{}
+	for _, prompt := range resp.Prompts {
+		newPrompt, err := UnmarshallRuntimeOptionPrompt(prompt)
+		if err != nil {
+			return []RuntimeOptionPrompt{}, err
+		}
+		prompts = append(prompts, newPrompt)
+	}
+
+	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() success", h.runtime)
+	return prompts, nil
+}
+
+func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
-	resp, err := h.client.About(h.ctx.Request(), &emptypb.Empty{})
+	minfo, err := info.Marshal()
+	if err != nil {
+		return AboutInfo{}, err
+	}
+	resp, err := h.client.About(h.ctx.Request(), &pulumirpc.AboutRequest{
+		Info: minfo,
+	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)
@@ -478,6 +523,7 @@ func (h *langhost) GenerateProject(
 func (h *langhost) GeneratePackage(
 	directory string, schema string, extraFiles map[string][]byte,
 	loaderTarget string, localDependencies map[string]string,
+	local bool,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
@@ -486,6 +532,7 @@ func (h *langhost) GeneratePackage(
 		ExtraFiles:        extraFiles,
 		LoaderTarget:      loaderTarget,
 		LocalDependencies: localDependencies,
+		Local:             local,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -504,12 +551,13 @@ func (h *langhost) GeneratePackage(
 	return diags, nil
 }
 
-func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string,
+func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
 		Source:       program,
 		LoaderTarget: loaderTarget,
+		Strict:       strict,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

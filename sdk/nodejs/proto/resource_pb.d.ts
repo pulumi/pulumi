@@ -92,6 +92,8 @@ export class ReadResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ReadResourceRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ReadResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceRequest.AsObject;
@@ -120,6 +122,7 @@ export namespace ReadResourceRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 }
 
@@ -240,6 +243,8 @@ export class RegisterResourceRequest extends jspb.Message {
     addTransforms(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
     getSupportsresultreporting(): boolean;
     setSupportsresultreporting(value: boolean): RegisterResourceRequest;
+    getPackageref(): string;
+    setPackageref(value: string): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -288,6 +293,7 @@ export namespace RegisterResourceRequest {
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
+        packageref: string,
     }
 
 
@@ -460,6 +466,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceInvokeRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -482,6 +490,7 @@ export namespace ResourceInvokeRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 }
 
@@ -510,6 +519,8 @@ export class ResourceCallRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceCallRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -533,6 +544,7 @@ export namespace ResourceCallRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 
 
@@ -709,6 +721,183 @@ export namespace TransformResponse {
     export type AsObject = {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         options?: TransformResourceOptions.AsObject,
+    }
+}
+
+export class TransformInvokeRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): TransformInvokeRequest;
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): google_protobuf_struct_pb.Struct | undefined;
+    setArgs(value?: google_protobuf_struct_pb.Struct): TransformInvokeRequest;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformInvokeOptions | undefined;
+    setOptions(value?: TransformInvokeOptions): TransformInvokeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeRequest): TransformInvokeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeRequest;
+    static deserializeBinaryFromReader(message: TransformInvokeRequest, reader: jspb.BinaryReader): TransformInvokeRequest;
+}
+
+export namespace TransformInvokeRequest {
+    export type AsObject = {
+        token: string,
+        args?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformInvokeOptions.AsObject,
+    }
+}
+
+export class TransformInvokeResponse extends jspb.Message { 
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): google_protobuf_struct_pb.Struct | undefined;
+    setArgs(value?: google_protobuf_struct_pb.Struct): TransformInvokeResponse;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformInvokeOptions | undefined;
+    setOptions(value?: TransformInvokeOptions): TransformInvokeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeResponse): TransformInvokeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeResponse;
+    static deserializeBinaryFromReader(message: TransformInvokeResponse, reader: jspb.BinaryReader): TransformInvokeResponse;
+}
+
+export namespace TransformInvokeResponse {
+    export type AsObject = {
+        args?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformInvokeOptions.AsObject,
+    }
+}
+
+export class TransformInvokeOptions extends jspb.Message { 
+    getProvider(): string;
+    setProvider(value: string): TransformInvokeOptions;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): TransformInvokeOptions;
+    getVersion(): string;
+    setVersion(value: string): TransformInvokeOptions;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeOptions.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeOptions): TransformInvokeOptions.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeOptions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeOptions;
+    static deserializeBinaryFromReader(message: TransformInvokeOptions, reader: jspb.BinaryReader): TransformInvokeOptions;
+}
+
+export namespace TransformInvokeOptions {
+    export type AsObject = {
+        provider: string,
+        pluginDownloadUrl: string,
+        version: string,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+    }
+}
+
+export class RegisterPackageRequest extends jspb.Message { 
+    getName(): string;
+    setName(value: string): RegisterPackageRequest;
+    getVersion(): string;
+    setVersion(value: string): RegisterPackageRequest;
+    getDownloadUrl(): string;
+    setDownloadUrl(value: string): RegisterPackageRequest;
+
+    getChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearChecksumsMap(): void;
+
+    hasParameterization(): boolean;
+    clearParameterization(): void;
+    getParameterization(): Parameterization | undefined;
+    setParameterization(value?: Parameterization): RegisterPackageRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterPackageRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterPackageRequest): RegisterPackageRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterPackageRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterPackageRequest;
+    static deserializeBinaryFromReader(message: RegisterPackageRequest, reader: jspb.BinaryReader): RegisterPackageRequest;
+}
+
+export namespace RegisterPackageRequest {
+    export type AsObject = {
+        name: string,
+        version: string,
+        downloadUrl: string,
+
+        checksumsMap: Array<[string, Uint8Array | string]>,
+        parameterization?: Parameterization.AsObject,
+    }
+}
+
+export class RegisterPackageResponse extends jspb.Message { 
+    getRef(): string;
+    setRef(value: string): RegisterPackageResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterPackageResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterPackageResponse): RegisterPackageResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterPackageResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterPackageResponse;
+    static deserializeBinaryFromReader(message: RegisterPackageResponse, reader: jspb.BinaryReader): RegisterPackageResponse;
+}
+
+export namespace RegisterPackageResponse {
+    export type AsObject = {
+        ref: string,
+    }
+}
+
+export class Parameterization extends jspb.Message { 
+    getName(): string;
+    setName(value: string): Parameterization;
+    getVersion(): string;
+    setVersion(value: string): Parameterization;
+    getValue(): Uint8Array | string;
+    getValue_asU8(): Uint8Array;
+    getValue_asB64(): string;
+    setValue(value: Uint8Array | string): Parameterization;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Parameterization.AsObject;
+    static toObject(includeInstance: boolean, msg: Parameterization): Parameterization.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Parameterization, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Parameterization;
+    static deserializeBinaryFromReader(message: Parameterization, reader: jspb.BinaryReader): Parameterization;
+}
+
+export namespace Parameterization {
+    export type AsObject = {
+        name: string,
+        version: string,
+        value: Uint8Array | string,
     }
 }
 

@@ -54,8 +54,10 @@ async function createInspectorSessionAsync(): Promise<import("inspector").Sessio
 }
 
 /**
- * Returns the inspector session that can be used to query the state of this running Node instance.
- * Must only be called on Node11 and above. On Node10 and below, this will throw.
+ * Returns the inspector session that can be used to query the state of this
+ * running Node instance. Must only be called on Node11 and above. On Node10 and
+ * below, this will throw.
+ *
  * @internal
  */
 export async function getSessionAsync() {
@@ -63,8 +65,9 @@ export async function getSessionAsync() {
 }
 
 /**
- * Returns a promise that can be used to determine when the v8hooks have been injected properly and
- * code that depends on them can continue executing.
+ * Returns a promise that can be used to determine when the v8hooks have been
+ * injected properly and code that depends on them can continue executing.
+ *
  * @internal
  */
 export async function isInitializedAsync() {
@@ -73,6 +76,7 @@ export async function isInitializedAsync() {
 
 /**
  * Maps from a script-id to the local file url it corresponds to.
+ *
  * @internal
  */
 export function getScriptUrl(id: import("inspector").Runtime.ScriptId) {

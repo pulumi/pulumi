@@ -120,7 +120,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
-    "go": "1.21.x",
+    "go": "1.22.x",
     "nodejs": "18.x",
     "python": "3.8.x",
 }
@@ -128,8 +128,8 @@ MINIMUM_SUPPORTED_VERSION_SET = {
 CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
-    "go": "1.22.x",
-    "nodejs": "21.x",
+    "go": "1.23.x",
+    "nodejs": "22.x",
     "python": "3.12.x",
 }
 
@@ -186,7 +186,7 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
             text=True,
         )
     except sp.CalledProcessError as err:
-        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds."
+        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds.\nstdout: {cmd.stdout}\nstderr: {cmd.stderr}"
         print(f"::error {message}", file=sys.stderr)
         raise Exception(message) from err
 

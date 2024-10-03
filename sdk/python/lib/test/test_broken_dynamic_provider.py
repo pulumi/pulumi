@@ -20,8 +20,8 @@ https://github.com/pulumi/pulumi/issues/6981
 
 import contextlib
 from typing import Dict
-import pytest
 import uuid
+import pytest
 
 from pulumi import Input, Output
 from pulumi.runtime import settings, mocks

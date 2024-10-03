@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -31,7 +32,9 @@ type aiCmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
@@ -53,7 +56,7 @@ func newAICommand() *cobra.Command {
 		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
 		Hidden: !hasExperimentalCommands(),
 		Args:   cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(args) == 0 {
 				return cmd.Help()

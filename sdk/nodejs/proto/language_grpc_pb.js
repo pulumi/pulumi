@@ -34,6 +34,17 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AboutRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.AboutRequest)) {
+    throw new Error('Expected argument of type pulumirpc.AboutRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AboutRequest(buffer_arg) {
+  return pulumi_language_pb.AboutRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_AboutResponse(arg) {
   if (!(arg instanceof pulumi_language_pb.AboutResponse)) {
     throw new Error('Expected argument of type pulumirpc.AboutResponse');
@@ -254,6 +265,28 @@ function deserialize_pulumirpc_RunResponse(buffer_arg) {
   return pulumi_language_pb.RunResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RuntimeOptionsRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.RuntimeOptionsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RuntimeOptionsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RuntimeOptionsRequest(buffer_arg) {
+  return pulumi_language_pb.RuntimeOptionsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RuntimeOptionsResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.RuntimeOptionsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RuntimeOptionsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
+  return pulumi_language_pb.RuntimeOptionsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
@@ -306,15 +339,27 @@ installDependencies: {
     responseSerialize: serialize_pulumirpc_InstallDependenciesResponse,
     responseDeserialize: deserialize_pulumirpc_InstallDependenciesResponse,
   },
+  // RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+runtimeOptionsPrompts: {
+    path: '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.RuntimeOptionsRequest,
+    responseType: pulumi_language_pb.RuntimeOptionsResponse,
+    requestSerialize: serialize_pulumirpc_RuntimeOptionsRequest,
+    requestDeserialize: deserialize_pulumirpc_RuntimeOptionsRequest,
+    responseSerialize: serialize_pulumirpc_RuntimeOptionsResponse,
+    responseDeserialize: deserialize_pulumirpc_RuntimeOptionsResponse,
+  },
   // About returns information about the runtime for this language.
 about: {
     path: '/pulumirpc.LanguageRuntime/About',
     requestStream: false,
     responseStream: false,
-    requestType: google_protobuf_empty_pb.Empty,
+    requestType: pulumi_language_pb.AboutRequest,
     responseType: pulumi_language_pb.AboutResponse,
-    requestSerialize: serialize_google_protobuf_Empty,
-    requestDeserialize: deserialize_google_protobuf_Empty,
+    requestSerialize: serialize_pulumirpc_AboutRequest,
+    requestDeserialize: deserialize_pulumirpc_AboutRequest,
     responseSerialize: serialize_pulumirpc_AboutResponse,
     responseDeserialize: deserialize_pulumirpc_AboutResponse,
   },

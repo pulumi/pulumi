@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -20,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -49,6 +51,10 @@ type generator struct {
 	configCreated bool
 	quotes        map[model.Expression]string
 	isComponent   bool
+
+	// insideTypedDict is used to track if the generator is currently inside a TypedDict so that
+	// nested TypedDicts can be handled correctly.
+	insideTypedDict bool
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -300,6 +306,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
+	typechecker string,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -327,6 +334,13 @@ func GenerateProject(
 		}
 	}
 
+	if typechecker != "" {
+		if options == nil {
+			options = map[string]interface{}{}
+		}
+		options["typechecker"] = typechecker
+	}
+
 	// Set the runtime to "python" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("python", options)
 	projectBytes, err := encoding.YAML.Marshal(project)
@@ -335,11 +349,11 @@ func GenerateProject(
 	}
 
 	// Build a requirements.txt based on the packages used by program
-	var requirementsTxt bytes.Buffer
+	requirementsTxtLines := []string{}
 	if path, ok := localDependencies["pulumi"]; ok {
-		fmt.Fprintf(&requirementsTxt, "%s\n", path)
+		requirementsTxtLines = append(requirementsTxtLines, path)
 	} else {
-		requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+		requirementsTxtLines = append(requirementsTxtLines, "pulumi>=3.0.0,<4.0.0")
 	}
 
 	// For each package add a PackageReference line
@@ -348,12 +362,13 @@ func GenerateProject(
 	if err != nil {
 		return err
 	}
+
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
 		if path, ok := localDependencies[p.Name]; ok {
-			fmt.Fprintf(&requirementsTxt, "%s\n", path)
+			requirementsTxtLines = append(requirementsTxtLines, path)
 		} else {
 			if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 				return err
@@ -366,14 +381,22 @@ func GenerateProject(
 				}
 			}
 			if p.Version != nil {
-				fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
+				requirementsTxtLines = append(requirementsTxtLines, fmt.Sprintf("%s==%s", packageName, p.Version.String()))
 			} else {
-				fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
+				requirementsTxtLines = append(requirementsTxtLines, packageName)
 			}
 		}
 	}
 
-	files["requirements.txt"] = requirementsTxt.Bytes()
+	// If a typechecker is given we need to list that in the requirements.txt as well
+	if typechecker != "" {
+		requirementsTxtLines = append(requirementsTxtLines, typechecker)
+	}
+
+	// We want the requirements.txt files we generate to be stable, so we sort the
+	// lines before obtaining the bytes.
+	slices.Sort(requirementsTxtLines)
+	files["requirements.txt"] = []byte(strings.Join(requirementsTxtLines, "\n") + "\n")
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`*.pyc
@@ -466,7 +489,7 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 								Name: argsParamName,
 							}),
 							Key: &model.LiteralValueExpression{
-								Value: cty.StringVal(fmt.Sprintf("\"%s\"", param.Name)),
+								Value: cty.StringVal(fmt.Sprintf("'%s'", param.Name)),
 							},
 						}, nil
 					}
@@ -645,6 +668,30 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	return tokenToQualifiedName(pkg, module, member), diagnostics
 }
 
+func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool {
+	schemaType, ok := pcl.GetSchemaForType(typ)
+	if !ok {
+		return false
+	}
+
+	schemaType = codegen.UnwrapType(schemaType)
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+
+	pkg, err := objType.PackageReference.Definition()
+	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	if lang, ok := pkg.Language["python"]; ok {
+		if pkgInfo, ok := lang.(PackageInfo); ok {
+			return typedDictEnabled(pkgInfo.InputTypes)
+		}
+	}
+
+	return true
+}
+
 // argumentTypeName computes the Python argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	schemaType, ok := pcl.GetSchemaForType(destType)
@@ -740,6 +787,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("ignore_changes", opts.IgnoreChanges)
 	}
+	if opts.DeletedWith != nil {
+		appendOption("deleted_with", opts.DeletedWith)
+	}
 
 	return block, temps
 }
@@ -753,7 +803,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 	if hasInputs {
 		prefix = "\n" + g.Indent
 	}
-	g.Fprintf(w, ",%sopts=pulumi.ResourceOptions(", prefix)
+	g.Fprintf(w, ",%sopts = pulumi.ResourceOptions(", prefix)
 	g.Indented(func() {
 		for i, item := range block.Body.Items {
 			if i > 0 {

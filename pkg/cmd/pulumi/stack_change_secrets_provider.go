@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -65,7 +66,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider " +
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return scspcmd.Run(ctx, args)
 		}),
@@ -87,6 +88,11 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		cmd.secretsProvider = stack.DefaultSecretsProvider
 	}
 
+	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.
+	ssml := stackSecretsManagerLoader{}
+
+	ws := pkgWorkspace.Instance
+
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
@@ -95,13 +101,13 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	project, _, err := readProject()
+	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, ws, DefaultLoginManager, cmd.stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}
@@ -114,11 +120,14 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Build decrypter based on the existing secrets provider
 	var decrypter config.Decrypter
 	if currentProjectStack.Config.HasSecureValue() {
-		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
+		dec, state, decerr := ssml.getDecrypter(ctx, currentStack, currentProjectStack)
 		if decerr != nil {
 			return decerr
 		}
-		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
+		contract.Assertf(
+			state == stackSecretsManagerUnchanged,
+			"We're reading a secure value so the encryption information must be present already",
+		)
 		decrypter = dec
 	} else {
 		decrypter = config.NewPanicCrypter()
@@ -131,7 +140,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
+	if err := createSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}
@@ -139,10 +148,19 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Fixup the checkpoint
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
 	return migrateOldConfigAndCheckpointToNewSecretsProvider(
-		ctx, cmd.secretsProvider, project, currentStack, currentProjectStack, decrypter)
+		ctx,
+		ssml,
+		cmd.secretsProvider,
+		project,
+		currentStack,
+		currentProjectStack,
+		decrypter,
+	)
 }
 
-func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+func migrateOldConfigAndCheckpointToNewSecretsProvider(
+	ctx context.Context,
+	ssml stackSecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
@@ -155,13 +173,14 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Get the newly created secrets manager for the stack
-	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack, nil)
+	newSecretsManager, state, err := ssml.getSecretsManager(ctx, currentStack, reloadedProjectStack)
 	if err != nil {
 		return err
 	}
 	contract.Assertf(
-		!needsSave,
-		"We've just saved and reloaded the stack, so the encryption information must be present already")
+		state == stackSecretsManagerUnchanged,
+		"We've just saved and reloaded the stack, so the encryption information must be present already",
+	)
 
 	// get the encrypter for the new secrets manager
 	newEncrypter, err := newSecretsManager.Encrypter()

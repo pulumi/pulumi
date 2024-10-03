@@ -7,7 +7,6 @@ import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 export function doFoo(args: DoFooArgs, opts?: pulumi.InvokeOptions): Promise<void> {
-
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("example::doFoo", {
         "foo": args.foo,

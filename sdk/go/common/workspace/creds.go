@@ -36,10 +36,6 @@ import (
 //nolint:gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
-// PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
-// used instead of the currently logged in backend or the current projects backend.
-const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
-
 // GetAccount returns an account underneath a given key.
 //
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
@@ -163,46 +159,6 @@ func getCredsFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "credentials.json"), nil
 }
 
-// GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
-// have not logged in. Note if PULUMI_BACKEND_URL is set, the corresponding value is returned
-// instead irrespective of the backend for current project or stored credentials.
-func GetCurrentCloudURL(project *Project) (string, error) {
-	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
-	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
-		return backend, nil
-	}
-
-	var url string
-	if project != nil {
-		if project.Backend != nil {
-			url = project.Backend.URL
-		}
-	}
-
-	if url == "" {
-		creds, err := GetStoredCredentials()
-		if err != nil {
-			return "", err
-		}
-		url = creds.Current
-	}
-
-	return url, nil
-}
-
-// GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.
-func GetCloudInsecure(cloudURL string) bool {
-	insecure := false
-	creds, err := GetStoredCredentials()
-	// If this errors just assume insecure == false
-	if err == nil {
-		if account, has := creds.Accounts[cloudURL]; has {
-			insecure = account.Insecure
-		}
-	}
-	return insecure
-}
-
 // GetStoredCredentials returns any credentials stored on the local machine.
 func GetStoredCredentials() (Credentials, error) {
 	credsFile, err := getCredsFilePath()
@@ -216,6 +172,14 @@ func GetStoredCredentials() (Credentials, error) {
 			return Credentials{}, nil
 		}
 		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
+	}
+
+	// If the file is empty, we can act as if it doesn't exist rather than trying
+	// (and failing) to deserialize its contents. This allows us to recover from
+	// situations where a write to the file was interrupted or it was otherwise
+	// clobbered.
+	if len(c) == 0 {
+		return Credentials{}, nil
 	}
 
 	var creds Credentials
@@ -356,24 +320,4 @@ func SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
 	}
 
 	return StorePulumiConfig(config)
-}
-
-func GetBackendConfigDefaultOrg(project *Project) (string, error) {
-	config, err := GetPulumiConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return "", err
-	}
-
-	backendURL, err := GetCurrentCloudURL(project)
-	if err != nil {
-		return "", err
-	}
-
-	if beConfig, ok := config.BackendConfig[backendURL]; ok {
-		if beConfig.DefaultOrg != "" {
-			return beConfig.DefaultOrg, nil
-		}
-	}
-
-	return "", nil
 }

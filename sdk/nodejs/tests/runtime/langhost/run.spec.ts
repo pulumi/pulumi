@@ -1597,10 +1597,6 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("async_components") < 0) {
-        //     continue;
-        // }
-
         const opts: RunCase = cases[casename];
 
         afterEach(async () => {
@@ -1612,8 +1608,6 @@ describe("rpc", () => {
         testFn(`run test: ${casename} (pwd=${opts.pwd},main=${opts.main})`, async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
-                // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
-
                 // First we need to mock the resource monitor.
                 const ctx: any = {};
                 const regs: any = {};

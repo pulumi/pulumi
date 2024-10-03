@@ -96,13 +96,14 @@ type incomingChain struct {
 type stepExecutor struct {
 	// The deployment currently being executed.
 	deployment *Deployment
-	// The options for this current deployment.
-	opts Options
-	// Whether or not we are doing a preview.
-	preview bool
 	// Resources that have been created but are pending a RegisterResourceOutputs.
 	pendingNews gsync.Map[resource.URN, Step]
-	// True if we want to ignore any errors and continue executing steps.
+
+	// True if errors should be ignored completely, without any handling or
+	// reporting. This is used in the case of imports and refreshes. It is _not_
+	// the same as ContinueOnError, which allows execution to continue in the face
+	// of errors that may occur during updates. If both ignoreErrors and
+	// ContinueOnError are set, ignoreErrors takes precedence.
 	ignoreErrors bool
 
 	// Lock protecting the running of workers. This can be used to synchronize with step executor.
@@ -257,10 +258,12 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
+	reg.New().Lock.Lock()
 	reg.New().Outputs = outs
+	reg.New().Lock.Unlock()
 
 	// If we're generating plans save these new outputs to the plan
-	if se.opts.GeneratePlan {
+	if se.deployment.opts.GeneratePlan {
 		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
@@ -271,7 +274,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	}
 
 	// If there is an event subscription for finishing the resource, execute them.
-	if e := se.opts.Events; e != nil {
+	if e := se.deployment.events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
 			se.log(synchronousWorkerID, "register resource outputs failed: %s", eventerr)
 
@@ -364,13 +367,15 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	if !set {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
 	}
-	if se.opts.ContinueOnError {
+	if se.ignoreErrors {
+		// Do nothing.
+	} else if se.deployment.opts.ContinueOnError {
 		step.Fail()
 		// Record the failure, but allow the deployment to continue.
 		se.erroredStepLock.Lock()
 		defer se.erroredStepLock.Unlock()
 		se.erroredSteps = append(se.erroredSteps, step)
-	} else if !se.ignoreErrors {
+	} else {
 		se.cancel()
 	}
 }
@@ -390,7 +395,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	var payload interface{}
-	events := se.opts.Events
+	events := se.deployment.events
 	if events != nil {
 		var err error
 		payload, err = events.OnResourceStepPre(step)
@@ -400,8 +405,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
-	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
-	status, stepComplete, err := step.Apply(se.preview)
+	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
+	status, stepComplete, err := step.Apply()
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
@@ -421,6 +426,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	// https://github.com/pulumi/pulumi/issues/14994).
 	if step.New() != nil && step.Op() != OpReplace {
 		newState := step.New()
+		newState.Lock.Lock()
+
 		for _, k := range newState.AdditionalSecretOutputs {
 			if k == "id" {
 				se.deployment.Diag().Warningf(&diag.Diag{
@@ -465,13 +472,15 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			}
 		}
 
+		newState.Lock.Unlock()
+
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
 		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
 			se.deployment.news.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.
-		if se.opts.GeneratePlan {
+		if se.deployment.opts.GeneratePlan {
 			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
 				resourcePlan.Outputs = newState.Outputs
 			}
@@ -566,14 +575,14 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 	}
 }
 
-func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment *Deployment, opts Options,
-	preview, ignoreErrors bool,
+func newStepExecutor(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	deployment *Deployment,
+	ignoreErrors bool,
 ) *stepExecutor {
-	contract.Assertf(!(ignoreErrors && opts.ContinueOnError), "ignoreErrors and ContinueOnError are mutually exclusive")
 	exec := &stepExecutor{
 		deployment:     deployment,
-		opts:           opts,
-		preview:        preview,
 		ignoreErrors:   ignoreErrors,
 		incomingChains: make(chan incomingChain),
 		ctx:            ctx,
@@ -582,15 +591,15 @@ func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment 
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions
 	// asynchronously.
-	if opts.InfiniteParallelism() {
+	if deployment.opts.InfiniteParallelism() {
 		exec.workers.Add(1)
 		go exec.worker(infiniteWorkerID, true /*launchAsync*/)
 		return exec
 	}
 
 	// Otherwise, launch a worker goroutine for each degree of parallelism.
-	fanout := opts.DegreeOfParallelism()
-	for i := 0; i < fanout; i++ {
+	fanout := deployment.opts.DegreeOfParallelism()
+	for i := 0; i < int(fanout); i++ {
 		exec.workers.Add(1)
 		go exec.worker(i, false /*launchAsync*/)
 	}

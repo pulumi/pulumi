@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,8 +41,8 @@ func newPolicyPublishCmd() *cobra.Command {
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return policyPublishCmd.Run(cmd.Context(), args)
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+			return policyPublishCmd.Run(cmd.Context(), DefaultLoginManager, args)
 		}),
 	}
 
@@ -48,26 +50,22 @@ func newPolicyPublishCmd() *cobra.Command {
 }
 
 type policyPublishCmd struct {
-	getwd        func() (string, error)
-	loginToCloud func(context.Context, string, *workspace.Project, bool, display.Options) (backend.Backend, error)
-	defaultOrg   func(*workspace.Project) (string, error)
+	getwd      func() (string, error)
+	defaultOrg func(*workspace.Project) (string, error)
 }
 
-func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
+func (cmd *policyPublishCmd) Run(ctx context.Context, lm backend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
 	}
-	if cmd.loginToCloud == nil {
-		cmd.loginToCloud = loginToCloud
-	}
 	if cmd.defaultOrg == nil {
-		cmd.defaultOrg = workspace.GetBackendConfigDefaultOrg
+		cmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
 	}
 	var orgName string
 	if len(args) > 0 {
 		orgName = args[0]
 	} else if len(args) == 0 {
-		project, _, err := readProject()
+		project, _, err := pkgWorkspace.Instance.ReadProject()
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
@@ -94,7 +92,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 	//
 
-	policyPack, err := requirePolicyPack(ctx, policyPackRef, cmd.loginToCloud)
+	policyPack, err := requirePolicyPack(ctx, policyPackRef, lm)
 	if err != nil {
 		return err
 	}
@@ -120,7 +118,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -129,11 +127,11 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	// Attempt to publish the PolicyPack.
 	//
 
-	res := policyPack.Publish(ctx, backend.PublishOperation{
+	err = policyPack.Publish(ctx, backend.PublishOperation{
 		Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: backend.CancellationScopes,
 	})
-	if res != nil && res.Error() != nil {
-		return res.Error()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -142,19 +140,20 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 func requirePolicyPack(
 	ctx context.Context,
 	policyPack string,
-	loginToCloud func(context.Context, string, *workspace.Project, bool, display.Options) (backend.Backend, error),
+	lm backend.LoginManager,
 ) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
 	//
 
 	// Try to read the current project
-	project, _, err := readProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
 
-	cloudURL, err := workspace.GetCurrentCloudURL(project)
+	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
@@ -163,7 +162,7 @@ func requirePolicyPack(
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := loginToCloud(ctx, cloudURL, project, workspace.GetCloudInsecure(cloudURL), displayOptions)
+	b, err := lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/, displayOptions.Color)
 	if err != nil {
 		return nil, err
 	}

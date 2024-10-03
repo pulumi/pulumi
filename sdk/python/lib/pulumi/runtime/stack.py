@@ -17,7 +17,7 @@ Support for automatic stack components.
 """
 import asyncio
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional, cast
 
 from .. import log
 from ..resource import (
@@ -26,6 +26,9 @@ from ..resource import (
     ResourceTransformation,
     ResourceTransform,
 )
+from ..invoke import (
+    InvokeTransform,
+)
 from .settings import (
     SETTINGS,
     _get_callbacks,
@@ -33,6 +36,7 @@ from .settings import (
     _load_monitor_feature_support,
     _shutdown_callbacks,
     _sync_monitor_supports_transforms,
+    _sync_monitor_supports_invoke_transforms,
     get_project,
     get_root_resource,
     get_stack,
@@ -302,18 +306,55 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
-def x_register_stack_transform(t: ResourceTransform):
+def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
-
-    This function is experimental.
     """
     if not _sync_monitor_supports_transforms():
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
 
+    # We need to make sure all the current resource registrations are finished before
+    # registering the transforms.  Do so by waiting for all RPCs to complete, before
+    # we go ahead and register the transform.
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    _sync_await(asyncio.gather(*rpcs))
+
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
         raise Exception("No callback server registered.")
     callbacks.register_stack_transform(t)
+
+
+def register_stack_transform(t: ResourceTransform):
+    """
+    Add a transform to all future resources constructed in this Pulumi stack.
+
+    Deprecated: use `register_resource_transform` instead.
+    """
+    register_resource_transform(t)
+
+
+def register_invoke_transform(t: InvokeTransform) -> None:
+    """
+    Add a transforms to all future invokes called in this Pulumi stack.
+    """
+
+    if not _sync_monitor_supports_invoke_transforms():
+        raise Exception(
+            "The Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI."
+        )
+
+    # We need to make sure all the current invokes are finished before
+    # registering the transforms.  Do so by waiting for all RPCs to
+    # complete, before we go ahead and register the transform.
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    _sync_await(asyncio.gather(*rpcs))
+
+    callbacks = _sync_await(_get_callbacks())
+    if callbacks is None:
+        raise Exception("No callback server registered.")
+    callbacks.register_invoke_transform(t)

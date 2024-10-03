@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"golang.org/x/exp/maps"
 )
 
 type treeRenderer struct {
@@ -44,6 +46,7 @@ type treeRenderer struct {
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
 
 	treeTableRows         []string
+	sames                 int
 	systemMessages        []string
 	statusMessage         string
 	statusMessageDeadline time.Time
@@ -72,7 +75,7 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 		keys:      make(chan string),
 		closed:    make(chan bool),
 	}
-	if opts.deterministicOutput {
+	if opts.DeterministicOutput {
 		r.ticker.Stop()
 	}
 	go r.handleEvents()
@@ -93,11 +96,15 @@ func (r *treeRenderer) tick() {
 	r.markDirty()
 }
 
-func (r *treeRenderer) rowUpdated(_ Row) {
+func (r *treeRenderer) rowUpdated(Row) {
 	r.markDirty()
 }
 
-func (r *treeRenderer) systemMessage(_ engine.StdoutEventPayload) {
+func (r *treeRenderer) systemMessage(engine.StdoutEventPayload) {
+	r.markDirty()
+}
+
+func (r *treeRenderer) progress(engine.ProgressEventPayload, bool) {
 	r.markDirty()
 }
 
@@ -138,7 +145,7 @@ func (r *treeRenderer) overln(text string) {
 	r.print("\n")
 }
 
-func (r *treeRenderer) render() {
+func (r *treeRenderer) render(termWidth int) {
 	contract.Assertf(!r.m.TryLock(), "treeRenderer.render() MUST be called from within a locked context")
 
 	if r.display.headerRow == nil {
@@ -170,11 +177,38 @@ func (r *treeRenderer) render() {
 		r.treeTableRows = append(r.treeTableRows, rendered)
 	}
 
+	// If we are not explicitly showing unchanged resources, we'll display a
+	// count.
+	if !r.opts.ShowSameResources {
+		r.sames = len(r.display.sames)
+	} else {
+		r.sames = 0
+	}
+
 	// Convert system events into lines.
 	r.systemMessages = r.systemMessages[:0]
 	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
+	}
+
+	if len(r.systemMessages) == 0 && len(r.display.progressEventPayloads) > 0 {
+		// If we don't have system messages, but we do have progress events, show
+		// the progress. For the most part, we shouldn't have both at the same time,
+		// since the most common system messages refer to cancellation/SIGINT
+		// handling, at which point the program will be terminating. That said, if
+		// we do, we'll give the system messages priority.
+		keys := maps.Keys(r.display.progressEventPayloads)
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			payload := r.display.progressEventPayloads[key]
+			r.systemMessages = append(r.systemMessages, renderProgress(
+				renderUnicodeProgressBar,
+				termWidth-4,
+				payload,
+			))
+		}
 	}
 }
 
@@ -189,7 +223,7 @@ func (r *treeRenderer) markDirty() {
 	}
 
 	r.dirty = true
-	if r.opts.deterministicOutput {
+	if r.opts.DeterministicOutput && r.opts.RenderOnDirty {
 		r.frame(true, false)
 	}
 }
@@ -213,11 +247,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 	r.dirty = false
 
-	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
-	r.render()
-
 	termWidth, termHeight, err := r.term.Size()
 	contract.IgnoreError(err)
+
+	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
+	r.render(termWidth)
 
 	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages
@@ -332,23 +366,42 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 
 	// Re-home the cursor.
-	r.print("\r")
-	for ; r.rewind > 0; r.rewind-- {
-		// If there is content that we won't overwrite, clear it.
-		if r.rewind > totalHeight-1 {
-			r.term.ClearEnd()
-		}
-		r.term.CursorUp(1)
+	r.term.CarriageReturn()
+	if r.rewind > 0 {
+		r.term.CursorUp(r.rewind)
 	}
-	r.rewind = totalHeight - 1
 
 	// Render the tree table.
 	r.overln(r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
 		r.overln(r.clampLine(row, termWidth))
 	}
+
+	// Each time we render, the number of lines we write out may differ. If we
+	// previously rendered more lines than we are about to render, we need to
+	// "rewind" the terminal by the difference, clearing the now-obsolete lines.
+	// To achieve this, we count the number of lines we render and compare it to
+	// the number of lines we rendered last time.
+	lineCount := 1 + len(treeTableRows)
+
 	if treeTableFooter != "" {
 		r.over(treeTableFooter)
+
+		// If the table footer ends with a newline, include that break in the line
+		// count.
+		if strings.HasSuffix(treeTableFooter, "\n") {
+			lineCount++
+		}
+	}
+
+	// Render the count of any unchanged resources if there are any and we aren't
+	// done (at which point we'll have a summary displaying the final count
+	// alongside other statistics).
+	if !done && r.sames != 0 {
+		r.overln("")
+		r.overln(r.clampLine(colors.SpecHeadline+"Resources:"+colors.Reset, termWidth))
+		r.overln(r.clampLine(colors.BrightBlack+fmt.Sprintf("    %d unchanged", r.sames)+colors.Reset, termWidth))
+		lineCount += 3
 	}
 
 	// Render the system messages.
@@ -357,21 +410,38 @@ func (r *treeRenderer) frame(locked, done bool) {
 		r.overln(colors.Yellow + "System Messages" + colors.Reset)
 
 		for _, line := range systemMessages {
-			r.overln("  " + line)
+			r.overln(r.clampLine("  "+line, termWidth))
 		}
+		lineCount += 2 + len(systemMessages)
 	}
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
 		padding := termWidth - colors.MeasureColorizedString(statusMessage)
+		if padding < 0 {
+			padding = 0
+		}
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
+		lineCount++
 	}
 
 	if done && totalHeight > 0 {
 		r.overln("")
+		lineCount++
 	}
+
+	// If we didn't write out as many lines as we did last time, then overwrite
+	// the unwriten lines with empty space.
+	if r.rewind > lineCount {
+		delta := r.rewind - lineCount
+		for i := 0; i < delta; i++ {
+			r.overln("")
+		}
+		r.term.CursorUp(delta)
+	}
+	r.rewind = lineCount
 
 	// Handle the status message timer. We do this at the end to ensure that any message is displayed for at least one
 	// frame.

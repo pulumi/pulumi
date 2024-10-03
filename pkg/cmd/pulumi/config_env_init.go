@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
@@ -50,12 +51,15 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
 		Args: cmdutil.NoArgs,
-		Run:  cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { return impl.run(cmd.Context(), args) }),
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+			parent.initArgs()
+			return impl.run(cmd.Context(), args)
+		}),
 	}
 
 	cmd.Flags().StringVar(
 		&impl.envName, "env", "",
-		`The name of the environment to create. Defaults to "<project name>-<stack name>"`)
+		`The name of the environment to create. Defaults to "<project name>/<stack name>"`)
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,
 		"Show secret values in plaintext instead of ciphertext")
@@ -96,12 +100,13 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	opts := display.Options{Color: cmd.parent.color}
 
-	project, _, err := cmd.parent.readProject()
+	project, _, err := cmd.parent.ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	stack, err := cmd.parent.requireStack(ctx, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.parent.requireStack(
+		ctx, cmd.parent.ws, DefaultLoginManager, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return err
 	}
@@ -113,11 +118,20 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	orgName := stack.(interface{ OrgName() string }).OrgName()
 
-	if cmd.envName == "" {
-		cmd.envName = fmt.Sprintf("%v-%v", project.Name, stack.Ref().Name())
+	// Parse given environment name
+	// Try to split the given envName into project/env
+	// Default to the stack's project and name if the environment project and/or name are not provided
+	envProject := project.Name.String()
+	envName := stack.Ref().Name().String()
+	first, second, found := strings.Cut(cmd.envName, "/")
+	if found {
+		envProject = first
+		envName = second
+	} else if first != "" {
+		envName = first
 	}
 
-	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v for stack %v...\n", cmd.envName, stack.Ref().Name())
+	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
 	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
 	if err != nil {
@@ -129,12 +143,12 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	yaml, err := cmd.renderEnvironmentDefinition(ctx, cmd.envName, crypter, config, cmd.showSecrets)
+	yaml, err := cmd.renderEnvironmentDefinition(ctx, envName, crypter, config, cmd.showSecrets)
 	if err != nil {
 		return err
 	}
 
-	preview, err := cmd.renderPreview(ctx, envBackend, orgName, cmd.envName, yaml, cmd.showSecrets)
+	preview, err := cmd.renderPreview(ctx, envBackend, orgName, envName, yaml, cmd.showSecrets)
 	if err != nil {
 		return err
 	}
@@ -151,13 +165,13 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	}
 
 	if !cmd.showSecrets {
-		yaml, err = eval.DecryptSecrets(ctx, cmd.envName, yaml, crypter)
+		yaml, err = eval.DecryptSecrets(ctx, envName, yaml, crypter)
 		if err != nil {
 			return err
 		}
 	}
 
-	diags, err := envBackend.CreateEnvironment(ctx, orgName, cmd.envName, yaml)
+	diags, err := envBackend.CreateEnvironment(ctx, orgName, envProject, envName, yaml)
 	if err != nil {
 		return fmt.Errorf("creating environment: %w", err)
 	}
@@ -165,7 +179,8 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("internal error creating environment: %w", diags)
 	}
 
-	projectStack.Environment = projectStack.Environment.Append(cmd.envName)
+	fullName := fmt.Sprintf("%s/%s", envProject, envName)
+	projectStack.Environment = projectStack.Environment.Append(fullName)
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
@@ -185,12 +200,12 @@ func (cmd *configEnvInitCmd) getStackConfig(
 		return nil, nil, err
 	}
 
-	decrypter, needsSave, err := getStackDecrypter(stack, ps)
+	decrypter, state, err := cmd.parent.ssml.getDecrypter(ctx, stack, ps)
 	if err != nil {
 		return nil, nil, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
-	if needsSave {
+	if state != stackSecretsManagerUnchanged {
 		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}

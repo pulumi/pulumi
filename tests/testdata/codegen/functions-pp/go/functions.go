@@ -48,11 +48,11 @@ func main() {
 			"2",
 		}, "-")
 		// tests that we initialize "var, err" with ":=" first, then "=" subsequently (Go specific)
-		_, err := aws.GetAvailabilityZones(ctx, nil, nil)
+		_, err := aws.GetAvailabilityZones(ctx, &aws.GetAvailabilityZonesArgs{}, nil)
 		if err != nil {
 			return err
 		}
-		_, err = aws.GetAvailabilityZones(ctx, nil, nil)
+		_, err = aws.GetAvailabilityZones(ctx, &aws.GetAvailabilityZonesArgs{}, nil)
 		if err != nil {
 			return err
 		}

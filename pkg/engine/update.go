@@ -123,7 +123,7 @@ type UpdateOptions struct {
 	RequiredPolicies []RequiredPolicy
 
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int
+	Parallel int32
 
 	// true if debugging output it enabled
 	Debug bool
@@ -143,6 +143,10 @@ type UpdateOptions struct {
 
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
+
+	// true if the engine should use legacy refresh diffing behavior and report
+	// only output changes, as opposed to computing diffs against desired state.
+	UseLegacyRefreshDiff bool
 
 	// true if the engine should disable provider previews.
 	DisableProviderPreview bool
@@ -167,6 +171,9 @@ type UpdateOptions struct {
 
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
+
+	// AttachDebugger to launch the language host in debug mode.
+	AttachDebugger bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -214,21 +221,22 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		Events:        emitter,
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }
 
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
 func RunInstallPlugins(
-	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
+	proj *workspace.Project, opts *deploymentOptions, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
 ) error {
-	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
+	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, opts, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
-func installPlugins(ctx context.Context,
-	proj *workspace.Project, pwd, main string, target *deploy.Target,
+func installPlugins(
+	ctx context.Context, proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
 	plugctx *plugin.Context, returnInstallErrors bool,
-) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
+) (PluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -264,8 +272,8 @@ func installPlugins(ctx context.Context,
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, allPlugins.Deduplicate(),
-		plugctx.Host.GetProjectPlugins()); err != nil {
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
 		}
@@ -427,14 +435,22 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
 	//
 
-	allPlugins, defaultProviderVersions, err := installPlugins(ctx, proj, pwd, main, target,
-		plugctx, false /*returnInstallErrors*/)
+	allPlugins, defaultProviderVersions, err := installPlugins(
+		ctx,
+		proj,
+		pwd,
+		main,
+		target,
+		opts,
+		plugctx,
+		false, /*returnInstallErrors*/
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +477,7 @@ func newUpdateSource(ctx context.Context,
 		Project:      proj.Name.String(),
 		Stack:        target.Name.String(),
 		Config:       config,
-		DryRun:       dryRun,
+		DryRun:       opts.DryRun,
 	}
 	if err := installAndLoadPolicyPlugins(ctx, plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -481,29 +497,37 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, dryRun), nil
+	}, defaultProviderVersions, deploy.EvalSourceOptions{
+		DryRun:                    opts.DryRun,
+		Parallel:                  opts.Parallel,
+		DisableResourceReferences: opts.DisableResourceReferences,
+		DisableOutputValues:       opts.DisableOutputValues,
+		AttachDebugger:            opts.AttachDebugger,
+	}), nil
 }
 
-func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
-	preview bool,
+func update(
+	ctx *Context,
+	info *deploymentContext,
+	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
 	// Create an appropriate set of event listeners.
 	var actions runActions
-	if preview {
+	if opts.DryRun {
 		actions = newPreviewActions(opts)
 	} else {
 		actions = newUpdateActions(ctx, info.Update, opts)
 	}
 
 	// Initialize our deployment object with the context and options.
-	deployment, err := newDeployment(ctx, info, opts, preview)
+	deployment, err := newDeployment(ctx, info, actions, opts)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx, actions, preview)
+	return deployment.run(ctx)
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
@@ -653,7 +677,8 @@ func (acts *updateActions) OnResourceStepPost(
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
 	// reported above.
-	return ctx.(SnapshotMutation).End(step, err == nil || status == resource.StatusPartialFailure)
+	return ctx.(SnapshotMutation).End(step, err == nil ||
+		status == resource.StatusPartialFailure)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

@@ -29,13 +29,15 @@ import (
 	"github.com/segmentio/encoding/json"
 )
 
-// loaderClient reflects a loader service, loaded dynamically from the engine process over gRPC.
-type loaderClient struct {
+// LoaderClient reflects a loader service, loaded dynamically from the engine process over gRPC.
+type LoaderClient struct {
 	conn      *grpc.ClientConn        // the underlying gRPC connection.
 	clientRaw codegenrpc.LoaderClient // the raw loader client; usually unsafe to use directly.
 }
 
-func NewLoaderClient(target string) (ReferenceLoader, error) {
+var _ ReferenceLoader = (*LoaderClient)(nil)
+
+func NewLoaderClient(target string) (*LoaderClient, error) {
 	contract.Assertf(target != "", "unexpected empty target for loader")
 
 	conn, err := grpc.Dial(
@@ -47,7 +49,7 @@ func NewLoaderClient(target string) (ReferenceLoader, error) {
 		return nil, err
 	}
 
-	l := &loaderClient{
+	l := &LoaderClient{
 		conn:      conn,
 		clientRaw: codegenrpc.NewLoaderClient(conn),
 	}
@@ -55,7 +57,7 @@ func NewLoaderClient(target string) (ReferenceLoader, error) {
 	return l, nil
 }
 
-func (l *loaderClient) Close() error {
+func (l *LoaderClient) Close() error {
 	if l.clientRaw != nil {
 		err := l.conn.Close()
 		l.conn = nil
@@ -65,18 +67,38 @@ func (l *loaderClient) Close() error {
 	return nil
 }
 
-func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+func (l *LoaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	return l.LoadPackageReferenceV2(context.TODO(), &PackageDescriptor{
+		Name:    pkg,
+		Version: version,
+	})
+}
+
+func (l *LoaderClient) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *PackageDescriptor,
+) (PackageReference, error) {
 	label := "GetSchema"
-	logging.V(7).Infof("%s executing: package=%s, version=%s", label, pkg, version)
+	logging.V(7).Infof("%s executing: package=%s, version=%s", label, descriptor.Name, descriptor.Version)
 
 	var versionString string
-	if version != nil {
-		versionString = version.String()
+	if descriptor.Version != nil {
+		versionString = descriptor.Version.String()
 	}
 
-	resp, err := l.clientRaw.GetSchema(context.TODO(), &codegenrpc.GetSchemaRequest{
-		Package: pkg,
-		Version: versionString,
+	var parameterization *codegenrpc.Parameterization
+	if descriptor.Parameterization != nil {
+		parameterization = &codegenrpc.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version.String(),
+			Value:   descriptor.Parameterization.Value,
+		}
+	}
+
+	resp, err := l.clientRaw.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
+		Package:          descriptor.Name,
+		Version:          versionString,
+		DownloadUrl:      descriptor.DownloadURL,
+		Parameterization: parameterization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -89,23 +111,6 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 		return nil, err
 	}
 
-	// Insert a version into the spec if the package does not provide one or if the
-	// existing version is less than the provided one
-	if version != nil {
-		setVersion := true
-		if spec.PackageInfoSpec.Version != "" {
-			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
-			if err == nil {
-				if vSemver.Compare(*version) == 1 {
-					setVersion = false
-				}
-			}
-		}
-		if setVersion {
-			spec.PackageInfoSpec.Version = version.String()
-		}
-	}
-
 	p, err := ImportPartialSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
@@ -115,8 +120,16 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 	return p, nil
 }
 
-func (l *loaderClient) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+func (l *LoaderClient) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
 	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
+func (l *LoaderClient) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}

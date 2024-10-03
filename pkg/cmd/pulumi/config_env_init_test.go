@@ -67,7 +67,7 @@ runtime: yaml`
 		err := init.run(ctx, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "Creating environment test-stack for stack stack...\n" +
+		const expectedOut = "Creating environment test/stack for stack stack...\n" +
 			"# Value\n" +
 			"```json\n" +
 			"{\n" +
@@ -82,10 +82,10 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
-  - test-stack
+  - test/stack
 `
 
 		assert.Equal(t, expectedYAML, newStackYAML)
@@ -126,7 +126,7 @@ runtime: yaml`
 		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "Creating environment test-stack for stack stack...\n" +
+		const expectedOut = "Creating environment test/stack for stack stack...\n" +
 			"# Value\n" +
 			"```json\n" +
 			"{\n" +
@@ -160,10 +160,10 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
-  - test-stack
+  - test/stack
 `
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
@@ -203,7 +203,7 @@ runtime: yaml`
 		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "Creating environment test-stack for stack stack...\n" +
+		const expectedOut = "Creating environment test/stack for stack stack...\n" +
 			"# Value\n" +
 			"```json\n" +
 			"{\n" +
@@ -236,10 +236,10 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
-  - test-stack
+  - test/stack
 `
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
@@ -284,7 +284,7 @@ runtime: yaml`
 		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "Creating environment test-stack for stack stack...\n" +
+		const expectedOut = "Creating environment test/stack for stack stack...\n" +
 			"# Value\n" +
 			"```json\n" +
 			"{\n" +
@@ -317,11 +317,11 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
-  - test-stack
+  - test/stack
 `
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})

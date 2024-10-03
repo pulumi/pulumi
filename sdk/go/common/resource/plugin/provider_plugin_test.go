@@ -1,3 +1,17 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package plugin
 
 import (
@@ -296,6 +310,163 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 	assert.Equal(t, originalRaw, deserializedRaw)
 }
 
+// Tests that Delete requests are correctly marshalled and sent to the engine.
+func TestProvider_DeleteRequests(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	id := resource.ID("foo")
+	urn := resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:aws", "qux")
+
+	tests := []struct {
+		desc string
+		give DeleteRequest
+		want *pulumirpc.DeleteRequest
+	}{
+		{
+			desc: "empty",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:         string(id),
+				Urn:        string(urn),
+				Name:       "qux",
+				Type:       "pulumi:provider:aws",
+				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			},
+		},
+		{
+			desc: "inputs",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:   string(id),
+				Urn:  string(urn),
+				Name: "qux",
+				Type: "pulumi:provider:aws",
+				OldInputs: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
+					},
+				},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			},
+		},
+		{
+			desc: "outputs",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Outputs: resource.PropertyMap{
+					"baz": resource.NewStringProperty("quux"),
+				},
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:        string(id),
+				Urn:       string(urn),
+				Name:      "qux",
+				Type:      "pulumi:provider:aws",
+				OldInputs: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
+					},
+				},
+			},
+		},
+		{
+			desc: "timeout",
+			give: DeleteRequest{
+				ID:      id,
+				URN:     urn,
+				Timeout: 30,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:         string(id),
+				Urn:        string(urn),
+				Name:       "qux",
+				Type:       "pulumi:provider:aws",
+				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Timeout:    30,
+			},
+		},
+		{
+			desc: "all",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+				Outputs: resource.PropertyMap{
+					"baz": resource.NewStringProperty("quux"),
+				},
+				Timeout: 30,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:   string(id),
+				Urn:  string(urn),
+				Name: "qux",
+				Type: "pulumi:provider:aws",
+				OldInputs: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
+					},
+				},
+				Properties: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
+					},
+				},
+				Timeout: 30,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got *pulumirpc.DeleteRequest
+			client := &stubClient{
+				ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+					return &pulumirpc.ConfigureResponse{
+						AcceptSecrets: true,
+					}, nil
+				},
+				DeleteF: func(req *pulumirpc.DeleteRequest) error {
+					got = req
+					return nil
+				},
+			}
+
+			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+
+			// We have to configure before we can use Delete.
+			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			assert.NoError(t, err, "Configure failed")
+
+			// Act.
+			_, err = p.Delete(context.Background(), tt.give)
+			assert.NoError(t, err)
+
+			// Assert.
+			assert.NotNil(t, got, "Delete was not called")
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestProvider_ConstructOptions(t *testing.T) {
 	t.Parallel()
 
@@ -509,15 +680,18 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			require.NoError(t, p.Configure(nil), "configure failed")
+			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			require.NoError(t, err, "configure failed")
 
-			_, err := p.Construct(
-				ConstructInfo{Project: "project", Stack: "stack"},
-				"type",
-				"name",
-				tt.parent,
-				resource.PropertyMap{},
-				tt.give,
+			_, err = p.Construct(context.Background(),
+				ConstructRequest{
+					Info:    ConstructInfo{Project: "project", Stack: "stack"},
+					Type:    "type",
+					Name:    "name",
+					Parent:  tt.parent,
+					Inputs:  resource.PropertyMap{},
+					Options: tt.give,
+				},
 			)
 			require.NoError(t, err)
 
@@ -568,20 +742,23 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		defer close(done)
 
 		close(deleting)
-		_, err := p.Delete(
+		_, err := p.Delete(context.Background(), DeleteRequest{
 			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			"qux",
+			"bar:baz",
 			"whatever",
 			props,
 			props,
 			1000,
-		)
+		})
 		assert.NoError(t, err, "Delete failed")
 	}()
 
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
-	assert.NoError(t, p.Configure(props))
+	_, err := p.Configure(context.Background(), ConfigureRequest{Inputs: props})
+	assert.NoError(t, err)
 	<-done
 
 	s, ok := gotSecret.Kind.(*structpb.Value_StructValue)
@@ -678,27 +855,45 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
 	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
-	_, err := az.DiffConfig(
+	_, err := az.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		"",
+		"",
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
-	diff, err := k8s.DiffConfig(
+	diff, err := k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		"",
+		"",
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, DiffUnknown, diff.Changes)
 
 	// Test that some other error is not ignored if reported by kubernetes
 	diffErr = status.Errorf(codes.Unknown, "some other error")
-	_, err = k8s.DiffConfig(
+	_, err = k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		"",
+		"",
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.ErrorContains(t, err, "some other error")
 }
 

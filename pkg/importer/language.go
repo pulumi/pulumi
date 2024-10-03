@@ -18,6 +18,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 
 	"github.com/hashicorp/hcl/v2"
 
@@ -60,41 +63,163 @@ func (e *DiagnosticsError) String() string {
 	return e.Error()
 }
 
+func removeDuplicatePathedValues(pathedValues []PathedLiteralValue) []PathedLiteralValue {
+	uniqueValues := make([]PathedLiteralValue, 0)
+	occurrences := make(map[string]int)
+	for _, pathedValue := range pathedValues {
+		occurrences[pathedValue.Value]++
+	}
+
+	for _, pathedValue := range pathedValues {
+		if occurrences[pathedValue.Value] > 1 {
+			// a value that has occurred multiple times is not unique
+			continue
+		}
+
+		uniqueValues = append(uniqueValues, pathedValue)
+	}
+	return uniqueValues
+}
+
+func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
+	return append(path, key)
+}
+
+func createPathedValue(
+	root string,
+	property resource.PropertyValue,
+	currentPath hcl.Traversal,
+) *PathedLiteralValue {
+	if property.IsNull() {
+		return nil
+	}
+
+	if property.IsString() {
+		return &PathedLiteralValue{
+			Root:  root,
+			Value: property.StringValue(),
+			ExpressionReference: &model.ScopeTraversalExpression{
+				RootName:  root,
+				Traversal: currentPath,
+			},
+		}
+	}
+
+	if property.IsSecret() {
+		// unwrap the secret
+		secret := property.SecretValue()
+		return createPathedValue(root, secret.Element, currentPath)
+	}
+
+	return nil
+}
+
+func sanitizeName(name string) string {
+	return strings.ReplaceAll(name, ".", "_")
+}
+
+func createImportState(states []*resource.State, names NameTable) ImportState {
+	pathedLiteralValues := make([]PathedLiteralValue, 0)
+	for _, state := range states {
+		resourceID := state.ID.String()
+		if resourceID == "" {
+			continue
+		}
+
+		name := sanitizeName(state.URN.Name())
+		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
+			Root:  name,
+			Value: resourceID,
+			ExpressionReference: &model.ScopeTraversalExpression{
+				RootName: name,
+				Traversal: hcl.Traversal{
+					hcl.TraverseRoot{Name: name},
+					hcl.TraverseAttr{Name: "id"},
+				},
+			},
+		})
+
+		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
+
+		for key, value := range state.Outputs {
+			if string(key) == "name" || string(key) == "arn" {
+				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
+				if output := createPathedValue(name, value, nextPath); output != nil {
+					pathedLiteralValues = append(pathedLiteralValues, *output)
+				}
+			}
+		}
+	}
+
+	return ImportState{
+		Names:               names,
+		PathedLiteralValues: pathedLiteralValues,
+	}
+}
+
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
 	names NameTable,
 ) error {
-	var hcl2Text bytes.Buffer
-	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, names)
-		if err != nil {
+	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
+		var hcl2Text bytes.Buffer
+
+		for i, state := range states {
+			hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			pre := ""
+			if i > 0 {
+				pre = "\n"
+			}
+			_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+			contract.IgnoreError(err)
+		}
+
+		parser := syntax.NewParser()
+		if err := parser.ParseFile(&hcl2Text, "anonymous.pp"); err != nil {
+			return nil, nil, err
+		}
+		if parser.Diagnostics.HasErrors() {
+			// HCL2 text generation should always generate proper code.
+			return nil, nil, fmt.Errorf("internal error: %w", &DiagnosticsError{
+				diagnostics:         parser.Diagnostics,
+				newDiagnosticWriter: parser.NewDiagnosticWriter,
+			})
+		}
+
+		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	}
+
+	importState := createImportState(states, names)
+	program, diags, err := generateProgramText(importState)
+	if err != nil {
+		if strings.Contains(err.Error(), "circular reference") {
+			// hitting an edge case when guessing references between resources
+			// this happens when an input of a _parent_ resource is equal to the ID of a _child_ resource
+			// for example importing the following program:
+			//    const bucket = new aws.s3.Bucket("my-bucket", {
+			//        website: {
+			//            indexDocument: "index.html",
+			//        },
+			//    });
+			//
+			//    const bucketObject = new aws.s3.BucketObject("index.html", {
+			//        bucket: bucket.id
+			//    });
+			// fallback to the old code path where we don't guess references
+			// and instead just generate the code with the outputs as literals
+			program, diags, err = generateProgramText(ImportState{Names: names})
+			if err != nil {
+				return nil
+			}
+		} else {
 			return err
 		}
-
-		pre := ""
-		if i > 0 {
-			pre = "\n"
-		}
-		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
-		contract.IgnoreError(err)
 	}
 
-	parser := syntax.NewParser()
-	if err := parser.ParseFile(&hcl2Text, "anonymous.pp"); err != nil {
-		return err
-	}
-	if parser.Diagnostics.HasErrors() {
-		// HCL2 text generation should always generate proper code.
-		return fmt.Errorf("internal error: %w", &DiagnosticsError{
-			diagnostics:         parser.Diagnostics,
-			newDiagnosticWriter: parser.NewDiagnosticWriter,
-		})
-	}
-
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
-	if err != nil {
-		return err
-	}
 	if diags.HasErrors() {
 		// It is possible that the provided states do not contain appropriately-shaped inputs, so this may be user
 		// error.

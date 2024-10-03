@@ -45,12 +45,15 @@ from .settings import (
 from .stack import (
     run_in_stack,
     register_stack_transformation,
-    x_register_stack_transform,
+    register_stack_transform,
+    register_resource_transform,
+    register_invoke_transform,
 )
 
 from .invoke import (
     invoke,
     invoke_async,
+    invoke_output,
     call,
 )
 
@@ -87,10 +90,13 @@ __all__ = [
     # stack
     "run_in_stack",
     "register_stack_transformation",
-    "x_register_stack_transform",
+    "register_stack_transform",
+    "register_resource_transform",
+    "register_invoke_transform",
     # invoke
     "invoke",
     "invoke_async",
+    "invoke_output",
     "call",
     # _json
     "to_json",

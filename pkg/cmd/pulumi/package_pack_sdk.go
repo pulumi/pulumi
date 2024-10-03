@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -35,7 +34,7 @@ func newPackagePackCmd() *cobra.Command {
 		Args:   cobra.ExactArgs(2),
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return packCmd.Run(ctx, args)
 		}),
@@ -60,7 +59,7 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 	language := args[0]
 	path := args[1]
 
-	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, "", nil)
+	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
 	languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 	if err != nil {
 		return err

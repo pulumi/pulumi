@@ -28,11 +28,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -65,7 +65,7 @@ func (c cloudBackendReference) String() string {
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
+		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {
@@ -170,35 +170,35 @@ func (s *cloudStack) Preview(
 	ctx context.Context,
 	op backend.UpdateOperation,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	return backend.PreviewStack(ctx, s, op, events)
 }
 
 func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
 func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
 	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
 func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
 func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
 	return backend.WatchStack(ctx, s, op, paths)
 }
 

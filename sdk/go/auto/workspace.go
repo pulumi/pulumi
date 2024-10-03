@@ -16,7 +16,9 @@ package auto
 
 import (
 	"context"
+	"io"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -126,9 +128,9 @@ type Workspace interface {
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
 	RemoveStack(context.Context, string, ...optremove.Option) error
-	// ListStacks returns all Stacks created under the current Project.
-	// This queries underlying backend and may return stacks not present in the Workspace.
-	ListStacks(context.Context) ([]StackSummary, error)
+	// ListStacks returns all Stacks from the underlying backend based on the provided options.
+	// This queries the backend service and may return stacks not present in the Workspace.
+	ListStacks(context.Context, ...optlist.Option) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
 	// InstallPluginFromServer acquires the plugin matching the specified name and version.
@@ -150,6 +152,8 @@ type Workspace interface {
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 	// StackOutputs gets the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
+	// Install installs the workspace's dependencies.
+	Install(context.Context, *InstallOptions) error
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
@@ -189,4 +193,22 @@ type WhoAmIResult struct {
 type ChangeSecretsProviderOptions struct {
 	// NewPassphrase is the new passphrase when changing to a `passphrase` provider
 	NewPassphrase *string
+}
+
+// InstallOptions are the options that can be passed for the Install command.
+type InstallOptions struct {
+	// Stdout is the optional writer to use for the output during installation.
+	Stdout io.Writer
+	// Stderr is the optional writer to use for the error output during installation.
+	Stderr io.Writer
+	// Use language version tools to setup the language runtime before installing the dependencies.
+	// For Python this will use `pyenv` to install the Python version specified in a
+	// `.python-version` file.
+	UseLanguageVersionTools bool
+	// Skip installing plugins
+	NoPlugins bool
+	// Skip installing dependencies
+	NoDependencies bool
+	// Reinstall plugins even if they already exist
+	Reinstall bool
 }

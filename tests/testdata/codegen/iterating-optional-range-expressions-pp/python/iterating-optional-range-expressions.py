@@ -35,4 +35,4 @@ def create_from_computed_for_expression(range_body):
 pulumi.Output.all(
     array_of_string=root.array_of_string,
     map_of_string=root.map_of_string
-).apply(lambda resolved_outputs: create_from_computed_for_expression([resolved_outputs["map_of_string"][value] for value in resolved_outputs["array_of_string"]]))
+).apply(lambda resolved_outputs: create_from_computed_for_expression([resolved_outputs['map_of_string'][value] for value in resolved_outputs['array_of_string']]))

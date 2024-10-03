@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -99,6 +100,10 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.CancelEvent:
 		return ""
 	case engine.PolicyLoadEvent:
+		return ""
+	case engine.StartDebuggingEvent:
+		return ""
+	case engine.ProgressEvent:
 		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
@@ -379,7 +384,7 @@ func renderDiffResourceOperationFailedEvent(
 func renderDiff(
 	out io.Writer,
 	metadata engine.StepEventMetadata,
-	planning, debug bool,
+	planning, debug, refresh bool,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
@@ -387,20 +392,23 @@ func renderDiff(
 	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
-	if metadata.DetailedDiff != nil {
-		var buf bytes.Buffer
-		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+	if metadata.Op != deploy.OpSame {
+		if metadata.DetailedDiff != nil {
+			var buf bytes.Buffer
+			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+			} else {
+				PrintObject(
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			}
+			details = buf.String()
 		} else {
-			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			details = getResourcePropertiesDetails(
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 		}
-		details = buf.String()
-	} else {
-		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 	}
-
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
 	fprintIgnoreError(out, opts.Color.Colorize(details))
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
@@ -418,7 +426,7 @@ func renderDiffResourcePreEvent(
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, false /* refresh */, seen, opts)
 	}
 	return out.String()
 }
@@ -430,17 +438,36 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		// If this is the output step for an import, we actually want to display the diff at this point.
-		if payload.Metadata.Op == deploy.OpImport {
-			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+
+		refresh := false // are these outputs from a refresh?
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+			refresh = true
+		}
+
+		// There are two cases where we want to display a diff at the point of a
+		// resource output event:
+		//
+		// * Imports, where we now have information from the provider about the
+		//   resource being imported.
+		// * Refreshes, where similarly we might have updated information about the
+		//   resource from the provider.
+		//
+		// Note that refresh step result operations will be OpUpdates (something
+		// changed in the provider), OpSames (nothing changed in the provider), or
+		// OpDeletes (the resource was deleted in the provider). We only want to
+		// display a diff in the OpUpdate case. In the OpSame case, there is no diff
+		// (otherwise the operation would have been OpUpdate), and in the OpDelete
+		// case, we will already be indicating a deletion and it doesn't make sense
+		// to display a diff that shows that we are deleting everything.
+		if payload.Metadata.Op == deploy.OpImport || (refresh && payload.Metadata.Op == deploy.OpUpdate) {
+			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, refresh, seen, opts)
 			return out.String()
 		}
 
 		indent := getIndent(payload.Metadata, seen)
 
-		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
-			refresh = true
+		if refresh {
+			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
@@ -460,4 +487,53 @@ func renderDiffResourceOutputsEvent(
 		}
 	}
 	return out.String()
+}
+
+// CreateDiff renders a view of the given events, enforcing an order of rendering that is consistent
+// with the diff view.
+func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
+	buff := &bytes.Buffer{}
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	displayOpts.SummaryDiff = true
+
+	if displayOpts.Color == "" {
+		// ColorizeWithMaxWidth panics if the colorization mode is not recognized, so we enforce it here.
+		return "", errors.New("color must be specified")
+	}
+
+	remediationEventsDiff := make([]string, 0)
+	for _, e := range events {
+		if e.Type == engine.SummaryEvent {
+			continue
+		}
+
+		msg := RenderDiffEvent(e, seen, displayOpts)
+		if msg == "" {
+			continue
+		}
+
+		// Keep track of remediation events separately, since we print them after the ordinary resource
+		// diff information.
+		if e.Type == engine.PolicyRemediationEvent {
+			remediationEventsDiff = append(remediationEventsDiff, msg)
+			continue
+		}
+
+		_, err := buff.WriteString(msg)
+		contract.IgnoreError(err)
+	}
+
+	// Print policy remediations last.
+	if len(remediationEventsDiff) > 0 {
+		_, err := buff.WriteString(displayOpts.Color.Colorize(
+			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
+		contract.IgnoreError(err)
+		for _, msg := range remediationEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	return strings.TrimSpace(buff.String()), nil
 }

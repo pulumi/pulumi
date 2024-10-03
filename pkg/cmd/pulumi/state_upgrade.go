@@ -25,10 +25,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
@@ -44,9 +44,9 @@ func newStateUpgradeCommand() *cobra.Command {
 This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if err := sucmd.Run(cmd.Context()); err != nil {
-				return result.FromError(err)
+				return err
 			}
 			return nil
 		}),
@@ -65,7 +65,9 @@ type stateUpgradeCmd struct {
 
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
@@ -90,7 +92,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		Stdout: cmd.Stdout,
 	}
 
-	b, err := currentBackend(ctx, nil, dopts)
+	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, dopts)
 	if err != nil {
 		return err
 	}

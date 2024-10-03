@@ -1,3 +1,17 @@
+// Copyright 2021-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package test
 
 import (
@@ -10,6 +24,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -42,6 +58,7 @@ type ProgramTest struct {
 	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
+	PluginHost         plugin.Host
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -75,11 +92,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"), // not a real package
 	},
 	{
-		Directory:      "aws-s3-folder",
-		Description:    "AWS S3 Folder",
-		ExpectNYIDiags: codegen.NewStringSet("dotnet", "python"),
-		SkipCompile:    codegen.NewStringSet("go", "python"),
-		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
+		Directory:   "aws-s3-folder",
+		Description: "AWS S3 Folder",
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8064]
 		//   TODO[pulumi/pulumi#8065]
@@ -147,12 +162,18 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-native",
 		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8073]
 		//   TODO[pulumi/pulumi#8074]
-		// Blocked on nodejs:
-		//   TODO[pulumi/pulumi#8075]
+	},
+	{
+		Directory:   "azure-native-v2-eventgrid",
+		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
+		// Specifically use a simplified azure-native v2.x schema when testing this program
+		// this schema only contains content from the eventgrid module which is sufficient to test with
+		PluginHost: utils.NewHostWithProviders(testdataPath,
+			utils.NewSchemaProvider("azure-native", "2.41.0")),
 	},
 	{
 		Directory:   "azure-sa",
@@ -176,12 +197,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-pod",
 		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8073]
 		//   TODO[pulumi/pulumi#8074]
-		// Blocked on nodejs:
-		//   TODO[pulumi/pulumi#8075]
 	},
 	{
 		Directory:   "kubernetes-template",
@@ -275,6 +294,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
+		Directory:   "typeddict",
+		Description: "Use TypedDicts for inputs side by side with args class",
+		Skip:        allProgLanguages.Except("python"),
+	},
+	{
 		Directory:   "entries-function",
 		Description: "Using the entries function",
 		// go and dotnet do fully not support GenForExpression yet
@@ -324,7 +348,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "output-literals",
 		Description: "Tests that we can return various literal values via stack outputs",
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "dynamic-entries",
@@ -335,10 +358,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "single-or-none",
 		Description: "Tests using the singleOrNone function",
-		// TODO[pulumi/pulumi#4899]: Skip compiling for Go because it is trying to pass a value of type float64
-		// as an argument to ctx.Export but float64 does not implement pulumi.Input. The value needs to be
-		// wrapped as a pulumi.Float64.
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "simple-splat",
@@ -624,7 +643,14 @@ func TestProgramCodegen(
 			hclFiles := map[string]*hcl.File{
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
-			opts := append(tt.BindOptions, pcl.PluginHost(utils.NewHost(testdataPath)))
+			var pluginHost plugin.Host
+			if tt.PluginHost != nil {
+				pluginHost = tt.PluginHost
+			} else {
+				pluginHost = utils.NewHost(testdataPath)
+			}
+
+			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
 			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
 			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
 			if err != nil {

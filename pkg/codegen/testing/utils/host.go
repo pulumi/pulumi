@@ -1,7 +1,24 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package utils
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -15,17 +32,29 @@ type SchemaProvider struct {
 	version string
 }
 
+func NewSchemaProvider(name, version string) SchemaProvider {
+	return SchemaProvider{name, version}
+}
+
 // NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
 // enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
 // program, it will panic.
 func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) plugin.Host {
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
-			panic(fmt.Sprintf(
-				"expected plugin loader to use cached schema path, but cache was missed for package %v@%v, "+
-					"is an entry in the makefile or setup for this package missing?",
-				name, version))
-		}, deploytest.WithPath(schemaDirectoryPath))
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					path := filepath.Join(schemaDirectoryPath, fmt.Sprintf("%s-%s.json", name, version))
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return plugin.GetSchemaResponse{}, err
+					}
+					return plugin.GetSchemaResponse{
+						Schema: data,
+					}, nil
+				},
+			}, nil
+		})
 	}
 
 	pluginLoaders := slice.Prealloc[*deploytest.PluginLoader](len(providers))
@@ -95,5 +124,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"plain-properties", "1.0.0"},
 		SchemaProvider{"recursive", "1.0.0"},
 		SchemaProvider{"aws-static-website", "0.4.0"},
+		SchemaProvider{"typeddict", "1.0.0"},
 	)
 }

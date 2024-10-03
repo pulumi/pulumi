@@ -37,11 +37,7 @@ func TestConfigCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -134,11 +130,7 @@ func TestConfigCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -288,11 +280,7 @@ func TestBasicConfigGetRetrievedValueFromProject(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	pulumiProject := `
 name: pulumi-test
@@ -310,15 +298,80 @@ config:
 	assert.Equal(t, "first", strings.Trim(stdout, "\r\n"))
 }
 
+func TestConfigSetAppendsValuesToEnd(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	pulumiProject := `
+name: pulumi-test
+runtime: go`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	stackName := ptesting.RandomStackName()
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "config", "set", "Bconfig", "one")
+	e.RunCommand("pulumi", "config", "set", "Aconfig", "shouldBeAtEnd")
+	e.RunCommand("pulumi", "config", "set", "Cconfig", "shouldAlsoBeAtEnd")
+	e.RunCommand("pulumi", "config", "set", "Bconfig", "shouldOverWrite")
+
+	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
+	assert.NoError(t, err)
+
+	expectedRegex := `encryptionsalt: .*
+config:
+  pulumi-test:Bconfig: shouldOverWrite
+  pulumi-test:Aconfig: shouldBeAtEnd
+  pulumi-test:Cconfig: shouldAlsoBeAtEnd`
+
+	assert.Regexp(t, regexp.MustCompile(expectedRegex), strings.TrimSpace(string(b)))
+}
+
+func TestConfigRmRemovesValuesFromConfig(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	pulumiProject := `
+name: pulumi-test
+runtime: go`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	stackName := ptesting.RandomStackName()
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "config", "set", "Aconfig", "shouldBeRemoved")
+	e.RunCommand("pulumi", "config", "set", "Bconfig", "shouldRemain")
+	e.RunCommand("pulumi", "config", "rm", "Aconfig")
+
+	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
+	assert.NoError(t, err)
+
+	expectedRegex := `encryptionsalt: .*
+config:
+  pulumi-test:Bconfig: shouldRemain`
+
+	assert.Regexp(t, regexp.MustCompile(expectedRegex), strings.TrimSpace(string(b)))
+
+	e.RunCommand("pulumi", "config", "rm", "Bconfig")
+
+	b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
+	assert.NoError(t, err)
+
+	expectedRegex = `encryptionsalt: .*`
+	assert.Regexp(t, regexp.MustCompile(expectedRegex), strings.TrimSpace(string(b)))
+}
+
 func TestConfigGetRetrievedValueFromBothStackAndProjectUsingJson(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	pulumiProject := `
 name: pulumi-test
@@ -361,9 +414,7 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		deleteIfNotFailed(e)
-	}()
+	defer deleteIfNotFailed(e)
 
 	integration.CreateBasicPulumiRepo(e)
 	e.RunCommand("pulumi", "org", "set-default", getTestOrg())

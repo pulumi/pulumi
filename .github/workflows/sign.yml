@@ -35,7 +35,7 @@ jobs:
       - uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19 # v3.1.2
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
       - name: Rename SDKs
@@ -113,7 +113,7 @@ jobs:
           # flatten to a single directory to upload:
           mv sums.tmp/* sigs.tmp
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: artifacts-signatures
           retention-days: 1

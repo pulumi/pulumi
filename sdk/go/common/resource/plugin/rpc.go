@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -43,6 +42,7 @@ type MarshalOptions struct {
 	SkipInternalKeys      bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
 	KeepOutputValues      bool   // true if we are keeping output values.
 	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
+	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
 }
 
 const (
@@ -378,8 +378,14 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			// signature.
 			contract.Assertf(isasset, "value must be an asset")
 			if opts.ComputeAssetHashes {
-				if err = asset.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute asset hash for %q", key)
+				if opts.WorkingDirectory == "" {
+					if err = asset.EnsureHash(); err != nil {
+						return nil, fmt.Errorf("failed to compute asset hash for %q: %w", key, err)
+					}
+				} else {
+					if err = asset.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+						return nil, fmt.Errorf("failed to compute asset hash for %q: %w", key, err)
+					}
 				}
 			}
 			m := resource.NewAssetProperty(asset)
@@ -396,8 +402,14 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			// signature.
 			contract.Assertf(isarchive, "value must be an archive")
 			if opts.ComputeAssetHashes {
-				if err = archive.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute archive hash for %q", key)
+				if opts.WorkingDirectory == "" {
+					if err = archive.EnsureHash(); err != nil {
+						return nil, fmt.Errorf("failed to compute archive hash for %q: %w", key, err)
+					}
+				} else {
+					if err = archive.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+						return nil, fmt.Errorf("failed to compute archive hash for %q: %w", key, err)
+					}
 				}
 			}
 			m := resource.NewArchiveProperty(archive)
@@ -612,8 +624,14 @@ func MarshalAsset(v *asset.Asset, opts MarshalOptions) (*structpb.Value, error) 
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
-			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute asset hash")
+			if opts.WorkingDirectory == "" {
+				if err := v.EnsureHash(); err != nil {
+					return nil, fmt.Errorf("failed to compute asset hash: %w", err)
+				}
+			} else {
+				if err := v.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+					return nil, fmt.Errorf("failed to compute asset hash: %w", err)
+				}
 			}
 		}
 	}
@@ -634,8 +652,14 @@ func MarshalArchive(v *archive.Archive, opts MarshalOptions) (*structpb.Value, e
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
-			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute archive hash")
+			if opts.WorkingDirectory == "" {
+				if err := v.EnsureHash(); err != nil {
+					return nil, fmt.Errorf("failed to compute archive hash: %w", err)
+				}
+			} else {
+				if err := v.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+					return nil, fmt.Errorf("failed to compute archive hash: %w", err)
+				}
 			}
 		}
 	}

@@ -47,15 +47,24 @@ func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
 
-func (prov *testProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return prov.mapping(key, provider)
+func (prov *testProvider) GetMapping(
+	_ context.Context, req plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	data, provider, err := prov.mapping(req.Key, req.Provider)
+	return plugin.GetMappingResponse{
+		Data:     data,
+		Provider: provider,
+	}, err
 }
 
-func (prov *testProvider) GetMappings(key string) ([]string, error) {
+func (prov *testProvider) GetMappings(
+	_ context.Context, req plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
 	if prov.mappings == nil {
-		return nil, nil
+		return plugin.GetMappingsResponse{}, nil
 	}
-	return prov.mappings(key)
+	keys, err := prov.mappings(req.Key)
+	return plugin.GetMappingsResponse{Keys: keys}, err
 }
 
 func semverMustParse(s string) *semver.Version {

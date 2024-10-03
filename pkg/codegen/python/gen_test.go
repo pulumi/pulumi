@@ -33,8 +33,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
+
+const venvRelDir = "venv"
 
 var pathTests = []struct {
 	input    string
@@ -120,7 +122,7 @@ func virtualEnvPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(hereDir, "venv"), nil
+	return filepath.Join(hereDir, venvRelDir), nil
 }
 
 // To serialize shared `venv` operations; without the lock running
@@ -149,7 +151,17 @@ func buildVirtualEnv(ctx context.Context) error {
 		}
 	}
 
-	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain:  toolchain.Pip,
+		Root:       hereDir,
+		Virtualenv: venvRelDir,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = tc.InstallDependencies(ctx, hereDir, false, /*useLanguageVersionTools */
+		false /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -169,7 +181,10 @@ func buildVirtualEnv(ctx context.Context) error {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd, err := tc.ModuleCommand(ctx, "pip", "install", "-e", sdkDir)
+	if err != nil {
+		contract.Failf("failed to create pip install command: %v", err)
+	}
 	pyCmd.Dir = hereDir
 	output, err := pyCmd.CombinedOutput()
 	if err != nil {
@@ -186,15 +201,27 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		// We won't run any tests since no extra tests were included.
 		return
 	}
-	venvDir, err := virtualEnvPath()
+	hereDir, err := absTestsPath()
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	cmd := func(name string, args ...string) error {
-		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
-		cmd := python.VirtualEnvCommand(venvDir, name, args...)
+	moduleCmd := func(module string, args ...string) error {
+		t.Logf("cd %s && %s", codeDir, strings.Join(append([]string{module}, args...), " "))
+		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+			Toolchain:  toolchain.Pip,
+			Root:       hereDir,
+			Virtualenv: venvRelDir,
+		})
+		if err != nil {
+			return err
+		}
+
+		cmd, err := tc.ModuleCommand(context.Background(), module, args...)
+		if err != nil {
+			return err
+		}
 		cmd.Dir = codeDir
 
 		outw := iotest.LogWriter(t)
@@ -206,7 +233,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	installPackage := func() error {
 		venvMutex.Lock()
 		defer venvMutex.Unlock()
-		return cmd("python", "-m", "pip", "install", "-e", ".")
+		return moduleCmd("pip", "install", "-e", ".")
 	}
 
 	if err = installPackage(); err != nil {
@@ -214,7 +241,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		return
 	}
 
-	if err = cmd("pytest", "."); err != nil {
+	if err = moduleCmd("pytest", "."); err != nil {
 		exitError, isExitError := err.(*exec.ExitError)
 		if isExitError && exitError.ExitCode() == 5 {
 			t.Logf("Could not find any pytest tests in %s", codeDir)
@@ -242,7 +269,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		require.True(t, ok)
 
 		return func(t schema.Type) string {
-			return root.typeString(t, false, false)
+			return root.typeString(t, false, false, false)
 		}
 	})
 }
@@ -293,7 +320,7 @@ func TestCalculateDeps(t *testing.T) {
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"parver>=0.2.1", ""},
-			{"pulumi", ""},
+			{"pulumi", ">=3.134.1,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
@@ -305,7 +332,7 @@ func TestCalculateDeps(t *testing.T) {
 		expected: [][2]string{
 			{"foobar", "7.10.8"},
 			{"parver>=0.2.1", ""},
-			{"pulumi", ">=3.0.0,<4.0.0"},
+			{"pulumi", ">=3.134.1,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
@@ -334,7 +361,7 @@ func TestCalculateDeps(t *testing.T) {
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()
-			observedDeps, err := calculateDeps(tc.inputDeps)
+			observedDeps, err := calculateDeps(false, tc.inputDeps)
 			assert.Equal(tt, tc.expectedErr, err)
 			for index := range observedDeps {
 				observedDep := observedDeps[index]

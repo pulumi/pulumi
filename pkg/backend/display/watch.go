@@ -65,6 +65,8 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 			}
 			PrintfWithWatchPrefix(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
+		case engine.StartDebuggingEvent:
+			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
@@ -83,6 +85,9 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
 					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
+		case engine.ProgressEvent:
+			// Progress events are ephemeral and should be skipped.
+			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}

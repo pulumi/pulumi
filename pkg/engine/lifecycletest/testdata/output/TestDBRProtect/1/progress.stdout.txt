@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:typ resA <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:index:typ::resB" as part of replacing "urn:pulumi:test::test::pkgA:index:typ::resA" as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+ <{%reset%}>  <{%reset%}> pkgA:index:typ resA <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:index:typ (resA):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>unable to replace resource "urn:pulumi:test::test::pkgA:index:typ::resB" as part of replacing "urn:pulumi:test::test::pkgA:index:typ::resA" as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+    `pulumi state unprotect "urn:pulumi:test::test::pkgA:index:typ::resB"`<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

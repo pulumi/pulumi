@@ -148,11 +148,30 @@ type DeploymentV3 struct {
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	// Metadata associated with the snapshot.
+	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
 	Type  string          `json:"type"`
 	State json.RawMessage `json:"state,omitempty"`
+}
+
+// SnapshotMetadataV1 contains metadata about a deployment snapshot.
+type SnapshotMetadataV1 struct {
+	// Metadata associated with any integrity error affecting the snapshot.
+	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadataV1 `json:"integrity_error,omitempty" yaml:"integrity_error,omitempty"`
+}
+
+// SnapshotIntegrityErrorMetadataV1 contains metadata about a snapshot integrity error, such as the version
+// and invocation of the Pulumi engine that caused it.
+type SnapshotIntegrityErrorMetadataV1 struct {
+	// The version of the Pulumi engine that caused the integrity error.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// The command/invocation of the Pulumi engine that caused the integrity error.
+	Command string `json:"command,omitempty" yaml:"command,omitempty"`
+	// The error message associated with the integrity error.
+	Error string `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
@@ -334,6 +353,8 @@ type ResourceV3 struct {
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// IgnoreChanges is a list of properties to ignore changes for.
+	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

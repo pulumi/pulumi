@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from ... import _utilities
 from ... import _enums as _root_enums
 from ... import _inputs as _root_inputs
@@ -57,10 +62,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def diameter(self) -> pulumi.Input['Diameter']:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""diameter is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "diameter")
 
     @diameter.setter
@@ -69,10 +72,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def type(self) -> pulumi.Input['RubberTreeVariety']:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""type is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "type")
 
     @type.setter
@@ -90,10 +91,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def farm(self) -> Optional[pulumi.Input[Union['Farm', str]]]:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""farm is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "farm")
 
     @farm.setter
@@ -102,10 +101,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def size(self) -> Optional[pulumi.Input['TreeSize']]:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""size is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "size")
 
     @size.setter
@@ -140,7 +137,7 @@ class RubberTree(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
+                 container: Optional[pulumi.Input[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None,
@@ -174,7 +171,7 @@ class RubberTree(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
+                 container: Optional[pulumi.Input[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None,

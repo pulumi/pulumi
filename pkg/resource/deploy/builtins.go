@@ -1,3 +1,17 @@
+// Copyright 2018-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package deploy
 
 import (
@@ -18,6 +32,8 @@ import (
 )
 
 type builtinProvider struct {
+	plugin.NotForwardCompatibleProvider
+
 	context context.Context
 	cancel  context.CancelFunc
 	diag    diag.Sink
@@ -47,75 +63,80 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+func (p *builtinProvider) Parameterize(
+	context.Context, plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
+	return plugin.ParameterizeResponse{}, errors.New("the builtin provider has no parameters")
+}
+
 // GetSchema returns the JSON-serialized schema for the provider.
-func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
-	return []byte("{}"), nil
+func (p *builtinProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+	return plugin.GetSchemaResponse{Schema: []byte("{}")}, nil
 }
 
-func (p *builtinProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (p *builtinProvider) GetMapping(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *builtinProvider) GetMappings(key string) ([]string, error) {
-	return []string{}, nil
+func (p *builtinProvider) GetMappings(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, nil
+func (p *builtinProvider) CheckConfig(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+	return plugin.CheckConfigResponse{}, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+func (p *builtinProvider) DiffConfig(context.Context, plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Configure(props resource.PropertyMap) error {
-	return nil
+func (p *builtinProvider) Configure(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
 }
 
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
-func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	typ := urn.Type()
+func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	typ := req.URN.Type()
 	if typ != stackReferenceType {
-		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
+		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
 
 	// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
 	// call Check first.
 	msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
 		"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
-	p.diag.Warningf(diag.Message(urn, msg))
+	p.diag.Warningf(diag.Message(req.URN, msg))
 
-	for k := range inputs {
+	for k := range req.News {
 		if k != "name" {
-			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+			}, nil
 		}
 	}
 
-	name, ok := inputs["name"]
+	name, ok := req.News["name"]
 	if !ok {
-		return nil, []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}}, nil
+		return plugin.CheckResponse{
+			Failures: []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}},
+		}, nil
 	}
 	if !name.IsString() && !name.IsComputed() {
-		return nil, []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}}, nil
+		return plugin.CheckResponse{
+			Failures: []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}},
+		}, nil
 	}
-	return inputs, nil, nil
+	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+	contract.Assertf(req.URN.Type() == stackReferenceType,
+		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
 
-	if !newInputs["name"].DeepEquals(oldOutputs["name"]) {
+	if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
 		return plugin.DiffResult{
 			Changes:     plugin.DiffSome,
 			ReplaceKeys: []resource.PropertyKey{"name"},
@@ -125,75 +146,72 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldO
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-	preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+	contract.Assertf(req.URN.Type() == stackReferenceType,
+		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
 
-	state, err := p.readStackReference(inputs)
+	state, err := p.readStackReference(req.Properties)
 	if err != nil {
-		return "", nil, resource.StatusUnknown, err
+		return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 	}
 
 	var id resource.ID
-	if !preview {
+	if !req.Preview {
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusOK, err
+			return plugin.CreateResponse{Status: resource.StatusOK}, err
 		}
 		id = resource.ID(uuid.String())
 	}
 
-	return id, state, resource.StatusOK, nil
+	return plugin.CreateResponse{
+		ID:         id,
+		Properties: state,
+		Status:     resource.StatusOK,
+	}, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	timeout float64, ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	contract.Failf("unexpected update for builtin resource %v", urn)
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
-
-	return oldOutputs, resource.StatusOK, errors.New("unexpected update for builtin resource")
+func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+	contract.Failf("unexpected update for builtin resource %v", req.URN)
+	return plugin.UpdateResponse{}, nil
 }
 
-func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+	contract.Assertf(req.URN.Type() == stackReferenceType,
+		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
 
-	return resource.StatusOK, nil
+	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 }
 
-func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	contract.Requiref(urn != "", "urn", "must not be empty")
-	contract.Requiref(id != "", "id", "must not be empty")
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	contract.Requiref(req.URN != "", "urn", "must not be empty")
+	contract.Requiref(req.ID != "", "id", "must not be empty")
+	contract.Assertf(req.URN.Type() == stackReferenceType,
+		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
 
-	for k := range inputs {
+	for k := range req.Inputs {
 		if k != "name" {
-			return plugin.ReadResult{}, resource.StatusUnknown, fmt.Errorf("unknown property \"%v\"", k)
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
 		}
 	}
 
-	outputs, err := p.readStackReference(state)
+	outputs, err := p.readStackReference(req.State)
 	if err != nil {
-		return plugin.ReadResult{}, resource.StatusUnknown, err
+		return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 	}
 
-	return plugin.ReadResult{
-		Inputs:  inputs,
-		Outputs: outputs,
-	}, resource.StatusOK, nil
+	return plugin.ReadResponse{
+		ReadResult: plugin.ReadResult{
+			Inputs:  req.Inputs,
+			Outputs: outputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
 }
 
-func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
-	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
+func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
+	return plugin.ConstructResponse{}, errors.New("builtin resources may not be constructed")
 }
 
 const (
@@ -202,52 +220,41 @@ const (
 	getResource              = "pulumi:pulumi:getResource"
 )
 
-func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	switch tok {
+func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+	var outs resource.PropertyMap
+	var err error
+	switch req.Tok {
 	case readStackOutputs:
-		outs, err := p.readStackReference(args)
-		if err != nil {
-			return nil, nil, err
-		}
-		return outs, nil, nil
+		outs, err = p.readStackReference(req.Args)
 	case readStackResourceOutputs:
-		outs, err := p.readStackResourceOutputs(args)
-		if err != nil {
-			return nil, nil, err
-		}
-		return outs, nil, nil
+		outs, err = p.readStackResourceOutputs(req.Args)
 	case getResource:
-		outs, err := p.getResource(args)
-		if err != nil {
-			return nil, nil, err
-		}
-		return outs, nil, nil
+		outs, err = p.getResource(req.Args)
 	default:
-		return nil, nil, fmt.Errorf("unrecognized function name: '%v'", tok)
+		err = fmt.Errorf("unrecognized function name: '%v'", req.Tok)
 	}
+	if err != nil {
+		return plugin.InvokeResponse{}, err
+	}
+	return plugin.InvokeResponse{Properties: outs}, nil
 }
 
 func (p *builtinProvider) StreamInvoke(
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
-	return nil, errors.New("the builtin provider does not implement streaming invokes")
+	context.Context, plugin.StreamInvokeRequest,
+) (plugin.StreamInvokeResponse, error) {
+	return plugin.StreamInvokeResponse{}, errors.New("the builtin provider does not implement streaming invokes")
 }
 
-func (p *builtinProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
+func (p *builtinProvider) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }
 
-func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *builtinProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the builtin provider
 	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
 }
 
-func (p *builtinProvider) SignalCancellation() error {
+func (p *builtinProvider) SignalCancellation(context.Context) error {
 	p.cancel()
 	return nil
 }
@@ -314,6 +321,10 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", urn.StringValue())
 	}
+
+	// Take the state lock so we can safely read the Outputs.
+	state.Lock.Lock()
+	defer state.Lock.Unlock()
 
 	return resource.PropertyMap{
 		"urn":   urn,

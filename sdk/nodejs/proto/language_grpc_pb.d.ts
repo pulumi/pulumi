@@ -16,6 +16,7 @@ interface ILanguageRuntimeService extends grpc.ServiceDefinition<grpc.UntypedSer
     run: ILanguageRuntimeService_IRun;
     getPluginInfo: ILanguageRuntimeService_IGetPluginInfo;
     installDependencies: ILanguageRuntimeService_IInstallDependencies;
+    runtimeOptionsPrompts: ILanguageRuntimeService_IRuntimeOptionsPrompts;
     about: ILanguageRuntimeService_IAbout;
     getProgramDependencies: ILanguageRuntimeService_IGetProgramDependencies;
     runPlugin: ILanguageRuntimeService_IRunPlugin;
@@ -61,12 +62,21 @@ interface ILanguageRuntimeService_IInstallDependencies extends grpc.MethodDefini
     responseSerialize: grpc.serialize<pulumi_language_pb.InstallDependenciesResponse>;
     responseDeserialize: grpc.deserialize<pulumi_language_pb.InstallDependenciesResponse>;
 }
-interface ILanguageRuntimeService_IAbout extends grpc.MethodDefinition<google_protobuf_empty_pb.Empty, pulumi_language_pb.AboutResponse> {
+interface ILanguageRuntimeService_IRuntimeOptionsPrompts extends grpc.MethodDefinition<pulumi_language_pb.RuntimeOptionsRequest, pulumi_language_pb.RuntimeOptionsResponse> {
+    path: "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_language_pb.RuntimeOptionsRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_language_pb.RuntimeOptionsRequest>;
+    responseSerialize: grpc.serialize<pulumi_language_pb.RuntimeOptionsResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_language_pb.RuntimeOptionsResponse>;
+}
+interface ILanguageRuntimeService_IAbout extends grpc.MethodDefinition<pulumi_language_pb.AboutRequest, pulumi_language_pb.AboutResponse> {
     path: "/pulumirpc.LanguageRuntime/About";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
-    requestDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
+    requestSerialize: grpc.serialize<pulumi_language_pb.AboutRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_language_pb.AboutRequest>;
     responseSerialize: grpc.serialize<pulumi_language_pb.AboutResponse>;
     responseDeserialize: grpc.deserialize<pulumi_language_pb.AboutResponse>;
 }
@@ -132,7 +142,8 @@ export interface ILanguageRuntimeServer extends grpc.UntypedServiceImplementatio
     run: grpc.handleUnaryCall<pulumi_language_pb.RunRequest, pulumi_language_pb.RunResponse>;
     getPluginInfo: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_plugin_pb.PluginInfo>;
     installDependencies: grpc.handleServerStreamingCall<pulumi_language_pb.InstallDependenciesRequest, pulumi_language_pb.InstallDependenciesResponse>;
-    about: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_language_pb.AboutResponse>;
+    runtimeOptionsPrompts: grpc.handleUnaryCall<pulumi_language_pb.RuntimeOptionsRequest, pulumi_language_pb.RuntimeOptionsResponse>;
+    about: grpc.handleUnaryCall<pulumi_language_pb.AboutRequest, pulumi_language_pb.AboutResponse>;
     getProgramDependencies: grpc.handleUnaryCall<pulumi_language_pb.GetProgramDependenciesRequest, pulumi_language_pb.GetProgramDependenciesResponse>;
     runPlugin: grpc.handleServerStreamingCall<pulumi_language_pb.RunPluginRequest, pulumi_language_pb.RunPluginResponse>;
     generateProgram: grpc.handleUnaryCall<pulumi_language_pb.GenerateProgramRequest, pulumi_language_pb.GenerateProgramResponse>;
@@ -153,9 +164,12 @@ export interface ILanguageRuntimeClient {
     getPluginInfo(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_plugin_pb.PluginInfo) => void): grpc.ClientUnaryCall;
     installDependencies(request: pulumi_language_pb.InstallDependenciesRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_language_pb.InstallDependenciesResponse>;
     installDependencies(request: pulumi_language_pb.InstallDependenciesRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_language_pb.InstallDependenciesResponse>;
-    about(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
-    about(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
-    about(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    about(request: pulumi_language_pb.AboutRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    about(request: pulumi_language_pb.AboutRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    about(request: pulumi_language_pb.AboutRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
     getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;
     getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;
     getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;
@@ -188,9 +202,12 @@ export class LanguageRuntimeClient extends grpc.Client implements ILanguageRunti
     public getPluginInfo(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_plugin_pb.PluginInfo) => void): grpc.ClientUnaryCall;
     public installDependencies(request: pulumi_language_pb.InstallDependenciesRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_language_pb.InstallDependenciesResponse>;
     public installDependencies(request: pulumi_language_pb.InstallDependenciesRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_language_pb.InstallDependenciesResponse>;
-    public about(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
-    public about(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
-    public about(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    public runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    public runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    public runtimeOptionsPrompts(request: pulumi_language_pb.RuntimeOptionsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.RuntimeOptionsResponse) => void): grpc.ClientUnaryCall;
+    public about(request: pulumi_language_pb.AboutRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    public about(request: pulumi_language_pb.AboutRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
+    public about(request: pulumi_language_pb.AboutRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.AboutResponse) => void): grpc.ClientUnaryCall;
     public getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;
     public getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;
     public getProgramDependencies(request: pulumi_language_pb.GetProgramDependenciesRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GetProgramDependenciesResponse) => void): grpc.ClientUnaryCall;

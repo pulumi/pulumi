@@ -23,8 +23,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
@@ -47,9 +48,17 @@ func newQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
+
+			cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, `
+================================================================================
+query was an experimental command that we have opted to discontinue. It is due
+to be removed in a future release before the end of this year (2024).
+If you have any feedback or concerns, please let us know by commenting on the
+issue at https://github.com/pulumi/pulumi/issues/16964.
+================================================================================`))
 
 			opts := backend.UpdateOptions{}
 			opts.Display = display.Options{
@@ -59,14 +68,15 @@ func newQueryCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, root, err := readProject()
+			ws := pkgWorkspace.Instance
+			project, root, err := ws.ReadProject()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
-			b, err := currentBackend(ctx, project, opts.Display)
+			b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -81,10 +91,10 @@ func newQueryCmd() *cobra.Command {
 				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {
-			case err != nil && err == context.Canceled:
+			case err == context.Canceled:
 				return nil
 			case err != nil:
-				return PrintEngineResult(result.FromError(err))
+				return err
 			default:
 				return nil
 			}

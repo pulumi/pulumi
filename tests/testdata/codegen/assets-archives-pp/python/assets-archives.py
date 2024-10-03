@@ -10,7 +10,7 @@ test_string_asset = aws.s3.BucketObject("testStringAsset",
     source=pulumi.StringAsset("<h1>File contents</h1>"))
 test_remote_asset = aws.s3.BucketObject("testRemoteAsset",
     bucket=site_bucket.id,
-    source=pulumi.remoteAsset("https://pulumi.test"))
+    source=pulumi.RemoteAsset("https://pulumi.test"))
 test_file_archive = aws.lambda_.Function("testFileArchive",
     role=site_bucket.arn,
     code=pulumi.FileArchive("file.tar.gz"))
@@ -22,13 +22,13 @@ test_asset_archive = aws.lambda_.Function("testAssetArchive",
     code=pulumi.AssetArchive({
         "file.txt": pulumi.FileAsset("file.txt"),
         "string.txt": pulumi.StringAsset("<h1>File contents</h1>"),
-        "remote.txt": pulumi.remoteAsset("https://pulumi.test"),
+        "remote.txt": pulumi.RemoteAsset("https://pulumi.test"),
         "file.tar": pulumi.FileArchive("file.tar.gz"),
         "remote.tar": pulumi.RemoteArchive("https://pulumi.test/foo.tar.gz"),
         ".nestedDir": pulumi.AssetArchive({
             "file.txt": pulumi.FileAsset("file.txt"),
             "string.txt": pulumi.StringAsset("<h1>File contents</h1>"),
-            "remote.txt": pulumi.remoteAsset("https://pulumi.test"),
+            "remote.txt": pulumi.RemoteAsset("https://pulumi.test"),
             "file.tar": pulumi.FileArchive("file.tar.gz"),
             "remote.tar": pulumi.RemoteArchive("https://pulumi.test/foo.tar.gz"),
         }),

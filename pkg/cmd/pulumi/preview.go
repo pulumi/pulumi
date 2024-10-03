@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -37,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -256,7 +256,7 @@ func newPreviewCmd() *cobra.Command {
 	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var refresh string
 	var showConfig bool
 	var showPolicyRemediations bool
@@ -270,6 +270,7 @@ func newPreviewCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var attachDebugger bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if remoteSupported() {
@@ -281,7 +282,7 @@ func newPreviewCmd() *cobra.Command {
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
-		Long: "Show a preview of updates a stack's resources.\n" +
+		Long: "Show a preview of updates to a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
 			"represented by an existing state file. The new desired state is computed by running\n" +
@@ -293,8 +294,10 @@ func newPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ssml := newStackSecretsManagerLoaderFromEnv()
+			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -330,7 +333,7 @@ func newPreviewCmd() *cobra.Command {
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
 					targetReplaces, targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -338,12 +341,16 @@ func newPreviewCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, url, remoteArgs)
+				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+					return errResult
+				}
+
+				return runDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(displayOpts)
+			isDIYBackend, err := isDIYBackend(ws, displayOpts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -353,41 +360,41 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, displayOpts)
+			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, displayOpts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(s, configArray, configPath); err != nil {
-				return result.FromError(err)
+			if err = parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
+				return err
 			}
 
-			proj, root, err := readProjectForUpdate(client)
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -400,7 +407,7 @@ func newPreviewCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			targetURNs := []string{}
@@ -416,7 +423,7 @@ func newPreviewCmd() *cobra.Command {
 
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			opts := backend.UpdateOptions{
@@ -427,6 +434,7 @@ func newPreviewCmd() *cobra.Command {
 					Refresh:                   refreshOption,
 					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 					UseLegacyDiff:             useLegacyDiff(),
+					UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
 					DisableOutputValues:       disableOutputValues(),
@@ -434,8 +442,9 @@ func newPreviewCmd() *cobra.Command {
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan: hasExperimentalCommands() || planFilePath != "",
-					Experimental: hasExperimentalCommands(),
+					GeneratePlan:   hasExperimentalCommands() || planFilePath != "",
+					Experimental:   hasExperimentalCommands(),
+					AttachDebugger: attachDebugger,
 				},
 				Display: displayOpts,
 			}
@@ -468,17 +477,17 @@ func newPreviewCmd() *cobra.Command {
 
 			switch {
 			case res != nil:
-				return PrintEngineResult(res)
+				return res
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
+				return errors.New("error: no changes were expected but changes were proposed")
 			default:
 				if planFilePath != "" {
 					encrypter, err := sm.Encrypter()
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
-						return result.FromError(err)
+						return err
 					}
 
 					// Write out message on how to use the plan (if not writing out --json)
@@ -495,17 +504,17 @@ func newPreviewCmd() *cobra.Command {
 				if importFilePromise != nil {
 					importFile, err := importFilePromise.Result(ctx)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 
 					f, err := os.Create(importFilePath)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					err = writeImportFile(importFile, f)
 					err = errors.Join(err, f.Close())
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 				}
 				return nil
@@ -539,7 +548,7 @@ func newPreviewCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
-		"Save any creates seen during the preview into an import file to use with `pulumi import`")
+		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
 
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
@@ -580,7 +589,7 @@ func newPreviewCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
@@ -613,6 +622,9 @@ func newPreviewCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().BoolVar(
+		&attachDebugger, "attach-debugger", false,
+		"Enable the ability to attach a debugger to the program being executed")
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)

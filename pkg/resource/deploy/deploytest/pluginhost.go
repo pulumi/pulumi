@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"sync"
 
 	"github.com/blang/semver"
@@ -69,19 +68,12 @@ func WithGrpc(p *PluginLoader) {
 	p.useGRPC = true
 }
 
-func WithPath(path string) func(p *PluginLoader) {
-	return func(p *PluginLoader) {
-		p.path = path
-	}
-}
-
 type PluginLoader struct {
 	kind         apitype.PluginKind
 	name         string
 	version      semver.Version
 	load         LoadPluginFunc
 	loadWithHost LoadPluginWithHostFunc
-	path         string
 	useGRPC      bool
 }
 
@@ -240,6 +232,12 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
+func (e *hostEngine) StartDebugging(ctx context.Context,
+	req *pulumirpc.StartDebuggingRequest,
+) (*emptypb.Empty, error) {
+	return nil, errors.New("unsupported")
+}
+
 type PluginHostFactory func() plugin.Host
 
 type pluginHost struct {
@@ -365,20 +363,20 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
-	plug, err := host.plugin(apitype.ResourcePlugin, string(pkg), version, nil)
+	plug, err := host.plugin(apitype.ResourcePlugin, descriptor.Name, descriptor.Version, nil)
 	if err != nil {
 		return nil, err
 	}
 	if plug == nil {
 		v := "nil"
-		if version != nil {
-			v = version.String()
+		if descriptor.Version != nil {
+			v = descriptor.Version.String()
 		}
-		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", pkg.String(), v)
+		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", descriptor.Name, v)
 	}
 	return plug.(plugin.Provider), nil
 }
@@ -399,7 +397,7 @@ func (host *pluginHost) SignalCancellation() error {
 
 	var err error
 	for _, prov := range host.providers {
-		if pErr := prov.SignalCancellation(); pErr != nil {
+		if pErr := prov.SignalCancellation(context.TODO()); pErr != nil {
 			err = pErr
 		}
 	}
@@ -441,6 +439,10 @@ func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg strin
 	}
 }
 
+func (host *pluginHost) StartDebugging(plugin.DebuggingInfo) error {
+	return nil
+}
+
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
@@ -471,11 +473,10 @@ func (host *pluginHost) ResolvePlugin(
 	for _, v := range host.pluginLoaders {
 		v := v
 		p := workspace.PluginInfo{
-			Kind:       v.kind,
-			Name:       v.name,
-			Path:       v.path,
-			Version:    &v.version,
-			SchemaPath: filepath.Join(v.path, v.name+"-"+v.version.String()+".json"),
+			Kind:    v.kind,
+			Name:    v.name,
+			Version: &v.version,
+			// Path and SchemaPath not set as these plugins aren't actually on disk.
 			// SchemaTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)

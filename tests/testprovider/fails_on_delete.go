@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"errors"
-
 	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -39,21 +38,21 @@ func init() {
 	}
 }
 
-type failsOnDeleteResourceProvider struct {
+type failsOnDeleteProvider struct {
 	id int
 }
 
-func (p *failsOnDeleteResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *failsOnDeleteProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *failsOnDeleteResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *failsOnDeleteProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	return &rpc.DiffResponse{
 		Changes: rpc.DiffResponse_DIFF_NONE,
 	}, nil
 }
 
-func (p *failsOnDeleteResourceProvider) Create(
+func (p *failsOnDeleteProvider) Create(
 	ctx context.Context, req *rpc.CreateRequest,
 ) (*rpc.CreateResponse, error) {
 	p.id++
@@ -62,19 +61,29 @@ func (p *failsOnDeleteResourceProvider) Create(
 	}, nil
 }
 
-func (p *failsOnDeleteResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *failsOnDeleteProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
 	return &rpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *failsOnDeleteResourceProvider) Update(
+func (p *failsOnDeleteProvider) Update(
 	ctx context.Context, req *rpc.UpdateRequest,
 ) (*rpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *failsOnDeleteResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *failsOnDeleteProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	return nil, errors.New("Delete always fails for the FailsOnDelete resource")
+}
+
+func (p *failsOnDeleteProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	// The fails-on-delete provider doesn't support any invokes currently.
+	panic("Invoke not implemented")
+}
+
+func (p *failsOnDeleteProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	// The random provider doesn't support any call currently.
+	panic("Call not implemented")
 }

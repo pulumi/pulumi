@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -56,7 +57,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
-	user "github.com/tweekmonster/luser"
 )
 
 const (
@@ -334,6 +334,9 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+
+	// If not nil, will be run before the project has been prepared.
+	PrePrepareProject func(*engine.Projinfo) error
 
 	// If not nil, will be run after the project has been prepared.
 	PostPrepareProject func(*engine.Projinfo) error
@@ -658,6 +661,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
 	}
+	if overrides.PrePrepareProject != nil {
+		opts.PrePrepareProject = overrides.PrePrepareProject
+	}
 	if overrides.PostPrepareProject != nil {
 		opts.PostPrepareProject = overrides.PostPrepareProject
 	}
@@ -845,8 +851,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	prepareProgram(t, opts)
-	pt := newProgramTester(t, opts)
+	pt := ProgramTestManualLifeCycle(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	if !errors.Is(err, ErrTestFailed) {
 		assert.NoError(t, err)
@@ -899,6 +904,10 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 func MakeTempBackend(t *testing.T) string {
 	tempDir := t.TempDir()
 	return "file://" + filepath.ToSlash(tempDir)
+}
+
+func (pt *ProgramTester) GetTmpDir() string {
+	return pt.tmpdir
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
@@ -1245,6 +1254,10 @@ func (pt *ProgramTester) TestCleanUp() {
 			contract.IgnoreError(os.RemoveAll(filepath.Join(pt.projdir, commandOutputFolderName)))
 		}
 	}
+
+	// Clean up the temporary PULUMI_HOME directory we created. This is necessary to reclaim the disk space
+	// of the plugins that were downloaded during the test.
+	contract.IgnoreError(os.RemoveAll(pt.pulumiHome))
 }
 
 // TestLifeCycleInitAndDestroy executes the test and cleans up
@@ -2049,6 +2062,13 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 
 	if err := os.WriteFile(projfile, bytes, 0o600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
+	}
+
+	if pt.opts.PrePrepareProject != nil {
+		err = pt.opts.PrePrepareProject(projinfo)
+		if err != nil {
+			return "", "", fmt.Errorf("Failed to pre-prepare %v: %w", projdir, err)
+		}
 	}
 
 	err = pt.prepareProject(projinfo)

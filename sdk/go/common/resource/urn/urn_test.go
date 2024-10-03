@@ -337,3 +337,39 @@ func TestRename(t *testing.T) {
 		urn.New(stack, proj, parentType, typ, "a-better-resource"),
 		renamed)
 }
+
+func TestRenameStack(t *testing.T) {
+	t.Parallel()
+
+	stack := tokens.QName("stack")
+	proj := tokens.PackageName("foo/bar/baz")
+	parentType := tokens.Type("parent$type")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := "a-swell-resource"
+
+	oldURN := urn.New(stack, proj, parentType, typ, name)
+	renamed := oldURN.RenameStack(tokens.MustParseStackName("a-better-stack"))
+
+	assert.NotEqual(t, oldURN, renamed)
+	assert.Equal(t,
+		urn.New("a-better-stack", proj, parentType, typ, name),
+		renamed)
+}
+
+func TestRenameProject(t *testing.T) {
+	t.Parallel()
+
+	stack := tokens.QName("stack")
+	proj := tokens.PackageName("foo/bar/baz")
+	parentType := tokens.Type("parent$type")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := "a-swell-resource"
+
+	oldURN := urn.New(stack, proj, parentType, typ, name)
+	renamed := oldURN.RenameProject(tokens.PackageName("a-better-project"))
+
+	assert.NotEqual(t, oldURN, renamed)
+	assert.Equal(t,
+		urn.New(stack, "a-better-project", parentType, typ, name),
+		renamed)
+}

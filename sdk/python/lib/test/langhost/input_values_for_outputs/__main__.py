@@ -31,7 +31,7 @@ class Instance(pulumi.CustomResource):
             opts = pulumi.ResourceOptions()
         if name is None and not opts.urn:
             raise TypeError("Missing required property 'name'")
-        __props__: dict = dict()
+        __props__ = {}
         __props__["public_ip"] = None
         __props__["name"] = name
         __props__["value"] = value

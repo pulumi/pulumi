@@ -229,7 +229,15 @@ func GenerateProject(
 	if err != nil {
 		return err
 	}
-	for _, p := range packages {
+	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
+	// @pulumi/pulumi dependencies are already added above and not sorted.
+	sortedPackageNames := make([]string, 0, len(packages))
+	for k := range packages {
+		sortedPackageNames = append(sortedPackageNames, k)
+	}
+	sort.Strings(sortedPackageNames)
+	for _, k := range sortedPackageNames {
+		p := packages[k]
 		if p.Name == PulumiToken {
 			continue
 		}
@@ -842,6 +850,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
+	}
+	if opts.DeletedWith != nil {
+		appendOption("deletedWith", opts.DeletedWith)
 	}
 
 	if object == nil {

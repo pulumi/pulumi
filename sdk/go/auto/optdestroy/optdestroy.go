@@ -122,6 +122,14 @@ func ContinueOnError() Option {
 	})
 }
 
+// Remove the stack and its configuration after all resources in the stack have
+// been deleted.
+func Remove() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Remove = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -162,6 +170,9 @@ type Options struct {
 	SuppressOutputs bool
 	// Continue to perform the destroy operation despite the occurrence of errors.
 	ContinueOnError bool
+	// Remove the stack and its configuration after all resources in the stack
+	// have been deleted.
+	Remove bool
 }
 
 type optionFunc func(*Options)

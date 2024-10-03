@@ -1,0 +1,3 @@
+name: pnpm-workspaces
+runtime: nodejs
+description: Use pnpm workspaces and import a workspace package in the pulumi program.

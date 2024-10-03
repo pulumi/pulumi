@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package gen
 
 import (
@@ -17,6 +31,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
+	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -232,7 +247,7 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	g.Fgenf(w, "type %s struct {\n", argsTypeName)
 	g.Indented(func() {
 		for _, config := range configVariables {
-			g.Fgenf(w, g.Indent)
+			g.Fgen(w, g.Indent)
 			fieldName := Title(config.LogicalName())
 			inputType := componentInputType(config.Type())
 			switch configType := config.Type().(type) {
@@ -298,14 +313,14 @@ func (g *generator) genComponentType(w io.Writer, componentName string, componen
 	componentTypeName := Title(componentName)
 	g.Fgenf(w, "type %s struct {\n", componentTypeName)
 	g.Indented(func() {
-		g.Fgenf(w, g.Indent)
-		g.Fgenf(w, "pulumi.ResourceState\n")
+		g.Fgen(w, g.Indent)
+		g.Fgen(w, "pulumi.ResourceState\n")
 		for _, output := range outputs {
-			g.Fgenf(w, g.Indent)
+			g.Fgen(w, g.Indent)
 			fieldName := Title(output.LogicalName())
 			fieldType := "pulumi.AnyOutput" // TODO: update this
 			g.Fgenf(w, "%s %s\n", fieldName, fieldType)
-			g.Fgenf(w, "")
+			g.Fgen(w, "")
 		}
 	})
 	g.Fgenf(w, "}\n\n")
@@ -493,7 +508,9 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
-func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
+	localDependencies map[string]string,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return files, diagnostics, err
@@ -511,14 +528,16 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	files["Pulumi.yaml"] = projectBytes
 
 	// Build a go.mod based on the packages used by program
-	var gomod bytes.Buffer
-	gomod.WriteString("module " + project.Name.String() + "\n")
-	gomod.WriteString(`
-go 1.20
+	var gomod modfile.File
+	err = gomod.AddModuleStmt(project.Name.String())
+	contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+	err = gomod.AddGoStmt("1.20")
+	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
-require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
-`)
+	packagePaths := map[string]string{}
+	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3"
+	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
+	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
@@ -563,7 +582,9 @@ require (
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					fmt.Fprintf(&gomod, " %s v%s\n", info.ModulePath, p.Version.String())
+					packagePaths[p.Name] = info.ModulePath
+					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
 			continue
@@ -574,14 +595,12 @@ require (
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
+		packageName := extractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
-				if separatorIndex < 0 {
-					packageName = ""
-				} else {
+				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
 					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
 				}
@@ -593,13 +612,29 @@ require (
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
+			packagePaths[p.Name] = packageName
+			err = gomod.AddRequire(packageName, version)
+			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
 
-	gomod.WriteString(")")
+	// For any local dependencies, add a replace statement. Make sure we iter this in sorted order (c.f.
+	// https://github.com/pulumi/pulumi/issues/16859).
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		path := localDependencies[pkg]
+		// pkg is the package name, we transformed these into Go paths above so use the map generated there
+		goPath, ok := packagePaths[pkg]
+		if ok {
+			err = gomod.AddReplace(goPath, "", path, "")
+			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
+		}
+	}
 
-	files["go.mod"] = gomod.Bytes()
+	files["go.mod"], err = gomod.Format()
+	if err != nil {
+		return nil, diagnostics, err
+	}
 
 	return files, diagnostics, nil
 }
@@ -608,7 +643,7 @@ func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
 ) error {
-	files, diagnostics, err := GenerateProjectFiles(project, program)
+	files, diagnostics, err := GenerateProjectFiles(project, program, localDependencies)
 	if err != nil {
 		return err
 	}
@@ -617,8 +652,25 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	for filename, data := range files {
-		outPath := path.Join(directory, filename)
+		dir := directory
+		// Pulumi.yaml needs to be written to root, everything else goes to the main directory.
+		if filename == "Pulumi.yaml" {
+			dir = rootDirectory
+		}
+
+		outPath := path.Join(dir, filename)
 		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
@@ -758,8 +810,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				if r.Schema != nil {
 					panic(err)
 				}
-				// for unknown resources, make a best guess
-				vPath = "/v1"
+				// for unknown resources, don't create a versioned import
+				vPath = ""
 			}
 
 			g.addPulumiImport(pkg, vPath, mod, name)
@@ -776,8 +828,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					tokenRange := tokenArg.SyntaxNode().Range()
 					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
 					if call.Type() == model.DynamicType {
-						// then this is an unknown function, create a dummy import for it
-						dummyVersionPath := "/v1"
+						// then this is an unknown function, create a dummy import for it without a version
+						dummyVersionPath := ""
 						g.addPulumiImport(pkg, dummyVersionPath, mod, name)
 						return call, nil
 					}
@@ -888,31 +940,46 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 }
 
 func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
-	importPath := func(mod, importBasePath string) string {
-		if importBasePath == "" {
-			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+	importPath := func(mod string) string {
+		importBasePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		if info.ImportBasePath != "" {
+			importBasePath = info.ImportBasePath
+		} else {
+			p, ok := g.packages[pkg]
+			if ok {
+				importBasePath = extractImportBasePath(p.Reference())
+			}
 		}
 
 		if mod != "" && mod != IndexToken {
+			if info.ImportPathPattern != "" {
+				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
+				return strings.ReplaceAll(importedPath, "{baseImportPath}", importBasePath)
+			}
+
 			return fmt.Sprintf("%s/%s", importBasePath, mod)
 		}
 		return importBasePath
 	}
 
-	// We do this before we let the user set overrides. That way the user can still have a
-	// module named IndexToken.
-	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
 	if !hasInfo {
 		mod = strings.SplitN(mod, "/", 2)[0]
-		path := importPath(mod, "")
+		path := importPath(mod)
 		// users hasn't provided any extra overrides
 		if mod == "" || mod == IndexToken {
 			mod = pkg
 		}
 
 		if strings.Contains(mod, "-") {
-			// convert the dashed package name into camelCase
-			mod = strcase.ToLowerCamel(mod)
+			alias := ""
+			for _, part := range strings.Split(mod, "-") {
+				alias += strcase.ToLowerCamel(part)
+			}
+			// convert the dashed package such as package-name into packagename
+			mod = alias
 		}
 		g.importer.Import(path, mod)
 		return
@@ -922,7 +989,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		mod = m
 	}
 
-	path := importPath(mod, info.ImportBasePath)
+	path := importPath(mod)
 	if alias, ok := info.PackageImportAliases[path]; ok {
 		g.importer.Import(path, alias)
 		return
@@ -933,7 +1000,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// aws:s3/bucket:Bucket).
 	mod = strings.SplitN(mod, "/", 2)[0]
 
-	path = importPath(mod, info.ImportBasePath)
+	path = importPath(mod)
 	pkgName := mod
 	if len(pkgName) == 0 || pkgName == IndexToken {
 		// If mod is empty, then the package is the root package.
@@ -1019,6 +1086,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
 	}
+	if opts.DeletedWith != nil {
+		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
+	}
 
 	return block, temps
 }
@@ -1043,7 +1113,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		mod = ""
 		typ = "Provider"
 	}
-	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod
 		mod = pkg
 	}
@@ -1331,8 +1401,43 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 }
 
+func isOutput(t model.Type) bool {
+	_, ok := t.(*model.OutputType)
+	return ok
+}
+
+func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
+	destType := value.Type()
+	if !isOutput(destType) {
+		destType = model.NewOutputType(destType)
+	}
+
+	switch expr := value.(type) {
+	case *model.TupleConsExpression:
+		// if the value is a tuple, then lift each element to Output[T] as well
+		for i, elem := range expr.Expressions {
+			lifted, _ := liftValueToOutput(elem)
+			expr.Expressions[i] = lifted
+		}
+	case *model.ObjectConsExpression:
+		// if the value is a map, then lift each value to Output[T] as well
+		for i, item := range expr.Items {
+			lifted, _ := liftValueToOutput(item.Value)
+			expr.Items[i] = model.ObjectConsItem{
+				Key:   item.Key,
+				Value: lifted,
+			}
+		}
+	}
+
+	return pcl.NewConvertCall(value, destType), destType
+}
+
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
-	expr, temps := g.lowerExpression(v.Value, v.Type())
+	// if the value is a plain type T, then lift it to Output[T]
+	// because ctx.Export expects an output value
+	value, destType := liftValueToOutput(v.Value)
+	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
@@ -1366,7 +1471,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 		case *ternaryTemp:
 			// TODO derive from ambient context
 			isInput := false
-			g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+			g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Type(), isInput))
 			g.Fgenf(w, "if %.v {\n", t.Value.Condition)
 			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
 			g.Fgenf(w, "} else {\n")
@@ -1405,7 +1510,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 			g.isErrAssigned = true
 		case *splatTemp:
-			argTyp := g.argumentTypeName(t.Value.Each, t.Value.Each.Type(), false)
+			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
@@ -1603,7 +1708,11 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
-			return strcase.ToLowerCamel(mod)
+			moduleAlias := ""
+			for _, part := range strings.Split(mod, "-") {
+				moduleAlias += strcase.ToLowerCamel(part)
+			}
+			return moduleAlias
 		}
 		return mod
 	}
@@ -1611,6 +1720,10 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
 		if mod != "" && mod != IndexToken {
+			if info.ImportPathPattern != "" {
+				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
+				return strings.ReplaceAll(importedPath, "{baseImportPath}", importBasePath)
+			}
 			return fmt.Sprintf("%s/%s", importBasePath, mod)
 		}
 		return importBasePath

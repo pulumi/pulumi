@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -28,6 +29,7 @@ type tokenSourceCapability interface {
 
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
+	clock    clockwork.Clock
 	requests chan tokenRequest
 	done     chan bool
 }
@@ -43,6 +45,7 @@ type tokenResponse struct {
 
 func newTokenSource(
 	ctx context.Context,
+	clock clockwork.Clock,
 	initialToken string,
 	initialTokenExpires time.Time,
 	duration time.Duration,
@@ -53,7 +56,7 @@ func newTokenSource(
 	) (string, time.Time, error),
 ) (*tokenSource, error) {
 	requests, done := make(chan tokenRequest), make(chan bool)
-	ts := &tokenSource{requests: requests, done: done}
+	ts := &tokenSource{clock: clock, requests: requests, done: done}
 	go ts.handleRequests(ctx, initialToken, initialTokenExpires, duration, refreshToken)
 	return ts, nil
 }
@@ -69,7 +72,7 @@ func (ts *tokenSource) handleRequests(
 		currentToken string,
 	) (string, time.Time, error),
 ) {
-	renewTicker := time.NewTicker(duration / 8)
+	renewTicker := ts.clock.NewTicker(duration / 8)
 	defer renewTicker.Stop()
 
 	state := struct {
@@ -86,7 +89,7 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
-		now := time.Now()
+		now := ts.clock.Now()
 
 		// We will renew the lease after 50% of the duration
 		// has elapsed to allow time for retries.
@@ -109,7 +112,7 @@ func (ts *tokenSource) handleRequests(
 
 	for {
 		select {
-		case <-renewTicker.C:
+		case <-renewTicker.Chan():
 			renewUpdateLeaseIfStale()
 		case c, ok := <-ts.requests:
 			if !ok {

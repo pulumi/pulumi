@@ -6,10 +6,10 @@ storage_accounts = azure_native.storage.StorageAccount("storageAccounts",
     kind=azure_native.storage.Kind.BLOCK_BLOB_STORAGE,
     location="eastus",
     resource_group_name="res9101",
-    sku=azure_native.storage.SkuArgs(
-        name=azure_native.storage.SkuName.PREMIUM_LRS,
-    ),
-    network_rule_set=azure_native.storage.NetworkRuleSetArgs(
-        default_action=azure_native.storage.DefaultAction.ALLOW,
-        ip_rules=[],
-    ))
+    sku={
+        "name": azure_native.storage.SkuName.PREMIUM_LRS,
+    },
+    network_rule_set={
+        "default_action": azure_native.storage.DefaultAction.ALLOW,
+        "ip_rules": [],
+    })

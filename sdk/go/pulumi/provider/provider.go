@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// This file relies on implementations in ../provider_linked.go that are made available in this package via
-// go:linkname.
+// This file relies on implementations in ../provider_linked.go that are made available in this
+// package via go:linkname.
 
 type ConstructFunc func(ctx *pulumi.Context, typ, name string, inputs ConstructInputs,
 	options pulumi.ResourceOption) (*ConstructResult, error)

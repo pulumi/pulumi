@@ -8,18 +8,18 @@ subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
 # Create a security group that permits HTTP ingress and unrestricted egress.
 web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,
-    egress=[aws.ec2.SecurityGroupEgressArgs(
-        protocol="-1",
-        from_port=0,
-        to_port=0,
-        cidr_blocks=["0.0.0.0/0"],
-    )],
-    ingress=[aws.ec2.SecurityGroupIngressArgs(
-        protocol="tcp",
-        from_port=80,
-        to_port=80,
-        cidr_blocks=["0.0.0.0/0"],
-    )])
+    egress=[{
+        "protocol": "-1",
+        "from_port": 0,
+        "to_port": 0,
+        "cidr_blocks": ["0.0.0.0/0"],
+    }],
+    ingress=[{
+        "protocol": "tcp",
+        "from_port": 80,
+        "to_port": 80,
+        "cidr_blocks": ["0.0.0.0/0"],
+    }])
 # Create an ECS cluster to run a container-based service.
 cluster = aws.ecs.Cluster("cluster")
 # Create an IAM role that can be used by our service's task.
@@ -49,10 +49,10 @@ web_target_group = aws.elasticloadbalancingv2.TargetGroup("webTargetGroup",
 web_listener = aws.elasticloadbalancingv2.Listener("webListener",
     load_balancer_arn=web_load_balancer.arn,
     port=80,
-    default_actions=[aws.elasticloadbalancingv2.ListenerDefaultActionArgs(
-        type="forward",
-        target_group_arn=web_target_group.arn,
-    )])
+    default_actions=[{
+        "type": "forward",
+        "target_group_arn": web_target_group.arn,
+    }])
 # Spin up a load balanced service running NGINX
 app_task = aws.ecs.TaskDefinition("appTask",
     family="fargate-task-definition",
@@ -75,15 +75,15 @@ app_service = aws.ecs.Service("appService",
     desired_count=5,
     launch_type="FARGATE",
     task_definition=app_task.arn,
-    network_configuration=aws.ecs.ServiceNetworkConfigurationArgs(
-        assign_public_ip=True,
-        subnets=subnets.ids,
-        security_groups=[web_security_group.id],
-    ),
-    load_balancers=[aws.ecs.ServiceLoadBalancerArgs(
-        target_group_arn=web_target_group.arn,
-        container_name="my-app",
-        container_port=80,
-    )],
-    opts=pulumi.ResourceOptions(depends_on=[web_listener]))
+    network_configuration={
+        "assign_public_ip": True,
+        "subnets": subnets.ids,
+        "security_groups": [web_security_group.id],
+    },
+    load_balancers=[{
+        "target_group_arn": web_target_group.arn,
+        "container_name": "my-app",
+        "container_port": 80,
+    }],
+    opts = pulumi.ResourceOptions(depends_on=[web_listener]))
 pulumi.export("url", web_load_balancer.dns_name)

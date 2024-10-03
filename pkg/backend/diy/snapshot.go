@@ -32,7 +32,7 @@ type diySnapshotPersister struct {
 }
 
 func (sp *diySnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot, snapshot.SecretsManager)
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot)
 	return err
 }
 

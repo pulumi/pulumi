@@ -34,11 +34,7 @@ import (
 func TestConfigSave(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
@@ -111,11 +107,7 @@ func TestRotatePassphrase(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("rotate_passphrase")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -163,11 +155,7 @@ func TestPassphrasePrompting(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.NoPassphrase = true
 	// Setting PULUMI_TEST_PASSPHRASE allows prompting (reading from stdin)

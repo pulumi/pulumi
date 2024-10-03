@@ -27,20 +27,20 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 
 	check := func(j int) func(*testing.T) {
 		return func(*testing.T) {
-			var n int32
+			var n int64
 			wg := &WorkGroup{}
 			wg.Add(j)
 
 			for k := 0; k < j; k++ {
 				go func() {
 					time.Sleep(10 * time.Millisecond)
-					atomic.AddInt32(&n, 1)
+					atomic.AddInt64(&n, 1)
 					wg.Done()
 				}()
 			}
 
 			wg.Wait()
-			assert.Equal(t, int32(j), atomic.AddInt32(&n, 0))
+			assert.Equal(t, int64(j), atomic.AddInt64(&n, 0))
 		}
 	}
 

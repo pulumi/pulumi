@@ -6,6 +6,7 @@
 
 import * as jspb from "google-protobuf";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
+import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class LogRequest extends jspb.Message { 
     getSeverity(): LogSeverity;
@@ -110,6 +111,32 @@ export class SetRootResourceResponse extends jspb.Message {
 
 export namespace SetRootResourceResponse {
     export type AsObject = {
+    }
+}
+
+export class StartDebuggingRequest extends jspb.Message { 
+
+    hasConfig(): boolean;
+    clearConfig(): void;
+    getConfig(): google_protobuf_struct_pb.Struct | undefined;
+    setConfig(value?: google_protobuf_struct_pb.Struct): StartDebuggingRequest;
+    getMessage(): string;
+    setMessage(value: string): StartDebuggingRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StartDebuggingRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: StartDebuggingRequest): StartDebuggingRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StartDebuggingRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StartDebuggingRequest;
+    static deserializeBinaryFromReader(message: StartDebuggingRequest, reader: jspb.BinaryReader): StartDebuggingRequest;
+}
+
+export namespace StartDebuggingRequest {
+    export type AsObject = {
+        config?: google_protobuf_struct_pb.Struct.AsObject,
+        message: string,
     }
 }
 

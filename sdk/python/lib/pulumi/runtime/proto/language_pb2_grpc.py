@@ -38,9 +38,14 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
                 )
+        self.RuntimeOptionsPrompts = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+                request_serializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.FromString,
+                )
         self.About = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/About',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                request_serializer=pulumi_dot_language__pb2.AboutRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.AboutResponse.FromString,
                 )
         self.GetProgramDependencies = channel.unary_unary(
@@ -103,6 +108,13 @@ class LanguageRuntimeServicer(object):
 
     def InstallDependencies(self, request, context):
         """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RuntimeOptionsPrompts(self, request, context):
+        """RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -180,9 +192,14 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_language__pb2.InstallDependenciesRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.InstallDependenciesResponse.SerializeToString,
             ),
+            'RuntimeOptionsPrompts': grpc.unary_unary_rpc_method_handler(
+                    servicer.RuntimeOptionsPrompts,
+                    request_deserializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.SerializeToString,
+            ),
             'About': grpc.unary_unary_rpc_method_handler(
                     servicer.About,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    request_deserializer=pulumi_dot_language__pb2.AboutRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.AboutResponse.SerializeToString,
             ),
             'GetProgramDependencies': grpc.unary_unary_rpc_method_handler(
@@ -296,6 +313,23 @@ class LanguageRuntime(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def RuntimeOptionsPrompts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+            pulumi_dot_language__pb2.RuntimeOptionsRequest.SerializeToString,
+            pulumi_dot_language__pb2.RuntimeOptionsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def About(request,
             target,
             options=(),
@@ -307,7 +341,7 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/About',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_language__pb2.AboutRequest.SerializeToString,
             pulumi_dot_language__pb2.AboutResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

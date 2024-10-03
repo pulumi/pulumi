@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	"gopkg.in/yaml.v3"
 )
 
 var ErrNotInWorkspace = errors.New("not in a workspace")
@@ -54,24 +56,62 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 			}
 			return "", err
 		}
+
+		// First look for pnpm workspace configuration
+		pnpmWorkspace := filepath.Join(currentDir, "pnpm-workspace.yaml")
+		_, err = os.Stat(pnpmWorkspace)
+		if err == nil {
+			// We have a pnpm-workspace.yaml
+			workspaces, err := parsePnpmWorkspace(pnpmWorkspace)
+			if err != nil {
+				return "", err
+			}
+			matches, err := matchesWorkspaceGlobs(workspaces, currentDir, packageJSONDir)
+			if err != nil {
+				return "", err
+			}
+			if matches {
+				return currentDir, nil
+			}
+		}
+
+		// No pnpm-workspace.yaml, check for npm/yarn workspaces in the package.json
 		workspaces, err := parseWorkspaces(p)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse workspaces from %s: %w", p, err)
 		}
-		for _, workspace := range workspaces {
-			// See if any of the workspace glob results is the programDirectory.
-			paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
-			if err != nil {
-				return "", err
-			}
-			if paths != nil && slices.Contains(paths, filepath.Join(packageJSONDir, "package.json")) {
-				return currentDir, nil
-			}
+		matches, err := matchesWorkspaceGlobs(workspaces, currentDir, packageJSONDir)
+		if err != nil {
+			return "", err
 		}
+		if matches {
+			return currentDir, nil
+		}
+
 		currentDir = nextDir
 		nextDir = filepath.Dir(currentDir)
 	}
+
+	// We walked all the way to the root and didn't find a workspace configuration.
 	return "", ErrNotInWorkspace
+}
+
+// matchesWorkspaceGlobs checks if the workspaces globs match `toCheck`  when evaluated relative
+// to currentDir.
+//
+// For example, if currentDir is `/some/project/` and workspaces is `["packages/*"]`, this
+// function will return true for toCheck = `/some/project/packages/foo/`.
+func matchesWorkspaceGlobs(workspaces []string, currentDir string, toCheck string) (bool, error) {
+	for _, workspace := range workspaces {
+		paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
+		if err != nil {
+			return false, err
+		}
+		if paths != nil && slices.Contains(paths, filepath.Join(toCheck, "package.json")) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // parseWorkspaces reads a package.json file and returns the list of workspaces.
@@ -123,4 +163,19 @@ func searchup(currentDir, fileToFind string) (string, error) {
 		return "", nil
 	}
 	return searchup(parentDir, fileToFind)
+}
+
+func parsePnpmWorkspace(p string) ([]string, error) {
+	workspaceContent, err := os.ReadFile(p)
+	if err != nil {
+		return []string{}, err
+	}
+	workspace := struct {
+		Packages []string `yaml:"packages"`
+	}{}
+	err = yaml.Unmarshal(workspaceContent, &workspace)
+	if err != nil {
+		return []string{}, err
+	}
+	return workspace.Packages, nil
 }

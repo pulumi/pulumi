@@ -164,11 +164,7 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
-        writable_settings = {
-            key: settings.__dict__[key]
-            for key in settings.__dict__
-            if settings.__dict__[key] is not None
-        }
+        writable_settings = settings.to_dict()
         with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
@@ -411,11 +407,25 @@ class LocalWorkspace(Workspace):
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
-    def remove_stack(self, stack_name: str) -> None:
-        self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
+    def remove_stack(
+        self,
+        stack_name: str,
+        force: Optional[bool] = None,
+        preserve_config: Optional[bool] = None,
+    ) -> None:
+        args = ["stack", "rm", "--yes"]
+        if force:
+            args.append("--force")
+        if preserve_config:
+            args.append("--preserve-config")
+        args.append(stack_name)
+        self._run_pulumi_cmd_sync(args)
 
-    def list_stacks(self) -> List[StackSummary]:
-        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json"])
+    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
+        args = ["stack", "ls", "--json"]
+        if include_all:
+            args.append("--all")
+        result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
         stack_list: List[StackSummary] = []
         for stack_json in json_list:
@@ -441,6 +451,46 @@ class LocalWorkspace(Workspace):
             )
             stack_list.append(stack)
         return stack_list
+
+    def install(
+        self,
+        no_plugins: bool = False,
+        no_dependencies: bool = False,
+        reinstall: bool = False,
+        use_language_version_tools: bool = False,
+        on_output: Optional[OnOutput] = None,
+    ) -> None:
+        ver = VersionInfo(3)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
+
+        if ver >= VersionInfo(3, 91):
+            # Pulumi 3.91.0 added the `pulumi install` command.
+            # https://github.com/pulumi/pulumi/releases/tag/v3.91.0
+            args = []
+            if use_language_version_tools:
+                if ver >= VersionInfo(3, 130):
+                    # Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+                    # https://github.com/pulumi/pulumi/releases/tag/v3.130.0
+                    args.append("--use-language-version-tools")
+                else:
+                    raise InvalidVersionError(
+                        "The installed version of the CLI does not support this operation. Please "
+                        "upgrade to at least version 3.130.0."
+                    )
+            if no_plugins:
+                args.append("--no-plugins")
+            if no_dependencies:
+                args.append("--no-dependencies")
+            if reinstall:
+                args.append("--reinstall")
+            self._run_pulumi_cmd_sync(["install", *args], on_output=on_output)
+            return
+
+        raise InvalidVersionError(
+            "The installed version of the CLI does not support this operation. Please "
+            "upgrade to at least version 3.91.0."
+        )
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
@@ -840,7 +890,7 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
             continue
         with open(project_path, "r", encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-            return ProjectSettings(**settings)
+            return ProjectSettings.from_dict(settings)
     raise FileNotFoundError(
         f"failed to find project settings file in workdir: {work_dir}"
     )

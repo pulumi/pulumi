@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -151,6 +150,9 @@ type Backend interface {
 	// SupportsProgress tells whether the backend supports showing whether an operation is currently in progress
 	SupportsProgress() bool
 
+	// SupportsDeployments tells whether it is possible to manage deployments in this backend.
+	SupportsDeployments() bool
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
@@ -163,8 +165,15 @@ type Backend interface {
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
-	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
+	// CreateStack creates a new stack with the given name, initial state and options that are specific to the
+	// backend provider.
+	CreateStack(
+		ctx context.Context,
+		stackRef StackReference,
+		root string,
+		initialState *apitype.UntypedDeployment,
+		opts *CreateStackOptions,
+	) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
@@ -181,18 +190,18 @@ type Backend interface {
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(
 		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
-	) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
-	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
+	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
 	// Query against the resource outputs in a stack's state checkpoint.
 	Query(ctx context.Context, op QueryOperation) error
@@ -209,6 +218,17 @@ type Backend interface {
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
+	// Encrypt secrets using the DS encryption key
+	EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (*apitype.SecretValue, error)
+	// UpdateStackDeploymentSettings updates the stacks's deployment settings.
+	UpdateStackDeploymentSettings(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
+	// Fetch deployment settings
+	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
+	// Deletes the stach deployment settings
+	DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error
+	// Fetch the GH App installation status
+	GetGHAppIntegration(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
+
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
 	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
@@ -218,6 +238,13 @@ type Backend interface {
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
+
+	// DefaultSecretManager returns the default secrets manager to use for stacks created against this backend, or nil if
+	// it is not possible to determine a default secrets manager for a stack prior to its creation.
+	//
+	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
+	// secrets manager for that stack.
+	DefaultSecretManager() (secrets.Manager, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
@@ -225,7 +252,8 @@ type EnvironmentsBackend interface {
 	CreateEnvironment(
 		ctx context.Context,
 		org string,
-		name string,
+		projectName string,
+		envName string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error)
 
@@ -299,8 +327,6 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
-	// ContinueOnError, when true, causes the update to continue even if there are errors.
-	ContinueOnError bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

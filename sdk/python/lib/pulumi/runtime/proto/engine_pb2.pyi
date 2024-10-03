@@ -19,6 +19,7 @@ import builtins
 import google.protobuf.descriptor
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
+import google.protobuf.struct_pb2
 import sys
 import typing
 
@@ -151,3 +152,25 @@ class SetRootResourceResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___SetRootResourceResponse = SetRootResourceResponse
+
+@typing_extensions.final
+class StartDebuggingRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CONFIG_FIELD_NUMBER: builtins.int
+    MESSAGE_FIELD_NUMBER: builtins.int
+    @property
+    def config(self) -> google.protobuf.struct_pb2.Struct:
+        """the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume."""
+    message: builtins.str
+    """the string to display to the user with instructions on how to connect to the debugger."""
+    def __init__(
+        self,
+        *,
+        config: google.protobuf.struct_pb2.Struct | None = ...,
+        message: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "message", b"message"]) -> None: ...
+
+global___StartDebuggingRequest = StartDebuggingRequest

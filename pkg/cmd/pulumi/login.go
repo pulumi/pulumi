@@ -23,9 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -86,7 +87,7 @@ func newLoginCmd() *cobra.Command {
 			"\n" +
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -116,14 +117,15 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, _, err := readProject()
+			ws := pkgWorkspace.Instance
+			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
 			if cloudURL == "" {
 				var err error
-				cloudURL, err = workspace.GetCurrentCloudURL(project)
+				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -139,27 +141,23 @@ func newLoginCmd() *cobra.Command {
 				}
 			}
 
-			var be backend.Backend
+			be, err := DefaultLoginManager.Login(
+				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
+			if err != nil {
+				return fmt.Errorf("problem logging in: %w", err)
+			}
+
 			if diy.IsDIYBackendURL(cloudURL) {
-				be, err = diy.Login(ctx, cmdutil.Diag(), cloudURL, project)
 				if defaultOrg != "" {
 					return errors.New("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = loginToCloud(ctx, cloudURL, project, insecure, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					cloudURL, err := workspace.GetCurrentCloudURL(project)
-					if err != nil {
-						return err
-					}
-					if err := workspace.SetBackendConfigDefaultOrg(cloudURL, defaultOrg); err != nil {
+					if err := workspace.SetBackendConfigDefaultOrg(be.URL(), defaultOrg); err != nil {
 						return err
 					}
 				}
-			}
-			if err != nil {
-				return fmt.Errorf("problem logging in: %w", err)
 			}
 
 			if currentUser, _, _, err := be.CurrentUser(); err == nil {

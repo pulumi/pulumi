@@ -1,3 +1,17 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package resource
 
 import (
@@ -161,25 +175,25 @@ func TestPropertyPath(t *testing.T) {
 			value := makeValue()
 
 			v, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.False(t, v.IsNull())
 
 			ok = parsed.Delete(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to delete %v from %v", parsed, value)
 
 			ok = parsed.Set(value, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to set %v in %v", v, parsed)
 
 			u, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.Equal(t, v, u)
 
 			vv := PropertyValue{}
 			vv, ok = parsed.Add(vv, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to add %v at %v", v, parsed)
 
 			u, ok = parsed.Get(vv)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, vv)
 			assert.Equal(t, v, u)
 		})
 	}
@@ -724,7 +738,7 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested object wildcard reset fails",
+			"Nested object wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty(PropertyMap{
 				"passes": NewProperty(1.0),
@@ -737,7 +751,20 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested array wildcard reset fails",
+			"Nested array wildcard, new array is shorter fails",
+			PropertyPath{"root", "array", "*"},
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{
+					NewProperty(1.0),
+				}),
+			})},
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{}),
+			})},
+			nil,
+		},
+		{
+			"Nested array wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty([]PropertyValue{
 				NewProperty(1.0),
@@ -747,6 +774,30 @@ func TestReset(t *testing.T) {
 				NewProperty(2.0),
 				NewProperty([]PropertyValue{}),
 			})},
+			nil,
+		},
+		{
+			"Nested array wildcard index, old array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+			}))},
+			nil,
+		},
+		{
+			"Nested array wildcard index, new array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
 			nil,
 		},
 		{

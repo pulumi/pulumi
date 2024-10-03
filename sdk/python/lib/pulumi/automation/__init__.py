@@ -155,8 +155,10 @@ from ._output import OutputMap, OutputValue
 
 from ._project_settings import (
     ProjectBackend,
-    ProjectSettings,
     ProjectRuntimeInfo,
+    ProjectSettings,
+    ProjectTemplate,
+    ProjectTemplateConfigValue,
 )
 
 from ._stack_settings import StackSettings
@@ -225,8 +227,10 @@ __all__ = [
     "OutputValue",
     # _project_settings
     "ProjectBackend",
-    "ProjectSettings",
     "ProjectRuntimeInfo",
+    "ProjectSettings",
+    "ProjectTemplate",
+    "ProjectTemplateConfigValue",
     # _stack_settings
     "StackSettings",
     # _stack

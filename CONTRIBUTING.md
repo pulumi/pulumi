@@ -45,7 +45,7 @@ You'll want to install the following on your machine:
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.21 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
+brew install node python@3 typescript yarn go@1.23 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
@@ -146,6 +146,14 @@ Here's some examples of what we're trying to avoid:
 - Fixes a bug
 - Adds a feature
 - Feature now does something
+
+### Downloading Pulumi from contributed pull requests
+
+Artifacts built during pull request workflows can be downloaded by running the following command (note that the artifacts expire 7 days after CI has been run):
+
+```sh
+curl -fsSL https://get.pulumi.com | sh -s -- --version pr#<number>
+```
 
 ### Pulumi employees
 

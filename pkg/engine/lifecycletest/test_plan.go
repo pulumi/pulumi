@@ -1,11 +1,33 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //nolint:revive
 package lifecycletest
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -14,19 +36,24 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -117,14 +144,20 @@ type ValidateFunc func(project workspace.Project, target deploy.Target, entries 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, error) {
-	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
+	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate, "")
 	return plan, err
 }
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, error) {
-	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
+	return op.RunStep(project, target, opts, dryRun, backendClient, validate, "")
+}
+
+func (op TestOp) RunStep(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc, name string,
+) (*deploy.Snapshot, error) {
+	return op.RunWithContextStep(context.Background(), project, target, opts, dryRun, backendClient, validate, name)
 }
 
 func (op TestOp) RunWithContext(
@@ -132,14 +165,22 @@ func (op TestOp) RunWithContext(
 	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, error) {
-	_, snap, err := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
+	return op.RunWithContextStep(callerCtx, project, target, opts, dryRun, backendClient, validate, "")
+}
+
+func (op TestOp) RunWithContextStep(
+	callerCtx context.Context, project workspace.Project,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
+	backendClient deploy.BackendClient, validate ValidateFunc, name string,
+) (*deploy.Snapshot, error) {
+	_, snap, err := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate, name)
 	return snap, err
 }
 
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts TestUpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc,
+	backendClient deploy.BackendClient, validate ValidateFunc, name string,
 ) (*deploy.Plan, *deploy.Snapshot, error) {
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
@@ -210,6 +251,28 @@ func (op TestOp) runWithContext(
 		return plan, nil, errors.Join(errs...)
 	}
 
+	if !opts.SkipDisplayTests {
+		// base64 encode the name if it contains special characters
+		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
+			assert.NoError(opts.T, err)
+			name = base64.StdEncoding.EncodeToString([]byte(name))
+			if len(name) > 64 {
+				name = name[0:64]
+			}
+		}
+		testName := opts.T.Name()
+		if ok, _ := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
+			testName = strings.ReplaceAll(testName, "[", "_")
+			testName = strings.ReplaceAll(testName, "]", "_")
+			testName = strings.ReplaceAll(testName, `"`, "_")
+			if ok, _ := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
+				assert.NoError(opts.T, err)
+				testName = base64.StdEncoding.EncodeToString([]byte(testName))
+			}
+		}
+		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
+	}
+
 	entries := journal.Entries()
 	// Check that each possible snapshot we could have created is valid
 	var snap *deploy.Snapshot
@@ -237,6 +300,200 @@ func (op TestOp) runWithContext(
 	return nil, snap, errors.Join(errs...)
 }
 
+// We're just checking that we have the right number of events and
+// that they have the expected types.  We don't do a deep comparison
+// here, because all that matters is that we have the same events in
+// some order.  The non-display tests are responsible for actually
+// checking the events properly.
+func compareEvents(t testing.TB, expected, actual []engine.Event) {
+	encountered := make(map[int]struct{})
+	if len(expected) != len(actual) {
+		t.Logf("expected %d events, got %d", len(expected), len(actual))
+		t.Fail()
+	}
+	for _, e := range expected {
+		found := false
+		for i, a := range actual {
+			if _, ok := encountered[i]; ok {
+				continue
+			}
+			if a.Type == e.Type {
+				found = true
+				encountered[i] = struct{}{}
+				break
+			}
+		}
+		if !found {
+			t.Logf("expected event %v not found", e)
+			t.Fail()
+		}
+	}
+	for i, e := range actual {
+		if _, ok := encountered[i]; ok {
+			continue
+		}
+		t.Logf("did not expect event %v", e)
+	}
+}
+
+func loadEvents(path string) (events []engine.Event, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("opening '%v': %w", path, err)
+	}
+	defer contract.IgnoreClose(f)
+
+	dec := json.NewDecoder(f)
+	for {
+		var jsonEvent apitype.EngineEvent
+		if err = dec.Decode(&jsonEvent); err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return nil, fmt.Errorf("decoding event %d: %w", len(events), err)
+		}
+
+		event, err := bdisplay.ConvertJSONEvent(jsonEvent)
+		if err != nil {
+			return nil, fmt.Errorf("converting event %d: %w", len(events), err)
+		}
+		events = append(events, event)
+	}
+
+	// If there are no events or if the event stream does not terminate with a cancel event,
+	// synthesize one here.
+	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
+		events = append(events, engine.NewCancelEvent())
+	}
+
+	return events, nil
+}
+
+func assertDisplay(t testing.TB, events []Event, path string) {
+	var expectedStdout []byte
+	var expectedStderr []byte
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	if !accept {
+		var err error
+		expectedStdout, err = os.ReadFile(filepath.Join(path, "diff.stdout.txt"))
+		require.NoError(t, err)
+
+		expectedStderr, err = os.ReadFile(filepath.Join(path, "diff.stderr.txt"))
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	var expectedEvents []engine.Event
+	if accept {
+		// Write out the events to a file for acceptance testing.
+		err := os.MkdirAll(path, 0o700)
+		require.NoError(t, err)
+
+		f, err := os.OpenFile(filepath.Join(path, "eventstream.json"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		require.NoError(t, err)
+		defer f.Close()
+
+		enc := json.NewEncoder(f)
+		for _, e := range events {
+			apiEvent, err := bdisplay.ConvertEngineEvent(e, false)
+			require.NoError(t, err)
+
+			err = enc.Encode(apiEvent)
+			require.NoError(t, err)
+		}
+
+		expectedEvents = events
+	} else {
+		var err error
+		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
+		require.NoError(t, err)
+
+		compareEvents(t, expectedEvents, events)
+	}
+
+	// ShowProgressEvents
+
+	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
+		Color:                colors.Raw,
+		ShowSameResources:    true,
+		ShowReplacementSteps: true,
+		ShowReads:            true,
+		Stdout:               &stdout,
+		Stderr:               &stderr,
+		DeterministicOutput:  true,
+		ShowLinkToCopilot:    false,
+	})
+
+	for _, e := range expectedEvents {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+		assert.Equal(t, string(expectedStderr), stderr.String())
+	} else {
+		err := os.MkdirAll(path, 0o700)
+		require.NoError(t, err)
+
+		err = os.WriteFile(filepath.Join(path, "diff.stdout.txt"), stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+
+		err = os.WriteFile(filepath.Join(path, "diff.stderr.txt"), stderr.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
+
+	expectedStdout = []byte{}
+	expectedStderr = []byte{}
+	if !accept {
+		var err error
+		expectedStdout, err = os.ReadFile(filepath.Join(path, "progress.stdout.txt"))
+		require.NoError(t, err)
+
+		expectedStderr, err = os.ReadFile(filepath.Join(path, "progress.stderr.txt"))
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel = make(chan engine.Event), make(chan bool)
+	stdout.Reset()
+	stderr.Reset()
+
+	go bdisplay.ShowProgressEvents(
+		"test", apitype.UpdateUpdate,
+		tokens.MustParseStackName("stack"), "project", "http://example.com",
+		eventChannel, doneChannel, bdisplay.Options{
+			Color:                colors.Raw,
+			ShowSameResources:    true,
+			ShowReplacementSteps: true,
+			ShowReads:            true,
+			SuppressProgress:     true,
+			Stdout:               &stdout,
+			Stderr:               &stderr,
+			DeterministicOutput:  true,
+			ShowLinkToCopilot:    false,
+		}, false)
+
+	for _, e := range expectedEvents {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+		assert.Equal(t, string(expectedStderr), stderr.String())
+	} else {
+		err := os.WriteFile(filepath.Join(path, "progress.stdout.txt"), stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+
+		err = os.WriteFile(filepath.Join(path, "progress.stderr.txt"), stderr.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
+}
+
 type TestStep struct {
 	Op            TestOp
 	ExpectFailure bool
@@ -261,7 +518,9 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 type TestUpdateOptions struct {
 	UpdateOptions
 	// a factory to produce a plugin host for an update operation.
-	HostF deploytest.PluginHostFactory
+	HostF            deploytest.PluginHostFactory
+	T                testing.TB
+	SkipDisplayTests bool
 }
 
 // Options produces UpdateOptions for an update operation.
@@ -283,6 +542,8 @@ type TestPlan struct {
 	BackendClient  deploy.BackendClient
 	Options        TestUpdateOptions
 	Steps          []TestStep
+	// Count the number of times Run is called on this plan.  Used to generate unique names for display snapshot tests.
+	run int
 }
 
 func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
@@ -354,10 +615,10 @@ func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	return snap
 }
 
-func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
+func (p *TestPlan) RunWithName(t testing.TB, snapshot *deploy.Snapshot, name string) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
-	for _, step := range p.Steps {
+	for i, step := range p.Steps {
 		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
 		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
 		// cause state changes from the preview to persist even when doing an update.
@@ -376,7 +637,8 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 
 		var err error
 		target := p.GetTarget(t, snap)
-		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
+		snap, err = step.Op.RunStep(project, target, p.Options, false, p.BackendClient, step.Validate,
+			fmt.Sprintf("%s-%d-%d", name, i, p.run))
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -395,7 +657,12 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		assert.NoError(t, err)
 	}
 
+	p.run += 1
 	return snap
+}
+
+func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
+	return p.RunWithName(t, snapshot, "")
 }
 
 // resCount is the expected number of resources registered during this test.
@@ -546,12 +813,14 @@ type Result struct {
 	err  error
 }
 
-func (b *testBuilder) RunUpdate(program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error) *Result {
+func (b *testBuilder) RunUpdate(
+	program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error, skipDisplayTests bool,
+) *Result {
 	programF := deploytest.NewLanguageRuntimeF(program)
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: b.t, HostF: hostF, SkipDisplayTests: skipDisplayTests},
 	}
 
 	// Run an update for initial state.

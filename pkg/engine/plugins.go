@@ -43,17 +43,17 @@ const (
 	preparePluginVerboseLog = 8
 )
 
-// pluginSet represents a set of plugins.
-type pluginSet map[string]workspace.PluginSpec
+// PluginSet represents a set of plugins.
+type PluginSet map[string]workspace.PluginSpec
 
 // Add adds a plugin to this plugin set.
-func (p pluginSet) Add(plug workspace.PluginSpec) {
+func (p PluginSet) Add(plug workspace.PluginSpec) {
 	p[plug.String()] = plug
 }
 
 // Union returns the union of this pluginSet with another pluginSet.
-func (p pluginSet) Union(other pluginSet) pluginSet {
-	newSet := newPluginSet()
+func (p PluginSet) Union(other PluginSet) PluginSet {
+	newSet := NewPluginSet()
 	for _, value := range p {
 		newSet.Add(value)
 	}
@@ -67,9 +67,9 @@ func (p pluginSet) Union(other pluginSet) pluginSet {
 //
 // For example, the plugin aws would be removed if there was an already existing plugin
 // aws-5.4.0.
-func (p pluginSet) Deduplicate() pluginSet {
+func (p PluginSet) Deduplicate() PluginSet {
 	existing := map[string]workspace.PluginSpec{}
-	newSet := newPluginSet()
+	newSet := NewPluginSet()
 	add := func(p workspace.PluginSpec) {
 		prev, ok := existing[p.Name]
 		if ok {
@@ -101,7 +101,7 @@ func (p pluginSet) Deduplicate() pluginSet {
 }
 
 // Values returns a slice of all of the plugins contained within this set.
-func (p pluginSet) Values() []workspace.PluginSpec {
+func (p PluginSet) Values() []workspace.PluginSpec {
 	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
@@ -109,9 +109,9 @@ func (p pluginSet) Values() []workspace.PluginSpec {
 	return plugins
 }
 
-// newPluginSet creates a new empty pluginSet.
-func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
-	var s pluginSet = make(map[string]workspace.PluginSpec, len(plugins))
+// NewPluginSet creates a new empty pluginSet.
+func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
+	var s PluginSet = make(map[string]workspace.PluginSpec, len(plugins))
 	for _, p := range plugins {
 		s.Add(p)
 	}
@@ -120,11 +120,12 @@ func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
-func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (pluginSet, error) {
+func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
-	set := newPluginSet()
+	set := NewPluginSet()
 
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime, prog.RootDirectory(), prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime,
+		prog.RootDirectory(), prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
@@ -145,9 +146,9 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plug
 // gatherPluginsFromSnapshot inspects the snapshot associated with the given Target and returns the set of plugins
 // required to operate on the snapshot. The set of plugins is derived from first-class providers saved in the snapshot
 // and the plugins specified in the deployment manifest.
-func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (pluginSet, error) {
+func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): gathering plugins from snapshot")
-	set := newPluginSet()
+	set := NewPluginSet()
 	if target == nil || target.Snapshot == nil {
 		logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): no snapshot available, skipping")
 		return set, nil
@@ -155,10 +156,16 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
 		if !providers.IsProviderType(urn.Type()) {
-			logging.V(preparePluginVerboseLog).Infof("gatherPluginsFromSnapshot(): skipping %q, not a provider", urn)
+			logging.V(preparePluginVerboseLog).Infof(
+				"gatherPluginsFromSnapshot(): skipping %q, not a provider", urn)
 			continue
 		}
 		pkg := providers.GetProviderPackage(urn.Type())
+
+		name, err := providers.GetProviderName(pkg, res.Inputs)
+		if err != nil {
+			return set, err
+		}
 		version, err := providers.GetProviderVersion(res.Inputs)
 		if err != nil {
 			return set, err
@@ -171,10 +178,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
+			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", name, version, urn)
 		set.Add(workspace.PluginSpec{
-			Name:              pkg.String(),
+			Name:              name.String(),
 			Kind:              apitype.ResourcePlugin,
 			Version:           version,
 			PluginDownloadURL: downloadURL,
@@ -184,11 +192,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 	return set, nil
 }
 
-// ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
+// EnsurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
-	plugins pluginSet, projectPlugins []workspace.ProjectPlugin,
+func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
+	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
@@ -202,7 +210,26 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
-			continue
+
+			if !reinstall {
+				continue
+			}
+		}
+
+		if !reinstall {
+			// If the plugin already exists, don't download it unless `reinstall` was specified.
+			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
+			if plug.Version != nil {
+				if workspace.HasPlugin(plug) {
+					logging.V(1).Infof("%s skipping install (existing == match)", label)
+					continue
+				}
+			} else {
+				if has, _ := workspace.HasPluginGTE(plug); has {
+					logging.V(1).Infof("%s skipping install (existing >= match)", label)
+					continue
+				}
+			}
 		}
 
 		if workspace.IsPluginBundled(plug.Kind, plug.Name) {
@@ -217,7 +244,7 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		info := plug // don't close over the loop induction variable
 
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
-		if env.DisableAutomaticPluginAcquisition.Value() {
+		if !explicitInstall && env.DisableAutomaticPluginAcquisition.Value() {
 			installTasks.Go(func() error {
 				return fmt.Errorf("plugin %s %s not installed", info.Name, info.Version)
 			})
@@ -227,24 +254,28 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		// Launch an install task asynchronously and add it to the current error group.
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
-				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(ctx, info)
+				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
+			return installPlugin(ctx, opts, info)
 		})
 	}
 
 	err := installTasks.Wait()
-	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): completed")
+	logging.V(preparePluginLog).Infof("EnsurePluginsAreInstalled(): completed")
 	return err
 }
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
 // loaded.
-func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags) error {
+func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds plugin.Flags) error {
 	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
+func installPlugin(
+	ctx context.Context,
+	opts *deploymentOptions,
+	plugin workspace.PluginSpec,
+) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
@@ -262,25 +293,83 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 
-	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+	pluginID := fmt.Sprintf("%s-%s", plugin.Name, plugin.Version)
+	downloadMessage := "Downloading plugin " + pluginID
+
+	// We want to report download progress so that users are not left wondering if
+	// their program has hung. To do this we wrap the downloading ReadCloser with
+	// one that observes the bytes read and renders a progress bar in some
+	// fashion. If we have an event emitter available, we'll use that to report
+	// program by publishing progress events. If not, we'll wrap with a ReadCloser
+	// that renders progress directly to the console itself.
+	var withDownloadProgress func(io.ReadCloser, int64) io.ReadCloser
+	if opts == nil {
+		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return workspace.ReadCloserProgressBar(
+				stream,
+				size,
+				downloadMessage,
+				cmdutil.GetGlobalColorization(),
+			)
+		}
+	} else {
+		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return NewProgressReportingCloser(
+				opts.Events,
+				PluginDownload,
+				string(PluginDownload)+":"+pluginID,
+				downloadMessage,
+				size,
+				100*time.Millisecond, /*reportingInterval */
+				stream,
+			)
+		}
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	tarball, err := workspace.DownloadToFile(plugin, withProgress, retry)
+	tarball, err := workspace.DownloadToFile(plugin, withDownloadProgress, retry)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
 	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 
-	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
-
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(tarball), false); err != nil {
+
+	// In a similar manner to downloads, we'll use a progress bar to show install
+	// progress by wrapping the download stream with a progress reporting
+	// ReadCloser where possible.
+	var withInstallProgress func(io.ReadCloser) io.ReadCloser
+	stat, err := tarball.Stat()
+	if opts == nil || err != nil {
+		withInstallProgress = func(stream io.ReadCloser) io.ReadCloser {
+			return stream
+		}
+
+		installing := fmt.Sprintf("[%s plugin %s] installing", plugin.Kind, pluginID)
+		fmt.Fprintln(os.Stderr, installing)
+	} else {
+		withInstallProgress = func(stream io.ReadCloser) io.ReadCloser {
+			return NewProgressReportingCloser(
+				opts.Events,
+				PluginInstall,
+				string(PluginInstall)+":"+pluginID,
+				"Installing plugin "+pluginID,
+				stat.Size(),
+				100*time.Millisecond, /*reportingInterval */
+				tarball,
+			)
+		}
+	}
+
+	if err := plugin.InstallWithContext(
+		ctx,
+		workspace.TarPlugin(withInstallProgress(tarball)),
+		false,
+	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 	}
@@ -306,7 +395,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginSpec {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[tokens.Package]workspace.PluginSpec {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false

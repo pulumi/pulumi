@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -217,11 +217,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -295,7 +295,7 @@ example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var catResource = new Cat("catResource", CatArgs.builder()        
+var catResource = new Cat("catResource", CatArgs.builder()
     .age(0)
     .pet(PetArgs.builder()
         .requiredName(randomPet)
@@ -319,19 +319,19 @@ var catResource = new Cat("catResource", CatArgs.builder()
 ```python
 cat_resource = example.Cat("catResource",
     age=0,
-    pet=example.PetArgs(
-        required_name=random_pet,
-        required_name_array=[random_pet],
-        required_name_map={
+    pet={
+        "required_name": random_pet,
+        "required_name_array": [random_pet],
+        "required_name_map": {
             "string": random_pet,
         },
-        age=0,
-        name=random_pet,
-        name_array=[random_pet],
-        name_map={
+        "age": 0,
+        "name": random_pet,
+        "name_array": [random_pet],
+        "name_map": {
             "string": random_pet,
         },
-    ))
+    })
 ```
 
 </pulumi-choosable>
@@ -395,6 +395,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

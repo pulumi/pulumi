@@ -1,0 +1,59 @@
+{
+    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+    "organizeImports": {
+        "enabled": false
+    },
+    "files": {
+        "ignore": [
+            "bin/",
+            "proto/",
+            "dist/",
+            "node_modules",
+            ".nyc_output/",
+            ".direnv/",
+            "cmd/pulumi-language-nodejs",
+            "tests/mockpackage/lib/",
+            "tests/runtime/testdata/closure-tests",
+            "vendor/"
+        ]
+    },
+    "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 120
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": false,
+            "complexity": {
+                "noExtraBooleanCast": "error",
+                "useFlatMap": "error",
+                "useOptionalChain": "error",
+                "noUselessConstructor": "error"
+            },
+            "performance": {
+                "noDelete": "error"
+            },
+            "suspicious": {
+                "noExtraNonNullAssertion": "error",
+                "noExplicitAny": "off",
+                "noAsyncPromiseExecutor": "error",
+                "noEmptyInterface": "error",
+                "noShadowRestrictedNames": "off",
+                "noLabelVar": "error",
+                "noCompareNegZero": "error",
+                "noConstEnum": "error",
+                "noSparseArray": "error",
+                "useDefaultSwitchClauseLast": "error",
+                "noArrayIndexKey": "error",
+                "noDebugger": "error",
+                "noImportAssign": "error",
+                "noFunctionAssign": "error",
+                "noAssignInExpressions": "error",
+                "noRedeclare": "off",
+                "noPrototypeBuiltins": "off"
+            }
+        }
+    }
+}

@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -221,11 +221,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -235,7 +235,7 @@ The following reference example uses placeholder values for all [input propertie
 ```csharp
 var componentResource = new Example.Component("componentResource", new()
 {
-    RequiredMetadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    RequiredMetadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
     {
         Annotations = 
         {
@@ -257,7 +257,7 @@ var componentResource = new Example.Component("componentResource", new()
         },
         ManagedFields = new[]
         {
-            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
             {
                 ApiVersion = "string",
                 FieldsType = "string",
@@ -272,7 +272,7 @@ var componentResource = new Example.Component("componentResource", new()
         Namespace = "string",
         OwnerReferences = new[]
         {
-            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
             {
                 ApiVersion = "string",
                 Kind = "string",
@@ -288,7 +288,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     RequiredMetadataArray = new[]
     {
-        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -310,7 +310,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -325,7 +325,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -342,7 +342,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     RequiredMetadataMap = 
     {
-        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        { "string", new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -364,7 +364,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -379,7 +379,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -394,7 +394,7 @@ var componentResource = new Example.Component("componentResource", new()
             Uid = "string",
         } },
     },
-    Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
     {
         Annotations = 
         {
@@ -416,7 +416,7 @@ var componentResource = new Example.Component("componentResource", new()
         },
         ManagedFields = new[]
         {
-            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
             {
                 ApiVersion = "string",
                 FieldsType = "string",
@@ -431,7 +431,7 @@ var componentResource = new Example.Component("componentResource", new()
         Namespace = "string",
         OwnerReferences = new[]
         {
-            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
             {
                 ApiVersion = "string",
                 Kind = "string",
@@ -447,7 +447,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     MetadataArray = new[]
     {
-        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -469,7 +469,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -484,7 +484,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -501,7 +501,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     MetadataMap = 
     {
-        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        { "string", new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -523,7 +523,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -538,7 +538,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -842,7 +842,7 @@ example, err := example.NewComponent(ctx, "componentResource", &example.Componen
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .requiredMetadata(ObjectMetaArgs.builder()
         .annotations(Map.of("string", "string"))
         .clusterName("string")
@@ -1053,231 +1053,231 @@ var componentResource = new Component("componentResource", ComponentArgs.builder
 
 ```python
 component_resource = example.Component("componentResource",
-    required_metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        annotations={
+    required_metadata={
+        "annotations": {
             "string": "string",
         },
-        cluster_name="string",
-        creation_timestamp="string",
-        deletion_grace_period_seconds=0,
-        deletion_timestamp="string",
-        finalizers=["string"],
-        generate_name="string",
-        generation=0,
-        labels={
+        "cluster_name": "string",
+        "creation_timestamp": "string",
+        "deletion_grace_period_seconds": 0,
+        "deletion_timestamp": "string",
+        "finalizers": ["string"],
+        "generate_name": "string",
+        "generation": 0,
+        "labels": {
             "string": "string",
         },
-        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-            api_version="string",
-            fields_type="string",
-            fields_v1="{}",
-            manager="string",
-            operation="string",
-            subresource="string",
-            time="string",
-        )],
-        name="string",
-        namespace="string",
-        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-            api_version="string",
-            kind="string",
-            name="string",
-            uid="string",
-            block_owner_deletion=False,
-            controller=False,
-        )],
-        resource_version="string",
-        self_link="string",
-        uid="string",
-    ),
-    required_metadata_array=[kubernetes.meta.v1.ObjectMetaArgs(
-        annotations={
-            "string": "string",
-        },
-        cluster_name="string",
-        creation_timestamp="string",
-        deletion_grace_period_seconds=0,
-        deletion_timestamp="string",
-        finalizers=["string"],
-        generate_name="string",
-        generation=0,
-        labels={
-            "string": "string",
-        },
-        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-            api_version="string",
-            fields_type="string",
-            fields_v1="{}",
-            manager="string",
-            operation="string",
-            subresource="string",
-            time="string",
-        )],
-        name="string",
-        namespace="string",
-        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-            api_version="string",
-            kind="string",
-            name="string",
-            uid="string",
-            block_owner_deletion=False,
-            controller=False,
-        )],
-        resource_version="string",
-        self_link="string",
-        uid="string",
-    )],
-    required_metadata_map={
-        "string": kubernetes.meta.v1.ObjectMetaArgs(
-            annotations={
-                "string": "string",
-            },
-            cluster_name="string",
-            creation_timestamp="string",
-            deletion_grace_period_seconds=0,
-            deletion_timestamp="string",
-            finalizers=["string"],
-            generate_name="string",
-            generation=0,
-            labels={
-                "string": "string",
-            },
-            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-                api_version="string",
-                fields_type="string",
-                fields_v1="{}",
-                manager="string",
-                operation="string",
-                subresource="string",
-                time="string",
-            )],
-            name="string",
-            namespace="string",
-            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-                api_version="string",
-                kind="string",
-                name="string",
-                uid="string",
-                block_owner_deletion=False,
-                controller=False,
-            )],
-            resource_version="string",
-            self_link="string",
-            uid="string",
-        ),
+        "managed_fields": [{
+            "api_version": "string",
+            "fields_type": "string",
+            "fields_v1": "{}",
+            "manager": "string",
+            "operation": "string",
+            "subresource": "string",
+            "time": "string",
+        }],
+        "name": "string",
+        "namespace": "string",
+        "owner_references": [{
+            "api_version": "string",
+            "kind": "string",
+            "name": "string",
+            "uid": "string",
+            "block_owner_deletion": False,
+            "controller": False,
+        }],
+        "resource_version": "string",
+        "self_link": "string",
+        "uid": "string",
     },
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        annotations={
+    required_metadata_array=[{
+        "annotations": {
             "string": "string",
         },
-        cluster_name="string",
-        creation_timestamp="string",
-        deletion_grace_period_seconds=0,
-        deletion_timestamp="string",
-        finalizers=["string"],
-        generate_name="string",
-        generation=0,
-        labels={
+        "cluster_name": "string",
+        "creation_timestamp": "string",
+        "deletion_grace_period_seconds": 0,
+        "deletion_timestamp": "string",
+        "finalizers": ["string"],
+        "generate_name": "string",
+        "generation": 0,
+        "labels": {
             "string": "string",
         },
-        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-            api_version="string",
-            fields_type="string",
-            fields_v1="{}",
-            manager="string",
-            operation="string",
-            subresource="string",
-            time="string",
-        )],
-        name="string",
-        namespace="string",
-        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-            api_version="string",
-            kind="string",
-            name="string",
-            uid="string",
-            block_owner_deletion=False,
-            controller=False,
-        )],
-        resource_version="string",
-        self_link="string",
-        uid="string",
-    ),
-    metadata_array=[kubernetes.meta.v1.ObjectMetaArgs(
-        annotations={
+        "managed_fields": [{
+            "api_version": "string",
+            "fields_type": "string",
+            "fields_v1": "{}",
+            "manager": "string",
+            "operation": "string",
+            "subresource": "string",
+            "time": "string",
+        }],
+        "name": "string",
+        "namespace": "string",
+        "owner_references": [{
+            "api_version": "string",
+            "kind": "string",
+            "name": "string",
+            "uid": "string",
+            "block_owner_deletion": False,
+            "controller": False,
+        }],
+        "resource_version": "string",
+        "self_link": "string",
+        "uid": "string",
+    }],
+    required_metadata_map={
+        "string": {
+            "annotations": {
+                "string": "string",
+            },
+            "cluster_name": "string",
+            "creation_timestamp": "string",
+            "deletion_grace_period_seconds": 0,
+            "deletion_timestamp": "string",
+            "finalizers": ["string"],
+            "generate_name": "string",
+            "generation": 0,
+            "labels": {
+                "string": "string",
+            },
+            "managed_fields": [{
+                "api_version": "string",
+                "fields_type": "string",
+                "fields_v1": "{}",
+                "manager": "string",
+                "operation": "string",
+                "subresource": "string",
+                "time": "string",
+            }],
+            "name": "string",
+            "namespace": "string",
+            "owner_references": [{
+                "api_version": "string",
+                "kind": "string",
+                "name": "string",
+                "uid": "string",
+                "block_owner_deletion": False,
+                "controller": False,
+            }],
+            "resource_version": "string",
+            "self_link": "string",
+            "uid": "string",
+        },
+    },
+    metadata={
+        "annotations": {
             "string": "string",
         },
-        cluster_name="string",
-        creation_timestamp="string",
-        deletion_grace_period_seconds=0,
-        deletion_timestamp="string",
-        finalizers=["string"],
-        generate_name="string",
-        generation=0,
-        labels={
+        "cluster_name": "string",
+        "creation_timestamp": "string",
+        "deletion_grace_period_seconds": 0,
+        "deletion_timestamp": "string",
+        "finalizers": ["string"],
+        "generate_name": "string",
+        "generation": 0,
+        "labels": {
             "string": "string",
         },
-        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-            api_version="string",
-            fields_type="string",
-            fields_v1="{}",
-            manager="string",
-            operation="string",
-            subresource="string",
-            time="string",
-        )],
-        name="string",
-        namespace="string",
-        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-            api_version="string",
-            kind="string",
-            name="string",
-            uid="string",
-            block_owner_deletion=False,
-            controller=False,
-        )],
-        resource_version="string",
-        self_link="string",
-        uid="string",
-    )],
+        "managed_fields": [{
+            "api_version": "string",
+            "fields_type": "string",
+            "fields_v1": "{}",
+            "manager": "string",
+            "operation": "string",
+            "subresource": "string",
+            "time": "string",
+        }],
+        "name": "string",
+        "namespace": "string",
+        "owner_references": [{
+            "api_version": "string",
+            "kind": "string",
+            "name": "string",
+            "uid": "string",
+            "block_owner_deletion": False,
+            "controller": False,
+        }],
+        "resource_version": "string",
+        "self_link": "string",
+        "uid": "string",
+    },
+    metadata_array=[{
+        "annotations": {
+            "string": "string",
+        },
+        "cluster_name": "string",
+        "creation_timestamp": "string",
+        "deletion_grace_period_seconds": 0,
+        "deletion_timestamp": "string",
+        "finalizers": ["string"],
+        "generate_name": "string",
+        "generation": 0,
+        "labels": {
+            "string": "string",
+        },
+        "managed_fields": [{
+            "api_version": "string",
+            "fields_type": "string",
+            "fields_v1": "{}",
+            "manager": "string",
+            "operation": "string",
+            "subresource": "string",
+            "time": "string",
+        }],
+        "name": "string",
+        "namespace": "string",
+        "owner_references": [{
+            "api_version": "string",
+            "kind": "string",
+            "name": "string",
+            "uid": "string",
+            "block_owner_deletion": False,
+            "controller": False,
+        }],
+        "resource_version": "string",
+        "self_link": "string",
+        "uid": "string",
+    }],
     metadata_map={
-        "string": kubernetes.meta.v1.ObjectMetaArgs(
-            annotations={
+        "string": {
+            "annotations": {
                 "string": "string",
             },
-            cluster_name="string",
-            creation_timestamp="string",
-            deletion_grace_period_seconds=0,
-            deletion_timestamp="string",
-            finalizers=["string"],
-            generate_name="string",
-            generation=0,
-            labels={
+            "cluster_name": "string",
+            "creation_timestamp": "string",
+            "deletion_grace_period_seconds": 0,
+            "deletion_timestamp": "string",
+            "finalizers": ["string"],
+            "generate_name": "string",
+            "generation": 0,
+            "labels": {
                 "string": "string",
             },
-            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-                api_version="string",
-                fields_type="string",
-                fields_v1="{}",
-                manager="string",
-                operation="string",
-                subresource="string",
-                time="string",
-            )],
-            name="string",
-            namespace="string",
-            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-                api_version="string",
-                kind="string",
-                name="string",
-                uid="string",
-                block_owner_deletion=False,
-                controller=False,
-            )],
-            resource_version="string",
-            self_link="string",
-            uid="string",
-        ),
+            "managed_fields": [{
+                "api_version": "string",
+                "fields_type": "string",
+                "fields_v1": "{}",
+                "manager": "string",
+                "operation": "string",
+                "subresource": "string",
+                "time": "string",
+            }],
+            "name": "string",
+            "namespace": "string",
+            "owner_references": [{
+                "api_version": "string",
+                "kind": "string",
+                "name": "string",
+                "uid": "string",
+                "block_owner_deletion": False,
+                "controller": False,
+            }],
+            "resource_version": "string",
+            "self_link": "string",
+            "uid": "string",
+        },
     })
 ```
 
@@ -1741,6 +1741,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The Component resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

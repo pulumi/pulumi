@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -217,11 +217,11 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -229,7 +229,21 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var example_resourceResource = new Legacy_names.Example_resource("example_resourceResource", new()
+{
+    Map_enum = new[]
+    {
+        
+        {
+            { "string", Legacy_names.Enum_XYZ.Plain },
+        },
+    },
+    Request_HTTP = new Legacy_names.HTTP_module.Inputs.RequestArgs
+    {
+        URL = "string",
+        Content_body = "string",
+    },
+});
 ```
 
 </pulumi-choosable>
@@ -261,7 +275,7 @@ example, err := legacy_names.Newexample_resource(ctx, "example_resourceResource"
 <pulumi-choosable type="language" values="java">
 
 ```java
-var example_resourceResource = new Example_resource("example_resourceResource", Example_resourceArgs.builder()        
+var example_resourceResource = new Example_resource("example_resourceResource", Example_resourceArgs.builder()
     .map_enum(Map.of("string", "A"))
     .request_HTTP(RequestArgs.builder()
         .uRL("string")
@@ -278,7 +292,14 @@ var example_resourceResource = new Example_resource("example_resourceResource", 
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+example_resource_resource = legacy_names.Example_resource("example_resourceResource",
+    map_enum=[{
+        "string": legacy_names.Enum_XYZ.PLAIN,
+    }],
+    request__http={
+        "url": "string",
+        "content_body": "string",
+    })
 ```
 
 </pulumi-choosable>
@@ -327,6 +348,12 @@ properties:
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
+
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
 
 The Example_resource resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 

@@ -37,19 +37,19 @@ class Resource4(pulumi.Resource):
 class Resource5(pulumi.Resource):
     @property
     @pulumi.getter
-    def foo(self) -> pulumi.Output[str]: ...
+    def foo(self) -> pulumi.Output[str]: ...  # type: ignore
 
 
 class Resource6(pulumi.Resource):
     @property
     @pulumi.getter
-    def nested(self) -> pulumi.Output["Nested"]: ...
+    def nested(self) -> pulumi.Output["Nested"]: ...  # type: ignore
 
 
 class Resource7(pulumi.Resource):
     @property
     @pulumi.getter(name="nestedValue")
-    def nested_value(self) -> pulumi.Output["Nested"]: ...
+    def nested_value(self) -> pulumi.Output["Nested"]: ...  # type: ignore
 
 
 class Resource8(pulumi.Resource):
@@ -59,7 +59,7 @@ class Resource8(pulumi.Resource):
 class Resource9(pulumi.Resource):
     @property
     @pulumi.getter
-    def foo(self) -> pulumi.Output: ...
+    def foo(self) -> pulumi.Output: ...  # type: ignore
 
 
 class Resource10(pulumi.Resource):
@@ -69,13 +69,13 @@ class Resource10(pulumi.Resource):
 class Resource11(pulumi.Resource):
     @property
     @pulumi.getter
-    def foo(self) -> str: ...
+    def foo(self) -> str: ...  # type: ignore
 
 
 class Resource12(pulumi.Resource):
     @property
     @pulumi.getter
-    def foo(self): ...
+    def foo(self): ...  # type: ignore
 
 
 @pulumi.output_type

@@ -26,6 +26,7 @@ func ReadConsoleNoEcho(prompt string) (string, error) {
 	// error when it tries to disable local echo.
 	//
 	// In this case, just read normally
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return readConsolePlain(os.Stdout, os.Stdin, prompt)
 	}

@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import crd_k8s_amazonaws_com as _crd_k8s_amazonaws_com
 import pulumi_kubernetes
@@ -50,7 +55,7 @@ class Component(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]] = None,
+                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
                  pod: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.core.v1.PodArgs']]] = None,
                  __props__=None):
         """
@@ -81,7 +86,7 @@ class Component(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]] = None,
+                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
                  pod: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.core.v1.PodArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

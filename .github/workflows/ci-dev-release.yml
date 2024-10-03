@@ -147,7 +147,7 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
       - name: Move artifacts to the right place
@@ -191,7 +191,7 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
       - name: Move artifacts to the right place
@@ -222,7 +222,7 @@ jobs:
     needs: [sign, gather-info]
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-region: us-east-2
@@ -235,7 +235,7 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
       - name: Flatten artifact directories

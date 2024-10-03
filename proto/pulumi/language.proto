@@ -36,8 +36,11 @@ service LanguageRuntime {
     // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
     rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 
+    // RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+    rpc RuntimeOptionsPrompts(RuntimeOptionsRequest) returns (RuntimeOptionsResponse) {}
+
     // About returns information about the runtime for this language.
-    rpc About(google.protobuf.Empty) returns (AboutResponse) {}
+    rpc About(AboutRequest) returns (AboutResponse) {}
 
     // GetProgramDependencies returns the set of dependencies required by the program.
     rpc GetProgramDependencies(GetProgramDependenciesRequest) returns (GetProgramDependenciesResponse) {}
@@ -75,6 +78,10 @@ message ProgramInfo {
     google.protobuf.Struct options = 4;
 }
 
+message AboutRequest {
+    ProgramInfo info = 1; // the program info to use.
+}
+
 // AboutResponse returns runtime information about the language.
 message AboutResponse {
     string executable = 1; // the primary executable for the runtime of this language.
@@ -84,8 +91,8 @@ message AboutResponse {
 
 message GetProgramDependenciesRequest {
     string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
-    string pwd = 2 [deprecated = true];     // the program's working directory.
-    string program = 3 [deprecated = true]; // the path to the program.
+    string pwd = 2 [deprecated = true];     // the program's working directory. Deprecated, use info.program_directory instead.
+    string program = 3 [deprecated = true]; // the path to the program. Deprecated, use info.entry_point instead.
     bool transitiveDependencies = 4; // if transitive dependencies should be included in the result.
     ProgramInfo info = 5; // the program info to use to calculate dependencies.
 }
@@ -101,8 +108,8 @@ message GetProgramDependenciesResponse {
 
 message GetRequiredPluginsRequest {
     string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
-    string pwd = 2 [deprecated = true];     // the program's working directory.
-    string program = 3 [deprecated = true]; // the path to the program.
+    string pwd = 2 [deprecated = true];     // the program's working directory. Deprecated, use info.program_directory instead.
+    string program = 3 [deprecated = true]; // the path to the program. Deprecated, use info.entry_point instead.
     ProgramInfo info = 4; // the program info to use to calculate plugins.
 }
 
@@ -115,7 +122,7 @@ message RunRequest {
     string project = 1;             // the project name.
     string stack = 2;               // the name of the stack being deployed into.
     string pwd = 3;                 // the program's working directory.
-    string program = 4 [deprecated = true];             // the path to the program to execute.
+    string program = 4 [deprecated = true];             // the path to the program to execute. Deprecated, use info.entry_point instead.
     repeated string args = 5;       // any arguments to pass to the program.
     map<string, string> config = 6; // the configuration variables to apply before running.
     bool dryRun = 7;                // true if we're only doing a dryrun (preview).
@@ -126,6 +133,9 @@ message RunRequest {
     string organization = 12;       // the organization of the stack being deployed into.
     google.protobuf.Struct configPropertyMap = 13; // the configuration variables to apply before running.
     ProgramInfo info = 14; // the program info to use to execute the program.
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 15;
+    bool attach_debugger = 16;       // true if the language host is supposed to start the program under a debugger.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
@@ -140,9 +150,11 @@ message RunResponse {
 }
 
 message InstallDependenciesRequest {
-    string directory = 1 [deprecated = true]; // the program's working directory.
+    string directory = 1 [deprecated = true]; // the program's working directory. Deprecated, use info.program_directory instead.
     bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
     ProgramInfo info = 3; // the program info to use to execute the plugin.
+    bool use_language_version_tools = 4; // if we should use language version tools like pyenv or
+                                         // nvm to setup the language version.
 }
 
 message InstallDependenciesResponse {
@@ -150,9 +162,37 @@ message InstallDependenciesResponse {
     bytes stderr = 2; // a line of stderr text.
 }
 
+message RuntimeOptionsRequest {
+    ProgramInfo info = 1; // The current program info used to evaluate which prompts should be asked.
+}
+
+message RuntimeOptionPrompt {
+    enum RuntimeOptionType {
+        STRING = 0;
+        INT32 = 1;
+    }
+
+    message RuntimeOptionValue {
+        RuntimeOptionType promptType = 1;
+        string stringValue = 2;
+        int32 int32Value = 3;
+        string displayName = 4;
+    }
+
+    string key = 1;
+    string description = 2;
+    RuntimeOptionType promptType = 3;
+    repeated RuntimeOptionValue choices = 4;
+    RuntimeOptionValue default = 5;
+}
+
+message RuntimeOptionsResponse {
+    repeated RuntimeOptionPrompt prompts = 1; // additional prompts to ask the user
+}
+
 message RunPluginRequest{
     string pwd = 1; // the program's working directory.
-    string program = 2 [deprecated = true]; // the path to the program to execute.
+    string program = 2 [deprecated = true]; // the path to the program to execute. Deprecated, use info.entry_point instead.
     repeated string args = 3; // any arguments to pass to the program.
     repeated string env = 4; // any environment variables to set as part of the program.
     ProgramInfo info = 5; // the program info to use to execute the plugin.
@@ -171,6 +211,8 @@ message GenerateProgramRequest {
     map<string, string> source = 1;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 2;
+    // if PCL binding should be strict or not.
+    bool strict = 3;
 }
 
 message GenerateProgramResponse {
@@ -213,6 +255,9 @@ message GeneratePackageRequest {
     // local dependencies to use instead of using the package system. This is a map of package name to a local
     // path of a language specific artifact to use for the SDK for that package.
     map<string, string> local_dependencies = 5;
+    // if true generates an SDK appropriate for local usage, this may differ from a standard publishable SDK depending
+    // on the language.
+    bool local = 6;
 }
 
 message GeneratePackageResponse {

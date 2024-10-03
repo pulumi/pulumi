@@ -30,6 +30,24 @@ class ResourceProviderStub:
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
+    Parameterize: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ParameterizeRequest,
+        pulumi.provider_pb2.ParameterizeResponse,
+    ]
+    """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+
+    Providers can be parameterized with either multiple extension packages (which don't define their own provider
+    resources), or with a replacement package (which does define its own provider resource).
+
+    Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+    called once. Extension packages may even be called multiple times for the same package name, but with different
+    versions.
+
+    Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+    should return the sub-package name and version (which for `ParametersValue` should match the given input).
+
+    For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+    """
     GetSchema: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.GetSchemaRequest,
         pulumi.provider_pb2.GetSchemaResponse,
@@ -49,7 +67,14 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ConfigureRequest,
         pulumi.provider_pb2.ConfigureResponse,
     ]
-    """Configure configures the resource provider with "globals" that control its behavior."""
+    """Configure configures the resource provider with "globals" that control its behavior.
+
+    :::{warning}
+    ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+    ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+    ConfigureRequest.args.
+    :::
+    """
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.InvokeRequest,
         pulumi.provider_pb2.InvokeResponse,
@@ -153,6 +178,26 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     """
 
     
+    def Parameterize(
+        self,
+        request: pulumi.provider_pb2.ParameterizeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.ParameterizeResponse:
+        """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+
+        Providers can be parameterized with either multiple extension packages (which don't define their own provider
+        resources), or with a replacement package (which does define its own provider resource).
+
+        Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+        called once. Extension packages may even be called multiple times for the same package name, but with different
+        versions.
+
+        Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+        should return the sub-package name and version (which for `ParametersValue` should match the given input).
+
+        For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+        """
+    
     def GetSchema(
         self,
         request: pulumi.provider_pb2.GetSchemaRequest,
@@ -179,7 +224,14 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ConfigureRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.ConfigureResponse:
-        """Configure configures the resource provider with "globals" that control its behavior."""
+        """Configure configures the resource provider with "globals" that control its behavior.
+
+        :::{warning}
+        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+        ConfigureRequest.args.
+        :::
+        """
     
     def Invoke(
         self,

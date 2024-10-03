@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
@@ -33,6 +34,10 @@ service Engine {
 
     // SetRootResource sets the URN of the root resource.
     rpc SetRootResource(SetRootResourceRequest) returns (SetRootResourceResponse) {}
+
+    // StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+    // should notify the user of how to connect to the debugger.
+    rpc StartDebugging(StartDebuggingRequest) returns (google.protobuf.Empty) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -82,4 +87,11 @@ message SetRootResourceRequest {
 
 message SetRootResourceResponse {
     // empty.
+}
+
+message StartDebuggingRequest {
+    // the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume.
+    google.protobuf.Struct config = 1;
+    // the string to display to the user with instructions on how to connect to the debugger.
+    string message = 2;
 }

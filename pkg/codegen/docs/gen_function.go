@@ -36,10 +36,16 @@ type functionDocArgs struct {
 	Header header
 
 	Tool string
+	// LangChooserLanguages is a comma-separated list of languages to pass to the
+	// language chooser shortcode. Use this to customize the languages shown for a
+	// function. By default, the language chooser will show all languages supported
+	// by Pulumi.
+	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	LangChooserLanguages string
 
 	DeprecationMessage string
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 
 	// FunctionName is a map of the language and the function name in that language.
 	FunctionName map[string]string
@@ -450,7 +456,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		}
 	}
 
-	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/)
+	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/, false /*isProvider*/)
 
 	// Generate the per-language map for the function name.
 	funcNameMap := map[string]string{}
@@ -470,11 +476,13 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Notes:          def.Attribution,
 	}
 
-	docInfo := dctx.decomposeDocstring(f.Comment)
+	supportedSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(f.IsOverlay, f.OverlaySupportedLanguages)
+	docInfo := dctx.decomposeDocstring(f.Comment, supportedSnippetLanguages)
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
-		Tool: mod.tool,
+		Tool:                 mod.tool,
+		LangChooserLanguages: supportedSnippetLanguages,
 
 		FunctionName:   funcNameMap,
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),
@@ -482,7 +490,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 
 		Comment:            docInfo.description,
 		DeprecationMessage: f.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: supportedSnippetLanguages,
+		},
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,

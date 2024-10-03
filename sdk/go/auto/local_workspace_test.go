@@ -28,6 +28,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
+
 	"github.com/blang/semver"
 	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
@@ -58,11 +61,12 @@ const (
 )
 
 type mockPulumiCommand struct {
-	version  semver.Version
-	stdout   string
-	stderr   string
-	exitCode int
-	err      error
+	version      semver.Version
+	stdout       string
+	stderr       string
+	exitCode     int
+	err          error
+	capturedArgs []string
 }
 
 func (m *mockPulumiCommand) Version() semver.Version {
@@ -77,6 +81,7 @@ func (m *mockPulumiCommand) Run(ctx context.Context,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
+	m.capturedArgs = args
 	return m.stdout, m.stderr, m.exitCode, m.err
 }
 
@@ -947,12 +952,82 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
+	// -- pulumi destroy --preview-only --
+
+	pdRes, err := s.PreviewDestroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
+	assert.NoError(t, err, "preview-only destroy failed")
+	assert.Equal(t, map[apitype.OpType]int{apitype.OpDelete: 1}, pdRes.ChangeSummary)
+
 	// -- pulumi destroy --
 
 	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
 	require.NoError(t, err, "destroy failed")
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	assert.NoError(t, err, "up failed")
+
+	// Act.
+	err = s.Workspace().RemoveStack(ctx, s.Name())
+
+	// Assert.
+	assert.ErrorContains(t, err, "still has resources; removal rejected")
+}
+
+func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	assert.NoError(t, err, "up failed")
+
+	// Act.
+	_, err = s.Destroy(ctx, optdestroy.Remove())
+	assert.NoError(t, err, "destroy failed")
+	err = s.Workspace().SelectStack(ctx, s.Name())
+
+	// Assert.
+	assert.ErrorContains(t, err, "no stack named")
 }
 
 // If not run with "-race", this test has little value over the prior test.
@@ -1945,6 +2020,47 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(destroyEvents))
 }
 
+func TestStackImportResources(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
+	pDir := filepath.Join(".", "test", "import")
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	randomPluginVersion := "4.16.3"
+	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
+	assert.NoError(t, err, "failed to install plugin")
+	resourcesToImport := []*optimport.ImportResource{
+		{
+			Type: "random:index/randomPassword:RandomPassword",
+			ID:   "supersecret",
+			Name: "randomPassword",
+		},
+	}
+
+	importResult, err := stack.ImportResources(ctx,
+		optimport.Resources(resourcesToImport),
+		optimport.Protect(false))
+
+	assert.NoError(t, err, "failed to import resources")
+	assert.Equal(t, "succeeded", importResult.Summary.Result)
+	expectedGeneratedCode, err := os.ReadFile(filepath.Join(pDir, "expected_generated_code.yaml"))
+	assert.NoError(t, err, "failed to read expected generated code")
+	normalize := func(s string) string {
+		return strings.ReplaceAll(s, "\r\n", "\n")
+	}
+
+	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
+	_, err = stack.Destroy(ctx)
+	assert.NoError(t, err, "failed to destroy stack")
+}
+
 func TestSupportsStackOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -2720,6 +2836,242 @@ func TestWhoAmIDetailed(t *testing.T) {
 	}
 }
 
+func TestListStacks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj1/teststack2",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	stacks, err := workspace.ListStacks(ctx)
+
+	assert.NoError(t, err)
+	assert.Len(t, stacks, 2)
+	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
+	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
+	assert.Equal(t, "testorg1/testproj1/teststack2", stacks[1].Name)
+	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack2", stacks[1].URL)
+}
+
+func TestListStacksCorrectArgs(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	_, err = workspace.ListStacks(ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs)
+}
+
+func TestListAllStacks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj2/teststack2",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	stacks, err := workspace.ListStacks(ctx, optlist.All())
+
+	assert.NoError(t, err)
+	assert.Len(t, stacks, 2)
+	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
+	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
+	assert.Equal(t, "testorg1/testproj2/teststack2", stacks[1].Name)
+	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj2/teststack2", stacks[1].URL)
+}
+
+func TestListStacksAllCorrectArgs(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	_, err = workspace.ListStacks(ctx, optlist.All())
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
+}
+
+func TestInstallWithOptions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install")
+
+	defer os.RemoveAll(filepath.Join(pDir, "venv"))
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir))
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Run with options
+	err = workspace.Install(ctx, &InstallOptions{
+		Stdout: stdout,
+		Stderr: stderr,
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, stdout.String(), "Creating virtual environment...")
+	require.Contains(t, stdout.String(), "Successfully installed urllib3")
+	require.Contains(t, stdout.String(), "Finished installing dependencies")
+	require.Empty(t, stderr.String())
+	require.DirExists(t, filepath.Join(pDir, "venv"))
+
+	// Run without options
+	err = workspace.Install(ctx, nil)
+
+	require.NoError(t, err)
+}
+
+func TestInstallOptions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install")
+	m := mockPulumiCommand{
+		// Set a version high enough to support UseLanguageVersionTools
+		version: semver.Version{Major: 3, Minor: 130},
+	}
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	err = workspace.Install(ctx, &InstallOptions{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		NoPlugins: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		NoDependencies: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		Reinstall: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+		NoDependencies:          true,
+		NoPlugins:               true,
+		Reinstall:               true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"install",
+		"--use-language-version-tools",
+		"--no-plugins",
+		"--no-dependencies",
+		"--reinstall",
+	}, m.capturedArgs)
+}
+
+func TestInstallWithUseLanguageVersionTools(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
+
+	// Option is not available on < 3.130
+	m := mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 129},
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.ErrorContains(t, err, "UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
+
+	// Option is available on >= 3.130
+	m = mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 130},
+	}
+
+	workspace, err = NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
@@ -2959,4 +3311,18 @@ func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.Engi
 		wg.Done()
 	})()
 	return &wg
+}
+
+type MyResource struct {
+	pulumi.ResourceState
+}
+
+func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*MyResource, error) {
+	myResource := &MyResource{}
+	err := ctx.RegisterComponentResource("my:module:MyResource", name, myResource, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return myResource, nil
 }

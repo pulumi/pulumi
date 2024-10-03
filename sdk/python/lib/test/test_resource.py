@@ -15,8 +15,8 @@
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import os
-import pytest
 import unittest
+import pytest
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
@@ -139,7 +139,7 @@ def test_depends_on_typing_variations(dep_tracker) -> None:
         res = MockResource(name, opts)
         return pulumi.Output.all(dep.urn, res.urn).apply(lambda urns: check(i, urns))
 
-    return pulumi.Output.all(
+    pulumi.Output.all(
         [
             check_opts(i, f"res{i}", opts)
             for i, opts in enumerate(depends_on_variations(dep))

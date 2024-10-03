@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -56,7 +57,7 @@ func newStackLsCmd() *cobra.Command {
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,
@@ -134,13 +135,16 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(ctx, project, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(
+		ctx, ws, DefaultLoginManager, project,
+		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

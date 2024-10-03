@@ -61,13 +61,14 @@ func Destroy(
 		Events:        emitter,
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }
 
 func newDestroySource(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.
 	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
@@ -79,8 +80,8 @@ func newDestroySource(
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 
-	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
-		plugctx.Host.GetProjectPlugins()); err != nil {
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, plugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 

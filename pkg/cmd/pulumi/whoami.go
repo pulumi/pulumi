@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ func newWhoAmICmd() *cobra.Command {
 			"\n" +
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return whocmd.Run(cmd.Context())
 		}),
 	}
@@ -61,7 +62,9 @@ type whoAmICmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *whoAmICmd) Run(ctx context.Context) error {
@@ -79,12 +82,13 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	b, err := currentBackend(ctx, project, opts)
+	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}

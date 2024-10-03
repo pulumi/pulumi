@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -151,9 +151,10 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Equal(t, 2, len(exampleObjectType.Properties))
+		assert.Equal(t, 3, len(exampleObjectType.Properties))
 		var exampleProperty *Property
 		var nonPlainProperty *Property
+		var nestedProperty *Property
 		for _, p := range exampleObjectType.Properties {
 			if p.Name == "exampleProperty" {
 				exampleProperty = p
@@ -162,13 +163,27 @@ func TestRoundtripPlainProperties(t *testing.T) {
 			if p.Name == "nonPlainProperty" {
 				nonPlainProperty = p
 			}
+
+			if p.Name == "nestedProperty" {
+				nestedProperty = p
+			}
 		}
 
 		assert.NotNil(t, exampleProperty)
 		assert.NotNil(t, nonPlainProperty)
+		assert.NotNil(t, nestedProperty)
 
 		assert.True(t, exampleProperty.Plain)
 		assert.False(t, nonPlainProperty.Plain)
+		assert.True(t, nestedProperty.Plain)
+
+		opt, ok := nestedProperty.Type.(*OptionalType)
+		assert.True(t, ok)
+		arr, ok := opt.ElementType.(*ArrayType)
+		assert.True(t, ok)
+		str, ok := arr.ElementType.(primitiveType)
+		assert.True(t, ok)
+		assert.Equal(t, stringType, str)
 	}
 
 	assertPlainnessFromResource := func(t *testing.T, pkg *Package) {
@@ -176,9 +191,12 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
+			assert.Equal(t, 3, len(properties))
+
 			var exampleProperty *Property
 			var nonPlainProperty *Property
-			for _, p := range exampleResource.InputProperties {
+			var nestedProperty *Property
+			for _, p := range properties {
 				if p.Name == "exampleProperty" {
 					exampleProperty = p
 				}
@@ -186,15 +204,27 @@ func TestRoundtripPlainProperties(t *testing.T) {
 				if p.Name == "nonPlainProperty" {
 					nonPlainProperty = p
 				}
+
+				if p.Name == "nestedProperty" {
+					nestedProperty = p
+				}
 			}
 
-			// assert that the input property "exampleProperty" is plain
 			assert.NotNil(t, exampleProperty)
-			assert.True(t, exampleProperty.Plain)
-
-			// assert that the output property is not plain
 			assert.NotNil(t, nonPlainProperty)
+			assert.NotNil(t, nestedProperty)
+
+			assert.True(t, exampleProperty.Plain)
 			assert.False(t, nonPlainProperty.Plain)
+			assert.True(t, nestedProperty.Plain)
+
+			opt, ok := nestedProperty.Type.(*OptionalType)
+			assert.True(t, ok)
+			arr, ok := opt.ElementType.(*ArrayType)
+			assert.True(t, ok)
+			str, ok := arr.ElementType.(primitiveType)
+			assert.True(t, ok)
+			assert.Equal(t, stringType, str)
 		}
 
 		check(exampleResource.InputProperties)
@@ -721,6 +751,23 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
 
+func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name: "test",
+		Meta: &MetadataSpec{
+			SupportPack: true,
+		},
+		Resources: map[string]ResourceSpec{},
+	}
+
+	_, diags, _ := BindSpec(pkgSpec, loader)
+	assert.Len(t, diags, 1)
+	assert.Equal(t, diags[0].Severity, hcl.DiagError)
+	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
+}
+
 func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
@@ -885,6 +932,58 @@ func TestIsOverlay(t *testing.T) {
 				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
 			} else {
 				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+		}
+	})
+}
+
+// TestOverlaySupportedLanguages tests that the OverlaySupportedLanguages field is set correctly for resources, types, and functions.
+// Does not test codegen.
+func TestOverlaySupportedLanguages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("overlay", func(t *testing.T) {
+		t.Parallel()
+
+		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
+
+		pkg, err := ImportSpec(pkgSpec, nil)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, v := range pkg.Resources {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
+			}
+			if strings.Contains(v.Token, "ConstrainedLanguages") {
+				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			} else {
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Types {
+			switch v := v.(type) {
+			case *ObjectType:
+				if strings.Contains(v.Token, "Overlay") {
+					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
+				} else {
+					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
+				}
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Functions {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+			if strings.Contains(v.Token, "ConstrainedLanguages") {
+				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			} else {
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			}
 		}
 	})
@@ -1624,4 +1723,74 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx.Host
+}
+
+func TestProviderVersionIsAnError(t *testing.T) {
+	// c.f. https://github.com/pulumi/pulumi/issues/16757
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	// Test that "version" isn't allowed as a property in the package config.
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Config: ConfigSpec{
+			Variables: map[string]PropertySpec{
+				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/config/variables/version: version is a reserved configuration key")
+
+	// Test that "version" isn't allowed as an input property on the provider object.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			InputProperties: map[string]PropertySpec{
+				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err = BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved property name")
+
+	// Test that "version" is allowed as an output property on the provider object. Most providers probably won't add
+	// this, but it's there if they want to expose it.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Properties: map[string]PropertySpec{
+					"version": {
+						TypeSpec: TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors())
+	assert.NotNil(t, pkg)
 }

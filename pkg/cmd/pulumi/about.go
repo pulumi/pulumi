@@ -35,13 +35,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -64,9 +64,9 @@ func newAboutCmd() *cobra.Command {
 			" - the current stack\n" +
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
 				return printJSON(summary)
 			}
@@ -104,7 +104,10 @@ type summaryAbout struct {
 	LogMessage    string                   `json:"-"`
 }
 
-func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
+func getSummaryAbout(
+	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+	transitiveDependencies bool, selectedStack string,
+) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -128,12 +131,12 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = readProject(); err != nil {
+	if proj, pwd, err = ws.ReadProject(); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {
@@ -151,7 +154,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
-				aboutResponse, err := lang.About()
+				aboutResponse, err := lang.About(programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
 				} else {
@@ -180,7 +183,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx, proj)
+	backend, err = nonInteractiveCurrentBackend(ctx, ws, lm, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
@@ -339,12 +342,13 @@ func (b backendAbout) String() string {
 		var tokenType string
 		if b.TokenInformation.Team != "" {
 			tokenType = "team: " + b.TokenInformation.Team
-		} else {
-			contract.Assertf(b.TokenInformation.Organization != "", "token must have an organization or team")
+		} else if b.TokenInformation.Organization != "" {
 			tokenType = "organization: " + b.TokenInformation.Organization
+		} else {
+			tokenType = "unknown"
 		}
 		rows = append(rows, []string{"Token type", tokenType})
-		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
+		rows = append(rows, []string{"Token name", b.TokenInformation.Name})
 	} else {
 		rows = append(rows, []string{"Token type", "personal"})
 	}

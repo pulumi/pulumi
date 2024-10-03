@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,15 +42,19 @@ func (p *LargeProvider) Close() error {
 	return nil
 }
 
-func (p *LargeProvider) Configure(inputs resource.PropertyMap) error {
-	return nil
+func (p *LargeProvider) Configure(
+	context.Context, plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
 }
 
 func (p *LargeProvider) Pkg() tokens.Package {
 	return "large"
 }
 
-func (p *LargeProvider) GetSchema(version int) ([]byte, error) {
+func (p *LargeProvider) GetSchema(
+	context.Context, plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -76,77 +81,80 @@ func (p *LargeProvider) GetSchema(version int) ([]byte, error) {
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonBytes, nil
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
 
-func (p *LargeProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *LargeProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := newInputs["version"]
+	version, ok := req.News["version"]
 	if !ok {
-		return nil, makeCheckFailure("version", "missing version"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return nil, makeCheckFailure("version", "version is not a string"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
 	}
 	if version.StringValue() != "4.3.2" {
-		return nil, makeCheckFailure("version", "version is not 4.3.2"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 4.3.2")}, nil
 	}
 
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *LargeProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	if urn.Type() != "large:index:String" {
-		return nil, makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", urn.Type())), nil
+func (p *LargeProvider) Check(
+	_ context.Context, req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
+	if req.URN.Type() != "large:index:String" {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type()))}, nil
 	}
 
 	// Expect just the boolean value
-	value, ok := newInputs["value"]
+	value, ok := req.News["value"]
 	if !ok {
-		return nil, makeCheckFailure("value", "missing value"), nil
+		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
 	if !value.IsString() {
-		return nil, makeCheckFailure("value", "value is not a string"), nil
+		return plugin.CheckResponse{Failures: makeCheckFailure("value", "value is not a string")}, nil
 	}
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
 func (p *LargeProvider) Create(
-	urn resource.URN, news resource.PropertyMap,
-	timeout float64, preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	if urn.Type() != "large:index:String" {
-		return "", nil, resource.StatusUnknown, fmt.Errorf("invalid URN type: %s", urn.Type())
+	_ context.Context, req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
+	if req.URN.Type() != "large:index:String" {
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
 	id := "id"
-	if preview {
+	if req.Preview {
 		id = ""
 	}
 
 	// Take the input value and _massively_ expand it.
-	value, ok := news["value"]
+	value, ok := req.Properties["value"]
 	if !ok {
-		return "", nil, resource.StatusUnknown, errors.New("missing value")
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, errors.New("missing value")
 	}
 	if !value.IsString() {
-		return "", nil, resource.StatusUnknown, errors.New("value is not a string")
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, errors.New("value is not a string")
 	}
 
 	// aim for 100mb of data (400mb is the size limit we normally set, but nodejs is far more limited)
@@ -155,44 +163,50 @@ func (p *LargeProvider) Create(
 		"value": resource.NewStringProperty(
 			strings.Repeat(value.StringValue(), repeat)),
 	}
-	return resource.ID(id), result, resource.StatusOK, nil
+	return plugin.CreateResponse{
+		ID:         resource.ID(id),
+		Properties: result,
+		Status:     resource.StatusOK,
+	}, nil
 }
 
-func (p *LargeProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *LargeProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("4.3.2")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *LargeProvider) SignalCancellation() error {
+func (p *LargeProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *LargeProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (p *LargeProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *LargeProvider) GetMappings(key string) ([]string, error) {
-	return nil, nil
+func (p *LargeProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
 
 func (p *LargeProvider) DiffConfig(
-	urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *LargeProvider) Diff(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *LargeProvider) Delete(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, nil
+	context.Context, plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	return plugin.DeleteResponse{}, nil
 }

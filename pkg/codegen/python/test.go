@@ -1,6 +1,21 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
+	"context"
 	filesystem "io/fs"
 	"path/filepath"
 	"strings"
@@ -10,7 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 func Check(t *testing.T, path string, _ codegen.StringSet) {
@@ -37,10 +52,17 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	})
 	require.NoError(t, err)
 
-	ex, _, err := python.CommandPath()
+	// Find the path to global python
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain: toolchain.Pip,
+	})
 	require.NoError(t, err)
+	info, err := tc.About(context.Background())
+	require.NoError(t, err)
+	pythonCmdPath := info.Executable
+	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
-	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
+	test.RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)
 }
 
 func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {

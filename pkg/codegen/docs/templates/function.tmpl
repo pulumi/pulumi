@@ -8,7 +8,7 @@
 {{- end }}
 
 {{ htmlSafe .Comment }}
-{{- if ne (len .ExamplesSection) 0 }}
+{{- if ne (len .ExamplesSection.Examples) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
@@ -25,7 +25,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{- end }}
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 </div>
 
 <!-- TS/JS -->

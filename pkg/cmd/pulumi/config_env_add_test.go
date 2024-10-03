@@ -57,7 +57,7 @@ aws:region  us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -90,7 +90,7 @@ Save? Yes
 aws:region  us-west-2
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -118,7 +118,7 @@ aws:region  us-west-2
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n\n" +
 			"Save? No\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		assert.Equal(t, "", newStackYAML)
 	})
@@ -140,7 +140,7 @@ aws:region  us-west-2
 			"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties.\n" +
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -181,7 +181,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -223,7 +223,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env

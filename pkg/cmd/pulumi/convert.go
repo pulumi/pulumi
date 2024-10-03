@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -72,12 +71,8 @@ func loadConverterPlugin(
 	if err != nil {
 		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
 		// unless auto plugin installs are turned off.
-		if env.DisableAutomaticPluginAcquisition.Value() {
-			return nil, fmt.Errorf("load %q: %w", name, err)
-		}
-
 		var me *workspace.MissingError
-		if !errors.As(err, &me) {
+		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
 			// Not a MissingError, return the original error.
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
@@ -102,6 +97,7 @@ func newConvertCmd() *cobra.Command {
 	var generateOnly bool
 	var mappings []string
 	var strict bool
+	var name string
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -117,41 +113,51 @@ func newConvertCmd() *cobra.Command {
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict)
+			return runConvert(
+				pkgWorkspace.Instance,
+				env.Global(),
+				args,
+				cwd,
+				mappings,
+				from,
+				language,
+				outDir,
+				generateOnly,
+				strict,
+				name,
+			)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
-		&language, "language", "", "Which language plugin to use to generate the pulumi project")
+		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
 		&from, "from", "yaml", "Which converter plugin to use to read the source program")
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
 		&outDir, "out", ".", "The output directory to write the converted project to")
 
 	cmd.PersistentFlags().BoolVar(
-		//nolint:lll
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
 		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
 
 	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "If strict is set the conversion will fail on errors such as missing variables")
+		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
+
+	cmd.PersistentFlags().StringVar(
+		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
 
 	return cmd
 }
@@ -229,11 +235,29 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 }
 
 func runConvert(
+	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
-	cwd string, mappings []string, from string, language string,
-	outDir string, generateOnly bool, strict bool,
+	cwd string,
+	mappings []string,
+	from string,
+	language string,
+	outDir string,
+	generateOnly bool,
+	strict bool,
+	name string,
 ) error {
+	// Validate the supplied name if one was specified. If one was not supplied,
+	// default to the directory of the source project.
+	if name != "" {
+		err := pkgWorkspace.ValidateProjectName(name)
+		if err != nil {
+			return fmt.Errorf("'%s' is not a valid project name: %w", name, err)
+		}
+	} else {
+		name = filepath.Base(cwd)
+	}
+
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
@@ -265,8 +289,6 @@ func runConvert(
 			}, language)
 	case "java":
 		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
-	case "yaml":
-		projectGenerator = generatorWrapper(yamlgen.GenerateProject, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
@@ -280,7 +302,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
 			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return nil, err
@@ -413,7 +435,7 @@ func runConvert(
 
 	// Load the project from the pcl directory if there is one. We default to a project with just
 	// the name of the original directory.
-	proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+	proj := &workspace.Project{Name: tokens.PackageName(name)}
 	path, _ := workspace.DetectProjectPathFrom(pclDirectory)
 	if path != "" {
 		proj, err = workspace.LoadProject(path)
@@ -460,13 +482,13 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := ws.ReadProject()
 		if err != nil {
 			return err
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return err
 		}

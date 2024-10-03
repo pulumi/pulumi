@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +32,7 @@ func newExtractMappingCommand() *cobra.Command {
 		Long: `Get the mapping information for a given key from a package.
 
 <schema_source> can be a package name or the path to a plugin binary.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
 			var provider string
@@ -47,20 +46,33 @@ func newExtractMappingCommand() *cobra.Command {
 			}
 			defer p.Close()
 
-			data, mapped, err := p.GetMapping(key, provider)
+			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+				Key:      key,
+				Provider: provider,
+			})
 			if err != nil {
 				return fmt.Errorf("get mapping: %w", err)
 			}
 
-			if mapped == "" {
+			if mapping.Provider == "" {
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Printf("%s maps to provider %s\n", source, mapped)
+			fmt.Fprintf(os.Stderr, "%s maps to provider %s\n", source, mapping.Provider)
 
-			err = os.WriteFile(out, data, 0o600)
-			if err != nil {
-				return fmt.Errorf("write mapping data file: %w", err)
+			// If the user has specified out, then write out the mapping data
+			// to a file.
+			if out != "" {
+				err := os.WriteFile(out, mapping.Data, 0o600)
+				if err != nil {
+					return fmt.Errorf("write mapping data file: %w", err)
+				}
+			} else {
+				// Otherwise, just write it to stdout
+				_, err := os.Stdout.Write(mapping.Data)
+				if err != nil {
+					return fmt.Errorf("failed to write mapping data to stdout: %w", err)
+				}
 			}
 
 			return nil
@@ -68,7 +80,6 @@ func newExtractMappingCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
-	contract.AssertNoErrorf(cmd.MarkFlagRequired("out"), `Could not mark "out" as required`)
 
 	return cmd
 }

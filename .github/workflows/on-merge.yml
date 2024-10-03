@@ -32,6 +32,8 @@ jobs:
     name: CI
     needs: [info]
     uses: ./.github/workflows/ci.yml
+    strategy:
+      fail-fast: true
     permissions:
       contents: read
       # To sign artifacts.
@@ -40,6 +42,9 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
+      fail-fast: true
+      test-retries: 2
+      acceptance-test-platforms: 'macos-latest'
     secrets: inherit
 
   prepare-release:

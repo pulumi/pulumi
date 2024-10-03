@@ -25,6 +25,22 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+
+    // Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+    //
+    // Providers can be parameterized with either multiple extension packages (which don't define their own provider
+    // resources), or with a replacement package (which does define its own provider resource).
+    //
+    // Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+    // called once. Extension packages may even be called multiple times for the same package name, but with different
+    // versions.
+    //
+    // Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+    // should return the sub-package name and version (which for `ParametersValue` should match the given input).
+    //
+    // For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+    rpc Parameterize(ParameterizeRequest) returns (ParameterizeResponse) {}
+
     // GetSchema fetches the schema for this resource provider.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 
@@ -32,7 +48,14 @@ service ResourceProvider {
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
+
     // Configure configures the resource provider with "globals" that control its behavior.
+    //
+    // :::{warning}
+    // ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
+    // ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
+    // ConfigureRequest.args.
+    // :::
     rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
 
     // Invoke dynamically executes a built-in function in the provider.
@@ -89,8 +112,40 @@ service ResourceProvider {
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
 }
 
+message ParameterizeRequest {
+    message ParametersArgs {
+        repeated string args = 1;
+    }
+
+    message ParametersValue {
+        // The sub-package name for this sub-schema parameterization.
+        string name = 1;
+        // The sub-package version for this sub-schema parameterization.
+        string version = 2;
+        // The embedded value from the sub-package.
+        bytes value = 3;
+    }
+
+    oneof parameters {
+        ParametersArgs args = 1; // arguments from the command line.
+        ParametersValue value = 2; // values from a generated package.
+    }
+}
+
+message ParameterizeResponse {
+    // The name of the sub-package parameterized.
+    string name = 1;
+    // The version of the sub-package parameterized.
+    string version = 2;
+}
+
 message GetSchemaRequest {
-    int32 version = 1; // the schema version.
+    // the schema version.
+    int32 version = 1;
+    // the name of the sub-package to lookup
+    string subpackage_name = 2;
+    // the version of the sub-package to lookup
+    string subpackage_version = 3;
 }
 
 message GetSchemaResponse {
@@ -173,21 +228,37 @@ message CallResponse {
         repeated string urns = 1; // A list of URNs this return value depends on.
     }
 
-    google.protobuf.Struct return = 1;                      // the returned values, if call was successful.
-    map<string, ReturnDependencies> returnDependencies = 2; // a map from return value keys to the dependencies of the return value.
-    repeated CheckFailure failures = 3;                     // the failures if any arguments didn't pass verification.
+    google.protobuf.Struct return = 1;  // the returned values, if call was successful.
+    repeated CheckFailure failures = 3; // the failures if any arguments didn't pass verification.
+
+    // a map from return value keys to the dependencies of the return value.
+    //
+    // returnDependencies will be augmented by the set of dependencies specified in return
+    // via output property values.
+    map<string, ReturnDependencies> returnDependencies = 2;
 }
 
 message CheckRequest {
     string urn = 1;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
-    google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
+
+    // the new Pulumi inputs for this resource.
+    //
+    // Note that if the user specifies the ignoreChanges resource option, the value of news passed
+    // to the provider here may differ from the values written in the program source. It will be pre-processed by
+    // replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
+    //
+    // See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+    google.protobuf.Struct news = 3;
 
     // We used to send sequenceNumber but that has been replaced by randomSeed.
     reserved 4;
     reserved "sequenceNumber";
 
     bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
+
+    string name = 6; // the Pulumi name for this resource.
+    string type = 7; // the Pulumi type for this resource.
 }
 
 message CheckResponse {
@@ -204,9 +275,14 @@ message DiffRequest {
     string id = 1;                     // the ID of the resource to diff.
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old output values of resource to diff.
-    google.protobuf.Struct news = 4;   // the new input values of resource to diff.
+
+    // the new input values of resource to diff, copied from CheckResponse.inputs.
+    google.protobuf.Struct news = 4;
+
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
     google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
+    string name = 7; // the Pulumi name for this resource.
+    string type = 8; // the Pulumi type for this resource.
 }
 
 message PropertyDiff {
@@ -228,7 +304,10 @@ message DiffResponse {
     repeated string stables = 2;  // an optional list of properties that will not ever change.
     bool deleteBeforeReplace = 3; // if true, this resource must be deleted before replacing it.
     DiffChanges changes = 4;      // if true, this diff represents an actual difference and thus requires an update.
-    repeated string diffs = 5;    // a list of the properties that changed.
+
+    // a list of the properties that changed. This should only contain top level property names, it does not
+    // support nested properties. For that use detailedDiff.
+    repeated string diffs = 5;
 
     // detailedDiff is an optional field that contains map from each changed property to the type of the change.
     //
@@ -275,6 +354,8 @@ message CreateRequest {
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
     double timeout = 3;                    // the create request timeout represented in seconds.
     bool preview = 4;                      // true if this is a preview and the provider should not actually create the resource.
+    string name = 5; // the Pulumi name for this resource.
+    string type = 6; // the Pulumi type for this resource.
 }
 
 message CreateResponse {
@@ -289,6 +370,8 @@ message ReadRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current state (sufficiently complete to identify the resource).
     google.protobuf.Struct inputs = 4;     // the current inputs, if any (only populated during refresh).
+    string name = 5; // the Pulumi name for this resource.
+    string type = 6; // the Pulumi type for this resource.
 }
 
 message ReadResponse {
@@ -303,11 +386,16 @@ message UpdateRequest {
     string id = 1;                     // the ID of the resource to update.
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
-    google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
+
+    // the new values of provider inputs for the resource to update, copied from CheckResponse.inputs.
+    google.protobuf.Struct news = 4;
+
     double timeout = 5;                // the update request timeout represented in seconds.
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
     google.protobuf.Struct old_inputs = 8; // the old input values of the resource to diff.
+    string name = 9; // the Pulumi name for this resource.
+    string type = 10; // the Pulumi type for this resource.
 }
 
 message UpdateResponse {
@@ -320,6 +408,8 @@ message DeleteRequest {
     google.protobuf.Struct properties = 3; // the current properties on the resource.
     double timeout = 4;                    // the delete request timeout represented in seconds.
     google.protobuf.Struct old_inputs = 5; // the old input values of the resource to delete.
+    string name = 6; // the Pulumi name for this resource.
+    string type = 7; // the Pulumi type for this resource.
 }
 
 message ConstructRequest {

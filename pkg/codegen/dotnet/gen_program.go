@@ -307,16 +307,20 @@ func GenerateProject(
 
 	csproj.WriteString("	<ItemGroup>\n")
 
-	// Add the Pulumi package reference
-	if path, has := localDependencies[pulumiPackage]; has {
-		filename := filepath.Base(path)
-		pkg, rest, _ := strings.Cut(filename, ".")
-		version, _ := strings.CutSuffix(rest, ".nupkg")
+	// Add local package references
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			csproj.WriteString(fmt.Sprintf(
+				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
+				packageName, version))
+		} else {
+			return fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
+		}
+	}
 
-		csproj.WriteString(fmt.Sprintf(
-			"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
-			pkg, version))
-	} else {
+	if _, hasLocalPulumiReference := localDependencies[pulumiPackage]; !hasLocalPulumiReference {
 		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
 	}
 
@@ -326,6 +330,10 @@ func GenerateProject(
 		return err
 	}
 	for _, p := range packages {
+		if _, isLocal := localDependencies[p.Name]; isLocal {
+			continue
+		}
+
 		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
 
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
@@ -1215,6 +1223,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges)
+	}
+	if opts.DeletedWith != nil {
+		appendOption("DeletedWith", opts.DeletedWith)
 	}
 
 	if result.Len() != 0 {

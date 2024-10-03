@@ -4,6 +4,8 @@
 #
 # Reusable workflows, "uses" jobs, *must* specify the main branch.
 
+name: dispatched-acceptance-test
+
 on:
   repository_dispatch:
     types: [run-acceptance-tests-command]
@@ -59,10 +61,9 @@ jobs:
       ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
       version: ${{ needs.info.outputs.version }}
       lint: true
-      build-all-targets: false
       test-version-sets: current
       integration-test-platforms: ubuntu-latest
-      acceptance-test-platforms: ''
+      acceptance-test-platforms: 'windows-latest'
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false
     secrets:

@@ -33,18 +33,106 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
+class ParameterizeRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class ParametersArgs(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        ARGS_FIELD_NUMBER: builtins.int
+        @property
+        def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        def __init__(
+            self,
+            *,
+            args: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["args", b"args"]) -> None: ...
+
+    @typing_extensions.final
+    class ParametersValue(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        NAME_FIELD_NUMBER: builtins.int
+        VERSION_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        name: builtins.str
+        """The sub-package name for this sub-schema parameterization."""
+        version: builtins.str
+        """The sub-package version for this sub-schema parameterization."""
+        value: builtins.bytes
+        """The embedded value from the sub-package."""
+        def __init__(
+            self,
+            *,
+            name: builtins.str = ...,
+            version: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+    ARGS_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    @property
+    def args(self) -> global___ParameterizeRequest.ParametersArgs:
+        """arguments from the command line."""
+    @property
+    def value(self) -> global___ParameterizeRequest.ParametersValue:
+        """values from a generated package."""
+    def __init__(
+        self,
+        *,
+        args: global___ParameterizeRequest.ParametersArgs | None = ...,
+        value: global___ParameterizeRequest.ParametersValue | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["parameters", b"parameters"]) -> typing_extensions.Literal["args", "value"] | None: ...
+
+global___ParameterizeRequest = ParameterizeRequest
+
+@typing_extensions.final
+class ParameterizeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The name of the sub-package parameterized."""
+    version: builtins.str
+    """The version of the sub-package parameterized."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "version", b"version"]) -> None: ...
+
+global___ParameterizeResponse = ParameterizeResponse
+
+@typing_extensions.final
 class GetSchemaRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     VERSION_FIELD_NUMBER: builtins.int
+    SUBPACKAGE_NAME_FIELD_NUMBER: builtins.int
+    SUBPACKAGE_VERSION_FIELD_NUMBER: builtins.int
     version: builtins.int
     """the schema version."""
+    subpackage_name: builtins.str
+    """the name of the sub-package to lookup"""
+    subpackage_version: builtins.str
+    """the version of the sub-package to lookup"""
     def __init__(
         self,
         *,
         version: builtins.int = ...,
+        subpackage_name: builtins.str = ...,
+        subpackage_version: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["subpackage_name", b"subpackage_name", "subpackage_version", b"subpackage_version", "version", b"version"]) -> None: ...
 
 global___GetSchemaRequest = GetSchemaRequest
 
@@ -381,19 +469,23 @@ class CallResponse(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     RETURN_FIELD_NUMBER: builtins.int
-    RETURNDEPENDENCIES_FIELD_NUMBER: builtins.int
     FAILURES_FIELD_NUMBER: builtins.int
-    @property
-    def returnDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CallResponse.ReturnDependencies]:
-        """a map from return value keys to the dependencies of the return value."""
+    RETURNDEPENDENCIES_FIELD_NUMBER: builtins.int
     @property
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
         """the failures if any arguments didn't pass verification."""
+    @property
+    def returnDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CallResponse.ReturnDependencies]:
+        """a map from return value keys to the dependencies of the return value.
+
+        returnDependencies will be augmented by the set of dependencies specified in return
+        via output property values.
+        """
     def __init__(
         self,
         *,
-        returnDependencies: collections.abc.Mapping[builtins.str, global___CallResponse.ReturnDependencies] | None = ...,
         failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
+        returnDependencies: collections.abc.Mapping[builtins.str, global___CallResponse.ReturnDependencies] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["return", b"return"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["failures", b"failures", "return", b"return", "returnDependencies", b"returnDependencies"]) -> None: ...
@@ -408,6 +500,8 @@ class CheckRequest(google.protobuf.message.Message):
     OLDS_FIELD_NUMBER: builtins.int
     NEWS_FIELD_NUMBER: builtins.int
     RANDOMSEED_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the Pulumi URN for this resource."""
     @property
@@ -415,9 +509,20 @@ class CheckRequest(google.protobuf.message.Message):
         """the old Pulumi inputs for this resource, if any."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new Pulumi inputs for this resource."""
+        """the new Pulumi inputs for this resource.
+
+        Note that if the user specifies the ignoreChanges resource option, the value of news passed
+        to the provider here may differ from the values written in the program source. It will be pre-processed by
+        replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
+
+        See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+        """
     randomSeed: builtins.bytes
     """a deterministically random hash, primarily intended for global unique naming."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -425,9 +530,11 @@ class CheckRequest(google.protobuf.message.Message):
         olds: google.protobuf.struct_pb2.Struct | None = ...,
         news: google.protobuf.struct_pb2.Struct | None = ...,
         randomSeed: builtins.bytes = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckRequest = CheckRequest
 
@@ -484,6 +591,8 @@ class DiffRequest(google.protobuf.message.Message):
     NEWS_FIELD_NUMBER: builtins.int
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to diff."""
     urn: builtins.str
@@ -493,13 +602,17 @@ class DiffRequest(google.protobuf.message.Message):
         """the old output values of resource to diff."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new input values of resource to diff."""
+        """the new input values of resource to diff, copied from CheckResponse.inputs."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """a set of property paths that should be treated as unchanged."""
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the old input values of the resource to diff."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -509,9 +622,11 @@ class DiffRequest(google.protobuf.message.Message):
         news: google.protobuf.struct_pb2.Struct | None = ...,
         ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___DiffRequest = DiffRequest
 
@@ -630,7 +745,9 @@ class DiffResponse(google.protobuf.message.Message):
     """if true, this diff represents an actual difference and thus requires an update."""
     @property
     def diffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of the properties that changed."""
+        """a list of the properties that changed. This should only contain top level property names, it does not
+        support nested properties. For that use detailedDiff.
+        """
     @property
     def detailedDiff(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PropertyDiff]:
         """detailedDiff is an optional field that contains map from each changed property to the type of the change.
@@ -690,6 +807,8 @@ class CreateRequest(google.protobuf.message.Message):
     PROPERTIES_FIELD_NUMBER: builtins.int
     TIMEOUT_FIELD_NUMBER: builtins.int
     PREVIEW_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the Pulumi URN for this resource."""
     @property
@@ -699,6 +818,10 @@ class CreateRequest(google.protobuf.message.Message):
     """the create request timeout represented in seconds."""
     preview: builtins.bool
     """true if this is a preview and the provider should not actually create the resource."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -706,9 +829,11 @@ class CreateRequest(google.protobuf.message.Message):
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         timeout: builtins.float = ...,
         preview: builtins.bool = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["preview", b"preview", "properties", b"properties", "timeout", b"timeout", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "preview", b"preview", "properties", b"properties", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CreateRequest = CreateRequest
 
@@ -744,6 +869,8 @@ class ReadRequest(google.protobuf.message.Message):
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to read."""
     urn: builtins.str
@@ -754,6 +881,10 @@ class ReadRequest(google.protobuf.message.Message):
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the current inputs, if any (only populated during refresh)."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -761,9 +892,11 @@ class ReadRequest(google.protobuf.message.Message):
         urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "properties", b"properties", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ReadRequest = ReadRequest
 
@@ -808,6 +941,8 @@ class UpdateRequest(google.protobuf.message.Message):
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     PREVIEW_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to update."""
     urn: builtins.str
@@ -817,7 +952,7 @@ class UpdateRequest(google.protobuf.message.Message):
         """the old values of provider inputs for the resource to update."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new values of provider inputs for the resource to update."""
+        """the new values of provider inputs for the resource to update, copied from CheckResponse.inputs."""
     timeout: builtins.float
     """the update request timeout represented in seconds."""
     @property
@@ -828,6 +963,10 @@ class UpdateRequest(google.protobuf.message.Message):
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the old input values of the resource to diff."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -839,9 +978,11 @@ class UpdateRequest(google.protobuf.message.Message):
         ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
         preview: builtins.bool = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "preview", b"preview", "timeout", b"timeout", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "preview", b"preview", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___UpdateRequest = UpdateRequest
 
@@ -872,6 +1013,8 @@ class DeleteRequest(google.protobuf.message.Message):
     PROPERTIES_FIELD_NUMBER: builtins.int
     TIMEOUT_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to delete."""
     urn: builtins.str
@@ -884,6 +1027,10 @@ class DeleteRequest(google.protobuf.message.Message):
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the old input values of the resource to delete."""
+    name: builtins.str
+    """the Pulumi name for this resource."""
+    type: builtins.str
+    """the Pulumi type for this resource."""
     def __init__(
         self,
         *,
@@ -892,9 +1039,11 @@ class DeleteRequest(google.protobuf.message.Message):
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         timeout: builtins.float = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["old_inputs", b"old_inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "old_inputs", b"old_inputs", "properties", b"properties", "timeout", b"timeout", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "old_inputs", b"old_inputs", "properties", b"properties", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___DeleteRequest = DeleteRequest
 

@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -103,7 +108,7 @@ class AwaitableGetAmiIdsResult(GetAmiIdsResult):
 
 
 def get_ami_ids(executable_users: Optional[Sequence[str]] = None,
-                filters: Optional[Sequence[pulumi.InputType['GetAmiIdsFilterArgs']]] = None,
+                filters: Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]] = None,
                 name_regex: Optional[str] = None,
                 owners: Optional[Sequence[str]] = None,
                 sort_ascending: Optional[bool] = None,
@@ -114,7 +119,7 @@ def get_ami_ids(executable_users: Optional[Sequence[str]] = None,
 
     :param Sequence[str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.
-    :param Sequence[pulumi.InputType['GetAmiIdsFilterArgs']] filters: One or more name/value pairs to filter off of. There
+    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']] filters: One or more name/value pairs to filter off of. There
            are several valid keys, for a full reference, check out
            [describe-images in the AWS CLI reference][1].
     :param str name_regex: A regex string to apply to the AMI list returned
@@ -143,11 +148,8 @@ def get_ami_ids(executable_users: Optional[Sequence[str]] = None,
         name_regex=pulumi.get(__ret__, 'name_regex'),
         owners=pulumi.get(__ret__, 'owners'),
         sort_ascending=pulumi.get(__ret__, 'sort_ascending'))
-
-
-@_utilities.lift_output_func(get_ami_ids)
 def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
-                       filters: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['GetAmiIdsFilterArgs']]]]] = None,
+                       filters: Optional[pulumi.Input[Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]]]] = None,
                        name_regex: Optional[pulumi.Input[Optional[str]]] = None,
                        owners: Optional[pulumi.Input[Sequence[str]]] = None,
                        sort_ascending: Optional[pulumi.Input[Optional[bool]]] = None,
@@ -158,7 +160,7 @@ def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence
 
     :param Sequence[str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.
-    :param Sequence[pulumi.InputType['GetAmiIdsFilterArgs']] filters: One or more name/value pairs to filter off of. There
+    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']] filters: One or more name/value pairs to filter off of. There
            are several valid keys, for a full reference, check out
            [describe-images in the AWS CLI reference][1].
     :param str name_regex: A regex string to apply to the AMI list returned
@@ -170,4 +172,19 @@ def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence
     :param bool sort_ascending: Used to sort AMIs by creation time.
     """
     pulumi.log.warn("""get_ami_ids is deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds""")
-    ...
+    __args__ = dict()
+    __args__['executableUsers'] = executable_users
+    __args__['filters'] = filters
+    __args__['nameRegex'] = name_regex
+    __args__['owners'] = owners
+    __args__['sortAscending'] = sort_ascending
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::getAmiIds', __args__, opts=opts, typ=GetAmiIdsResult)
+    return __ret__.apply(lambda __response__: GetAmiIdsResult(
+        executable_users=pulumi.get(__response__, 'executable_users'),
+        filters=pulumi.get(__response__, 'filters'),
+        id=pulumi.get(__response__, 'id'),
+        ids=pulumi.get(__response__, 'ids'),
+        name_regex=pulumi.get(__response__, 'name_regex'),
+        owners=pulumi.get(__response__, 'owners'),
+        sort_ascending=pulumi.get(__response__, 'sort_ascending')))

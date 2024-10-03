@@ -12,3 +12,8 @@ output project0 {
 	__logicalName = "project"
 	value = project()
 }
+
+output organization0 {
+	__logicalName = "organization"
+	value = organization()
+}

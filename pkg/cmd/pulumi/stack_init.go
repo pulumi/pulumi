@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -67,7 +68,7 @@ func newStackInitCmd() *cobra.Command {
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
 		}),
@@ -96,7 +97,9 @@ type stackInitCmd struct {
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
 func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
@@ -112,13 +115,16 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
+	ssml := newStackSecretsManagerLoaderFromEnv()
+	ws := pkgWorkspace.Instance
+
 	// Try to read the current project
-	project, _, err := readProject()
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	b, err := currentBackend(ctx, project, opts)
+	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}
@@ -163,13 +169,13 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	proj, root, projectErr := readProject()
+	proj, root, projectErr := ws.ReadProject()
 	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
 		return projectErr
 	}
 
 	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	newStack, err := createStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -184,7 +190,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(ctx, cmd.stackToCopy, stackLoadOnly, opts)
+		copyStack, err := requireStack(ctx, ws, DefaultLoginManager, cmd.stackToCopy, stackLoadOnly, opts)
 		if err != nil {
 			return err
 		}
@@ -200,7 +206,14 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// copy the config from the old to the new
-		requiresSaving, err := copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+		requiresSaving, err := copyEntireConfigMap(
+			ctx,
+			ssml,
+			copyStack,
+			copyProjectStack,
+			newStack,
+			newProjectStack,
+		)
 		if err != nil {
 			return err
 		}

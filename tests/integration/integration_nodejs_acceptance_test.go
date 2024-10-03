@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
@@ -192,4 +193,39 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 		},
 	})
 	integration.ProgramTest(t, &opts)
+}
+
+func TestNewNodejsUsesNpmByDefault(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "typescript", "--force", "--non-interactive", "--yes", "--generate-only")
+
+	expected := map[string]interface{}{
+		"packagemanager": "npm",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+func TestNewNodejsRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "typescript", "--force", "--non-interactive", "--yes", "--generate-only",
+		"--name", "test_project",
+		"--description", "Testing that the packagemanager option is set correctly",
+		"--stack", "test",
+		"--runtime-options", "packagemanager=pnpm",
+	)
+
+	expected := map[string]interface{}{
+		"packagemanager": "pnpm",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package main
 import (
 	"embed"
 	"math"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +40,7 @@ type testRun struct {
 	// This can be used to set a main value for the test.
 	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
-	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
+	assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges)
 	// updateOptions can be used to set the update options for the engine.
 	updateOptions engine.UpdateOptions
 }
@@ -50,6 +52,7 @@ type languageTest struct {
 	// stackReferences specifies other stack data that this test depends on.
 	stackReferences map[string]resource.PropertyMap
 
+	// runs is a list of test runs to execute.
 	runs []testRun
 }
 
@@ -70,6 +73,7 @@ var languageTests = map[string]languageTest{
 	// ==========
 	"internal-bad-schema": {
 		providers: []plugin.Provider{&providers.BadProvider{}},
+		runs:      []testRun{{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
@@ -77,8 +81,11 @@ var languageTests = map[string]languageTest{
 	"l1-empty": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					assertStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					assertStackResource(l, err, changes)
 				},
 			},
 		},
@@ -86,8 +93,11 @@ var languageTests = map[string]languageTest{
 	"l1-output-bool": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					// Check we have two outputs in the stack for true and false
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -105,8 +115,11 @@ var languageTests = map[string]languageTest{
 	"l1-output-number": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -128,8 +141,11 @@ var languageTests = map[string]languageTest{
 	"l1-output-string": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -157,8 +173,11 @@ var languageTests = map[string]languageTest{
 	"l1-output-array": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -201,8 +220,11 @@ var languageTests = map[string]languageTest{
 		runs: []testRun{
 			{
 				main: "subdir",
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					// Check we have an output in the stack for true
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -225,8 +247,11 @@ var languageTests = map[string]languageTest{
 		},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
 					stack := snap.Resources[0]
@@ -245,6 +270,66 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l1-builtin-info": {
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 3, "expected 3 outputs")
+					assertPropertyMapMember(l, outputs, "stackOutput", resource.NewStringProperty("test"))
+					assertPropertyMapMember(l, outputs, "projectOutput", resource.NewStringProperty("l1-builtin-info"))
+					assertPropertyMapMember(l, outputs, "organizationOutput", resource.NewStringProperty("organization"))
+				},
+			},
+		},
+	},
+	"l1-output-map": {
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 4, "expected 4 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
+					assertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
+						"greeting": resource.NewStringProperty("Hello, world!"),
+						"farewell": resource.NewStringProperty("Goodbye, world!"),
+					}))
+					assertPropertyMapMember(l, outputs, "numbers", resource.NewObjectProperty(resource.PropertyMap{
+						"1": resource.NewNumberProperty(1),
+						"2": resource.NewNumberProperty(2),
+					}))
+					assertPropertyMapMember(l, outputs, "keys", resource.NewObjectProperty(resource.PropertyMap{
+						"my.key": resource.NewNumberProperty(1),
+						"my-key": resource.NewNumberProperty(2),
+						"my_key": resource.NewNumberProperty(3),
+						"MY_KEY": resource.NewNumberProperty(4),
+						"mykey":  resource.NewNumberProperty(5),
+						"MYKEY":  resource.NewNumberProperty(6),
+					}))
+				},
+			},
+		},
+	},
 	// ==========
 	// L2 (Tests using providers)
 	// ==========
@@ -252,10 +337,13 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 
-					// Check we have the one simple resource in the snapshot, it's provider and the stack.
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					provider := snap.Resources[1]
@@ -271,6 +359,209 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-resource-primitives": {
+		providers: []plugin.Provider{&providers.PrimitiveProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:primitive", provider.Type.String(), "expected primitive provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "primitive:index:Resource", simple.Type.String(), "expected primitive resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"boolean":     true,
+						"float":       3.14,
+						"integer":     42,
+						"string":      "hello",
+						"numberArray": []interface{}{-1.0, 0.0, 1.0},
+						"booleanMap":  map[string]interface{}{"t": true, "f": false},
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-resource-alpha": {
+		providers: []plugin.Provider{&providers.AlphaProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:alpha", provider.Type.String(), "expected alpha provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "alpha:index:Resource", simple.Type.String(), "expected alpha resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-explicit-provider": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					assert.Equal(l, "prov", provider.URN.Name(), "expected explicit provider resource")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, string(provider.URN)+"::"+string(provider.ID), simple.Provider)
+
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-resource-asset-archive": {
+		providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		runs: []testRun{
+			{
+				main: "subdir",
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
+					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
+
+					// We don't know what order the resources will be in so we map by name
+					resources := map[string]*resource.State{}
+					for _, r := range snap.Resources[2:] {
+						resources[r.URN.Name()] = r
+					}
+
+					asset, ok := resources["ass"]
+					require.True(l, ok, "expected asset resource")
+					assert.Equal(l, "asset-archive:index:AssetResource", asset.Type.String(), "expected asset resource")
+
+					archive, ok := resources["arc"]
+					require.True(l, ok, "expected archive resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", archive.Type.String(), "expected archive resource")
+
+					folder, ok := resources["dir"]
+					require.True(l, ok, "expected folder resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
+
+					assarc, ok := resources["assarc"]
+					require.True(l, ok, "expected asset archive resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", assarc.Type.String(), "expected archive resource")
+
+					remoteass, ok := resources["remoteass"]
+					require.True(l, ok, "expected remote asset resource")
+					assert.Equal(l, "asset-archive:index:AssetResource", remoteass.Type.String(), "expected asset resource")
+
+					main := filepath.Join(projectDirectory, "subdir")
+
+					assetValue, err := resource.NewPathAssetWithWD("../test.txt", main)
+					require.NoError(l, err)
+					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", assetValue.Hash)
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"value": assetValue,
+					})
+
+					assert.Equal(l, want, asset.Inputs, "expected inputs to be {value: %v}", assetValue)
+					assert.Equal(l, asset.Inputs, asset.Outputs, "expected inputs and outputs to match")
+
+					archiveValue, err := resource.NewPathArchiveWithWD("../archive.tar", main)
+					require.NoError(l, err)
+					assert.Equal(l, "2eee410fe85d360552a8c21238d67d43f4b64e60288914f893b67165e8ebfbcf", archiveValue.Hash)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": archiveValue,
+					})
+
+					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
+					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
+
+					folderValue, err := resource.NewPathArchiveWithWD("../folder", main)
+					require.NoError(l, err)
+					assert.Equal(l, "25df47ed6b3c8e07479e5d9c908eff93d624ec693b6aa7559a9bcb084db70774", folderValue.Hash)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": folderValue,
+					})
+
+					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
+					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
+
+					stringAsset, err := resource.NewTextAsset("file contents")
+					require.NoError(l, err)
+
+					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]interface{}{
+						"string":  stringAsset,
+						"file":    assetValue,
+						"folder":  folderValue,
+						"archive": archiveValue,
+					}, main)
+					require.NoError(l, err)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": assarcValue,
+					})
+
+					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
+					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
+
+					remoteassValue, err := resource.NewURIAsset(
+						"https://raw.githubusercontent.com/pulumi/pulumi/master" +
+							"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
+					)
+					require.NoError(l, err)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": remoteassValue,
+					})
+
+					assert.Equal(l, want, remoteass.Inputs, "expected inputs to be {value: %v}", remoteassValue)
+					assert.Equal(l, remoteass.Inputs, remoteass.Outputs, "expected inputs and outputs to match")
+					bs, err := remoteassValue.Bytes()
+					require.NoError(l, err)
+					assert.Equal(l, "text", string(bs))
+					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", remoteassValue.Hash)
+				},
+			},
+		},
+	},
 	"l2-engine-update-options": {
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
@@ -280,8 +571,11 @@ var languageTests = map[string]languageTest{
 						"**target**",
 					}),
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
 
 					// Check that we have the target in the snapshot, but not the other resource.
@@ -300,8 +594,11 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					// check that both expected resources are in the snapshot
@@ -324,7 +621,10 @@ var languageTests = map[string]languageTest{
 				},
 			},
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					assert.Equal(l, 1, changes[deploy.OpDelete], "expected a delete operation")
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
@@ -343,10 +643,13 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
-					err := snap.VerifyIntegrity()
+					err = snap.VerifyIntegrity()
 					require.NoError(l, err, "expected snapshot to be valid")
 
 					sort.Slice(snap.Resources, func(i, j int) bool {
@@ -368,7 +671,10 @@ var languageTests = map[string]languageTest{
 						"**targetOnly**",
 					}),
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					sort.Slice(snap.Resources, func(i, j int) bool {
@@ -393,8 +699,11 @@ var languageTests = map[string]languageTest{
 				updateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					require.True(l, res.IsBail(), "expected a bail result")
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					require.True(l, result.IsBail(err), "expected a bail result")
 					require.Equal(l, 1, len(changes), "expected 1 StepOp")
 					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")
 					require.NotNil(l, snap, "expected snapshot to be non-nil")
@@ -414,11 +723,11 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.LargeProvider{}},
 		runs: []testRun{
 			{
-				updateOptions: engine.UpdateOptions{
-					ContinueOnError: true,
-				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-					requireStackResource(l, res, changes)
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					// Check that the large string is in the snapshot
@@ -438,6 +747,260 @@ var languageTests = map[string]languageTest{
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
+				},
+			},
+		},
+	},
+	"l2-resource-config": {
+		providers: []plugin.Provider{&providers.ConfigProvider{}},
+		runs: []testRun{
+			{
+				config: config.Map{
+					config.MustParseKey("config:name"): config.NewValue("hello"),
+				},
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					explicitProvider := snap.Resources[1]
+					require.Equal(l, "pulumi:providers:config", explicitProvider.Type.String(), "expected explicit provider resource")
+					expectedOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+						"name":              "my config",
+						"pluginDownloadURL": "not the same as the pulumi resource option",
+						"version":           "9.0.0",
+					})
+					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
+					// inputs should also have the __internal key
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+						resource.NewPropertyMapFromMap(map[string]interface{}{
+							"pluginDownloadURL": "http://example.com",
+						}))
+					require.Equal(l, expectedInputs, explicitProvider.Inputs)
+					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
+
+					defaultProvider := snap.Resources[2]
+					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
+					require.Equal(l, "default_9_0_0_http_/example.com", defaultProvider.URN.Name())
+					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+						"version": "9.0.0",
+						"name":    "hello",
+					})
+					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
+					// inputs should also have the __internal key
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+						resource.NewPropertyMapFromMap(map[string]interface{}{
+							"pluginDownloadURL": "http://example.com",
+						}))
+					require.Equal(l, expectedInputs, defaultProvider.Inputs)
+					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
+				},
+			},
+		},
+	},
+	"l2-invoke-simple": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.Len(l, snap.Resources, 2, "expected 2 resource")
+
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					assertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+				},
+			},
+		},
+	},
+	"l2-invoke-variants": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
+					assertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
+				},
+			},
+		},
+	},
+	"l2-primitive-ref": {
+		providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:primitive-ref", provider.Type.String(), "expected primitive-ref provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "primitive-ref:index:Resource", simple.Type.String(), "expected primitive-ref resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"boolean":   false,
+							"float":     2.17,
+							"integer":   -12,
+							"string":    "Goodbye",
+							"boolArray": []interface{}{false, true},
+							"stringMap": map[string]interface{}{
+								"two":   "turtle doves",
+								"three": "french hens",
+							},
+						}),
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-ref-ref": {
+		providers: []plugin.Provider{&providers.RefRefProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:ref-ref", provider.Type.String(), "expected ref-ref provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "ref-ref:index:Resource", simple.Type.String(), "expected ref-ref resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     2.17,
+								"integer":   -12,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{false, true},
+								"stringMap": map[string]interface{}{
+									"two":   "turtle doves",
+									"three": "french hens",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{},
+							"stringMap": map[string]interface{}{
+								"x": "100",
+								"y": "200",
+							},
+						}),
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-plain": {
+		providers: []plugin.Provider{&providers.PlainProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:plain", provider.Type.String(), "expected plain provider")
+
+					plain := snap.Resources[2]
+					assert.Equal(l, "plain:index:Resource", plain.Type.String(), "expected plain resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     2.17,
+								"integer":   -12,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{false, true},
+								"stringMap": map[string]interface{}{
+									"two":   "turtle doves",
+									"three": "french hens",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{true, false},
+							"stringMap": map[string]interface{}{
+								"x": "100",
+								"y": "200",
+							},
+						}),
+					})
+					assert.Equal(l, want, plain.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, plain.Inputs, plain.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

@@ -17,8 +17,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"testing"
@@ -30,6 +32,7 @@ import (
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -42,9 +45,16 @@ import (
 type hostEngine struct {
 	pulumirpc.UnimplementedEngineServer
 	t *testing.T
+
+	logLock         sync.Mutex
+	logRepeat       int
+	previousMessage string
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	e.logLock.Lock()
+	defer e.logLock.Unlock()
+
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
@@ -59,10 +69,29 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
+	message := req.Message
+	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
+		// Cut down logs so they don't overwhelm the test output
+		if len(message) > 1024 {
+			message = message[:1024] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		}
+	}
+
+	if e.previousMessage == message {
+		e.logRepeat++
+		return &pbempty.Empty{}, nil
+	}
+
+	if e.logRepeat > 1 {
+		e.t.Logf("Last message repeated %d times", e.logRepeat)
+	}
+	e.logRepeat = 1
+	e.previousMessage = message
+
 	if req.StreamId != 0 {
-		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, req.Message)
+		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
 	} else {
-		e.t.Logf("%s[%s]: %s", sev, req.Urn, req.Message)
+		e.t.Logf("%s[%s]: %s", sev, req.Urn, message)
 	}
 	return &pbempty.Empty{}, nil
 }
@@ -152,16 +181,14 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	// We should run the python tests twice. Once with TOML projects and once with setup.py.
-	//nolint:paralleltest // These aren't yet safe to run in parallel
-	for _, useToml := range []bool{false, true} {
+	runTests := func(t *testing.T, snapshotDir string, useToml bool, inputTypes, typechecker string) {
 		cancel := make(chan bool)
 
 		// Run the language plugin
 		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Init: func(srv *grpc.Server) error {
 				pythonExec := "../pulumi-language-python-exec"
-				host := newLanguageHost(pythonExec, engineAddress, "", useToml)
+				host := newLanguageHost(pythonExec, engineAddress, "", typechecker)
 				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 				return nil
 			},
@@ -172,11 +199,17 @@ func TestLanguage(t *testing.T) {
 		// Create a temp project dir for the test to run in
 		rootDir := t.TempDir()
 
-		snapshotDir := "./testdata/"
-		if useToml {
-			snapshotDir += "toml"
-		} else {
-			snapshotDir += "setuppy"
+		snapshotDir = "./testdata/" + snapshotDir
+
+		var languageInfo string
+		if useToml || inputTypes != "" {
+			var info codegen.PackageInfo
+			info.PyProject.Enabled = useToml
+			info.InputTypes = inputTypes
+
+			json, err := json.Marshal(info)
+			require.NoError(t, err)
+			languageInfo = string(json)
 		}
 
 		// Prepare to run the tests
@@ -199,6 +232,7 @@ func TestLanguage(t *testing.T) {
 					Replacement: "ROOT/artifacts",
 				},
 			},
+			LanguageInfo: languageInfo,
 		})
 		require.NoError(t, err)
 
@@ -225,4 +259,23 @@ func TestLanguage(t *testing.T) {
 		close(cancel)
 		assert.NoError(t, <-handle.Done)
 	}
+
+	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
+	// test that explicitly setting the input types works as expected, as well as the default. This shouldn't interact
+	// with the project type so we vary both at once. We also want to test that the typechecker works, that doesn't vary
+	// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
+	// tradeoff here only testing the old classes style with pyright.
+
+	//nolint:paralleltest
+	t.Run("default", func(t *testing.T) {
+		runTests(t, "setuppy", false, "", "mypy")
+	})
+	//nolint:paralleltest
+	t.Run("toml", func(t *testing.T) {
+		runTests(t, "toml", true, "classes-and-dicts", "pyright")
+	})
+	//nolint:paralleltest
+	t.Run("classes", func(t *testing.T) {
+		runTests(t, "classes", false, "classes", "pyright")
+	})
 }

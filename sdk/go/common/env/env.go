@@ -50,6 +50,10 @@ var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugg
 
 var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")
 
+var EnableLegacyRefreshDiff = env.Bool("ENABLE_LEGACY_REFRESH_DIFF",
+	"Use legacy refresh diff behaviour, in which only output changes are "+
+		"reported and changes against the desired state are not calculated.")
+
 var DisableProviderPreview = env.Bool("DISABLE_PROVIDER_PREVIEW", "")
 
 var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
@@ -83,6 +87,30 @@ var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
 
 var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 	"If set skip validating the version number reported by the CLI.")
+
+var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
+	"Continue to perform the update/destroy operation despite the occurrence of errors.")
+
+var BackendURL = env.String("BACKEND_URL",
+	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
+
+var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
+	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
+
+var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+
+// List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
+// be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
+//
+// For example, when set to "^https://foo=https://bar,^github://=https://buzz", HTTPS plugin URLs that start with
+// "foo" will use https://bar as the download URL and plugins hosted on github will use https://buzz
+//
+// Note that named regular expression groups can be used to capture parts of URLs and then reused for building
+// redirects. For example
+// ^github://api.github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)=https://foo.com/downloads/${org}/${repo}
+// will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
+var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
 // Environment variables that affect the DIY backend.
 var (

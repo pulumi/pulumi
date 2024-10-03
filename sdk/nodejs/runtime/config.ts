@@ -15,22 +15,23 @@
 import { getStore } from "./state";
 
 /**
- * configEnvKey is the environment variable key that the language plugin uses to set configuration values.
+ * The environment variable key that the language plugin uses to set
+ * configuration values.
  *
  * @internal
  */
 export const configEnvKey = "PULUMI_CONFIG";
 
 /**
- * configSecretKeysEnvKey is the environment variable key that the language plugin uses to set configuration keys that
- * contain secrets.
+ * The environment variable key that the language plugin uses to set
+ * configuration keys that contain secrets.
  *
  * @internal
  */
 export const configSecretKeysEnvKey = "PULUMI_CONFIG_SECRET_KEYS";
 
 /**
- * allConfig returns a copy of the full config map.
+ * Returns a copy of the full configuration map.
  */
 export function allConfig(): { [key: string]: string } {
     const config = parseConfig();
@@ -38,7 +39,7 @@ export function allConfig(): { [key: string]: string } {
 }
 
 /**
- * setAllConfig overwrites the config map.
+ * Overwrites the configuration map.
  */
 export function setAllConfig(c: { [key: string]: string }, secretKeys?: string[]) {
     const obj: { [key: string]: string } = {};
@@ -49,7 +50,7 @@ export function setAllConfig(c: { [key: string]: string }, secretKeys?: string[]
 }
 
 /**
- * setConfig sets a configuration variable.
+ * Sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {
     const config = parseConfig();
@@ -58,7 +59,7 @@ export function setConfig(k: string, v: string): void {
 }
 
 /**
- * getConfig returns a configuration variable's value or undefined if it is unset.
+ * Returns a configuration variable's value, or `undefined` if it is unset.
  */
 export function getConfig(k: string): string | undefined {
     const config = parseConfig();
@@ -66,7 +67,8 @@ export function getConfig(k: string): string | undefined {
 }
 
 /**
- * isConfigSecret returns true if the key contains a secret value.
+ * Returns true if the key contains a secret value.
+ *
  * @internal
  */
 export function isConfigSecret(k: string): boolean {
@@ -82,9 +84,9 @@ export function isConfigSecret(k: string): boolean {
 }
 
 /**
- * parseConfig reads config from the source of truth, the environment.
- * config must always be read this way because automation api introduces
- * new program lifetime semantics where program lifetime != module lifetime.
+ * Reads configuration from the source of truth, the environment. Configuration
+ * must always be read this way because the Automation API introduces new
+ * program lifetime semantics where program lifetime != module lifetime.
  */
 function parseConfig() {
     const { config } = getStore();
@@ -101,8 +103,8 @@ function parseConfig() {
 }
 
 /**
- * persistConfig writes config to the environment.
- * config changes must always be persisted to the environment because automation api introduces
+ * Writes configuration to the environment. Configuration changes must always be
+ * persisted to the environment this way because the Automation API introduces
  * new program lifetime semantics where program lifetime != module lifetime.
  */
 function persistConfig(config: { [key: string]: string }, secretKeys?: string[]) {
@@ -114,11 +116,13 @@ function persistConfig(config: { [key: string]: string }, secretKeys?: string[])
 }
 
 /**
- * cleanKey takes a configuration key, and if it is of the form "<string>:config:<string>" removes
- * the ":config:" portion. Previously, our keys always had the string ":config:" in them, and we'd
- * like to remove it. However, the language host needs to continue to set it so we can be compatible
- * with older versions of our packages. Once we stop supporting older packages, we can change the
- * language host to not add this :config: thing and remove this function.
+ * Takes a configuration key and, if it is of the form
+ * "<string>:config:<string>" removes the ":config:" portion. Previously, our
+ * keys always had the string ":config:" in them, and we'd like to remove it.
+ * However, the language host needs to continue to set it so we can be
+ * compatible with older versions of our packages. Once we stop supporting older
+ * packages, we can change the language host to not add this :config: thing and
+ * remove this function.
  */
 function cleanKey(key: string): string {
     const idx = key.indexOf(":");

@@ -20,6 +20,7 @@ package dotnet
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -153,7 +154,8 @@ type modContext struct {
 	liftSingleValueMethodReturns bool
 
 	// The root namespace to use, if any.
-	rootNamespace string
+	rootNamespace    string
+	parameterization *schema.Parameterization
 }
 
 func (mod *modContext) RootNamespace() string {
@@ -987,7 +989,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsComponent {
 		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
 	} else {
-		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), %s)\n",
+				tok,
+				argsOverride,
+				"Utilities.PackageParameterization()")
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+		}
 	}
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
@@ -1014,7 +1023,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        private %s(string name, Input<string> id, %s%s? options = null)\n", className, stateParam, optionsType)
-		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, id))\n", tok, stateRef)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, id), %s)\n",
+				tok,
+				stateRef,
+				"Utilities.PackageParameterization()")
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, id))\n", tok, stateRef)
+		}
+
 		fmt.Fprintf(w, "        {\n")
 		fmt.Fprintf(w, "        }\n")
 	}
@@ -1183,8 +1200,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
-		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
-			typeParameter, fun.Token, argsParamRef, lift)
+		if mod.parameterization != nil {
+			// pass null for CallOptions parameter
+			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this, null, %s)%s;\n",
+				typeParameter, fun.Token, argsParamRef, "Utilities.PackageParameterization()", lift)
+		} else {
+			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
+				typeParameter, fun.Token, argsParamRef, lift)
+		}
 	}
 	for _, method := range r.Methods {
 		genMethod(method)
@@ -1439,7 +1462,15 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		// new line and indent
 		fmt.Fprint(w, "            ")
 		fmt.Fprintf(w, "=> global::Pulumi.Deployment.Instance.%sAsync%s", invokeCall, typeParamOrEmpty(typeParameter))
-		fmt.Fprintf(w, "(\"%s\", %s, options.WithDefaults());\n", fun.Token, argsParamRef)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "(\"%s\", %s, options.WithDefaults(), %s);\n",
+				fun.Token,
+				argsParamRef,
+				"Utilities.PackageParameterization()")
+		} else {
+			fmt.Fprintf(w, "(\"%s\", %s, options.WithDefaults());\n", fun.Token, argsParamRef)
+		}
+
 	} else {
 		// multi-argument inputs and output property bag
 		// first generate the function definition
@@ -1479,7 +1510,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		// full invoke call
 		fmt.Fprint(w, "return await global::Pulumi.Deployment.Instance.")
 		fmt.Fprintf(w, "%sAsync%s", invokeCall, typeParamOrEmpty(typeParameter))
-		fmt.Fprintf(w, "(\"%s\", args, invokeOptions.WithDefaults());\n", fun.Token)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "(\"%s\", args, invokeOptions.WithDefaults(), Utilities.PackageParameterization());\n", fun.Token)
+		} else {
+			fmt.Fprintf(w, "(\"%s\", args, invokeOptions.WithDefaults());\n", fun.Token)
+		}
+
 		fmt.Fprint(w, "        }\n")
 	}
 
@@ -1995,13 +2031,30 @@ func (mod *modContext) genUtilities() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
-		Name:              namespaceName(mod.namespaces, mod.pkg.Name()),
-		Namespace:         mod.namespaceName,
-		ClassName:         "Utilities",
-		Tool:              mod.tool,
-		PluginDownloadURL: def.PluginDownloadURL,
-	})
+
+	var version string
+	if def.Version != nil {
+		version = def.Version.String()
+	}
+	templateData := csharpUtilitiesTemplateContext{
+		Name:                namespaceName(mod.namespaces, mod.pkg.Name()),
+		Namespace:           mod.namespaceName,
+		ClassName:           "Utilities",
+		Tool:                mod.tool,
+		PluginDownloadURL:   def.PluginDownloadURL,
+		HasParameterization: def.Parameterization != nil,
+		PackageName:         def.Name,
+		PackageVersion:      version,
+	}
+
+	if def.Parameterization != nil {
+		templateData.BaseProviderName = def.Parameterization.BaseProvider.Name
+		templateData.BaseProviderVersion = def.Parameterization.BaseProvider.Version.String()
+		templateData.BaseProviderPluginDownloadURL = def.Parameterization.BaseProvider.PluginDownloadURL
+		templateData.ParameterValue = base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
+	}
+
+	err = csharpUtilitiesTemplate.Execute(w, templateData)
 	if err != nil {
 		return "", err
 	}
@@ -2184,8 +2237,7 @@ func genPackageMetadata(pkg *schema.Package,
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
-	}
-	if pkg.SupportPack {
+	} else if pkg.SupportPack {
 		if pkg.Version == nil {
 			return errors.New("package version is required")
 		}
@@ -2242,12 +2294,15 @@ func genProjectFile(pkg *schema.Package,
 		restoreSources = strings.Join(folders.ToSlice(), ";")
 	}
 
-	// Add the Pulumi package reference
-	for _, path := range localDependencies {
-		filename := filepath.Base(path)
-		pkg, rest, _ := strings.Cut(filename, ".")
-		version, _ := strings.CutSuffix(rest, ".nupkg")
-		packageReferences[pkg] = version
+	// Add local package references
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			packageReferences[packageName] = version
+		} else {
+			return nil, fmt.Errorf("unable to extract package name and version from nuget file path %s", nugetFilePath)
+		}
 	}
 
 	// if we don't have a package reference to Pulumi SDK from nuget
@@ -2261,10 +2316,16 @@ func genProjectFile(pkg *schema.Package,
 			}
 		}
 
+		// The minimum version we use needs to be higher if using parameterization.
+		minimumVersion := "3.66.1.0"
+		if pkg.Parameterization != nil {
+			minimumVersion = "3.68.0.0"
+		}
+
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = "[3.54.1.0,4)"
+			packageReferences["Pulumi"] = fmt.Sprintf("[%s,4)", minimumVersion)
 		}
 	}
 
@@ -2398,6 +2459,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				compatibility:                info.Compatibility,
 				dictionaryConstructors:       info.DictionaryConstructors,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
+				parameterization:             pkg.Parameterization,
 			}
 
 			if modName != "" {

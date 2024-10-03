@@ -17,14 +17,24 @@
 package ints
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	dap "github.com/google/go-dap"
 	"github.com/grapl-security/pulumi-hcp/sdk/go/hcp"
 	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
@@ -32,8 +42,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -43,11 +55,7 @@ func TestBuildTarget(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "go-build-target"))
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -912,11 +920,7 @@ func TestAboutGo(t *testing.T) {
 	dir := filepath.Join("about", "go")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -1021,11 +1025,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	t.Cleanup(cancel)
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.
@@ -1194,4 +1194,171 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			},
 		},
 	})
+}
+
+// Test a paramaterized provider with go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestParameterizedGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("go/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("go", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "go")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "parameterized"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+	})
+}
+
+func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {
+	events := make([]apitype.EngineEvent, 0)
+	eventsFile, err := os.Open(logfile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("expected to be able to open event log file %s: %w",
+			logfile, err)
+	}
+
+	defer contract.IgnoreClose(eventsFile)
+
+	decoder := json.NewDecoder(eventsFile)
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("failed decoding engine event from log file %s: %w",
+				logfile, err)
+		}
+		events = append(events, event)
+	}
+	return events, nil
+}
+
+func newDAPRequest(seq int, command string) dap.Request {
+	request := dap.Request{}
+	request.Type = "request"
+	request.Command = command
+	request.Seq = seq
+	return request
+}
+
+func TestDebuggerAttach(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("go", "go-build-target"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+		e.RunCommand("pulumi", "stack", "init", "debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "debugger-test")
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent)
+
+	// We've attached a debugger, so we need to connect to it and let the program continue.
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
+	if err != nil {
+		log.Fatalf("Failed to connect to debugger: %v", err)
+	}
+	defer conn.Close()
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi",
+			ClientName:      "Pulumi",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	assert.NoError(t, err)
+	seq++
+	reader := bufio.NewReader(conn)
+	// We need to read the response, but we don't actually care
+	// about it.  It just includes the capabilities of the
+	// debugger.
+	resp, err := dap.ReadProtocolMessage(reader)
+	assert.NoError(t, err)
+	assert.IsType(t, &dap.InitializeResponse{}, resp)
+	json, err := json.Marshal(debugEvent.Config)
+	assert.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	assert.NoError(t, err)
+	seq++
+	// read the initialized event, and then the response to the attach request.
+	resp, err = dap.ReadProtocolMessage(reader)
+	assert.NoError(t, err)
+	assert.IsType(t, &dap.InitializedEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	assert.NoError(t, err)
+	assert.IsType(t, &dap.AttachResponse{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
+		Request: newDAPRequest(seq, "continue"),
+	})
+	assert.NoError(t, err)
+	seq++
+	resp, err = dap.ReadProtocolMessage(reader)
+	assert.NoError(t, err)
+	assert.IsType(t, &dap.ContinueResponse{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	assert.NoError(t, err)
+	assert.IsType(t, &dap.TerminatedEvent{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
+		Request: newDAPRequest(seq, "disconnect"),
+	})
+	assert.NoError(t, err)
+
+	// Make sure the program finished successfully.
+	wg.Wait()
 }

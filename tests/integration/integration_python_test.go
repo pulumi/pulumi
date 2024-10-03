@@ -17,16 +17,24 @@
 package ints
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/stretchr/testify/assert"
@@ -484,6 +492,76 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 			urn := resource.URN(urnOut)
 			typ := urn.Type().String()
 			assert.Equal(t, "pulumi-python:dynamic/custom-provider:CustomResource", typ)
+		},
+	})
+}
+
+// Tests dynamic provider in Python with `serialize_as_secret_always` set to `False`.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
+	dir := filepath.Join("dynamic", "python-disable-serialization-as-secret")
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: dir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      filepath.Join(dir, "step1"),
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+
+				// `serialize_as_secret_always` is set to `False`, so we expect `__provider` to be a plain string
+				// and not a secret since it didn't capture any secrets.
+				dynRes := stack.Deployment.Resources[2]
+				assert.IsType(t, "", dynRes.Inputs["__provider"], "expect __provider to be a string")
+				assert.IsType(t, "", dynRes.Outputs["__provider"], "expect __provider to be a string")
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
+			},
+		}},
+		UseSharedVirtualEnv: boolPointer(false),
+	})
+}
+
+// Tests custom resource type name of dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderSecretsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-secrets"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Secrets: map[string]string{
+			"password": "s3cret",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the __provider input (and corresponding output) was marked secret
+			dynRes := stackInfo.Deployment.Resources[2]
+			for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+				switch v := providerVal.(type) {
+				case string:
+					assert.Fail(t, "__provider was not a secret")
+				case map[string]interface{}:
+					assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+				}
+			}
+			// Ensure the resulting output had the expected value
+			code, ok := stackInfo.Outputs["out"].(string)
+			assert.True(t, ok)
+			assert.Equal(t, "200", code)
 		},
 	})
 }
@@ -1219,11 +1297,7 @@ func TestAboutPython(t *testing.T) {
 	dir := filepath.Join("about", "python")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	stdout, _ := e.RunCommand("pulumi", "about", "--json")
@@ -1328,4 +1402,199 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
 	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
+}
+
+// Test a paramaterized provider with python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestParameterizedPython(t *testing.T) {
+	// TODO: Unskip this test after 3.134.0 is released. Python codegen for parameterized providers will try to
+	// refer to release 3.134.0, but until we actually release that version pip will fail that this constraint
+	// can't be met.
+	t.Skip("This needs to skip until 3.134.0 is released due to how pip resoloution works")
+
+	e := ptesting.NewEnvironment(t)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work. This also means we don't delete the directory after the test runs.
+	var err error
+	e.CWD, err = filepath.Abs("python/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("python", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "python", "--local")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "parameterized"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+	})
+}
+
+func TestConfigGetterOverloads(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("python/config-getter-types")
+
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+
+	// ProgramTest installs extra dependencies as editable packages using the `-e` flag, but typecheckers do not
+	// handle editable packages well. We have to manually install the SDK without `-e` flag instead.
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python", "env", "src")
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", sdkPath)
+
+	// Add some config values
+	e.RunCommand("pulumi", "config", "set", "foo", "bar")
+	e.RunCommand("pulumi", "config", "set", "foo_int", "42")
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo_secret", "3")
+
+	// Run a preview. This will typecheck the program and fail if typechecking has errors.
+	e.RunCommand("pulumi", "preview")
+}
+
+// Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
+// and finally that the program terminates successfully after the debugger is detached.
+func TestDebuggerAttachPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("python", "venv"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+		e.RunCommand("pulumi", "stack", "init", "debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "debugger-test")
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent)
+
+	// We've attached a debugger, so we need to connect to it and let the program continue.
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(
+		int(debugEvent.Config["connect"].(map[string]interface{})["port"].(float64))))
+	if err != nil {
+		log.Fatalf("Failed to connect to debugger: %v", err)
+	}
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	resp, err := dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	// go-dap doesn't support this event, but we need to read it
+	// anyway.  We don't actually care that it's not supported,
+	// since we don't want to do anyting with it.
+	require.ErrorContains(t, err, "Event event 'debugpySockets' is not supported (seq: 3)")
+	require.Nil(t, resp)
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi",
+			ClientName:      "Pulumi",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializeResponse{}, resp)
+
+	json, err := json.Marshal(debugEvent.Config)
+	require.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	// As above we don't care about the details of this event
+	require.ErrorContains(t, err, "Event event 'debugpyWaitingForServer' is not supported (seq: 5)")
+	require.Nil(t, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializedEvent{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ConfigurationDoneRequest{
+		Request: newDAPRequest(seq, "configurationDone"),
+	})
+	require.NoError(t, err)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ConfigurationDoneResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.AttachResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ProcessEvent{}, resp)
+
+	for {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		if reflect.TypeOf(resp) == reflect.TypeOf(&dap.TerminatedEvent{}) {
+			break
+		}
+		require.IsType(t, &dap.ThreadEvent{}, resp)
+	}
+	conn.Close()
+
+	// Make sure the program finished successfully.
+	wg.Wait()
 }

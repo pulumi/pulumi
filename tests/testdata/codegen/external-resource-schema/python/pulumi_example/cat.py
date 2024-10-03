@@ -4,9 +4,14 @@
 
 import copy
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from ._inputs import *
 import pulumi_random
@@ -51,7 +56,7 @@ class Cat(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  age: Optional[pulumi.Input[int]] = None,
-                 pet: Optional[pulumi.Input[pulumi.InputType['PetArgs']]] = None,
+                 pet: Optional[pulumi.Input[Union['PetArgs', 'PetArgsDict']]] = None,
                  __props__=None):
         """
         Create a Cat resource with the given unique name, props, and options.
@@ -82,7 +87,7 @@ class Cat(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  age: Optional[pulumi.Input[int]] = None,
-                 pet: Optional[pulumi.Input[pulumi.InputType['PetArgs']]] = None,
+                 pet: Optional[pulumi.Input[Union['PetArgs', 'PetArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

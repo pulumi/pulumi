@@ -39,6 +39,10 @@ func init() {
 					TypeSpec:    pschema.TypeSpec{Type: "integer"},
 					Description: "The length of the random string (not including the prefix, if any).",
 				},
+				"prefix": {
+					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					Description: "An optional prefix.",
+				},
 				"result": {
 					TypeSpec:    pschema.TypeSpec{Type: "string"},
 					Description: "A random string.",
@@ -59,13 +63,13 @@ func init() {
 	}
 }
 
-type randomResourceProvider struct{}
+type randomProvider struct{}
 
-func (p *randomResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *randomProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *randomResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *randomProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -95,7 +99,7 @@ func (p *randomResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest)
 	}, nil
 }
 
-func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -128,6 +132,9 @@ func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequ
 		"length": n,
 		"result": prefix + result,
 	})
+	if prefix != "" {
+		outputs["prefix"] = resource.NewStringProperty(prefix)
+	}
 	outputs["result"] = resource.MakeSecret(outputs["result"])
 
 	outputProperties, err := plugin.MarshalProperties(
@@ -143,7 +150,7 @@ func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequ
 	}, nil
 }
 
-func (p *randomResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
 	// Just return back the input state.
 	return &rpc.ReadResponse{
 		Id:         req.Id,
@@ -151,14 +158,24 @@ func (p *randomResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest)
 	}, nil
 }
 
-func (p *randomResourceProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *randomProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
 	// Our Random resource will never be updated - if there is a diff, it will be a replacement.
 	panic("Update not implemented")
 }
 
-func (p *randomResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *randomProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	// Note that for our Random resource, we don't have to do anything on Delete.
 	return &emptypb.Empty{}, nil
+}
+
+func (p *randomProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	// The random provider doesn't support any invokes currently.
+	panic("Invoke not implemented")
+}
+
+func (p *randomProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	// The random provider doesn't support any call currently.
+	panic("Call not implemented")
 }
 
 func makeRandom(length int) (string, error) {

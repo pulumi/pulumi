@@ -65,6 +65,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(needs.matrix.outputs.version-set).go }}
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
@@ -85,19 +86,19 @@ jobs:
         with:
           path: pulumi
           ref: ${{ inputs.ref }}
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out pulumi-aws
         uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN}}
       - name: Check out pulumi-kubernetes
         uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-kubernetes
           path: pulumi-kubernetes
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out docs
         uses: actions/checkout@v4
         with:

@@ -25,7 +25,9 @@ import { createCommandError } from "./errors";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
-/** @internal */
+/**
+ * @internal
+ */
 export class CommandResult {
     stdout: string;
     stderr: string;
@@ -63,7 +65,10 @@ export interface PulumiCommandOptions {
 }
 
 export class PulumiCommand {
-    private constructor(readonly command: string, readonly version: semver.SemVer | null) {}
+    private constructor(
+        readonly command: string,
+        readonly version: semver.SemVer | null,
+    ) {}
 
     /**
      * Get a new Pulumi instance that uses the installation in `opts.root`.
@@ -157,6 +162,7 @@ export class PulumiCommand {
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
+        signal?: AbortSignal,
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
         // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
@@ -173,7 +179,7 @@ export class PulumiCommand {
             additionalEnv["PATH"] = envPath;
         }
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput);
+        return exec(this.command, args, cwd, additionalEnv, onOutput, signal);
     }
 }
 
@@ -183,6 +189,7 @@ async function exec(
     cwd?: string,
     additionalEnv?: { [key: string]: string },
     onOutput?: (data: string) => void,
+    signal?: AbortSignal,
 ): Promise<CommandResult> {
     const unknownErrCode = -2;
 
@@ -197,6 +204,12 @@ async function exec(
                     data = data.toString();
                 }
                 onOutput(data);
+            });
+        }
+
+        if (signal) {
+            signal.addEventListener("abort", () => {
+                proc.kill("SIGINT", { forceKillAfterTimeout: false });
             });
         }
 

@@ -2,9 +2,9 @@ import pulumi
 import pulumi_aws as aws
 import pulumi_aws_native as aws_native
 
-site_bucket = aws_native.s3.Bucket("site-bucket", website_configuration=aws_native.s3.BucketWebsiteConfigurationArgs(
-    index_document="index.html",
-))
+site_bucket = aws_native.s3.Bucket("site-bucket", website_configuration={
+    "index_document": "index.html",
+})
 index_html = aws.s3.BucketObject("index.html",
     bucket=site_bucket,
     source=pulumi.FileAsset("./www/index.html"),

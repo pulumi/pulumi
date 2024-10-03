@@ -15,10 +15,7 @@
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
         "esModuleInterop": true,
-        "typeRoots": [
-            "node_modules/@types",
-            "types/"
-        ],
+        "typeRoots": ["node_modules/@types", "types/"]
     },
     "files": [
         "index.ts",

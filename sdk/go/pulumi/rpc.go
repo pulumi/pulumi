@@ -754,8 +754,10 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return false, nil
 	}
 
+	allocatedPointer := false
 	// Allocate storage as necessary.
 	for dest.Kind() == reflect.Ptr {
+		allocatedPointer = true
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
@@ -795,11 +797,20 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		if err != nil {
 			return false, err
 		}
-		resV := reflect.ValueOf(res).Elem()
-		if !resV.Type().AssignableTo(dest.Type()) {
+		resV := reflect.ValueOf(res)
+		// If we unmarshal a pointer and the destination is "any", we also want to make sure the result is a
+		// pointer.  We check above whether the destination is a pointer, but that's not true for "any", even
+		// though it can hold a pointer.
+		if !allocatedPointer && resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
+			resV.Elem().Type().AssignableTo(dest.Type()) {
+			dest.Set(resV)
+			return secret, nil
+		}
+
+		if !resV.Elem().Type().AssignableTo(dest.Type()) {
 			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
 		}
-		dest.Set(resV)
+		dest.Set(resV.Elem())
 		return secret, nil
 	case v.IsOutput():
 		if _, err := unmarshalOutput(ctx, v.OutputValue().Element, dest); err != nil {

@@ -16,10 +16,8 @@ package pulumi
 
 import "golang.org/x/net/context"
 
-// XResourceTransformArgs is the argument bag passed to a resource transform.
-//
-// Experimental.
-type XResourceTransformArgs struct {
+// ResourceTransformArgs is the argument bag passed to a resource transform.
+type ResourceTransformArgs struct {
 	// If the resource is a custom or component resource
 	Custom bool
 	// The type of the resource.
@@ -32,24 +30,48 @@ type XResourceTransformArgs struct {
 	Opts ResourceOptions
 }
 
-// XResourceTransformResult is the result that must be returned by a resource transform
+// ResourceTransformResult is the result that must be returned by a resource transform
 // callback. It includes new values to use for the `props` and `opts` of the `Resource` in place of
 // the originally provided values.
-//
-// Experimental.
-type XResourceTransformResult struct {
+type ResourceTransformResult struct {
 	// The new properties to use in place of the original `props`.
 	Props Map
 	// The new resource options to use in place of the original `opts`.
 	Opts ResourceOptions
 }
 
-// XResourceTransform is the callback signature for the `transforms` resource option.  A
+// ResourceTransform is the callback signature for the `transforms` resource option.  A
 // transform is passed the same set of inputs provided to the `Resource` constructor, and can
 // optionally return back alternate values for the `props` and/or `opts` prior to the resource
 // actually being created.  The effect will be as though those props and opts were passed in place
 // of the original call to the `Resource` constructor.  If the transform returns nil,
 // this indicates that the resource will not be transformed.
-//
-// Experimental.
-type XResourceTransform func(context.Context, *XResourceTransformArgs) *XResourceTransformResult
+type ResourceTransform func(context.Context, *ResourceTransformArgs) *ResourceTransformResult
+
+// InvokeTransformArgs is the argument bag passed to a invoke transform.
+type InvokeTransformArgs struct {
+	// The token of the invoke.
+	Token string
+	// The original args passed to the resource constructor.
+	Args Map
+	// The original invoke options passed to the resource constructor.
+	Opts InvokeOptions
+}
+
+// InvokeTransformResult is the result that must be returned by an invoke transform
+// callback. It includes new values to use for the `args` and `opts` of the `Invoke` in place of
+// the originally provided values.
+type InvokeTransformResult struct {
+	// The new args to use in place of the original `args`.
+	Args Map
+	// The new invoke options to use in place of the original `opts`.
+	Opts InvokeOptions
+}
+
+// InvokeTransform is the callback signature for the `transforms` resource option for invokes.  A
+// transform is passed the same set of inputs provided to the `Invoke` constructor, and can
+// optionally return back alternate values for the `args` and/or `opts` prior to the invoke
+// actually being executed.  The effect will be as though those args and opts were passed in place
+// of the original call to the `Invoke`.  If the transform returns nil, this indicates that the Invoke
+// will not be transformed.
+type InvokeTransform func(context.Context, *InvokeTransformArgs) *InvokeTransformResult

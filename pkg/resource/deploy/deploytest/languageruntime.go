@@ -90,14 +90,21 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
+func (p *languageRuntime) InstallDependencies(plugin.InstallDependenciesRequest) error {
 	if p.closed {
 		return ErrLanguageRuntimeIsClosed
 	}
 	return nil
 }
 
-func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {
+	if p.closed {
+		return []plugin.RuntimeOptionPrompt{}, ErrLanguageRuntimeIsClosed
+	}
+	return []plugin.RuntimeOptionPrompt{}, nil
+}
+
+func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if p.closed {
 		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed
 	}
@@ -124,12 +131,12 @@ func (p *languageRuntime) GenerateProject(string, string, string,
 }
 
 func (p *languageRuntime) GeneratePackage(
-	string, string, map[string][]byte, string, map[string]string,
+	string, string, map[string][]byte, string, map[string]string, bool,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
 }
 
-func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
+func (p *languageRuntime) GenerateProgram(map[string]string, string, bool) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 

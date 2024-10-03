@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"testing"
@@ -40,9 +41,16 @@ import (
 type hostEngine struct {
 	pulumirpc.UnimplementedEngineServer
 	t *testing.T
+
+	logLock         sync.Mutex
+	logRepeat       int
+	previousMessage string
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	e.logLock.Lock()
+	defer e.logLock.Unlock()
+
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
@@ -57,10 +65,29 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
+	message := req.Message
+	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
+		// Cut down logs so they don't overwhelm the test output
+		if len(message) > 1024 {
+			message = message[:1024] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		}
+	}
+
+	if e.previousMessage == message {
+		e.logRepeat++
+		return &pbempty.Empty{}, nil
+	}
+
+	if e.logRepeat > 1 {
+		e.t.Logf("Last message repeated %d times", e.logRepeat)
+	}
+	e.logRepeat = 1
+	e.previousMessage = message
+
 	if req.StreamId != 0 {
-		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, req.Message)
+		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
 	} else {
-		e.t.Logf("%s[%s]: %s", sev, req.Urn, req.Message)
+		e.t.Logf("%s[%s]: %s", sev, req.Urn, message)
 	}
 	return &pbempty.Empty{}, nil
 }
@@ -152,75 +179,81 @@ func TestLanguage(t *testing.T) {
 	require.NoError(t, err)
 
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
-	//nolint:paralleltest // These aren't yet safe to run in parallel
 	for _, forceTsc := range []bool{false, true} {
-		cancel := make(chan bool)
+		forceTsc := forceTsc
+		t.Run(fmt.Sprintf("forceTsc=%v", forceTsc), func(t *testing.T) {
+			t.Parallel()
 
-		// Run the language plugin
-		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-			Init: func(srv *grpc.Server) error {
-				host := newLanguageHost(engineAddress, "", forceTsc)
-				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-				return nil
-			},
-			Cancel: cancel,
-		})
-		require.NoError(t, err)
+			cancel := make(chan bool)
 
-		// Create a temp project dir for the test to run in
-		rootDir := t.TempDir()
-
-		snapshotDir := "./testdata/"
-		if forceTsc {
-			snapshotDir += "tsc"
-		} else {
-			snapshotDir += "tsnode"
-		}
-
-		// Prepare to run the tests
-		prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
-			LanguagePluginName:   "nodejs",
-			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-			TemporaryDirectory:   rootDir,
-			SnapshotDirectory:    snapshotDir,
-			CoreSdkDirectory:     "../..",
-			CoreSdkVersion:       sdk.Version.String(),
-			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-				{
-					Path:        "package\\.json",
-					Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
-					Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+			// Run the language plugin
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					host := newLanguageHost(engineAddress, "", forceTsc)
+					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+					return nil
 				},
-				{
-					Path:        "package\\.json",
-					Pattern:     rootDir + "/artifacts",
-					Replacement: "ROOT/artifacts",
-				},
-			},
-		})
-		require.NoError(t, err)
-
-		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-		//nolint:paralleltest // These aren't yet safe to run in parallel
-		for _, tt := range tests.Tests {
-			tt := tt
-			t.Run(tt, func(t *testing.T) {
-				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
-					Token: prepare.Token,
-					Test:  tt,
-				})
-
-				require.NoError(t, err)
-				for _, msg := range result.Messages {
-					t.Log(msg)
-				}
-				t.Logf("stdout: %s", result.Stdout)
-				t.Logf("stderr: %s", result.Stderr)
-				assert.True(t, result.Success)
+				Cancel: cancel,
 			})
-		}
+			require.NoError(t, err)
 
-		close(cancel)
-		assert.NoError(t, <-handle.Done)
+			// Create a temp project dir for the test to run in
+			rootDir := t.TempDir()
+
+			snapshotDir := "./testdata/"
+			if forceTsc {
+				snapshotDir += "tsc"
+			} else {
+				snapshotDir += "tsnode"
+			}
+
+			// Prepare to run the tests
+			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+				LanguagePluginName:   "nodejs",
+				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:   rootDir,
+				SnapshotDirectory:    snapshotDir,
+				CoreSdkDirectory:     "../..",
+				CoreSdkVersion:       sdk.Version.String(),
+				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+					{
+						Path:        "package\\.json",
+						Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+						Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+					},
+					{
+						Path:        "package\\.json",
+						Pattern:     rootDir + "/artifacts",
+						Replacement: "ROOT/artifacts",
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			for _, tt := range tests.Tests {
+				tt := tt
+				t.Run(tt, func(t *testing.T) {
+					t.Parallel()
+
+					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+						Token: prepare.Token,
+						Test:  tt,
+					})
+
+					require.NoError(t, err)
+					for _, msg := range result.Messages {
+						t.Log(msg)
+					}
+					t.Logf("stdout: %s", result.Stdout)
+					t.Logf("stderr: %s", result.Stderr)
+					assert.True(t, result.Success)
+				})
+			}
+
+			t.Cleanup(func() {
+				close(cancel)
+				assert.NoError(t, <-handle.Done)
+			})
+		})
 	}
 }

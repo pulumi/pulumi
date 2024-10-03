@@ -188,6 +188,10 @@ func RenameStack(deployment *apitype.DeploymentV3, newName tokens.StackName, new
 			}
 		}
 
+		if res.DeletedWith != "" {
+			res.DeletedWith = rewriteUrn(res.DeletedWith)
+		}
+
 		if res.Provider != "" {
 			providerRef, err := providers.ParseReference(res.Provider)
 			contract.AssertNoErrorf(err, "failed to parse provider reference from validated checkpoint")

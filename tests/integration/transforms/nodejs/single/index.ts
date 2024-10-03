@@ -3,7 +3,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import { Random } from "./random";
 
-pulumi.runtime.xRegisterStackTransform(async ({ type, props, opts }) => {
+pulumi.runtime.registerStackTransform(async ({ type, props, opts }) => {
     console.log("stack transform");
     return undefined;
 });

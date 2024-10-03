@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -61,15 +62,17 @@ type contextState struct {
 	callbacksLock sync.Mutex
 	callbacks     *callbackServer
 
-	keepResources       bool       // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues    bool       // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith bool       // true if deletedWith supported by pulumi
-	supportsAliasSpecs  bool       // true if full alias specification is supported by pulumi
-	supportsTransforms  bool       // true if remote transforms are supported by pulumi
-	rpcs                int        // the number of outstanding RPC requests.
-	rpcsDone            *sync.Cond // an event signaling completion of RPCs.
-	rpcsLock            sync.Mutex // a lock protecting the RPC count and event.
-	rpcError            error      // the first error (if any) encountered during an RPC.
+	keepResources            bool       // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues         bool       // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith      bool       // true if deletedWith supported by pulumi
+	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
+	supportsTransforms       bool       // true if remote transforms are supported by pulumi
+	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
+	supportsParameterization bool       // true if package references and parameterized providers are supported by pulumi
+	rpcs                     int        // the number of outstanding RPC requests.
+	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
+	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
+	rpcError                 error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 }
@@ -162,18 +165,30 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsInvokeTransforms, err := supportsFeature("invokeTransforms")
+	if err != nil {
+		return nil, err
+	}
+
+	supportsParameterization, err := supportsFeature("parameterization")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
-		info:                info,
-		exports:             make(map[string]Input),
-		monitorConn:         monitorConn,
-		monitor:             monitor,
-		engineConn:          engineConn,
-		engine:              engine,
-		keepResources:       keepResources,
-		keepOutputValues:    keepOutputValues,
-		supportsDeletedWith: supportsDeletedWith,
-		supportsAliasSpecs:  supportsAliasSpecs,
-		supportsTransforms:  supportsTransforms,
+		info:                     info,
+		exports:                  make(map[string]Input),
+		monitorConn:              monitorConn,
+		monitor:                  monitor,
+		engineConn:               engineConn,
+		engine:                   engine,
+		keepResources:            keepResources,
+		keepOutputValues:         keepOutputValues,
+		supportsDeletedWith:      supportsDeletedWith,
+		supportsAliasSpecs:       supportsAliasSpecs,
+		supportsTransforms:       supportsTransforms,
+		supportsInvokeTransforms: supportsInvokeTransforms,
+		supportsParameterization: supportsParameterization,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -266,7 +281,7 @@ func (ctx *Context) Project() string { return ctx.state.info.Project }
 func (ctx *Context) Stack() string { return ctx.state.info.Stack }
 
 // Parallel returns the degree of parallelism currently being used by the engine (1 being entirely serial).
-func (ctx *Context) Parallel() int { return ctx.state.info.Parallel }
+func (ctx *Context) Parallel() int32 { return ctx.state.info.Parallel }
 
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
 func (ctx *Context) DryRun() bool { return ctx.state.info.DryRun }
@@ -294,7 +309,7 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
-func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback, error) {
+func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsTransforms {
 		return nil, errors.New("the Pulumi CLI does not support transforms. Please update the Pulumi CLI")
 	}
@@ -384,7 +399,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			opts.Version = rpcReq.Options.Version
 		}
 
-		args := &XResourceTransformArgs{
+		args := &ResourceTransformArgs{
 			Custom: rpcReq.Custom,
 			Type:   rpcReq.Type,
 			Name:   rpcReq.Name,
@@ -523,41 +538,161 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 	return cb, nil
 }
 
+// registerTransform starts up a callback server if not already running and registers the given transform.
+func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsInvokeTransforms {
+		return nil, errors.New("the Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.TransformInvokeRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		// Unmarshal the resource inputs.
+		args, err := plugin.UnmarshalProperties(rpcReq.Args, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling transform protobuf properties: %w", err)
+		}
+
+		unmarshalledArgs, err := unmarshalPropertyMap(ctx, args)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling transform properties: %w", err)
+		}
+
+		var opts InvokeOptions
+		if rpcReq.Options != nil {
+			if rpcReq.Options.Provider != "" {
+				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
+			}
+			opts.Version = rpcReq.Options.Version
+			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+		}
+
+		transformArgs := &InvokeTransformArgs{
+			Token: rpcReq.Token,
+			Args:  unmarshalledArgs,
+			Opts:  opts,
+		}
+
+		res := t(innerCtx, transformArgs)
+		rpcRes := &pulumirpc.TransformInvokeResponse{
+			Args:    nil,
+			Options: nil,
+		}
+
+		if res != nil {
+			opts := res.Opts
+
+			umArgs := res.Args
+			if umArgs == nil {
+				umArgs = Map{}
+			}
+			mArgs, _, err := marshalInput(umArgs, anyType, true)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			args = resource.PropertyMap{}
+			if mArgs.IsObject() {
+				args = mArgs.ObjectValue()
+			}
+
+			rpcRes.Args, err = plugin.MarshalProperties(
+				args,
+				plugin.MarshalOptions{
+					KeepUnknowns:  true,
+					KeepSecrets:   true,
+					KeepResources: ctx.state.keepResources,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			rpcRes.Options = &pulumirpc.TransformInvokeOptions{}
+			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
+
+			if opts.Provider != nil {
+				rpcRes.Options.Provider, err = ctx.resolveProviderReference(opts.Provider)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling provider: %w", err)
+				}
+			}
+			rpcRes.Options.Version = opts.Version
+		}
+
+		return rpcRes, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
+}
+
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) (err error) {
-	if tok == "" {
-		return errors.New("invoke token must not be empty")
-	}
+	return ctx.InvokePackage(tok, args, result, "" /* packageRef */, opts...)
+}
 
-	resultV := reflect.ValueOf(result)
-	if !(resultV.Kind() == reflect.Ptr &&
-		(resultV.Elem().Kind() == reflect.Struct ||
-			(resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String))) {
-		return errors.New("result must be a pointer to a struct or map value")
+// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+//
+// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+func (ctx *Context) invokePackageRaw(
+	tok string, args interface{}, packageRef string, opts ...InvokeOption,
+) (resource.PropertyMap, error) {
+	if tok == "" {
+		return nil, errors.New("invoke token must not be empty")
 	}
 
 	options, err := NewInvokeOptions(opts...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err = ctx.beginRPC(); err != nil {
-		return err
+		return nil, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		providerRef = pr
 	}
@@ -568,7 +703,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -585,7 +720,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -597,10 +732,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		Version:           options.Version,
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
+		PackageRef:        packageRef,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return err
+		return nil, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -611,38 +747,86 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return ferr
+		return nil, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	outProps, err := plugin.UnmarshalProperties(
+	return plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
-		},
-	)
-	if err != nil {
-		return err
+		})
+}
+
+func validInvokeResult(resultV reflect.Value) bool {
+	isPointer := resultV.Kind() == reflect.Ptr
+	isMap := resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String
+	structOrMap := resultV.Elem().Kind() == reflect.Struct || isMap
+	return isPointer && structOrMap
+}
+
+// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+//
+// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+func (ctx *Context) InvokePackage(
+	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+) error {
+	resultV := reflect.ValueOf(result)
+	if !validInvokeResult(resultV) {
+		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	// fail if there are secrets returned from the invoke
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return err
 	}
+	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+
 	if hasSecret {
-		return errors.New("unexpected secret result returned to invoke call")
+		return errors.New("unexpected secret result returned to invoke call, " +
+			"consider using the output-versioned variant of the invoke")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return nil
+}
+
+// InvokePackageRaw is similar to InvokePackage except that it doesn't error out if the result has secrets.
+// Insread, it returns a boolean indicating if the result has secrets.
+func (ctx *Context) InvokePackageRaw(
+	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+) (isSecret bool, err error) {
+	resultV := reflect.ValueOf(result)
+	if !validInvokeResult(resultV) {
+		return false, errors.New("result must be a pointer to a struct or map value")
+	}
+
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	if err != nil {
+		return false, err
+	}
+	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	if err != nil {
+		return false, err
+	}
+	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
+	return hasSecret, nil
 }
 
 // Call will invoke a provider call function, identified by its token tok.
 //
 // output is used to determine the output type to return; self is optional for methods.
 func (ctx *Context) Call(tok string, args Input, output Output, self Resource, opts ...InvokeOption) (Output, error) {
+	return ctx.CallPackage(tok, args, output, self, "" /* packageRef */, opts...)
+}
+
+// CallPackage will invoke a provider call function, identified by its token tok.
+//
+// output is used to determine the output type to return; self is optional for methods.
+func (ctx *Context) CallPackage(
+	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
+) (Output, error) {
 	if tok == "" {
 		return nil, errors.New("call token must not be empty")
 	}
@@ -748,6 +932,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			Provider:          providerRef,
 			Version:           version,
 			PluginDownloadURL: pluginURL,
+			PackageRef:        packageRef,
 		}, nil
 	}
 
@@ -853,6 +1038,41 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 func (ctx *Context) ReadResource(
 	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption,
 ) error {
+	return ctx.readPackageResource(t, name, id, props, resource, "" /* packageRef */, opts...)
+}
+
+// ReadPackageResource reads an existing custom resource's state from the resource monitor. t is the fully qualified
+// type token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the
+// ID of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).
+// opts contains optional settings that govern the way the resource is managed.
+//
+// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
+// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that records
+// the name of the corresponding output property. The struct must embed the CustomResourceState type.
+//
+// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would define
+// the following CustomResource type:
+//
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
+//
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
+//
+// And invoke ReadPackageResource like so:
+//
+//	var resource MyResource
+//	err := ctx.ReadPackageResource(tok, name, id, nil, &resource, opts...)
+func (ctx *Context) ReadPackageResource(
+	t, name string, id IDInput, props Input, resource CustomResource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.readPackageResource(t, name, id, props, resource, packageRef, opts...)
+}
+
+func (ctx *Context) readPackageResource(
+	t, name string, id IDInput, props Input, resource CustomResource, packageRef string, opts ...ResourceOption,
+) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -925,7 +1145,7 @@ func (ctx *Context) ReadResource(
 
 	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
 	// between the this function and user code.
-	sourcePosition := ctx.getSourcePosition(2)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -962,6 +1182,7 @@ func (ctx *Context) ReadResource(
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
+			PackageRef:              packageRef,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -975,35 +1196,6 @@ func (ctx *Context) ReadResource(
 	}()
 
 	return nil
-}
-
-// RegisterResource creates and registers a new resource object. t is the fully qualified type token and name is
-// the "name" part to use in creating a stable and globally unique URN for the object. props contains the goal state
-// for the resource object and opts contains optional settings that govern the way the resource is created.
-//
-// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
-// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that
-// records the name of the corresponding output property. The struct must embed either the ResourceState or the
-// CustomResourceState type.
-//
-// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
-// define the following CustomResource type:
-//
-//	type MyResource struct {
-//	    pulumi.CustomResourceState
-//
-//	    Foo pulumi.IntOutput    `pulumi:"foo"`
-//	    Bar pulumi.StringOutput `pulumi:"bar"`
-//	}
-//
-// And invoke RegisterResource like so:
-//
-//	var resource MyResource
-//	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
-func (ctx *Context) RegisterResource(
-	t, name string, props Input, resource Resource, opts ...ResourceOption,
-) error {
-	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
@@ -1054,7 +1246,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
+	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
@@ -1150,7 +1342,7 @@ func (ctx *Context) registerResource(
 
 	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
 	// frames between this function and user code.
-	sourcePosition := ctx.getSourcePosition(3)
+	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -1168,8 +1360,8 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Register the transform functions
-		transforms := make([]*pulumirpc.Callback, 0, len(options.XTransforms))
-		for _, t := range options.XTransforms {
+		transforms := make([]*pulumirpc.Callback, 0, len(options.Transforms))
+		for _, t := range options.Transforms {
 			var cb *pulumirpc.Callback
 			cb, err = ctx.registerTransform(t)
 			if err != nil {
@@ -1240,6 +1432,7 @@ func (ctx *Context) registerResource(
 				SourcePosition:          sourcePosition,
 				Transforms:              transforms,
 				SupportsResultReporting: true,
+				PackageRef:              packageRef,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1266,16 +1459,66 @@ func (ctx *Context) registerResource(
 	return nil
 }
 
+// RegisterResource creates and registers a new resource object. t is the fully qualified type token and name is
+// the "name" part to use in creating a stable and globally unique URN for the object. props contains the goal state
+// for the resource object and opts contains optional settings that govern the way the resource is created.
+//
+// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
+// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that
+// records the name of the corresponding output property. The struct must embed either the ResourceState or the
+// CustomResourceState type.
+//
+// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
+// define the following CustomResource type:
+//
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
+//
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
+//
+// And invoke RegisterResource like so:
+//
+//	var resource MyResource
+//	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
+func (ctx *Context) RegisterResource(
+	t, name string, props Input, resource Resource, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
+}
+
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, opts...)
+	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
+	return ctx.registerResource(t, name, props, resource, true /*remote*/, "" /* packageRef */, opts...)
+}
+
+func (ctx *Context) RegisterPackageResource(
+	t, name string, props Input, resource Resource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, packageRef, opts...)
+}
+
+func (ctx *Context) RegisterPackageRemoteComponentResource(
+	t, name string, props Input, resource ComponentResource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, true /*remote*/, packageRef, opts...)
+}
+
+func (ctx *Context) RegisterPackage(
+	in *pulumirpc.RegisterPackageRequest,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	if !ctx.state.supportsParameterization {
+		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
+	}
+	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 
 // resourceState contains the results of a resource registration operation.
@@ -2118,16 +2361,32 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 	return nil
 }
 
-// XRegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
-//
-// Experimental.
-func (ctx *Context) XRegisterStackTransform(t XResourceTransform) error {
+// RegisterResourceTransform adds a transform to all future resources constructed in this Pulumi stack.
+func (ctx *Context) RegisterResourceTransform(t ResourceTransform) error {
 	cb, err := ctx.registerTransform(t)
 	if err != nil {
 		return err
 	}
 
 	_, err = ctx.state.monitor.RegisterStackTransform(ctx.ctx, cb)
+	return err
+}
+
+// RegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
+//
+// Deprecated: Use RegisterResourceTransform instead.
+func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
+	return ctx.RegisterResourceTransform(t)
+}
+
+// RegisterInvokeTransform adds a transform to all future invokes in this Pulumi stack.
+func (ctx *Context) RegisterInvokeTransform(t InvokeTransform) error {
+	cb, err := ctx.registerInvokeTransform(t)
+	if err != nil {
+		return err
+	}
+
+	_, err = ctx.state.monitor.RegisterStackInvokeTransform(ctx.ctx, cb)
 	return err
 }
 
@@ -2162,8 +2421,16 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	for i := range elems {
 		elems[i] = url.PathEscape(elems[i])
 	}
+	var line int32
+	if frame.Line <= math.MaxInt32 {
+		//nolint:gosec
+		line = int32(frame.Line)
+	} else {
+		// line is out of range for int32, that's a long sourcefile!
+		line = -1
+	}
 	return &pulumirpc.SourcePosition{
 		Uri:  "project://" + path.Join(elems...),
-		Line: int32(frame.Line),
+		Line: line,
 	}
 }

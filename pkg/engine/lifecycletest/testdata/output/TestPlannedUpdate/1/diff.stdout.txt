@@ -1,0 +1,19 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=cd1c24ef-36ce-4ca4-a1fe-dc0114cbb339]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 2%}>    baz: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        a: <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b: <{%reset%}><{%fg 2%}>"alpha"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    qux: <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>"beta"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>24<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    zed: <{%reset%}><{%fg 2%}>"grr"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

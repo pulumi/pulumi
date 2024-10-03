@@ -49,11 +49,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -80,11 +76,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -157,11 +149,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -187,11 +175,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 
@@ -238,11 +222,7 @@ func TestStackCommands(t *testing.T) {
 		for _, deploymentVersion := range versions {
 			t.Run(fmt.Sprintf("Version%d", deploymentVersion), func(t *testing.T) {
 				e := ptesting.NewEnvironment(t)
-				defer func() {
-					if !t.Failed() {
-						e.DeleteEnvironment()
-					}
-				}()
+				defer e.DeleteIfNotFailed()
 
 				integration.CreateBasicPulumiRepo(e)
 				e.SetBackend(e.LocalURL())
@@ -285,11 +265,7 @@ func TestStackCommands(t *testing.T) {
 
 	t.Run("FixingInvalidResources", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
@@ -357,11 +333,7 @@ func TestStackBackups(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs/nodejs")
@@ -437,11 +409,7 @@ func TestStackBackups(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestDestroySetsEncryptionsalt(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	const stackName = "imulup"
 	stackFile := filepath.Join(e.RootPath, "Pulumi.imulup.yaml")
@@ -498,11 +466,7 @@ func TestStackRenameAfterCreate(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	stackName := addRandomSuffix("stack-rename")
 	integration.CreateBasicPulumiRepo(e)
 	e.SetBackend(e.LocalURL())
@@ -518,11 +482,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	// Use the current username as the "organization" in certain operations.
 	username, _ := e.RunCommand("pulumi", "whoami")
@@ -560,11 +520,7 @@ func TestLocalStateLocking(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	integration.CreateBasicPulumiRepo(e)
 	e.ImportDirectory("integration/single_resource")
@@ -677,11 +633,7 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, projectName
 
 func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	stackName := addRandomSuffix("gzip-state")
 	integration.CreateBasicPulumiRepo(e)
 	e.ImportDirectory("integration/stack_dependencies")
@@ -790,11 +742,7 @@ func TestStackTags(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	stackName, err := resource.NewUniqueHex("test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 

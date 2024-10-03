@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +39,7 @@ func TestImportDeployment(t *testing.T) {
 		t.Run("error in migrate providers", func(t *testing.T) {
 			t.Parallel()
 			var decrypterCalled bool
-			_, err := NewImportDeployment(&plugin.Context{}, &Target{
+			_, err := NewImportDeployment(&plugin.Context{}, &Options{}, nil, &Target{
 				Snapshot: &Snapshot{
 					Resources: []*resource.State{
 						{
@@ -57,7 +58,7 @@ func TestImportDeployment(t *testing.T) {
 						return "", errors.New("expected fail")
 					},
 				},
-			}, "projectName", nil, true)
+			}, "projectName", nil)
 			assert.ErrorContains(t, err, "could not fetch configuration for default provider")
 			assert.True(t, decrypterCalled)
 		})
@@ -101,9 +102,9 @@ func TestImporter(t *testing.T) {
 					},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&mockHost{
-						ProviderF: func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-							assert.Equal(t, tokens.Package("foo"), pkg)
-							assert.Equal(t, "1.0.0", version.String())
+						ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+							assert.Equal(t, "foo", descriptor.Name)
+							assert.Equal(t, "1.0.0", descriptor.Version.String())
 							return nil, expectedErr
 						},
 					}, true, nil),
