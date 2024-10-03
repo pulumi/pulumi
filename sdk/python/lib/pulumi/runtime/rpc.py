@@ -782,10 +782,10 @@ def unwrap_rpc_secret_properties(value: Any, on_secret_encountered: Callable) ->
         on_secret_encountered()
         return unwrap_rpc_secret(value)
     if isinstance(value, struct_pb2.Struct):
-        output = struct_pb2.Struct()
+        value_struct = struct_pb2.Struct()
         for k, v in list(value.items()):
-            output[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
-        return output
+            value_struct[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
+        return value_struct
     if isinstance(value, dict):
         output = {}
         for k, v in value.items():
