@@ -101,6 +101,7 @@ jobs:
         with:
           tool-cache: false
           swap-storage: false
+          large-packages: false
 
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
