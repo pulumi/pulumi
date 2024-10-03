@@ -239,6 +239,17 @@ def _invoke(
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
 
+        # keep track of secretness of inputs
+        # if any of the inputs are secret OR the invoke response contains secrets
+        # then we mark the invoke result as secret
+        inputs_contain_secrets = False
+
+        def on_secrets_encountered():
+            nonlocal inputs_contain_secrets
+            inputs_contain_secrets = True
+
+        invoke_args = rpc.unwrap_rpc_secret_properties(inputs, on_secrets_encountered)
+
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
         accept_resources = not (
@@ -247,7 +258,7 @@ def _invoke(
         log.debug(f"Invoking function prepared: tok={tok}")
         req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
-            args=inputs,
+            args=invoke_args,
             provider=provider_ref or "",
             version=version,
             acceptResources=accept_resources,
@@ -297,12 +308,15 @@ def _invoke(
                 deserialized, lambda prop: prop, typ
             )
 
+        invoke_output_secret = is_secret or inputs_contain_secrets
         dependencies: List["Resource"] = []
         for _, property_deps in property_dependencies.items():
             for dep in property_deps:
                 dependencies.append(dep)
         return (
-            InvokeResult(value=result, is_secret=is_secret, dependencies=dependencies),
+            InvokeResult(
+                value=result, is_secret=invoke_output_secret, dependencies=dependencies
+            ),
             None,
         )
 

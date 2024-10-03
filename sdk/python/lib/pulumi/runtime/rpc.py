@@ -581,11 +581,9 @@ async def serialize_property(
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():
-            if keep_output_values:
-                # Serializing an output with a secret value requires the use of a magical signature key,
-                # which the engine detects.
-                return {_special_sig_key: _special_secret_sig, "value": value}
-            return value
+            # Serializing an output with a secret value requires the use of a magical signature key,
+            # which the engine detects.
+            return {_special_sig_key: _special_secret_sig, "value": value}
         return value
 
     # If value is an input type, convert it to a dict.
@@ -777,6 +775,25 @@ def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
                     if struct_contains_unknowns(item):
                         return True
     return False
+
+
+def unwrap_rpc_secret_properties(value: Any, on_secret_encountered: Callable) -> Any:
+    if is_rpc_secret(value):
+        on_secret_encountered()
+        return unwrap_rpc_secret(value)
+    if isinstance(value, struct_pb2.Struct):
+        output = struct_pb2.Struct()
+        for k, v in list(value.items()):
+            output[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
+        return output
+    if isinstance(value, dict):
+        output = {}
+        for k, v in value.items():
+            output[k] = unwrap_rpc_secret_properties(v, on_secret_encountered)
+        return output
+    if isinstance(value, list):
+        return [unwrap_rpc_secret_properties(v, on_secret_encountered) for v in value]
+    return value
 
 
 def deserialize_properties_unwrap_secrets(
