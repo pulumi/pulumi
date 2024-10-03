@@ -534,7 +534,9 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		stackRef = organization + "/large_resource_js/" + stackName
 	}
 
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", stackRef)
+	// This used to test just "destroy" but that is now mirrored to "state destroy" which will be maintained
+	// going forward to not require the project. Just "destroy" might one day error if Pulumi.yaml is missing.
+	e.RunCommand("pulumi", "state", "destroy", "--skip-preview", "--yes", "-s", stackRef)
 	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
 }
 
