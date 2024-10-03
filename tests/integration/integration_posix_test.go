@@ -61,6 +61,8 @@ func TestCancelSignal(t *testing.T) {
 			} else {
 				require.Fail(t, "Expected ExitError")
 			}
+			fmt.Printf("errBuffer = <%s>\n", errBuffer.String())
+			fmt.Printf("outBuffer = <%s>\n", outBuffer.String())
 			require.Contains(t, outBuffer.String(), "error: update canceled")
 		})
 	}
