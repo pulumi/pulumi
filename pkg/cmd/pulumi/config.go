@@ -865,8 +865,15 @@ func getProjectStackPath(stack backend.Stack) (string, error) {
 }
 
 func loadProjectStack(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
+	return loadProjectStackByReference(project, stack.Ref())
+}
+
+func loadProjectStackByReference(
+	project *workspace.Project,
+	stackRef backend.StackReference,
+) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stack.Ref().Name().Q())
+		return workspace.DetectProjectStack(stackRef.Name().Q())
 	}
 	return workspace.LoadProjectStack(project, stackConfigFile)
 }

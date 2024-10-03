@@ -54,7 +54,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 			assert.NotEmpty(t, opts.Teams, "expected teams to be set")
 			return nil, backend.ErrTeamsNotSupported
 		},
-		DefaultSecretManagerF: func() (secrets.Manager, error) {
+		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
 			return nil, nil
 		},
 	}

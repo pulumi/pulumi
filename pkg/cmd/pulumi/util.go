@@ -263,20 +263,47 @@ func createSecretsManagerForExistingStack(
 	return nil
 }
 
-// Creates a secrets manager for a new stack, using the backend that will manage the stack to pick defaults if
-// necessary.
-func createSecretsManagerForNewStack(b backend.Backend, secretsProvider string) (secrets.Manager, error) {
+// Creates a secrets manager for a new stack. If a stack configuration already exists (e.g. the user has created a
+// Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
+// fall back to a default defined by the backend that will manage the stack.
+func createSecretsManagerForNewStack(
+	ws pkgWorkspace.Context,
+	b backend.Backend,
+	stackRef backend.StackReference,
+	secretsProvider string,
+) (*workspace.ProjectStack, bool, secrets.Manager, error) {
+	var sm secrets.Manager
+
+	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
+	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
+	// populate it as we go.
+	var ps *workspace.ProjectStack
+	project, _, err := ws.ReadProject()
+	if err != nil {
+		ps = &workspace.ProjectStack{}
+	} else {
+		ps, err = loadProjectStackByReference(project, stackRef)
+		if err != nil {
+			ps = &workspace.ProjectStack{}
+		}
+	}
+
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if isDefaultSecretsProvider {
-		return b.DefaultSecretManager()
+		sm, err = b.DefaultSecretManager(ps)
+	} else if secretsProvider == passphrase.Type {
+		sm, err = passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotateSecretsProvider*/)
+	} else {
+		sm, err = cloud.NewCloudSecretsManager(ps, secretsProvider, false /*rotateSecretsProvider*/)
+	}
+	if err != nil {
+		return nil, false, nil, err
 	}
 
-	ps := &workspace.ProjectStack{}
-	if secretsProvider == passphrase.Type {
-		return passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotatePassphraseSecretsProvider*/)
-	}
-
-	return cloud.NewCloudSecretsManager(ps, secretsProvider, false /*rotateSecretsProvider*/)
+	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
+	return ps, needsSave, sm, err
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
@@ -285,7 +312,7 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	sm, err := createSecretsManagerForNewStack(b, secretsProvider)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(ws, b, stackRef, secretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
@@ -331,31 +358,8 @@ func createStack(ctx context.Context, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	// Now that we've created the stack, we'll write out any necessary configuration changes based on e.g. what secrets
-	// manager we set up.
-	if sm != nil {
-		project, _, err := ws.ReadProject()
-		if err != nil {
-			return nil, err
-		}
-		ps, err := loadProjectStack(project, stack)
-		if err != nil {
-			return nil, err
-		}
-
-		if sm.Type() == passphrase.Type {
-			err = passphrase.EditProjectStack(ps, sm.State())
-		} else if sm.Type() == cloud.Type {
-			err = cloud.EditProjectStack(ps, sm.State())
-		} else {
-			ps.EncryptionSalt = ""
-			ps.SecretsProvider = ""
-			ps.EncryptedKey = ""
-		}
-		if err != nil {
-			return nil, err
-		}
-
+	// Now that we've created the stack, we'll write out any necessary configuration changes.
+	if needsSave {
 		err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
