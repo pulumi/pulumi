@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/engine
+  description: Allow cancelling operations with SIGTERM
