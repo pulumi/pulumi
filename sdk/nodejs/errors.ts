@@ -82,6 +82,12 @@ export function isGrpcError(err: Error): boolean {
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }
 
+/**
+ * {@link InputPropertyError} is an error type that is used to indicate that a
+ * an input property has failed validation.
+ *
+ * The engine will pretty print this error for the user.
+ */
 export class InputPropertyError extends Error {
     /** @internal */
     public readonly __pulumiInputPropertyError: boolean = true;
@@ -110,6 +116,12 @@ interface InputPropertiesErrorArgs {
     errors: Array<InputPropertyErrorDetails>;
 }
 
+/**
+ * {@link InputPropertiesError} is an error type that is used to indicate that
+ * multiple input properties have failed validation.
+ *
+ * The engine will pretty print this error for the user.
+ */
 export class InputPropertiesError extends Error {
     /** @internal */
     public readonly __pulumiInputPropertiesError: boolean = true;

@@ -286,7 +286,7 @@ class Server implements grpc.UntypedServiceImplementation {
         }
     }
 
-    private build_invalid_properties_error(message: string, errors: Array<InputPropertyErrorDetails>): any {
+    private buildInvalidPropertiesError(message: string, errors: Array<InputPropertyErrorDetails>): any {
         const metadata = new grpc.Metadata();
         if (errors) {
             const status = new statusproto.Status();
@@ -380,12 +380,12 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 callback(undefined, resp);
             } catch (e) {
-                if (e instanceof InputPropertiesError) {
-                    const error = this.build_invalid_properties_error(e.message, e.errors);
+                if (InputPropertiesError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError(e.message, e.errors);
                     callback(error, undefined);
                     return;
-                } else if (e instanceof InputPropertyError) {
-                    const error = this.build_invalid_properties_error("", [
+                } else if (InputPropertyError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError("", [
                         { propertyPath: e.propertyPath, reason: e.reason },
                     ]);
                     callback(error, undefined);
