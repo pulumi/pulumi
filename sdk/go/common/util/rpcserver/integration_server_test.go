@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver"
 	"github.com/spf13/pflag"
@@ -317,7 +319,7 @@ func TestSubprocess(t *testing.T) {
 			}
 
 			// Connect to the gRPC server using the captured port
-			conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
+			conn, err := grpc.Dial("localhost:"+port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer conn.Close()
 
@@ -475,14 +477,14 @@ func StartHealthCheckServer(t *testing.T) (string, func()) {
 	}
 }
 
-type tracingMockMessage struct {
+type TracingMockMessage struct {
 	err error
 	msg string
 }
 
 // Tracing server impl
-func StartMockTracingServer(t *testing.T) (string, func(), chan tracingMockMessage) {
-	requestChan := make(chan tracingMockMessage, 100) // Channel to capture request data
+func StartMockTracingServer(t *testing.T) (string, func(), chan TracingMockMessage) {
+	requestChan := make(chan TracingMockMessage, 100) // Channel to capture request data
 
 	// Create a custom HTTP server
 	server := &http.Server{
@@ -490,7 +492,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan tracingMockMessa
 			// Read the body of the request
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
-				requestChan <- tracingMockMessage{err: err}
+				requestChan <- TracingMockMessage{err: err}
 			}
 			defer r.Body.Close()
 
@@ -501,7 +503,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan tracingMockMessa
 			//}
 
 			// Send the trace data to the channel for further processing in tests
-			requestChan <- tracingMockMessage{msg: string(body)}
+			requestChan <- TracingMockMessage{msg: string(body)}
 			w.WriteHeader(http.StatusOK)
 		}),
 		ReadHeaderTimeout: 5 * time.Second, // Prevent Slowloris attacks (golint error)
@@ -519,7 +521,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan tracingMockMessa
 	// Start the server in a goroutine
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			requestChan <- tracingMockMessage{err: err}
+			requestChan <- TracingMockMessage{err: err}
 		}
 	}()
 
