@@ -41,16 +41,16 @@ import (
 )
 
 const (
-	tracingFlag              = "--tracing"
-	engineAddrField          = "EngineAddr"
-	pluginPathField          = "PluginPath"
-	healthCheckIntervalField = "HealthCheckInterval"
+	tracingFlag     = "--tracing"
+	engineAddrField = "EngineAddr"
+	pluginPathField = "PluginPath"
+	//healthCheckIntervalField = "HealthCheckInterval"
 
 	pluginPath   = "plugin/path"
 	tracingName  = "tracing-name"
 	rootSpanName = "root-span-name"
 
-	healthCheckInterval = time.Second
+	//healthCheckInterval = time.Second
 
 	ENGINE_ADDR  = "ENGINE_ADDR"
 	TRACING_ADDR = "TRACING_ADDR"
@@ -225,8 +225,8 @@ func substituteArg(args []string, sub, val string) []string {
 
 //nolint:paralleltest
 func TestSubprocess(t *testing.T) {
-	for testCaseId, testCase := range tests {
-		t.Run("Test Case "+testCaseId, func(t *testing.T) {
+	for testCaseID, testCase := range tests {
+		t.Run("Test Case "+testCaseID, func(t *testing.T) {
 			engAddr, shutdownEngine := StartHealthCheckServer(t)
 			defer shutdownEngine()
 			substituteArg(testCase.give, ENGINE_ADDR, engAddr)
@@ -243,7 +243,7 @@ func TestSubprocess(t *testing.T) {
 
 			// Run the test in a subprocess
 			cmd := exec.Command(executablePath, append([]string{"-test.run=TestCmd"}, testCase.give...)...)
-			cmd.Env = append(os.Environ(), "TEST_CASE_ID="+testCaseId)
+			cmd.Env = append(os.Environ(), "TEST_CASE_ID="+testCaseID)
 
 			// Capture stdout dynamically
 			stdoutPipe, err := cmd.StdoutPipe()
@@ -375,9 +375,8 @@ func TestSubprocess(t *testing.T) {
 					checkFinishFunc(t, finishFunc)
 					checkExitCode(t, errCmd)
 					return
-				} else {
-					assert.NoError(t, serverDone.Err(), "the healthcheck had to be passed in this scenario")
 				}
+				assert.NoError(t, serverDone.Err(), "the healthcheck had to be passed in this scenario")
 			}
 
 			// Simulate sending the os.Interrupt signal to the subprocess
@@ -412,12 +411,12 @@ func checkFinishFunc(t *testing.T, finish chan struct{}) {
 
 //nolint:paralleltest
 func TestCmd(t *testing.T) {
-	var testCaseId string
+	var testCaseID string
 	// This is the function that will run in the subprocess
-	if testCaseId = os.Getenv("TEST_CASE_ID"); testCaseId == "" {
+	if testCaseID = os.Getenv("TEST_CASE_ID"); testCaseID == "" {
 		return
 	}
-	testCase := tests[testCaseId]
+	testCase := tests[testCaseID]
 
 	s, err := rpcserver.NewServer(testCase.config)
 	if err != nil {
@@ -498,6 +497,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
 			requestChan <- string(body)
 			w.WriteHeader(http.StatusOK)
 		}),
+		ReadHeaderTimeout: 5 * time.Second, // Prevent Slowloris attacks (golint error)
 	}
 
 	// Create a listener on a random available port
