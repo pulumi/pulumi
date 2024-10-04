@@ -777,6 +777,47 @@ def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
     return False
 
 
+def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
+    if _is_rpc_struct_secret(value):
+        unwrapped = _unwrap_rpc_struct_secret(value)
+        return (unwrapped, True)
+    if isinstance(value, struct_pb2.Struct):
+        contains_secrets = False
+        value_struct = struct_pb2.Struct()
+        for k, v in list(value.items()):
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(v)
+            contains_secrets = contains_secrets or secret_element
+            value_struct[k] = unwrapped
+        return (value_struct, contains_secrets)
+    if isinstance(value, dict):
+        contains_secrets = False
+        output = {}
+        for k, v in value.items():
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(v)
+            contains_secrets = contains_secrets or secret_element
+            output[k] = unwrapped
+        return (output, contains_secrets)
+    if isinstance(value, list):
+        contains_secrets = False
+        elements = []
+        for list_element in value:
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(
+                list_element
+            )
+            contains_secrets = contains_secrets or secret_element
+            elements.append(unwrapped)
+        return (elements, contains_secrets)
+    if isinstance(value, struct_pb2.ListValue):
+        contains_secrets = False
+        list_values = []
+        for list_value in value.values:
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(list_value)
+            contains_secrets = contains_secrets or secret_element
+            list_values.append(unwrapped)
+        return struct_pb2.ListValue(values=list_values), contains_secrets
+    return (value, False)
+
+
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
@@ -875,6 +916,27 @@ def is_rpc_secret(value: Any) -> bool:
         and _special_sig_key in value
         and value[_special_sig_key] == _special_secret_sig
     )
+
+
+def _is_rpc_struct_secret(value: Any) -> bool:
+    """
+    Returns if a given python value is actually a wrapped secret.
+    """
+    return (
+        isinstance(value, struct_pb2.Struct)
+        and _special_sig_key in value.fields
+        and value[_special_sig_key] == _special_secret_sig
+    )
+
+
+def _unwrap_rpc_struct_secret(value: struct_pb2.Struct) -> Any:
+    """
+    Given a value, if it is a wrapped secret value, return the underlying value, otherwise return the value unmodified.
+    """
+    if _is_rpc_struct_secret(value):
+        return value["value"]
+
+    return value
 
 
 def wrap_rpc_secret(value: Any) -> Any:

@@ -7,6 +7,7 @@ import typing
 # Export this package's modules as members:
 from .my_invoke import *
 from .provider import *
+from .secret_invoke import *
 from .string_resource import *
 from .unit import *
 _utilities.register(

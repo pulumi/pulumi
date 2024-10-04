@@ -1,0 +1,6 @@
+name: l2-invoke-secrets
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv

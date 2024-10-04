@@ -122,6 +122,43 @@ func (p *SimpleInvokeProvider) GetSchema(
 					},
 				},
 			},
+			"simple-invoke:index:secretInvoke": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+						// indicates that the response should be wrapped as a secret
+						"secretResponse": {
+							TypeSpec: schema.TypeSpec{
+								Type: "boolean",
+							},
+						},
+					},
+					Required: []string{"value", "secretResponse"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"response": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+							"secret": {
+								TypeSpec: schema.TypeSpec{
+									Type: "boolean",
+								},
+							},
+						},
+						Required: []string{"response", "secret"},
+					},
+				},
+			},
 		},
 	}
 
@@ -190,6 +227,43 @@ func (p *SimpleInvokeProvider) Invoke(
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
 				"result": resource.NewStringProperty("Hello world"),
+			},
+		}, nil
+	} else if req.Tok == "simple-invoke:index:secretInvoke" {
+		value, ok := req.Args["value"]
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "missing value"),
+			}, nil
+		}
+		if !value.IsString() {
+			reason := fmt.Sprintf("value is not a string: %v", value)
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", reason),
+			}, nil
+		}
+
+		secretResponse, ok := req.Args["secretResponse"]
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("secretResponse", "missing secretResponse"),
+			}, nil
+		}
+		if !secretResponse.IsBool() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("secretResponse", "secretResponse is not a bool"),
+			}, nil
+		}
+
+		// if the secretResponse is true, wrap the response as a secret
+		response := resource.NewStringProperty(value.StringValue() + " world")
+		if secretResponse.BoolValue() {
+			response = resource.MakeSecret(response)
+		}
+		return plugin.InvokeResponse{
+			Properties: resource.PropertyMap{
+				"response": response,
+				"secret":   secretResponse,
 			},
 		}, nil
 	}

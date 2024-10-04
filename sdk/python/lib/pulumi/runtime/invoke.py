@@ -88,10 +88,17 @@ class InvokeResult:
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
     """
 
-    def __init__(self, value: Any, is_secret: bool = False, is_known: bool = True):
+    def __init__(
+        self,
+        value: Any,
+        is_secret: bool = False,
+        is_known: bool = True,
+        dependencies: Optional[List["Resource"]] = None,
+    ):
         self.value = value
         self.is_secret = is_secret
         self.is_known = is_known
+        self.dependencies = dependencies or []
 
     # pylint: disable=using-constant-test
     def __await__(self):
@@ -157,12 +164,12 @@ def invoke_output(
             resolve_is_secret.set_result(
                 invoke_result.is_secret and invoke_result.is_known
             )
+            resolve_deps.set_result(set(invoke_result.dependencies))
         except Exception as exn:
             resolve_value.set_exception(exn)
             resolve_is_known.set_exception(exn)
             resolve_is_secret.set_exception(exn)
-        finally:
-            resolve_deps.set_result(set())
+            resolve_deps.set_exception(exn)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
@@ -223,9 +230,18 @@ def _invoke(
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, {}, keep_output_values=True)
+        # keep track of the dependencies of the inputs
+        property_dependencies: Dict[str, List["Resource"]] = {}
+        inputs = await rpc.serialize_properties(props, property_dependencies)
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
+
+        # keep track of secretness of inputs
+        # if any of the inputs are secret OR the invoke response contains secrets
+        # then we mark the invoke result as secret
+        plain_inputs, inputs_contain_secrets = rpc._unwrap_rpc_secret_struct_properties(
+            inputs
+        )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
@@ -235,7 +251,7 @@ def _invoke(
         log.debug(f"Invoking function prepared: tok={tok}")
         req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
-            args=inputs,
+            args=plain_inputs,
             provider=provider_ref or "",
             version=version,
             acceptResources=accept_resources,
@@ -285,8 +301,15 @@ def _invoke(
                 deserialized, lambda prop: prop, typ
             )
 
+        invoke_output_secret = is_secret or inputs_contain_secrets
+        dependencies: List["Resource"] = []
+        for _, property_deps in property_dependencies.items():
+            for dep in property_deps:
+                dependencies.append(dep)
         return (
-            InvokeResult(result, is_secret),
+            InvokeResult(
+                value=result, is_secret=invoke_output_secret, dependencies=dependencies
+            ),
             None,
         )
 
