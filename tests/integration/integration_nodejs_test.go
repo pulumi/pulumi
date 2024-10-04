@@ -1848,9 +1848,6 @@ func TestPulumiConfigNormalProviders(t *testing.T) {
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
 
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
-
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
 				return err
@@ -2143,9 +2140,6 @@ func TestParameterizedNode(t *testing.T) {
 				return err
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
-
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
 
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
