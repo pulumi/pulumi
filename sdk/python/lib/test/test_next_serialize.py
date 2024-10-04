@@ -1206,6 +1206,44 @@ class DeserializationTests(unittest.TestCase):
         self.assertEqual(val["listWithMap"]["value"][0]["regular"], "a normal value")
         self.assertEqual(val["listWithMap"]["value"][0]["secret"], "a secret value")
 
+    def test_unwrapping_secrets(self):
+        secret = struct_pb2.Struct()
+        secret[rpc._special_sig_key] = rpc._special_secret_sig
+        secret["value"] = "a secret"
+
+        inputs = struct_pb2.Struct()
+        inputs["secret"] = secret
+        inputs["nested"] = {
+            "secret": secret,
+            "regular": "a normal value",
+            "array": ["a normal value", secret],
+        }
+        inputs["array"] = [
+            {
+                "secret": secret,
+                "mixed": [{"secret": secret}],
+            }
+        ]
+
+        unwrapped, contains_secret = rpc._unwrap_rpc_secret_struct_properties(inputs)
+        self.assertTrue(contains_secret)
+
+        # unwrapping again should not change the result
+        _, contains_secret_second_time = rpc._unwrap_rpc_secret_struct_properties(
+            unwrapped
+        )
+        self.assertFalse(contains_secret_second_time)
+
+        # deserialize into a dict so that we can compare the result
+        normalized_unwrapped = rpc.deserialize_properties(unwrapped)
+        self.assertEqual(normalized_unwrapped["secret"], "a secret")
+        self.assertEqual(normalized_unwrapped["nested"]["secret"], "a secret")
+        self.assertEqual(normalized_unwrapped["nested"]["regular"], "a normal value")
+        self.assertEqual(normalized_unwrapped["nested"]["array"][0], "a normal value")
+        self.assertEqual(normalized_unwrapped["nested"]["array"][1], "a secret")
+        self.assertEqual(normalized_unwrapped["array"][0]["secret"], "a secret")
+        self.assertEqual(normalized_unwrapped["array"][0]["mixed"][0]["secret"], "a secret")
+
     def test_internal_property(self):
         all_props = struct_pb2.Struct()
         all_props["a"] = "b"
