@@ -181,6 +181,18 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
+
+		// TODO: where should this config come from?
+		projPath, err := workspace.DetectProjectPath()
+		if err == nil && projPath != "" {
+			project, err := workspace.LoadProject(projPath)
+			if err == nil {
+				env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", project.Name))
+				env = append(env, "PULUMI_STACK=%sbanana")
+				env = append(env, "PULUMI_ORGANIZATION=%stheorganizationgoeshere")
+			}
+		}
+
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {

@@ -16,6 +16,7 @@ import asyncio
 import base64
 from concurrent import futures
 from threading import Event, Lock
+import os
 import sys
 import time
 
@@ -24,7 +25,7 @@ import dill
 import grpc
 from google.protobuf import empty_pb2
 from pulumi.runtime._serialization import _deserialize
-from pulumi.runtime import proto, rpc
+from pulumi.runtime import configure, proto, rpc, Settings
 from pulumi.runtime.sync_await import _ensure_event_loop
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider
@@ -42,6 +43,15 @@ _PROVIDER_LOCK = Lock()
 
 
 def get_provider(props) -> ResourceProvider:
+    # Ensure Settings are configured in the thread that calls get_provider
+    configure(
+        Settings(
+            project=os.environ["PULUMI_PROJECT"],
+            stack=os.environ["PULUMI_STACK"],
+            # PULUMI_ORGANIZATION might not be set for diy backends
+            organization=os.environ.get("PULUMI_ORGANIZATION", "organization"),
+        )
+    )
     providerStr = props[PROVIDER_KEY]
     provider = _PROVIDER_CACHE.get(providerStr)
     if provider is None:
