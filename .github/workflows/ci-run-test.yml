@@ -95,6 +95,15 @@ jobs:
     timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          swap-storage: false
+          large-packages: false
+          dotnet: false
+
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
