@@ -52,8 +52,8 @@ const (
 
 	// healthCheckInterval = time.Second
 
-	ENGINE_ADDR  = "ENGINE_ADDR"
-	TRACING_ADDR = "TRACING_ADDR"
+	engineAddressSub = "ENGINE_ADDR_SUB"
+	tracingSub       = "TRACING_ADDR"
 
 	overrideTracingName  = "GDvveMJ8"
 	overrideRootSpanName = "Sz7JghpR"
@@ -107,7 +107,7 @@ var tests = map[string]struct {
 }{
 	"simplest_run": {
 		config: rpcserver.Config{},
-		give:   []string{ENGINE_ADDR},
+		give:   []string{engineAddressSub},
 		f:      standardFunc,
 	},
 	"run_with_tracing_plugin_path": {
@@ -115,7 +115,7 @@ var tests = map[string]struct {
 			HealthcheckInterval: time.Minute,
 			TracingName:         tracingName, RootSpanName: rootSpanName,
 		},
-		give: []string{ENGINE_ADDR, pluginPath, tracingFlag, TRACING_ADDR},
+		give: []string{engineAddressSub, pluginPath, tracingFlag, tracingSub},
 		f:    standardFunc,
 	},
 	"ensure_tracing": {
@@ -123,12 +123,12 @@ var tests = map[string]struct {
 			HealthcheckInterval: time.Minute,
 			TracingName:         tracingName, RootSpanName: rootSpanName,
 		},
-		give: []string{ENGINE_ADDR, tracingFlag, TRACING_ADDR},
+		give: []string{engineAddressSub, tracingFlag, tracingSub},
 		f:    standardFunc,
 	},
 	"ensure_tracing_warning": {
 		config:         rpcserver.Config{HealthcheckInterval: time.Minute},
-		give:           []string{ENGINE_ADDR, tracingFlag, TRACING_ADDR},
+		give:           []string{engineAddressSub, tracingFlag, tracingSub},
 		f:              standardFunc,
 		tracingWarning: "Tracing disabled.",
 	},
@@ -137,7 +137,7 @@ var tests = map[string]struct {
 			HealthcheckInterval: time.Minute,
 			TracingName:         tracingName, RootSpanName: rootSpanName,
 		},
-		give: []string{ENGINE_ADDR, tracingFlag, TRACING_ADDR},
+		give: []string{engineAddressSub, tracingFlag, tracingSub},
 		f: func(s *rpcserver.Server) {
 			s.FinishFunc = func() {
 				fmt.Println(finishFuncMessage)
@@ -152,14 +152,14 @@ var tests = map[string]struct {
 	},
 	"engine_stopped_healtcheck_shutdown": {
 		config:           rpcserver.Config{HealthcheckInterval: 500 * time.Millisecond},
-		give:             []string{ENGINE_ADDR},
+		give:             []string{engineAddressSub},
 		f:                standardFunc,
 		timeOutBefore:    2 * time.Second,
 		checkHealthCheck: true,
 	},
 	"healtcheck_valid": {
 		config:        rpcserver.Config{HealthcheckInterval: 500 * time.Millisecond},
-		give:          []string{ENGINE_ADDR},
+		give:          []string{engineAddressSub},
 		f:             standardFunc,
 		timeOutBefore: 10 * time.Second,
 	},
@@ -229,11 +229,11 @@ func TestSubprocess(t *testing.T) {
 		t.Run("Test Case "+testCaseID, func(t *testing.T) {
 			engAddr, shutdownEngine := StartHealthCheckServer(t)
 			defer shutdownEngine()
-			substituteArg(testCase.give, ENGINE_ADDR, engAddr)
+			substituteArg(testCase.give, engineAddressSub, engAddr)
 
 			tracingAddr, shutdownTracingAddr, tracingChan := StartMockTracingServer(t)
 			defer shutdownTracingAddr()
-			substituteArg(testCase.give, TRACING_ADDR, "http://"+tracingAddr)
+			substituteArg(testCase.give, tracingSub, "http://"+tracingAddr)
 
 			// Use os.Executable() to get the path to the current test binary
 			executablePath, err := os.Executable()
@@ -434,7 +434,8 @@ type HealthServer struct {
 }
 
 // Check returns the health status of the server
-func (s *HealthServer) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+func (s *HealthServer) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (
+	*grpc_health_v1.HealthCheckResponse, error) {
 	if req.Service == "" {
 		return &grpc_health_v1.HealthCheckResponse{
 			Status: grpc_health_v1.HealthCheckResponse_SERVING,
