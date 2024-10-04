@@ -187,9 +187,15 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if err == nil && projPath != "" {
 			project, err := workspace.LoadProject(projPath)
 			if err == nil {
-				env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", project.Name))
-				env = append(env, "PULUMI_STACK=%sbanana")
-				env = append(env, "PULUMI_ORGANIZATION=%stheorganizationgoeshere")
+				if pkg == tokens.Package(nodejsDynamicProviderPackage) {
+					env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", project.Name))
+					env = append(env, "PULUMI_NODEJS_STACK=%sbanana")
+					env = append(env, "PULUMI_NODEJS_ORGANIZATION=%stheorganizationgoeshere")
+				} else {
+					env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", project.Name))
+					env = append(env, "PULUMI_STACK=%sbanana")
+					env = append(env, "PULUMI_ORGANIZATION=%stheorganizationgoeshere")
+				}
 			}
 		}
 
