@@ -103,6 +103,10 @@ func NewServer(c Config) (*Server, error) {
 	if s.config.Args == nil {
 		s.config.Args = os.Args
 	}
+	if len(s.config.Args) == 0 {
+		// for now, I duplicate error message.
+		return nil, errW(errors.New("missing required engine RPC address argument"))
+	}
 
 	if err := s.Flag.Parse(s.config.Args[1:]); err != nil {
 		return nil, errW(err)
