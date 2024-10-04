@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package rpcCmd provides functionality to create a standard server for language hosts, policy analyzers, and plugins.
-// This package is primarily used to manage gRPC (Google Remote Procedure Call) server lifecycle, tracing, health checks,
+// Package rpcCmd provides functionality to create a standard server
+// for language hosts, policy analyzers, and plugins.
+// This package is primarily used to manage gRPC (Google Remote Procedure Call)
+// server lifecycle, tracing, health checks,
 // and configuration related to server startup.
 //
 // The Server struct in rpcCmd handles core server logic, including:
@@ -177,7 +179,7 @@ func (s *Server) Run(iFunc InitFunc) {
 	}()
 	err = rpcutil.Healthcheck(ctx, s.engineAddr, s.getHealthcheckD(), cancel)
 	if err != nil {
-		err = fmt.Errorf("error starting server: %w\n", err)
+		err = fmt.Errorf("error starting server: %w", err)
 		return
 	}
 

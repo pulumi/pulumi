@@ -36,6 +36,7 @@ const (
 
 // Test the NewServer initialization with valid config
 func TestNewServer_ValidConfig(t *testing.T) {
+	t.Parallel()
 	os.Args = []string{"cmd", "--tracing", tracingEndpoint, "--custom-flag", "yes", engineAddress, pluginPath}
 
 	server, err := NewServer(Config{
@@ -54,6 +55,7 @@ func TestNewServer_ValidConfig(t *testing.T) {
 
 // Test NewServer with missing engine address (invalid config)
 func TestNewServer_MissingEngineAddress(t *testing.T) {
+	t.Parallel()
 	// Mock os.Args (no engine address provided)
 	os.Args = []string{"cmd"}
 
@@ -69,6 +71,7 @@ func TestNewServer_MissingEngineAddress(t *testing.T) {
 
 // Test registerFlags function (private function)
 func TestServer_RegisterFlags(t *testing.T) {
+	t.Parallel()
 	// Mock os.Args
 	os.Args = []string{"cmd", "localhost:8080", tracingFlag, "test-tracing"}
 
@@ -86,6 +89,7 @@ func TestServer_RegisterFlags(t *testing.T) {
 
 // Test getHealthcheckD returns the correct default duration
 func TestServer_GetHealthcheckD_Default(t *testing.T) {
+	t.Parallel()
 	// Mock os.Args
 	os.Args = []string{"cmd", "engineAddress"}
 
@@ -99,6 +103,7 @@ func TestServer_GetHealthcheckD_Default(t *testing.T) {
 
 // Test getHealthcheckD with custom health check duration
 func TestServer_GetHealthcheckD_Custom(t *testing.T) {
+	t.Parallel()
 	// Mock os.Args
 	os.Args = []string{"cmd", "engineAddress"}
 
@@ -114,6 +119,7 @@ func TestServer_GetHealthcheckD_Custom(t *testing.T) {
 
 // Test SetGrpcOptions and getGrpcOptions
 func TestServer_SetGetGrpcOptions(t *testing.T) {
+	t.Parallel()
 	// Mock os.Args
 	os.Args = []string{"cmd", "engineAddress"}
 
