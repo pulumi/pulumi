@@ -226,14 +226,14 @@ func substituteArg(args []string, sub, val string) []string {
 //nolint:paralleltest
 func TestSubprocess(t *testing.T) {
 	for testCaseId, testCase := range tests {
-		t.Run(fmt.Sprintf("Test Case %s", testCaseId), func(t *testing.T) {
+		t.Run("Test Case "+testCaseId, func(t *testing.T) {
 			engAddr, shutdownEngine := StartHealthCheckServer(t)
 			defer shutdownEngine()
 			substituteArg(testCase.give, ENGINE_ADDR, engAddr)
 
 			tracingAddr, shutdownTracingAddr, tracingChan := StartMockTracingServer(t)
 			defer shutdownTracingAddr()
-			substituteArg(testCase.give, TRACING_ADDR, fmt.Sprintf("http://%s", tracingAddr))
+			substituteArg(testCase.give, TRACING_ADDR, "http://"+tracingAddr)
 
 			// Use os.Executable() to get the path to the current test binary
 			executablePath, err := os.Executable()
@@ -317,7 +317,7 @@ func TestSubprocess(t *testing.T) {
 			}
 
 			// Connect to the gRPC server using the captured port
-			conn, err := grpc.Dial(fmt.Sprintf("localhost:%s", port), grpc.WithInsecure())
+			conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 			assert.NoError(t, err)
 			defer conn.Close()
 
