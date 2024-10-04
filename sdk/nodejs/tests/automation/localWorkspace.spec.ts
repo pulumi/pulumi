@@ -40,7 +40,14 @@ const userAgent = "pulumi/pulumi/test";
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, async () => {
         for (const ext of ["yaml", "yml", "json"]) {
-            const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
+            const ws = await LocalWorkspace.create(
+                withTestBackend(
+                    { workDir: upath.joinSafe(__dirname, "data", ext) },
+                    "testproj",
+                    "A minimal Go Pulumi program",
+                    "go",
+                ),
+            );
             const settings = await ws.projectSettings();
             assert.strictEqual(settings.name, "testproj");
             assert.strictEqual(settings.runtime, "go");

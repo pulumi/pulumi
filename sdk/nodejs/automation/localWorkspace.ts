@@ -1327,7 +1327,6 @@ function defaultProject(projectName: string) {
 }
 
 function loadProjectSettings(workDir: string) {
-    console.log("loading project settings")
     for (const ext of settingsExtensions) {
         const isJSON = ext === ".json";
         const path = upath.joinSafe(workDir, `Pulumi${ext}`);
@@ -1338,7 +1337,8 @@ function loadProjectSettings(workDir: string) {
         if (isJSON) {
             return JSON.parse(contents);
         }
-        return yaml.safeLoad(contents) as ProjectSettings;
+        const settings = yaml.safeLoad(contents) as ProjectSettings;
+        return settings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
