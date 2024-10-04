@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.135.1 (2024-10-04)
+
+
+### Features
+
+- [sdk/nodejs] Enable better error messsages to be returned from provider construct failures
+  [#17325](https://github.com/pulumi/pulumi/pull/17325)
+
+
+### Bug Fixes
+
+- [auto] Fix regression in automation API for deployments where events for a Pulumi operation are not received
+  [#17334](https://github.com/pulumi/pulumi/pull/17334)
+
+- [cli/new] Respect existing stack configuration when initialising secret managers
+  [#17465](https://github.com/pulumi/pulumi/pull/17465)
+
+- [sdk/yaml] Fix pulumi config set behaviour to append to end of file
+  [#17452](https://github.com/pulumi/pulumi/pull/17452)
+
 ## 3.135.0 (2024-10-01)
 
 
