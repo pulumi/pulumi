@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/yaml
-  description: Fix pulumi config set behaviour to append to end of file

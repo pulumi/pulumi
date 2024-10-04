@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto
-  description: Fix regression in automation API for deployments where events for a Pulumi operation are not received
