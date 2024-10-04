@@ -330,14 +330,14 @@ func TestSubprocess(t *testing.T) {
 				// also check that mock tracing server actually get trace logs ONLY IF don't expect warning
 				if testCase.tracingWarning == "" {
 					select {
-					case traceString := <-tracingChan:
-
+					case traceResponse := <-tracingChan:
+						assert.NoError(t, traceResponse.err, "tracing server returned error")
 						if testCase.tracingOverrides {
-							assert.Contains(t, traceString, overrideTracingName)
+							assert.Contains(t, traceResponse.msg, overrideTracingName)
 							// TODO figure out why rootSpanName is not there. I assume it requires more complicated mock server?
 							// assert.Contains(t, traceString, overrideRootSpanName)
 						} else {
-							assert.Contains(t, traceString, tracingName)
+							assert.Contains(t, traceResponse.msg, tracingName)
 							// TODO figure out why rootSpanName is not there. I assume it requires more complicated mock server?
 							// assert.Contains(t, traceString, rootSpanName)
 						}
@@ -435,7 +435,8 @@ type HealthServer struct {
 
 // Check returns the health status of the server
 func (s *HealthServer) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (
-	*grpc_health_v1.HealthCheckResponse, error) {
+	*grpc_health_v1.HealthCheckResponse, error,
+) {
 	if req.Service == "" {
 		return &grpc_health_v1.HealthCheckResponse{
 			Status: grpc_health_v1.HealthCheckResponse_SERVING,
@@ -474,9 +475,14 @@ func StartHealthCheckServer(t *testing.T) (string, func()) {
 	}
 }
 
+type tracingMockMessage struct {
+	err error
+	msg string
+}
+
 // Tracing server impl
-func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
-	requestChan := make(chan string, 100) // Channel to capture request data
+func StartMockTracingServer(t *testing.T) (string, func(), chan tracingMockMessage) {
+	requestChan := make(chan tracingMockMessage, 100) // Channel to capture request data
 
 	// Create a custom HTTP server
 	server := &http.Server{
@@ -484,7 +490,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
 			// Read the body of the request
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
-				t.Fatalf("could not read body")
+				requestChan <- tracingMockMessage{err: err}
 			}
 			defer r.Body.Close()
 
@@ -495,7 +501,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
 			//}
 
 			// Send the trace data to the channel for further processing in tests
-			requestChan <- string(body)
+			requestChan <- tracingMockMessage{msg: string(body)}
 			w.WriteHeader(http.StatusOK)
 		}),
 		ReadHeaderTimeout: 5 * time.Second, // Prevent Slowloris attacks (golint error)
@@ -513,7 +519,7 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
 	// Start the server in a goroutine
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			t.Fatalf("Server error: %v", err)
+			requestChan <- tracingMockMessage{err: err}
 		}
 	}()
 
