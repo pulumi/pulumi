@@ -265,7 +265,7 @@ func TestSubprocess(t *testing.T) {
 			// Start the command
 			go func() {
 				if err := cmd.Start(); err != nil { // Use Start() instead of Run() here to avoid blocking
-					t.Fatalf("Failed to start command: %v", err)
+					panic(fmt.Sprintf("Failed to start command: %v", err))
 				}
 
 				// Wait for the subprocess to finish
@@ -468,7 +468,7 @@ func StartHealthCheckServer(t *testing.T) (string, func()) {
 	// Start the server in a goroutine
 	go func() {
 		if err := grpcServer.Serve(listener); err != nil {
-			t.Fatalf("Failed to serve: %v\n", err)
+			panic(fmt.Sprintf("Failed to serve: %v\n", err))
 		}
 	}()
 
