@@ -3,16 +3,14 @@
 import pulumi
 from pulumi.dynamic import CreateResult, Resource, ResourceProvider
 
-
 config = pulumi.Config()
 password = config.require_secret("password")
 
 
 class SimpleProvider(ResourceProvider):
     def create(self, props):
-        # Need to use `password.get()` to get the underlying value of the secret from within the serialized code.
         # This simulates using this as a credential to talk to an external system.
-        return CreateResult("0", { "authenticated": "200" if password.get() == "s3cret" else "401" })
+        return CreateResult("0", { "authenticated": password.apply(lambda p: "200" if p == "s3cret" else "401" )})
 
 
 class SimpleResource(Resource):

@@ -1848,9 +1848,6 @@ func TestPulumiConfigNormalProviders(t *testing.T) {
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
 
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
-
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
 				return err
@@ -1895,7 +1892,7 @@ func TestPulumiConfigDynamicProviders(t *testing.T) {
 		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Config: map[string]string{
-			"pulumi-nodejs:id": "testing123",
+			"id": "testing123",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Len(t, stack.Outputs, 1)
@@ -2143,9 +2140,6 @@ func TestParameterizedNode(t *testing.T) {
 				return err
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
-
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
 
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
