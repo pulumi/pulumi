@@ -15,11 +15,12 @@
 package rpcserver
 
 import (
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -48,7 +49,7 @@ func TestNewServer_ValidConfig(t *testing.T) {
 	assert.Equal(t, pluginPath, server.GetPluginPath())
 	assert.Equal(t, tracingEndpoint, server.GetTracing())
 	assert.Equal(t, healthCheckInterval, server.getHealthcheckD())
-	//assert.Equal(t, true, len(server.getGrpcOptions()) > 2) // for now
+	// assert.Equal(t, true, len(server.getGrpcOptions()) > 2) // for now
 }
 
 // Test NewServer with missing engine address (invalid config)

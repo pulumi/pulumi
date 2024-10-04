@@ -28,6 +28,7 @@ package rpcserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -82,7 +83,6 @@ func errW(err error) error {
 
 // NewServer creates a new instance of Server.
 func NewServer(c Config) (*Server, error) {
-
 	s := &Server{config: c}
 
 	// Server parses flags with a private instance of FlagSet.
@@ -96,7 +96,7 @@ func NewServer(c Config) (*Server, error) {
 	// Set arguments.
 	args := s.Flag.Args()
 	if len(args) == 0 {
-		return nil, errW(fmt.Errorf("missing required engine RPC address argument"))
+		return nil, errW(errors.New("missing required engine RPC address argument"))
 	}
 	s.engineAddr = args[0]
 
@@ -177,7 +177,7 @@ func (s *Server) Run(iFunc InitFunc) {
 	}()
 	err = rpcutil.Healthcheck(ctx, s.engineAddr, s.getHealthcheckD(), cancel)
 	if err != nil {
-		err = fmt.Errorf("Error starting server: %w\n", err)
+		err = fmt.Errorf("error starting server: %w\n", err)
 		return
 	}
 

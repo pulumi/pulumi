@@ -18,12 +18,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver"
-	"github.com/spf13/pflag"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/status"
 	"io"
 	"net"
 	"net/http"
@@ -33,6 +27,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver"
+	"github.com/spf13/pflag"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
 	pingpb "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver/mockGRPC"
 	"github.com/stretchr/testify/assert"
@@ -82,7 +83,6 @@ func findPluginPathValue(args []string) (bool, string) {
 }
 
 var standardFunc = func(s *rpcserver.Server) {
-
 	s.FinishFunc = func() {
 		fmt.Println(finishFuncMessage)
 	}
@@ -111,14 +111,18 @@ var tests = map[string]struct {
 		f:      standardFunc,
 	},
 	"run_with_tracing_plugin_path": {
-		config: rpcserver.Config{HealthcheckInterval: time.Minute,
-			TracingName: tracingName, RootSpanName: rootSpanName},
+		config: rpcserver.Config{
+			HealthcheckInterval: time.Minute,
+			TracingName:         tracingName, RootSpanName: rootSpanName,
+		},
 		give: []string{ENGINE_ADDR, pluginPath, tracingFlag, TRACING_ADDR},
 		f:    standardFunc,
 	},
 	"ensure_tracing": {
-		config: rpcserver.Config{HealthcheckInterval: time.Minute,
-			TracingName: tracingName, RootSpanName: rootSpanName},
+		config: rpcserver.Config{
+			HealthcheckInterval: time.Minute,
+			TracingName:         tracingName, RootSpanName: rootSpanName,
+		},
 		give: []string{ENGINE_ADDR, tracingFlag, TRACING_ADDR},
 		f:    standardFunc,
 	},
@@ -129,8 +133,10 @@ var tests = map[string]struct {
 		tracingWarning: "Tracing disabled.",
 	},
 	"ensure_tracing_override": {
-		config: rpcserver.Config{HealthcheckInterval: time.Minute,
-			TracingName: tracingName, RootSpanName: rootSpanName},
+		config: rpcserver.Config{
+			HealthcheckInterval: time.Minute,
+			TracingName:         tracingName, RootSpanName: rootSpanName,
+		},
 		give: []string{ENGINE_ADDR, tracingFlag, TRACING_ADDR},
 		f: func(s *rpcserver.Server) {
 			s.FinishFunc = func() {
@@ -178,14 +184,13 @@ func (s *PingServer) Ping(ctx context.Context, req *pingpb.PingRequest) (*pingpb
 		msg = s.s.GetEngineAddress()
 	case pluginPathField:
 		msg = s.s.GetPluginPath()
-		//case healthCheckIntervalField:
+		// case healthCheckIntervalField:
 		//	msg = s.s.getHealthcheckD().String()
 	}
 	return &pingpb.PingResponse{Reply: msg}, nil
 }
 
 func RequestTheServer(t *testing.T, client pingpb.PingServiceClient, requested, expected string) {
-
 	// Send a Ping request
 	req := &pingpb.PingRequest{Message: requested}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -197,7 +202,6 @@ func RequestTheServer(t *testing.T, client pingpb.PingServiceClient, requested, 
 	// Assert the response
 	assert.Equal(t, expected, resp.Reply, fmt.Sprintf("for requested %s expected %s, got %s", requested,
 		expected, resp.Reply))
-
 }
 
 func checkExitCode(t *testing.T, err error) {
@@ -222,7 +226,6 @@ func substituteArg(args []string, sub, val string) []string {
 func TestSubprocess(t *testing.T) {
 	for testCaseId, testCase := range tests {
 		t.Run(fmt.Sprintf("Test Case %s", testCaseId), func(t *testing.T) {
-
 			engAddr, shutdownEngine := StartHealthCheckServer(t)
 			defer shutdownEngine()
 			substituteArg(testCase.give, ENGINE_ADDR, engAddr)
@@ -331,11 +334,11 @@ func TestSubprocess(t *testing.T) {
 						if testCase.tracingOverrides {
 							assert.Contains(t, traceString, overrideTracingName)
 							// TODO figure out why rootSpanName is not there. I assume it requires more complicated mock server?
-							//assert.Contains(t, traceString, overrideRootSpanName)
+							// assert.Contains(t, traceString, overrideRootSpanName)
 						} else {
 							assert.Contains(t, traceString, tracingName)
 							// TODO figure out why rootSpanName is not there. I assume it requires more complicated mock server?
-							//assert.Contains(t, traceString, rootSpanName)
+							// assert.Contains(t, traceString, rootSpanName)
 						}
 
 					case <-time.After(2 * time.Second):
@@ -393,7 +396,6 @@ func TestSubprocess(t *testing.T) {
 			// Ensure that finish func was executed
 			checkFinishFunc(t, finishFunc)
 			checkExitCode(t, errCmd)
-
 		})
 	}
 }
@@ -421,7 +423,6 @@ func TestCmd(t *testing.T) {
 	}
 
 	testCase.f(s)
-
 }
 
 // HealthCheckImpl
@@ -469,7 +470,6 @@ func StartHealthCheckServer(t *testing.T) (string, func()) {
 	return listener.Addr().String(), func() {
 		grpcServer.GracefulStop()
 	}
-
 }
 
 // Tracing server impl
@@ -479,7 +479,6 @@ func StartMockTracingServer(t *testing.T) (string, func(), chan string) {
 	// Create a custom HTTP server
 	server := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			// Read the body of the request
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
