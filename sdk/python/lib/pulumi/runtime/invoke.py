@@ -239,7 +239,9 @@ def _invoke(
         # keep track of secretness of inputs
         # if any of the inputs are secret OR the invoke response contains secrets
         # then we mark the invoke result as secret
-        plain_inputs, inputs_contain_secrets = rpc._unwrap_rpc_secret_struct_properties(inputs)
+        plain_inputs, inputs_contain_secrets = rpc._unwrap_rpc_secret_struct_properties(
+            inputs
+        )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""

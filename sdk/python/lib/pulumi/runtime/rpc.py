@@ -800,16 +800,18 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
     if isinstance(value, list):
         contains_secrets = False
         elements = []
-        for v in value:
-            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(v)
+        for list_element in value:
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(
+                list_element
+            )
             contains_secrets = contains_secrets or secret_element
             elements.append(unwrapped)
         return (elements, contains_secrets)
     if isinstance(value, struct_pb2.ListValue):
         contains_secrets = False
         list_values = []
-        for v in value.values:
-            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(v)
+        for list_value in value.values:
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(list_value)
             contains_secrets = contains_secrets or secret_element
             list_values.append(unwrapped)
         return struct_pb2.ListValue(values=list_values), contains_secrets
