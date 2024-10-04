@@ -19,6 +19,7 @@ import asyncio
 from inspect import isawaitable
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional, cast
 
+from . import settings
 from .. import log
 from ..resource import (
     ComponentResource,
@@ -74,9 +75,10 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while len(rpc_manager.rpcs) > 0:
             await asyncio.sleep(0)
-            log.debug(
-                f"waiting for quiescence; {len(rpc_manager.rpcs)} RPCs outstanding"
-            )
+            if settings.excessive_debug_output:
+                log.debug(
+                    f"waiting for quiescence; {len(rpc_manager.rpcs)} RPCs outstanding"
+                )
             try:
                 await rpc_manager.rpcs.pop()
             except Exception as exn:
@@ -101,9 +103,10 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         if await_all_outstanding_tasks:
             while len(SETTINGS.outputs) != 0:
                 await asyncio.sleep(0)
-                log.debug(
-                    f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
-                )
+                if settings.excessive_debug_output:
+                    log.debug(
+                        f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
+                    )
                 with SETTINGS.lock:
                     # the task may have been removed from the queue by the time we get to it, so we need to re-check if
                     # its empty.
