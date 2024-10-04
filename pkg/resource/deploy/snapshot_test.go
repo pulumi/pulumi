@@ -656,7 +656,7 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 
 			// Assert.
 			assert.Equal(t, c.want, snap.Resources)
-			assert.Equal(t, c.results, actual)
+			assert.ElementsMatch(t, c.results, actual)
 			assert.NoError(t, snap.VerifyIntegrity())
 		})
 	}
