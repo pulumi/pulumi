@@ -110,10 +110,7 @@ func main() {
 		"[obsolete] Path to tsconfig.json to use")
 	server.Flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	server.Flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
-	err = server.Flag.Parse(os.Args[1:])
-	if err != nil {
-		cmdutil.Exit(err)
-	}
+	server.Flag.Parse(os.Args[1:])
 
 	server.Run(func(srv *grpc.Server) error {
 		host := newLanguageHost(server.GetEngineAddress(), server.GetTracing(), false /* forceTsc */)

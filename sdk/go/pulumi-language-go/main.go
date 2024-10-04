@@ -125,10 +125,7 @@ func main() {
 	server.Flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
 	server.Flag.String("root", "", "[obsolete] Project root path to use")
 	// Parse only to show error message in case of unknown flag.
-	err = server.Flag.Parse(os.Args[1:])
-	if err != nil {
-		cmdutil.Exit(err)
-	}
+	server.Flag.Parse(os.Args[1:])
 
 	cwd, err := os.Getwd()
 	if err != nil {
