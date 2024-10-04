@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	tracingFlag     = "--tracing"
+	tracingFlag     = "-tracing"
 	engineAddrField = "EngineAddr"
 	pluginPathField = "PluginPath"
 	// healthCheckIntervalField = "HealthCheckInterval"

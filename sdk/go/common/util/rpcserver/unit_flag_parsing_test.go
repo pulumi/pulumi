@@ -15,9 +15,12 @@
 package rpcserver
 
 import (
+	"flag"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -29,7 +32,7 @@ const (
 	tracingName     = "tracing-name"
 	rootSpanName    = "root-span-name"
 	tracingEndpoint = "localhost:9090"
-	tracingFlag     = "--tracing"
+	tracingFlag     = "-tracing"
 
 	healthCheckInterval = time.Second
 )
@@ -144,4 +147,120 @@ func TestServer_SetGetGrpcOptions(t *testing.T) {
 	// Test getting gRPC options
 	retOpts := server.getGrpcOptions()
 	assert.Equal(t, opts, retOpts)
+}
+
+type runParams struct {
+	tracing       string
+	engineAddress string
+	root          string
+}
+
+// Test from pulumi-language-go
+//
+//nolint:paralleltest
+func TestParseRunParams(t *testing.T) {
+	tests := []struct {
+		desc          string
+		give          []string
+		want          runParams
+		wantErr       string // non-empty if we expect an error
+		wantErrServer string // non-empty if we expect an error
+	}{
+		{
+			desc:          "no arguments",
+			wantErrServer: "missing required engine RPC address argument",
+		},
+		{
+			desc: "no options",
+			give: []string{"cmd", "localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "tracing",
+			give: []string{"cmd", "-tracing", "foo.trace", "localhost:1234"},
+			want: runParams{
+				tracing:       "foo.trace",
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "binary",
+			give: []string{"cmd", "-binary", "foo", "localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "buildTarget",
+			give: []string{"cmd", "-buildTarget", "foo", "localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "root",
+			give: []string{"cmd", "-root", "path/to/root", "localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+				root:          "path/to/root",
+			},
+		},
+		{
+			desc:    "unknown option",
+			give:    []string{"cmd", "-unknown-option", "bar", "localhost:1234"},
+			wantErr: "flag provided but not defined: -unknown-option",
+		},
+	}
+
+	// test cases depends on os.Args
+	os.Args = []string{}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			// Use a FlagSet with ContinueOnError for each case
+			// instead of using the global flag set.
+			//
+			// The global flag set uses flag.ExitOnError,
+			// so it cannot validate error cases during tests.
+			fset := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+			fset.SetOutput(iotest.LogWriter(t))
+
+			config := Config{Flag: fset, Args: tt.give}
+			server, err := NewServer(config)
+			if tt.wantErrServer != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			if server == nil {
+				t.Fatal("nil server")
+				return
+			}
+
+			if tt.want.tracing != "" {
+				assert.Equal(t, tt.want.tracing, server.GetTracing())
+			}
+			if tt.want.engineAddress != "" {
+				assert.Equal(t, tt.want.engineAddress, server.GetEngineAddress())
+			}
+
+			server.Flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
+			server.Flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
+			root := server.Flag.String("root", "", "[obsolete] Project root path to use")
+
+			err = server.Flag.Parse(tt.give[1:])
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+
+			if tt.want.root != "" {
+				assert.Equal(t, tt.want.root, *root)
+			}
+		})
+	}
 }
