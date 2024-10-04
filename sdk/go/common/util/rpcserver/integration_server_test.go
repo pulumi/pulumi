@@ -44,13 +44,13 @@ const (
 	tracingFlag     = "--tracing"
 	engineAddrField = "EngineAddr"
 	pluginPathField = "PluginPath"
-	//healthCheckIntervalField = "HealthCheckInterval"
+	// healthCheckIntervalField = "HealthCheckInterval"
 
 	pluginPath   = "plugin/path"
 	tracingName  = "tracing-name"
 	rootSpanName = "root-span-name"
 
-	//healthCheckInterval = time.Second
+	// healthCheckInterval = time.Second
 
 	ENGINE_ADDR  = "ENGINE_ADDR"
 	TRACING_ADDR = "TRACING_ADDR"
@@ -71,10 +71,10 @@ func findFlagValue(args []string, flag string) (bool, string) {
 	return false, ""
 }
 
-func findPluginPathValue(args []string) (bool, string) {
+func findPluginPathValue(t *testing.T, args []string) (bool, string) {
 	flagSet := pflag.NewFlagSet("", pflag.ContinueOnError)
 	flagSet.ParseErrorsWhitelist.UnknownFlags = true
-	flagSet.Parse(args)
+	assert.NoError(t, flagSet.Parse(args))
 	if len(flagSet.Args()) >= 2 {
 		return true, flagSet.Args()[1]
 	}
@@ -355,7 +355,7 @@ func TestSubprocess(t *testing.T) {
 				}
 			}
 
-			if set, val := findPluginPathValue(testCase.give); set {
+			if set, val := findPluginPathValue(t, testCase.give); set {
 				RequestTheServer(t, client, pluginPathField, val)
 			}
 
