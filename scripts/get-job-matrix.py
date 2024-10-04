@@ -66,7 +66,7 @@ INTEGRATION_TEST_PACKAGES = {
 }
 
 PERFORMANCE_TEST_PACKAGES = {
-    "github.com/pulumi/pulumi/pkg/v3/testing/performance",
+    "github.com/pulumi/pulumi/tests/performance",
 }
 
 def is_unit_test(pkg: str) -> bool:
