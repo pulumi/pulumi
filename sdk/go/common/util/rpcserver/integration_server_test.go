@@ -104,6 +104,8 @@ var tests = map[string]struct {
 	timeOutBefore    time.Duration
 	checkHealthCheck bool
 
+	expectExitMessage string
+
 	tracingWarning   string
 	tracingOverrides bool
 }{
@@ -111,6 +113,12 @@ var tests = map[string]struct {
 		config: rpcserver.Config{},
 		give:   []string{engineAddressSub},
 		f:      standardFunc,
+	},
+	"missed_required_engine": {
+		config:            rpcserver.Config{},
+		give:              []string{},
+		f:                 standardFunc,
+		expectExitMessage: "missing required engine RPC address argument",
 	},
 	"run_with_tracing_plugin_path": {
 		config: rpcserver.Config{
@@ -292,13 +300,20 @@ func TestSubprocess(t *testing.T) {
 			}()
 
 			tracingWarningCh := make(chan struct{})
+			missedEngineExitCh := make(chan struct{})
 			go func() {
 				scanner := bufio.NewScanner(stderrPipe)
 				for scanner.Scan() {
 					line := scanner.Text()
+					fmt.Printf("%s\n", line)
 					if testCase.tracingWarning != "" {
 						if strings.Contains(line, testCase.tracingWarning) {
 							close(tracingWarningCh)
+						}
+					}
+					if testCase.expectExitMessage != "" {
+						if strings.Contains(line, testCase.expectExitMessage) {
+							close(missedEngineExitCh)
 						}
 					}
 				}
@@ -309,6 +324,14 @@ func TestSubprocess(t *testing.T) {
 			select {
 			case port = <-portC:
 			case <-time.After(2 * time.Second):
+				if testCase.expectExitMessage != "" {
+					select {
+					case <-missedEngineExitCh:
+						return
+					case <-time.After(time.Second):
+						t.Fatalf("Didn't get expected missed engine exit")
+					}
+				}
 				t.Fatal("Timeout waiting for the port to be printed")
 			}
 
