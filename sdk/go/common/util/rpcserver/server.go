@@ -31,6 +31,7 @@ package rpcserver
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -47,7 +48,7 @@ const DefaultHealthCheck = 5 * time.Minute
 type Server struct {
 	// Flag is the FlagSet containing registered rpcCmd flags. By default, it's set to pflag.ExitOnError.
 	// If a Flag is provided in the config, that one is used, but with rpcCmd flags registered as well.
-	Flag *pflag.FlagSet
+	Flag *flag.FlagSet
 
 	// FinishFunc is a function that is executed after the server shuts down.
 	// It should contain any necessary cleanup logic to be performed after server shutdown.
@@ -68,7 +69,7 @@ type Server struct {
 
 type Config struct {
 	// Flag allows specifying a custom FlagSet if behavior different from the default flag.ExitOnError is required.
-	Flag *pflag.FlagSet
+	Flag *flag.FlagSet
 
 	// TracingName and RootSpanName are required if tracing is enabled.
 	TracingName  string
@@ -94,10 +95,10 @@ func NewServer(c Config) (*Server, error) {
 	s := &Server{config: c}
 
 	// Server parses flags with a private instance of FlagSet.
-	s.Flag = pflag.NewFlagSet("", pflag.ContinueOnError)
+	privateFlagSet := pflag.NewFlagSet("", pflag.ContinueOnError)
 	// Filter out unknown flags, caller can register any flags later
-	s.Flag.ParseErrorsWhitelist.UnknownFlags = true
-	s.registerFlags()
+	privateFlagSet.ParseErrorsWhitelist.UnknownFlags = true
+	s.registerFlags(privateFlagSet)
 
 	// Set Args to os.Args if no custom arguments are provided
 	if s.config.Args == nil {
@@ -107,12 +108,17 @@ func NewServer(c Config) (*Server, error) {
 		// for now, I duplicate error message.
 		return nil, errW(errors.New("missing required engine RPC address argument"))
 	}
+	// Pulumi works with the standard flag library, which does not support POSIX-style flags.
+	// The server uses the pflag library, which supports POSIX conventions,
+	// in order to take advantage of features like handling unknown flags.
+	// To ensure compatibility, we modify the flags from the standard flag format to POSIX format.
+	s.config.Args = modifyFlagToPosix(s.config.Args)
 
-	if err := s.Flag.Parse(s.config.Args[1:]); err != nil {
+	if err := privateFlagSet.Parse(s.config.Args[1:]); err != nil {
 		return nil, errW(err)
 	}
 	// Set arguments.
-	args := s.Flag.Args()
+	args := privateFlagSet.Args()
 	if len(args) == 0 && !s.config.EngineAddressOptional {
 		return nil, errW(errors.New("missing required engine RPC address argument"))
 	}
@@ -133,19 +139,32 @@ func NewServer(c Config) (*Server, error) {
 
 // getConfiguredFlagSet returns a FlagSet with registered flags from the server.
 // If a custom FlagSet (f) is provided, it uses that instead of creating a new one.
-func getConfiguredFlagSet(f *pflag.FlagSet, name string) *pflag.FlagSet {
-	s := Server{}
-	s.Flag = pflag.NewFlagSet(name, pflag.ExitOnError)
+func getConfiguredFlagSet(f *flag.FlagSet, name string) *flag.FlagSet {
+	noopServer := Server{}
+	noopServer.Flag = flag.NewFlagSet(name, flag.ExitOnError)
 	if f != nil {
-		s.Flag = f
+		noopServer.Flag = f
 	}
-	s.registerFlags()
-	return s.Flag
+	noopServer.registerFlags(noopServer.Flag)
+	return noopServer.Flag
+}
+
+type flagger interface {
+	StringVar(p *string, name string, value string, usage string)
+}
+
+func modifyFlagToPosix(args []string) []string {
+	for i := range args {
+		if args[i] == "-tracing" {
+			args[i] = "--tracing"
+		}
+	}
+	return args
 }
 
 // registerFlags registers flags related to RPC server logic.
-func (s *Server) registerFlags() {
-	s.Flag.StringVar(&s.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+func (s *Server) registerFlags(f flagger) {
+	f.StringVar(&s.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 }
 
 // getHealthcheckD returns the health check duration.
