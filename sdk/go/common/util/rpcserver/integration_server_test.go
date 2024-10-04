@@ -120,6 +120,11 @@ var tests = map[string]struct {
 		f:                 standardFunc,
 		expectExitMessage: "missing required engine RPC address argument",
 	},
+	"optional_engine": {
+		config: rpcserver.Config{EngineAddressOptional: true},
+		give:   []string{},
+		f:      standardFunc,
+	},
 	"run_with_tracing_plugin_path": {
 		config: rpcserver.Config{
 			HealthcheckInterval: time.Minute,

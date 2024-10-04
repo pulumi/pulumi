@@ -76,6 +76,9 @@ type Config struct {
 
 	// Healthcheck interval duration.
 	HealthcheckInterval time.Duration
+
+	// EngineAddressOptional indicates that the engine address is optional. This is rarely the case.
+	EngineAddressOptional bool
 }
 
 // errW wraps an error with a message.
@@ -97,10 +100,12 @@ func NewServer(c Config) (*Server, error) {
 	}
 	// Set arguments.
 	args := s.Flag.Args()
-	if len(args) == 0 {
+	if len(args) == 0 && !s.config.EngineAddressOptional {
 		return nil, errW(errors.New("missing required engine RPC address argument"))
 	}
-	s.engineAddr = args[0]
+	if len(args) != 0 {
+		s.engineAddr = args[0]
+	}
 
 	// plugin path is the third argument.
 	if len(args) >= 2 {
@@ -177,10 +182,13 @@ func (s *Server) Run(iFunc InitFunc) {
 		cancel() // Deregister handler so we don't catch another interrupt.
 		close(cancelChannel)
 	}()
-	err = rpcutil.Healthcheck(ctx, s.engineAddr, s.getHealthcheckD(), cancel)
-	if err != nil {
-		err = fmt.Errorf("error starting server: %w", err)
-		return
+
+	if !(s.config.EngineAddressOptional && s.engineAddr == "") {
+		err = rpcutil.Healthcheck(ctx, s.engineAddr, s.getHealthcheckD(), cancel)
+		if err != nil {
+			err = fmt.Errorf("error starting server: %w\n", err)
+			return
+		}
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
