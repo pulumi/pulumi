@@ -594,8 +594,7 @@ export function unwrapRpcSecret(obj: any): any {
     return obj.value;
 }
 
-/** @internal */
-export function isPrimitive(value: unknown): boolean {
+function isPrimitive(value: unknown): boolean {
     return (
         value === null ||
         value === undefined ||

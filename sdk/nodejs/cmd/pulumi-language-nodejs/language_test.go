@@ -232,11 +232,6 @@ func TestLanguage(t *testing.T) {
 
 			for _, tt := range tests.Tests {
 				tt := tt
-				if tt == "l2-invoke-secrets" || tt == "l2-invoke-dependencies" {
-					// TODO: implement secret and dependency tracking for output invokes
-					// https://github.com/pulumi/pulumi/issues/17474
-					t.Skip("skipping " + tt)
-				}
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
