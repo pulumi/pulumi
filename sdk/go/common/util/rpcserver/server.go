@@ -79,6 +79,9 @@ type Config struct {
 
 	// EngineAddressOptional indicates that the engine address is optional. This is rarely the case.
 	EngineAddressOptional bool
+
+	// Args allows the use of custom arguments for parsing. By default, Server parses os.Args.
+	Args []string
 }
 
 // errW wraps an error with a message.
@@ -95,7 +98,13 @@ func NewServer(c Config) (*Server, error) {
 	// Filter out unknown flags, caller can register any flags later
 	s.Flag.ParseErrorsWhitelist.UnknownFlags = true
 	s.registerFlags()
-	if err := s.Flag.Parse(os.Args[1:]); err != nil {
+
+	// Set Args to os.Args if no custom arguments are provided
+	if s.config.Args == nil {
+		s.config.Args = os.Args
+	}
+
+	if err := s.Flag.Parse(s.config.Args[1:]); err != nil {
 		return nil, errW(err)
 	}
 	// Set arguments.
@@ -113,14 +122,16 @@ func NewServer(c Config) (*Server, error) {
 	}
 
 	// rpcCmd has already parsed private flags; it needs to register them again for parsing on the caller side.
-	s.Flag = getConfiguredFlagSet(s.config.Flag)
+	s.Flag = getConfiguredFlagSet(s.config.Flag, s.config.Args[0])
 
 	return s, nil
 }
 
-func getConfiguredFlagSet(f *pflag.FlagSet) *pflag.FlagSet {
+// getConfiguredFlagSet returns a FlagSet with registered flags from the server.
+// If a custom FlagSet (f) is provided, it uses that instead of creating a new one.
+func getConfiguredFlagSet(f *pflag.FlagSet, name string) *pflag.FlagSet {
 	s := Server{}
-	s.Flag = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
+	s.Flag = pflag.NewFlagSet(name, pflag.ExitOnError)
 	if f != nil {
 		s.Flag = f
 	}
