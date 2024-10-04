@@ -1327,6 +1327,7 @@ function defaultProject(projectName: string) {
 }
 
 function loadProjectSettings(workDir: string) {
+    console.log("loading project settings")
     for (const ext of settingsExtensions) {
         const isJSON = ext === ".json";
         const path = upath.joinSafe(workDir, `Pulumi${ext}`);
