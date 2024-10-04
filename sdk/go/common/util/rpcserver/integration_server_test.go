@@ -223,6 +223,7 @@ func substituteArg(args []string, sub, val string) []string {
 	return args
 }
 
+//nolint:paralleltest
 func TestSubprocess(t *testing.T) {
 	for testCaseId, testCase := range tests {
 		t.Run(fmt.Sprintf("Test Case %s", testCaseId), func(t *testing.T) {
@@ -409,6 +410,7 @@ func checkFinishFunc(t *testing.T, finish chan struct{}) {
 	}
 }
 
+//nolint:paralleltest
 func TestCmd(t *testing.T) {
 	var testCaseId string
 	// This is the function that will run in the subprocess
