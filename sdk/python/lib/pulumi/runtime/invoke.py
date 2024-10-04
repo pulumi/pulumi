@@ -239,15 +239,7 @@ def _invoke(
         # keep track of secretness of inputs
         # if any of the inputs are secret OR the invoke response contains secrets
         # then we mark the invoke result as secret
-        inputs_contain_secrets = False
-
-        def on_secrets_encountered():
-            nonlocal inputs_contain_secrets
-            inputs_contain_secrets = True
-
-        invoke_args = rpc._unwrap_rpc_secret_struct_properties(
-            inputs, on_secrets_encountered
-        )
+        plain_inputs, inputs_contain_secrets = rpc._unwrap_rpc_secret_struct_properties(inputs)
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
@@ -257,7 +249,7 @@ def _invoke(
         log.debug(f"Invoking function prepared: tok={tok}")
         req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
-            args=invoke_args,
+            args=plain_inputs,
             provider=provider_ref or "",
             version=version,
             acceptResources=accept_resources,

@@ -19,6 +19,7 @@ export interface SecretInvokeArgs {
 
 export interface SecretInvokeResult {
     readonly response: string;
+    readonly secret: boolean;
 }
 export function secretInvokeOutput(args: SecretInvokeOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<SecretInvokeResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});

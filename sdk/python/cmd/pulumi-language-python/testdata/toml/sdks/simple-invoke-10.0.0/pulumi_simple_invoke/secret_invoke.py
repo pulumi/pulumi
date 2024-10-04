@@ -23,15 +23,23 @@ __all__ = [
 
 @pulumi.output_type
 class SecretInvokeResult:
-    def __init__(__self__, response=None):
+    def __init__(__self__, response=None, secret=None):
         if response and not isinstance(response, str):
             raise TypeError("Expected argument 'response' to be a str")
         pulumi.set(__self__, "response", response)
+        if secret and not isinstance(secret, bool):
+            raise TypeError("Expected argument 'secret' to be a bool")
+        pulumi.set(__self__, "secret", secret)
 
     @property
     @pulumi.getter
     def response(self) -> str:
         return pulumi.get(self, "response")
+
+    @property
+    @pulumi.getter
+    def secret(self) -> bool:
+        return pulumi.get(self, "secret")
 
 
 class AwaitableSecretInvokeResult(SecretInvokeResult):
@@ -40,7 +48,8 @@ class AwaitableSecretInvokeResult(SecretInvokeResult):
         if False:
             yield self
         return SecretInvokeResult(
-            response=self.response)
+            response=self.response,
+            secret=self.secret)
 
 
 def secret_invoke(secret_response: Optional[bool] = None,
@@ -56,7 +65,8 @@ def secret_invoke(secret_response: Optional[bool] = None,
     __ret__ = pulumi.runtime.invoke('simple-invoke:index:secretInvoke', __args__, opts=opts, typ=SecretInvokeResult).value
 
     return AwaitableSecretInvokeResult(
-        response=pulumi.get(__ret__, 'response'))
+        response=pulumi.get(__ret__, 'response'),
+        secret=pulumi.get(__ret__, 'secret'))
 def secret_invoke_output(secret_response: Optional[pulumi.Input[bool]] = None,
                          value: Optional[pulumi.Input[str]] = None,
                          opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[SecretInvokeResult]:
@@ -69,4 +79,5 @@ def secret_invoke_output(secret_response: Optional[pulumi.Input[bool]] = None,
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('simple-invoke:index:secretInvoke', __args__, opts=opts, typ=SecretInvokeResult)
     return __ret__.apply(lambda __response__: SecretInvokeResult(
-        response=pulumi.get(__response__, 'response')))
+        response=pulumi.get(__response__, 'response'),
+        secret=pulumi.get(__response__, 'secret')))

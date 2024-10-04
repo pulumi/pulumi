@@ -149,8 +149,13 @@ func (p *SimpleInvokeProvider) GetSchema(
 									Type: "string",
 								},
 							},
+							"secret": {
+								TypeSpec: schema.TypeSpec{
+									Type: "boolean",
+								},
+							},
 						},
-						Required: []string{"response"},
+						Required: []string{"response", "secret"},
 					},
 				},
 			},
@@ -258,6 +263,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
 				"response": response,
+				"secret":   secretResponse,
 			},
 		}, nil
 	}

@@ -1,0 +1,6 @@
+name: l2-invoke-dependencies
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv

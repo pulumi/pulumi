@@ -28,6 +28,7 @@ type SecretInvokeArgs struct {
 
 type SecretInvokeResult struct {
 	Response string `pulumi:"response"`
+	Secret   bool   `pulumi:"secret"`
 }
 
 func SecretInvokeOutput(ctx *pulumi.Context, args SecretInvokeOutputArgs, opts ...pulumi.InvokeOption) SecretInvokeResultOutput {
@@ -74,6 +75,10 @@ func (o SecretInvokeResultOutput) ToSecretInvokeResultOutputWithContext(ctx cont
 
 func (o SecretInvokeResultOutput) Response() pulumi.StringOutput {
 	return o.ApplyT(func(v SecretInvokeResult) string { return v.Response }).(pulumi.StringOutput)
+}
+
+func (o SecretInvokeResultOutput) Secret() pulumi.BoolOutput {
+	return o.ApplyT(func(v SecretInvokeResult) bool { return v.Secret }).(pulumi.BoolOutput)
 }
 
 func init() {
