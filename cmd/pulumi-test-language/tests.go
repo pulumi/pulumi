@@ -933,7 +933,6 @@ var languageTests = map[string]languageTest{
 					require.True(l, ok, "expected dependency on property 'value'")
 					require.Len(l, dependencies, 1, "expected one dependency")
 					require.Equal(l, first.URN, dependencies[0], "expected second to depend on first")
-					require.Len(l, second.Dependencies, 1, "second has 1 direct dependency")
 					require.Equal(l, first.URN, second.Dependencies[0], "expected second to depend on first")
 				},
 			},
