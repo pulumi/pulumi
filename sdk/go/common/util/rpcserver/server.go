@@ -186,7 +186,7 @@ func (s *Server) Run(iFunc InitFunc) {
 	if !(s.config.EngineAddressOptional && s.engineAddr == "") {
 		err = rpcutil.Healthcheck(ctx, s.engineAddr, s.getHealthcheckD(), cancel)
 		if err != nil {
-			err = fmt.Errorf("error starting server: %w\n", err)
+			err = fmt.Errorf("error starting server: %w", err)
 			return
 		}
 	}
