@@ -1892,7 +1892,7 @@ func TestPulumiConfigDynamicProviders(t *testing.T) {
 		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Config: map[string]string{
-			"pulumi-nodejs:id": "testing123",
+			"id": "testing123",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Len(t, stack.Outputs, 1)

@@ -10,7 +10,7 @@ class CustomResource extends pulumi.dynamic.Resource {
 
 class DummyResourceProvider implements pulumi.dynamic.ResourceProvider {
   async create (props: any): Promise<pulumi.dynamic.CreateResult> {
-    const config = new pulumi.Config("pulumi-nodejs")
+    const config = new pulumi.Config()
 
     return { id: config.get("id"), outs: {} }
   }
