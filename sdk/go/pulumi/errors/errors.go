@@ -21,6 +21,10 @@ type InputPropertyErrorDetails struct {
 	Reason       string
 }
 
+func (d InputPropertyErrorDetails) String() string {
+	return fmt.Sprintf("%s: %s", d.PropertyPath, d.Reason)
+}
+
 type InputPropertiesError struct {
 	Message string
 	Errors  []InputPropertyErrorDetails
@@ -58,9 +62,9 @@ func (ipe *InputPropertiesError) Error() string {
 	}
 	for i, err := range ipe.Errors {
 		if i == 0 {
-			message += ": "
+			message += "\n "
 		}
-		message += fmt.Sprintf("%s: %s", err.PropertyPath, err.Reason)
+		message += err.String()
 	}
 	return message
 }
