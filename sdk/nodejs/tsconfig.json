@@ -90,6 +90,7 @@
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/registrations.spec.ts",
         "tests/runtime/pack.ts",
+        "tests/runtime/rpc.spec.ts",
         "tests/runtime/install-package-tests.ts",
         "tests/runtime/closure-integration-tests.ts",
         "tests/runtime/props.spec.ts",

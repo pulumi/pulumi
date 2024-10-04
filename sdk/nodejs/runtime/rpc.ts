@@ -345,6 +345,15 @@ export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
  */
 export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
+/** @internal */
+export function serializeSecretValue(value: any): any {
+    return {
+        [specialSigKey]: specialSecretSig,
+        // coerce 'undefined' to 'null' as required by the protobuf system.
+        value: value === undefined ? null : value,
+    };
+}
+
 /**
  * Serializes properties deeply.  This understands how to wait on any unresolved
  * promises, as appropriate, in addition to translating certain "special" values
@@ -465,11 +474,7 @@ export async function serializeProperty(
             return unknownValue;
         }
         if (isSecret && getStore().supportsSecrets) {
-            return {
-                [specialSigKey]: specialSecretSig,
-                // coerce 'undefined' to 'null' as required by the protobuf system.
-                value: value === undefined ? null : value,
-            };
+            return serializeSecretValue(value);
         }
         return value;
     }
@@ -590,22 +595,55 @@ export function unwrapRpcSecret(obj: any): any {
 }
 
 /** @internal */
-export function containsUnknownValues(value: unknown): boolean {
-    if (value === unknownValue) {
-        return true;
-    } else if (
+export function isPrimitive(value: unknown): boolean {
+    return (
         value === null ||
         value === undefined ||
         typeof value === "boolean" ||
         typeof value === "number" ||
         typeof value === "string"
-    ) {
+    );
+}
+
+/** @internal */
+export function containsUnknownValues(value: unknown): boolean {
+    if (value === unknownValue) {
+        return true;
+    } else if (isPrimitive(value)) {
         return false;
     } else if (value instanceof Array) {
         return value.some(containsUnknownValues);
     } else {
         const map = value as Record<string, unknown>;
         return Object.keys(map).some((key) => containsUnknownValues(map[key]));
+    }
+}
+
+/** @internal */
+export function unwrapSecretValues(value: unknown): [unknown, boolean] {
+    if (isPrimitive(value)) {
+        return [value, false];
+    } else if (isRpcSecret(value)) {
+        return [unwrapRpcSecret(value), true];
+    } else if (value instanceof Array) {
+        let hadSecret = false;
+        const result = [];
+        for (const elem of value) {
+            const [unwrapped, isSecret] = unwrapSecretValues(elem);
+            hadSecret = hadSecret || isSecret;
+            result.push(unwrapped);
+        }
+        return [result, hadSecret];
+    } else {
+        let hadSecret = false;
+        const result: Record<string, unknown> = {};
+        const map = value as Record<string, unknown>;
+        for (const key of Object.keys(map)) {
+            const [unwrapped, isSecret] = unwrapSecretValues(map[key]);
+            hadSecret = hadSecret || isSecret;
+            result[key] = unwrapped;
+        }
+        return [result, hadSecret];
     }
 }
 

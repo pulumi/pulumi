@@ -26,6 +26,7 @@ import {
     serializeProperties,
     serializePropertiesReturnDeps,
     unwrapRpcSecret,
+    unwrapSecretValues,
     containsUnknownValues,
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
@@ -102,8 +103,8 @@ export function invokeOutput<T>(
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
     invokeAsync(tok, props, opts, packageRef)
         .then((response) => {
-            const { result, isKnown, containsSecrets } = response;
-            resolve(<T>result, isKnown, containsSecrets, [], undefined);
+            const { result, isKnown, containsSecrets, dependencies } = response;
+            resolve(<T>result, isKnown, containsSecrets, dependencies, undefined);
         })
         .catch((err) => {
             resolve(<any>undefined, true, false, [], err);
@@ -153,9 +154,9 @@ export function invokeSingleOutput<T>(
     const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
     invokeAsync(tok, props, opts, packageRef)
         .then((response) => {
-            const { result, isKnown, containsSecrets } = response;
+            const { result, isKnown, containsSecrets, dependencies } = response;
             const value = extractSingleValue(result);
-            resolve(<T>value, isKnown, containsSecrets, [], undefined);
+            resolve(<T>value, isKnown, containsSecrets, dependencies, undefined);
         })
         .catch((err) => {
             resolve(<any>undefined, true, false, [], err);
@@ -220,6 +221,7 @@ async function invokeAsync(
     result: Inputs | undefined;
     isKnown: boolean;
     containsSecrets: boolean;
+    dependencies: Resource[];
 }> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
@@ -229,7 +231,7 @@ async function invokeAsync(
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
-        const serialized = await serializeProperties(`invoke:${tok}`, props);
+        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
         if (containsUnknownValues(serialized)) {
             // if any of the input properties are unknown,
             // make sure the entire response is marked as unknown
@@ -237,6 +239,7 @@ async function invokeAsync(
                 result: {},
                 isKnown: false,
                 containsSecrets: false,
+                dependencies: [],
             };
         }
 
@@ -248,7 +251,10 @@ async function invokeAsync(
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = await createInvokeRequest(tok, serialized, provider, opts, packageRef);
+        // keep track of the the secretness of the inputs
+        // if any of the inputs are secret, the invoke response should be marked as secret
+        const [plainInputs, inputsContainSecrets] = unwrapSecretValues(serialized);
+        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef);
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
@@ -275,10 +281,19 @@ async function invokeAsync(
             label,
         );
 
+        const flatDependencies: Resource[] = [];
+        for (const dep of deps.values()) {
+            for (const d of dep) {
+                flatDependencies.push(d);
+            }
+        }
+
         // Finally propagate any other properties that were given to us as outputs.
         const deserialized = deserializeResponse(tok, resp);
         return {
-            ...deserialized,
+            result: deserialized.result,
+            containsSecrets: deserialized.containsSecrets || inputsContainSecrets,
+            dependencies: flatDependencies,
             isKnown: true,
         };
     } finally {
