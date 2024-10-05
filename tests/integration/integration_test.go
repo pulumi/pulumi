@@ -1200,6 +1200,7 @@ func TestPolicyPackNew(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestPolicyPackInstallDependencies(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/17486")
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("policy/python_policy_pack")
