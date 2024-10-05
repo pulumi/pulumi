@@ -27,6 +27,8 @@ import (
 )
 
 func TestRemoveReleaseCandidateSuffix(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc0"))
 	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc1"))
 	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc345"))
