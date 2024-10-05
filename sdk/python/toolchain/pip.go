@@ -437,7 +437,7 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 		} else {
 			// Otherwise, only show output if there is an error.
 			if output, err := pipCmd.CombinedOutput(); err != nil {
-				if len(output) > 0 {
+				if errorWriter != nil && len(output) > 0 {
 					fmt.Fprintf(errorWriter, "%s\n", string(output))
 				}
 				return wrapError(err)
