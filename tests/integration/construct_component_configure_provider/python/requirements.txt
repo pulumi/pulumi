@@ -1,3 +1,5 @@
+grpcio~=1.66.2 # pinned to make tests pass, TODO https://github.com/pulumi/pulumi/issues/17486
+
 pulumi_tls==5.0.1
 
 # TODO[pulumi/pulumi#12414]: Remove our implicit dependency on setuptools.
