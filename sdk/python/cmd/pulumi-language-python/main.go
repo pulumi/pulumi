@@ -1100,6 +1100,11 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 		return
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	// TODO: quick workaround while testing Python 3.13.0 compatibility using the release candidate
+	// We should probably allow rc versions in general here.
+	if strings.HasSuffix(version, "rc3") {
+		version = strings.TrimSuffix(version, "rc3")
+	}
 	parsed, err := semver.Parse(version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)

@@ -161,7 +161,7 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
-			createVenv(t, opts, "pulumi-random")
+			createVenv(t, opts, "urllib3")
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
@@ -173,7 +173,7 @@ func TestListPackages(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, packages, 4)
 			require.Equal(t, "pip", packages[0].Name)
-			require.Equal(t, "pulumi_random", packages[1].Name)
+			require.Equal(t, "urllib3", packages[1].Name)
 			require.Equal(t, "setuptools", packages[2].Name)
 			require.Equal(t, "wheel", packages[3].Name)
 		})
@@ -288,7 +288,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		for _, pkg := range packages {
 			cmd, err := tc.Command(context.Background(), "-m", "pip", "install", pkg)
 			require.NoError(t, err)
-			require.NoError(t, cmd.Run())
+			output, err := cmd.Output()
+			require.NoError(t, err, "pip install failed, output: "+string(output))
 		}
 	} else if opts.Toolchain == Poetry {
 		writePyproject(t, opts)
