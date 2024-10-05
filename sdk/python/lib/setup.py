@@ -44,7 +44,7 @@ setup(name='pulumi',
       # Keep this list in sync with Pipfile
       install_requires=[
           'protobuf~=4.21',
-          'grpcio~=1.60.1',
+          'grpcio~=1.66.2',
           'dill~=0.3',
           'six~=1.12',
           'semver~=2.13',
