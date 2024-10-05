@@ -173,8 +173,8 @@ func TestListPackages(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, packages, 4)
 			require.Equal(t, "pip", packages[0].Name)
-			require.Equal(t, "setuptools", packages[2].Name)
-			require.Equal(t, "urllib3", packages[1].Name)
+			require.Equal(t, "setuptools", packages[1].Name)
+			require.Equal(t, "urllib3", packages[2].Name)
 			require.Equal(t, "wheel", packages[3].Name)
 		})
 	}
