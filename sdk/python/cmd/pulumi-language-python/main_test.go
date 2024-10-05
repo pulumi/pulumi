@@ -26,6 +26,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRemoveReleaseCandidateSuffix(t *testing.T) {
+	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc0"))
+	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc1"))
+	require.Equal(t, "3.13.0", removeReleaseCandidateSuffix("3.13.0rc345"))
+	require.Equal(t, "3.13.0-banana", removeReleaseCandidateSuffix("3.13.0-banana"))
+}
+
 func TestDeterminePluginVersion(t *testing.T) {
 	t.Parallel()
 
@@ -138,7 +145,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 	})
 	t.Run("non-empty", func(t *testing.T) {
 		t.Parallel()
-		// Installin pulumi-random fails on Python 3.13, because installing
+		// Installing pulumi-random fails on Python 3.13, because installing
 		// `pulumi-random` pulls in the `pulumi` package, which is not yet
 		// compatible with Python 3.13.
 		t.Skip("https://github.com/pulumi/pulumi/issues/17486")

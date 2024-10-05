@@ -36,6 +36,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -90,11 +91,13 @@ const (
 )
 
 var (
+	// TODO: update?
 	// The minimum python version that Pulumi supports
 	minimumSupportedPythonVersion = semver.MustParse("3.7.0")
 	// Any version less then `eolPythonVersion` is EOL.
 	eolPythonVersion = semver.MustParse("3.7.0")
 	// An url to the issue discussing EOL.
+	// TODO remove?
 	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
 )
 
@@ -1100,11 +1103,7 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 		return
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
-	// TODO: quick workaround while testing Python 3.13.0 compatibility using the release candidate
-	// We should probably allow rc versions in general here.
-	if strings.HasSuffix(version, "rc3") {
-		version = strings.TrimSuffix(version, "rc3")
-	}
+	version = removeReleaseCandidateSuffix(version)
 	parsed, err := semver.Parse(version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
@@ -1463,4 +1462,10 @@ func (host *pythonLanguageHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+// removeReleaseCandidateSuffix removes any "rc" suffix from a semantic version string.
+func removeReleaseCandidateSuffix(version string) string {
+	re := regexp.MustCompile(`-?rc\d+$`)
+	return re.ReplaceAllString(version, "")
 }

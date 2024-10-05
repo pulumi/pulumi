@@ -1186,6 +1186,8 @@ func TestPolicyPackNewGenerateOnly(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestPolicyPackNew(t *testing.T) {
+	// TODO: Need to update https://github.com/pulumi/pulumi-policy/blob/main/sdk/python/Pipfile
+	t.Skip("https://github.com/pulumi/pulumi/issues/17486")
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
