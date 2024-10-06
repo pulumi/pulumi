@@ -107,15 +107,13 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
@@ -129,9 +127,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -289,13 +284,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
-		server, err := startLanguageRuntimeServer(program)
+		server, address, err := pulumi.StartLanguageRuntimeServer(program)
 		if err != nil {
 			return res, err
 		}
 		defer contract.IgnoreClose(server)
 
-		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
+		kind, args = constant.ExecKindAutoInline, append(args, "--client="+address)
 	}
 
 	args = append(args, "--exec-kind="+kind)
@@ -426,13 +421,13 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
-		server, err := startLanguageRuntimeServer(program)
+		server, address, err := pulumi.StartLanguageRuntimeServer(program)
 		if err != nil {
 			return res, err
 		}
 		defer contract.IgnoreClose(server)
 
-		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
+		kind, args = constant.ExecKindAutoInline, append(args, "--client="+address)
 	}
 	args = append(args, "--exec-kind="+kind)
 
@@ -1440,169 +1435,6 @@ func (s *Stack) remoteArgs() []string {
 	}
 
 	return args
-}
-
-const (
-	stateWaiting = iota
-	stateRunning
-	stateCanceled
-	stateFinished
-)
-
-type languageRuntimeServer struct {
-	pulumirpc.UnimplementedLanguageRuntimeServer
-
-	m sync.Mutex
-	c *sync.Cond
-
-	fn      pulumi.RunFunc
-	address string
-
-	state  int
-	cancel chan bool
-	done   <-chan error
-}
-
-// isNestedInvocation returns true if pulumi.RunWithContext is on the stack.
-func isNestedInvocation() bool {
-	depth, callers := 0, make([]uintptr, 32)
-	for {
-		n := runtime.Callers(depth, callers)
-		if n == 0 {
-			return false
-		}
-		depth += n
-
-		frames := runtime.CallersFrames(callers)
-		for f, more := frames.Next(); more; f, more = frames.Next() {
-			if f.Function == "github.com/pulumi/pulumi/sdk/v3/go/pulumi.RunWithContext" {
-				return true
-			}
-		}
-	}
-}
-
-func startLanguageRuntimeServer(fn pulumi.RunFunc) (*languageRuntimeServer, error) {
-	if isNestedInvocation() {
-		return nil, errors.New("nested stack operations are not supported https://github.com/pulumi/pulumi/issues/5058")
-	}
-
-	s := &languageRuntimeServer{
-		fn:     fn,
-		cancel: make(chan bool),
-	}
-	s.c = sync.NewCond(&s.m)
-
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: s.cancel,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
-	})
-	if err != nil {
-		return nil, err
-	}
-	s.address, s.done = fmt.Sprintf("127.0.0.1:%d", handle.Port), handle.Done
-	return s, nil
-}
-
-func (s *languageRuntimeServer) Close() error {
-	s.m.Lock()
-	switch s.state {
-	case stateCanceled:
-		s.m.Unlock()
-		return nil
-	case stateWaiting:
-		// Not started yet; go ahead and cancel
-	default:
-		for s.state != stateFinished {
-			s.c.Wait()
-		}
-	}
-	s.state = stateCanceled
-	s.m.Unlock()
-
-	s.cancel <- true
-	close(s.cancel)
-	return <-s.done
-}
-
-func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest,
-) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
-}
-
-func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	s.m.Lock()
-	if s.state == stateCanceled {
-		s.m.Unlock()
-		return nil, errors.New("program canceled")
-	}
-	s.state = stateRunning
-	s.m.Unlock()
-
-	defer func() {
-		s.m.Lock()
-		s.state = stateFinished
-		s.m.Unlock()
-		s.c.Broadcast()
-	}()
-
-	var engineAddress string
-	if len(req.Args) > 0 {
-		engineAddress = req.Args[0]
-	}
-	runInfo := pulumi.RunInfo{
-		EngineAddr:       engineAddress,
-		MonitorAddr:      req.GetMonitorAddress(),
-		Config:           req.GetConfig(),
-		ConfigSecretKeys: req.GetConfigSecretKeys(),
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
-		Parallel:         req.GetParallel(),
-		DryRun:           req.GetDryRun(),
-		Organization:     req.GetOrganization(),
-	}
-
-	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)
-	if err != nil {
-		return nil, err
-	}
-	defer pulumiCtx.Close()
-
-	err = func() (err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				if pErr, ok := r.(error); ok {
-					err = fmt.Errorf("go inline source runtime error, an unhandled error occurred: %w", pErr)
-				} else {
-					err = fmt.Errorf("go inline source runtime error, an unhandled panic occurred: %v", r)
-				}
-			}
-		}()
-
-		return pulumi.RunWithContext(pulumiCtx, s.fn)
-	}()
-	if err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
-	}
-	return &pulumirpc.RunResponse{}, nil
-}
-
-func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
-	return &pulumirpc.PluginInfo{
-		Version: "1.0.0",
-	}, nil
-}
-
-func (s *languageRuntimeServer) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	return nil
 }
 
 type fileWatcher struct {
