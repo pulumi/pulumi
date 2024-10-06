@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Exclude tests from the nodejs npm package
