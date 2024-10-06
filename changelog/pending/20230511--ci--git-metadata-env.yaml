@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: ci
+  description: Adds ability to set git metadata via environment variables
