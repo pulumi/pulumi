@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: read
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       is-snapshot: true
     secrets: inherit
 
