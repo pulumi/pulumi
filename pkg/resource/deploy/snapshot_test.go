@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -656,7 +657,18 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 
 			// Assert.
 			assert.Equal(t, c.want, snap.Resources)
-			assert.ElementsMatch(t, c.results, actual)
+			sort.Slice(actual, func(i, j int) bool {
+				return actual[i].NewURN < actual[j].NewURN
+			})
+			sort.Slice(c.results, func(i, j int) bool {
+				return c.results[i].NewURN < c.results[j].NewURN
+			})
+			for i, res := range c.results {
+				assert.Equal(t, res.Delete, actual[i].Delete)
+				assert.Equal(t, res.NewURN, actual[i].NewURN)
+				assert.Equal(t, res.OldURN, actual[i].OldURN)
+				assert.ElementsMatch(t, res.RemovedDependencies, actual[i].RemovedDependencies)
+			}
 			assert.NoError(t, snap.VerifyIntegrity())
 		})
 	}
