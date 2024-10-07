@@ -3401,7 +3401,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.134.1,<4.0.0"
+var MinimumValidSDKVersion = ">=3.136.0,<4.0.0"
 
 // Require the SDK to fall within the same major version, and be at least 3.134.0 which added support for the
 // package reference feature flag.

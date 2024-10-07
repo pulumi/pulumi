@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen/nodejs,python
+  description: Bump minimum required SDK version to v3.136.0
