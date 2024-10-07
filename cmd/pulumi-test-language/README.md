@@ -47,7 +47,7 @@ Python can generate SDKs in multiple ways, either using `setup.py` or `project.t
 
 Test names follow the pattern `TestLanguage/${VARIANT}/${TEST_NAME}`, for example `TestLanguage/classes/l1-output-string`.
 
-For Nodejs we have two variants, using TypeScript (`forceTsc=false`) or plain Javascript (`forceTsc=true`, so named because the test setup runs `tsc` on the project so it's runnable as plain Javascript). Tests are named for example `TestLanguage/forceTsc=true/l1-output-string` or TestLanguage/forceTsc=false/l1-output-string`.
+For Nodejs we have two variants, using TypeScript (`forceTsc=false`) or plain Javascript (`forceTsc=true`, so named because the test setup runs `tsc` on the project so it's runnable as plain Javascript). Tests are named for example `TestLanguage/forceTsc=true/l1-output-string` or `TestLanguage/forceTsc=false/l1-output-string`.
 
 To run a single test case:
 
