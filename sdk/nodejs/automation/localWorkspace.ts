@@ -1337,8 +1337,7 @@ function loadProjectSettings(workDir: string) {
         if (isJSON) {
             return JSON.parse(contents);
         }
-        const settings = yaml.safeLoad(contents) as ProjectSettings;
-        return settings;
+        return yaml.safeLoad(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
