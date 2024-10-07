@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Target Python 3.8 for linting SDK

@@ -979,8 +979,8 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
-            full_aliases_specs: List[alias_pb2.Alias] | None = None
-            alias_urns: List[str] | None = None
+            full_aliases_specs: Optional[List[alias_pb2.Alias]] = None
+            alias_urns: Optional[List[str]] = None
             if resolver.supports_alias_specs:
                 full_aliases_specs = resolver.aliases
             else:

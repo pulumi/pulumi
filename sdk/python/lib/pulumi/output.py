@@ -540,7 +540,7 @@ class Output(Generic[T_co]):
     @staticmethod
     def all(
         *args: Input[Any], **kwargs: Input[Any]
-    ) -> "Output[list[Any] | dict[str, Any]]":
+    ) -> "Output[List[Any] | Dict[str, Any]]":
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
