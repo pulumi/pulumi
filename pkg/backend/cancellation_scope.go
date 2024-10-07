@@ -50,7 +50,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 	c := &cancellationScope{
 		context: cancelContext,
-		sigint:  make(chan os.Signal, 1),
+		sigint:  make(chan os.Signal, 1), // The channel for signal.Notify should be buffered https://pkg.go.dev/os/signal#Notify
 		done:    make(chan bool),
 	}
 
