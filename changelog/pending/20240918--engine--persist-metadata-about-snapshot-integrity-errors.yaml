@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Persist metadata about snapshot integrity errors

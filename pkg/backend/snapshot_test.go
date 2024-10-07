@@ -1093,3 +1093,89 @@ func TestRecordingSameFailure(t *testing.T) {
 	assert.Len(t, snap.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
+
+func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	//
+	// The dependency "b" does not exist in the snapshot, so we'll get a missing
+	// dependency error when we try to save the snapshot.
+	r := NewResource("a", "b")
+	snap := NewSnapshot([]*resource.State{r})
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+
+	// Act.
+	err := sm.saveSnapshot()
+
+	// Assert.
+	assert.ErrorContains(t, err, "failed to verify snapshot")
+	assert.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
+
+func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	r := NewResource("a")
+
+	snap := NewSnapshot([]*resource.State{r})
+	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
+
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+
+	// Act.
+	err := sm.saveSnapshot()
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
+
+//nolint:paralleltest // mutates global state
+func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabled(t *testing.T) {
+	old := DisableIntegrityChecking
+	DisableIntegrityChecking = true
+	defer func() { DisableIntegrityChecking = old }()
+
+	// Arrange.
+	//
+	// The dependency "b" does not exist in the snapshot, so we'll get a missing
+	// dependency error when we try to save the snapshot.
+	r := NewResource("a", "b")
+	snap := NewSnapshot([]*resource.State{r})
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+
+	// Act.
+	err := sm.saveSnapshot()
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
+
+//nolint:paralleltest // mutates global state
+func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(t *testing.T) {
+	old := DisableIntegrityChecking
+	DisableIntegrityChecking = true
+	defer func() { DisableIntegrityChecking = old }()
+
+	// Arrange.
+	//
+	// The dependency "b" does not exist in the snapshot, so we'll get a missing
+	// dependency error when we try to save the snapshot.
+	r := NewResource("a")
+	snap := NewSnapshot([]*resource.State{r})
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+
+	// Act.
+	err := sm.saveSnapshot()
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
