@@ -681,10 +681,33 @@ func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
 
 // ExportStack exports the deployment state of the stack matching the given name.
 // This can be combined with ImportStack to edit a stack's state (such as recovery from failed deployments).
+//
+// For historical reasons this method decodes secret values and returns them in the plain. If you need to persist the
+// deployment or keep secrets encrypted for some other reason, use [ExportStackWithOptions].
 func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (apitype.UntypedDeployment, error) {
+	return l.ExportStackWithOptions(ctx, stackName, &ExportStackOptions{ShowSecrets: true})
+}
+
+type ExportStackOptions struct {
+	ShowSecrets bool
+}
+
+// See [ExportStack].
+func (l *LocalWorkspace) ExportStackWithOptions(
+	ctx context.Context,
+	stackName string,
+	opts *ExportStackOptions,
+) (apitype.UntypedDeployment, error) {
 	var state apitype.UntypedDeployment
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets", "--stack", stackName)
+	var args []string
+	if opts != nil && opts.ShowSecrets {
+		args = []string{"stack", "export", "--show-secrets", "--stack", stackName}
+	} else {
+		args = []string{"stack", "export", "--stack", stackName}
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return state, newAutoError(fmt.Errorf("could not export stack: %w", err), stdout, stderr, errCode)
 	}
