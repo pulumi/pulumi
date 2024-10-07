@@ -556,7 +556,7 @@ func newPreviewCmd() *cobra.Command {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
 			`Could not mark "save-plan" as hidden`)
 		contract.AssertNoErrorf(cmd.Flags().MarkHidden("show-secrets"),
-			`Could not mark "save-plan" as hidden`)
+			`Could not mark "show-secrets" as hidden`)
 	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
