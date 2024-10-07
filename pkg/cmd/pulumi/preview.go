@@ -458,6 +458,11 @@ func newPreviewCmd() *cobra.Command {
 				importFilePromise = buildImportFile(events)
 			}
 
+			if planFilePath == "" && showSecrets {
+				cmdutil.Diag().Warningf(diag.RawMessage("", /*urn*/
+					"--show-secrets only applies when --save-plan is set"))
+			}
+
 			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -543,15 +548,19 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "save-plan", "",
 		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+	cmd.Flags().BoolVarP(
+		&showSecrets, "show-secrets", "", false,
+		"[EXPERIMENTAL] Emit secrets in plaintext in the plan file. Defaults to `false`")
+
 	if !hasExperimentalCommands() {
-		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"), `Could not mark "save-plan" as hidden`)
+		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
+			`Could not mark "save-plan" as hidden`)
+		contract.AssertNoErrorf(cmd.Flags().MarkHidden("show-secrets"),
+			`Could not mark "show-secrets" as hidden`)
 	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
 		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
-
-	cmd.Flags().BoolVarP(
-		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
