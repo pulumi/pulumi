@@ -37,10 +37,22 @@ go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count
 
 Note: to run this from the root of the repository, make sure you have an uptodate `go.work` file by running `make work`.
 
+The conformance tests are named `TestLanguage/${TEST_NAME}`, for example `TestLanguage/l1-output-string`.
+
+Python can generate SDKs in multiple ways, either using `setup.py` or `project.toml` to define the python package metadata, as well as using different input types (`classes-and-dicts` or `classes`). Python also supports either `MyPy` or `PyRight` as typechecker. To ensure we cover all of these options, each test is run in 3 variants (the options are orthogonal to each other, so we don't run all combinations):
+
+* `setuppy` (uses `setup.py`, `MyPy` and the default input types)
+* `toml` (uses `pyproject.toml`, `PyRight` and `classes-and-dicts`)
+* `classes` (uses `setup`, `PyRight` and `classes`)
+
+Test names follow the pattern `TestLanguage/${VARIANT}/${TEST_NAME}`, for example `TestLanguage/classes/l1-output-string`.
+
+For Nodejs we have two variants, using TypeScript (`forceTsc=false`) or plain Javascript (`forceTsc=true`, so named because the test setup runs `tsc` on the project so it's runnable as plain Javascript). Tests are named for example `TestLanguage/forceTsc=true/l1-output-string` or TestLanguage/forceTsc=false/l1-output-string`.
+
 To run a single test case:
 
 ```bash
-go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1 -run TestLanguage/classes/l2-map-key
+go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1 -run TestLanguage/classes/l1-output-string
 ```
 
 To update the snapshots for generated code, run the tests with the `PULUMI_ACCEPT` environment variable set to a truthy value:
