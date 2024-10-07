@@ -43,7 +43,7 @@ To run a single test case:
 go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1 -run TestLanguage/classes/l2-map-key
 ```
 
-To update the snapshots for generated code, run the tetss with he `PULUMI_ACCEPT` environment set to a truthy value:
+To update the snapshots for generated code, run the tests with the `PULUMI_ACCEPT` environment variable set to a truthy value:
 
 ```bash
 PULUMI_ACCEPT=1 go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1
