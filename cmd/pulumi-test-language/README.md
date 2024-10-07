@@ -41,7 +41,7 @@ The conformance tests are named `TestLanguage/${TEST_NAME}`, for example `TestLa
 
 Python can generate SDKs in multiple ways, either using `setup.py` or `project.toml` to define the python package metadata, as well as using different input types (`classes-and-dicts` or `classes`). Python also supports either `MyPy` or `PyRight` as typechecker. To ensure we cover all of these options, each test is run in 3 variants (the options are orthogonal to each other, so we don't run all combinations):
 
-* `setuppy` (uses `setup.py`, `MyPy` and the default input types)
+* `default` (uses `setup.py`, `MyPy` and the default input types)
 * `toml` (uses `pyproject.toml`, `PyRight` and `classes-and-dicts`)
 * `classes` (uses `setup`, `PyRight` and `classes`)
 
