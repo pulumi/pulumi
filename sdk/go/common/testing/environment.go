@@ -229,9 +229,22 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 	e.T.Helper()
 	e.T.Logf("Running command %v %v", command, strings.Join(args, " "))
 
+	cmd := e.SetupCommandIn(dir, command, args...)
+
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
 	var errBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+	cmd.Stderr = &errBuffer
+
+	runErr := cmd.Run()
+	return outBuffer.String(), errBuffer.String(), runErr
+}
+
+// SetupCommandIn creates a new exec.Cmd that's ready to run in the given
+// directory, with the given command and args.
+func (e *Environment) SetupCommandIn(dir string, command string, args ...string) *exec.Cmd {
+	e.T.Helper()
 
 	passphrase := "correct horse battery staple"
 	if e.Passphrase != "" {
@@ -244,8 +257,6 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin
 	}
-	cmd.Stdout = &outBuffer
-	cmd.Stderr = &errBuffer
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
@@ -262,8 +273,7 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 	// By putting `append e.Env` last, we allow our users to override variables we include.
 	cmd.Env = append(cmd.Env, e.Env...)
 
-	runErr := cmd.Run()
-	return outBuffer.String(), errBuffer.String(), runErr
+	return cmd
 }
 
 // WriteTestFile writes a new test file relative to the Environment's CWD with the given contents.
