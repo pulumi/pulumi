@@ -17,6 +17,7 @@ package property
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -143,7 +144,7 @@ func is[T GoValue](v Value) bool {
 	return ok
 }
 
-func as[T GoValue](v Value) T { return v.v.(T) }
+func asMut[T GoValue](v Value) T { return v.v.(T) }
 
 func (v Value) IsBool() bool              { return is[bool](v) }
 func (v Value) IsNumber() bool            { return is[float64](v) }
@@ -156,14 +157,58 @@ func (v Value) IsResourceReference() bool { return is[ResourceReference](v) }
 func (v Value) IsNull() bool              { return v.v == nil }
 func (v Value) IsComputed() bool          { return is[computed](v) }
 
-func (v Value) AsBool() bool                           { return as[bool](v) }
-func (v Value) AsNumber() float64                      { return as[float64](v) }
-func (v Value) AsString() string                       { return as[string](v) }
-func (v Value) AsArray() Array                         { return as[Array](v) }
-func (v Value) AsMap() Map                             { return as[Map](v) }
-func (v Value) AsAsset() Asset                         { return as[Asset](v) }
-func (v Value) AsArchive() Archive                     { return as[Archive](v) }
-func (v Value) AsResourceReference() ResourceReference { return as[ResourceReference](v) }
+// Copy by value types don't distinguish between mutable and non-mutable copies.
+
+func (v Value) AsBool() bool                           { return asMut[bool](v) }
+func (v Value) AsNumber() float64                      { return asMut[float64](v) }
+func (v Value) AsString() string                       { return asMut[string](v) }
+func (v Value) AsResourceReference() ResourceReference { return asMut[ResourceReference](v) }
+
+// Copy by reference types need to be shallowly copied. They don't need a deep copy
+// because *all* operations make their own shallow copy.
+
+func (v Value) AsArray() Array {
+	// Perform a shallow copy on v.
+	arr := asMut[Array](v)
+	cp := make(Array, len(arr))
+	copy(cp, arr)
+	return cp
+}
+func (v Value) AsMap() Map {
+	m := asMut[Map](v)
+	cp := make(Map, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
+}
+
+func (v Value) AsAsset() Asset {
+	return &*v.AsAsset() // Copy a, [asset.Asset] is copy by value.
+}
+func (v Value) AsArchive() Archive {
+	a := v.AsArchive()
+	assets := make(map[string]any, len(a.Assets))
+	for k, v := range a.Assets {
+		// values are of the any type, and thus cannot be reliably deep
+		// copied.
+		assets[k] = v
+	}
+	return &archive.Archive{
+		Sig:    a.Sig,
+		Hash:   a.Hash,
+		Assets: assets,
+		Path:   a.Path,
+		URI:    a.URI,
+	}
+}
+
+// as*Mut act as interior escapes
+
+func (v Value) asArrayMut() Array     { return asMut[Array](v) }
+func (v Value) asMapMut() Map         { return asMut[Map](v) }
+func (v Value) asAssetMut() Asset     { return asMut[Asset](v) }
+func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 
 // Secret returns true if the Value is secret.
 //
@@ -197,90 +242,27 @@ func (v Value) HasComputed() bool {
 }
 
 // Dependencies returns the dependency set of v.
-func (v Value) Dependencies() []urn.URN { return v.dependencies }
-
-// Set deps as the v.Dependencies() value of the returned Value.
-func (v Value) WithDependencies(deps []urn.URN) Value {
-	v.dependencies = deps
-	return v
+func (v Value) Dependencies() []urn.URN {
+	// Create a copy of v.dependencies to keep v immutable.
+	cp := make([]urn.URN, len(v.dependencies))
+	copy(cp, v.dependencies)
+	return cp
 }
 
-// Copy performs a deep copy of the Value.
-//
-// Caveats:
-//
-// - Archives copies share underlying asset values.
-func (v Value) Copy() Value {
-	var dependencies []urn.URN
-	if v.dependencies != nil {
-		dependencies = make([]urn.URN, len(v.dependencies))
-		copy(dependencies, v.dependencies)
-	}
-	var value any
-	switch {
-	// Primitive values can just be copied
-	case v.IsBool(), v.IsNumber(), v.IsString(),
-		v.IsNull(), v.IsComputed():
-		value = v.v
-	case v.IsArray():
-		a := v.AsArray()
-		cp := make(Array, len(a))
-		for i, v := range a {
-			cp[i] = v.Copy()
-		}
-		value = cp
-	case v.IsMap():
-		m := v.AsMap()
-		cp := make(Map, len(m))
-		for k, v := range m {
-			cp[k] = v.Copy()
-		}
-		value = cp
-	case v.IsAsset():
-		a := v.AsAsset()
-		if a == nil {
-			value = a
-		} else {
-			cp := *a
-			value = &cp
-		}
-	case v.IsArchive():
-		a := v.AsArchive()
-		assets := make(map[string]any, len(a.Assets))
-		for k, v := range a.Assets {
-			// values are of the any type, and thus cannot be reliably deep
-			// copied.
-			assets[k] = v
-		}
-		value = &archive.Archive{
-			Sig:    a.Sig,
-			Hash:   a.Hash,
-			Assets: assets,
-			Path:   a.Path,
-			URI:    a.URI,
-		}
-	case v.IsResourceReference():
-		ref := v.AsResourceReference()
-		value = ResourceReference{
-			URN:            ref.URN,
-			ID:             ref.ID.Copy(),
-			PackageVersion: ref.PackageVersion,
-		}
-	}
-
-	return Value{
-		isSecret:     v.isSecret,
-		dependencies: dependencies,
-		v:            value,
-	}
+// Set deps as the v.Dependencies() value of the returned Value.
+func (v Value) WithDependencies(dependencies []urn.URN) Value {
+	// Create a copy of dependencies to keep v immutable.
+	//
+	// We don't want exiting references to dependencies to be able to effect
+	// v.dependencies.
+	v.dependencies = append(v.dependencies[:0], dependencies...)
+	return v
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
 // To set to a null or computed value, pass Null or Computed as newGoValue.
 func WithGoValue[T GoValue](value Value, newGoValue T) Value {
-	value.v = nil                   // Set v to nil so we don't deep copy it.
-	value = value.Copy()            // Copy metadata
-	value.v = normalize(newGoValue) // Set the new value in normalized form
+	value.v = normalize(newGoValue)
 	return value
 }

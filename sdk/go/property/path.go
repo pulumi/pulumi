@@ -55,28 +55,20 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 		if !ok {
 			return Value{}, pathErrorf(v, "expected an IndexSegment, found %T", last)
 		}
-		if i.int < 0 || i.int > len(v.AsArray()) {
-			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.int}
+		arr := v.AsArray()
+		if i.int < 0 || i.int > len(arr) {
+			return Value{}, pathApplyIndexOutOfBounds{found: arr, idx: i.int}
 		}
-		// We now want to set set v.AsArray()[i]=to, but we don't want to mutate v. We make
-		// a shallow copy of v and then alter that.
-		cp := make(Array, len(v.AsArray()))
-		copy(cp, v.AsArray())
-		cp[i.int] = to
-		return butLast.Set(src, New(cp)) // Finally, propagate the shallow change back up.
+		arr[i.int] = to
+		return butLast.Set(src, New(arr))
 	case v.IsMap():
 		k, ok := last.(KeySegment)
 		if !ok {
 			return Value{}, pathErrorf(v, "expected a KeySegment, found %T", last)
 		}
-		// We now want to set set v.AsMap()[k]=to, but we don't want to mutate v. We make
-		// a shallow copy of v and then alter that.
-		cp := make(Map, len(v.AsMap()))
-		for k, e := range v.AsMap() {
-			cp[k] = e
-		}
-		cp[k.string] = to                // Assign to the new map
-		return butLast.Set(src, New(cp)) // Finally, propagate the shallow change back up.
+		m := v.AsMap()
+		m[k.string] = to
+		return butLast.Set(src, New(m))
 	default:
 		return Value{}, pathErrorf(v, "expected a map or array, found %s", typeString(v))
 	}

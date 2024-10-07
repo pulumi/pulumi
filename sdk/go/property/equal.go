@@ -77,7 +77,7 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 	case v.IsString() && other.IsString():
 		return v.AsString() == other.AsString()
 	case v.IsArray() && other.IsArray():
-		a1, a2 := v.AsArray(), other.AsArray()
+		a1, a2 := v.asArrayMut(), other.asArrayMut()
 		if len(a1) != len(a2) {
 			return false
 		}
@@ -88,7 +88,7 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		}
 		return true
 	case v.IsMap() && other.IsMap():
-		m1, m2 := v.AsMap(), other.AsMap()
+		m1, m2 := v.asMapMut(), other.asMapMut()
 		if len(m1) != len(m2) {
 			return false
 		}
@@ -100,10 +100,10 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		}
 		return true
 	case v.IsAsset() && other.IsAsset():
-		a1, a2 := v.AsAsset(), other.AsAsset()
+		a1, a2 := v.asAssetMut(), other.asAssetMut()
 		return a1.Equals(a2)
 	case v.IsArchive() && other.IsArchive():
-		a1, a2 := v.AsArchive(), other.AsArchive()
+		a1, a2 := v.asArchiveMut(), other.asArchiveMut()
 		return a1.Equals(a2)
 	case v.IsResourceReference() && other.IsResourceReference():
 		r1, r2 := v.AsResourceReference(), other.AsResourceReference()
