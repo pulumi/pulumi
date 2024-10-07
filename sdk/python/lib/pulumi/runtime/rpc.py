@@ -814,7 +814,27 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
             unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(list_value)
             contains_secrets = contains_secrets or secret_element
             list_values.append(unwrapped)
-        return struct_pb2.ListValue(values=list_values), contains_secrets
+        return list_values, contains_secrets
+    # pylint: disable=no-member
+    if isinstance(value, struct_pb2.Value):
+        if value.WhichOneof("kind") == "struct_value":
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(
+                value.struct_value
+            )
+            return unwrapped, secret_element
+        if value.WhichOneof("kind") == "list_value":
+            unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(
+                value.list_value
+            )
+            return unwrapped, secret_element
+        if value.WhichOneof("kind") == "string_value":
+            return value.string_value, False
+        if value.WhichOneof("kind") == "number_value":
+            return value.number_value, False
+        if value.WhichOneof("kind") == "bool_value":
+            return value.bool_value, False
+        if value.WhichOneof("kind") == "null_value":
+            return None, False
     return (value, False)
 
 
