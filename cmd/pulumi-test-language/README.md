@@ -25,11 +25,29 @@ For each test run and language, then:
   separate process and the assertions are checked, exercising program execution
   for the given language.
 * Generated code is snapshot tested to ensure that it doesn't change
-  unexpectedly.[^pulumi-accept]
+  unexpectedly.
 
-[^pulumi-accept]:
-    Snapshots can typically be updated by running tests with the `PULUMI_ACCEPT`
-    environment set to a truthy value (e.g. `PULUMI_ACCEPT=1 go test ...`).
+## Running Language Conformance Tests
+
+To run the language conformance tests, for example for Python, run:
+
+```bash
+go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1
+```
+
+Note: to run this from the root of the repository, make sure you have an uptodate `go.work` file by running `make work`.
+
+To run a single test case:
+
+```bash
+go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1 -run TestLanguage/classes/l2-map-key
+```
+
+To update the snapshots for generated code, run the tetss with he `PULUMI_ACCEPT` environment set to a truthy value:
+
+```bash
+PULUMI_ACCEPT=1 go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1
+```
 
 ## Architecture
 
