@@ -629,3 +629,10 @@ None.
 - TODO:
 	- feature negotiation
 	- data representation
+
+#### Configure
+
+For newer providers it is recommended to ignore `variables` and instead consult `args` for recovering the inputs to the
+provider configuration. This allows for a natural encoding of nested property values that have to be JSON-encoded to
+satisfy the `map<string, string> variables` type constraint. `variables` are retained for backwards-compatibility with
+the older providers only.

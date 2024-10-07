@@ -153,8 +153,10 @@ message GetSchemaResponse {
 }
 
 message ConfigureRequest {
-    map<string, string> variables = 1; // a map of configuration keys to values.
-    google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
+    // the input properties for the provider, with nested values JSON-encoded; please read from `args` instead.
+    map<string, string> variables = 1;
+
+    google.protobuf.Struct args = 2;   // the input properties for the provider
     bool acceptSecrets  = 3;           // when true, operations should return secrets as strongly typed.
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
     bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
