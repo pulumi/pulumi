@@ -16,6 +16,7 @@ package errors
 
 import "fmt"
 
+// InputPropertyErrorDetails contains the error details for an input property error.
 type InputPropertyErrorDetails struct {
 	PropertyPath string
 	Reason       string
@@ -25,11 +26,14 @@ func (d InputPropertyErrorDetails) String() string {
 	return fmt.Sprintf("%s: %s", d.PropertyPath, d.Reason)
 }
 
+// InputPropertiesError can be used to indicate that the client has made a request with
+// bad input properties.
 type InputPropertiesError struct {
 	Message string
 	Errors  []InputPropertyErrorDetails
 }
 
+// Create a new InputPropertiesError with a single property error.
 func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
 		PropertyPath: propertyPath,
@@ -37,6 +41,7 @@ func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesE
 	})
 }
 
+// Create a new InputPropertiesError with a single property error.
 func InputPropertyErrorf(propertyPath string, format string, args ...interface{}) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
 		PropertyPath: propertyPath,
@@ -44,6 +49,7 @@ func InputPropertyErrorf(propertyPath string, format string, args ...interface{}
 	})
 }
 
+// Create a new InputPropertiesError with a message and a list of property errors.
 func NewInputPropertiesError(message string, details ...InputPropertyErrorDetails) *InputPropertiesError {
 	return &InputPropertiesError{
 		Message: message,
@@ -51,6 +57,7 @@ func NewInputPropertiesError(message string, details ...InputPropertyErrorDetail
 	}
 }
 
+// Create a new InputPropertiesError with a message.
 func InputPropertiesErrorf(format string, args ...interface{}) *InputPropertiesError {
 	return NewInputPropertiesError(fmt.Sprintf(format, args...))
 }
@@ -69,6 +76,7 @@ func (ipe *InputPropertiesError) Error() string {
 	return message
 }
 
+// WithDetails adds additional property errors to an existing InputPropertiesError.
 func (ipe *InputPropertiesError) WithDetails(details ...InputPropertyErrorDetails) *InputPropertiesError {
 	ipe.Errors = append(ipe.Errors, details...)
 	return ipe
