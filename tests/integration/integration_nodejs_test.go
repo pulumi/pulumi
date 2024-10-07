@@ -2158,3 +2158,8 @@ func TestLogDebugNode(t *testing.T) {
 		},
 	})
 }
+
+func TestProviderConfigurationNode(t *testing.T) {
+	t.Parallel()
+	testProviderConfiguration(t, "nodejs")
+}

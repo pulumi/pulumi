@@ -43,6 +43,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"gopkg.in/yaml.v3"
 )
 
 const WindowsOS = "windows"
@@ -646,6 +647,118 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 					assert.Contains(t, output, expectedError)
 				},
 			})
+		})
+	}
+}
+
+func testProviderConfiguration(t *testing.T, lang string) {
+	type testCase struct {
+		// Name of the test.
+		testName string
+
+		// Name of the configuration property to test.
+		prop string
+
+		// Pulumi YAML expression defining the config.
+		config any
+
+		// What the provider should receive in the request to Configure(), under GetVariables()
+		expectVariables any
+
+		// What the provider should receive in the request to Configure(), under GetArgs()
+		expectArgs any
+	}
+
+	testCases := []testCase{
+		{"s-empty", "s", "", map[string]any{"testconfigprovider:config:s": ""}, map[string]any{"s": ""}},
+		{"s-simple", "s", "x", map[string]any{"testconfigprovider:config:s": "x"}, map[string]any{"s": "x"}},
+		{"s-jsonish", "s", "{}", map[string]any{"testconfigprovider:config:s": "{}"}, map[string]any{"s": "{}"}},
+	}
+
+	genPulumiYAML := func(tc testCase) []byte {
+		// Simple Pulumi YAML program that initializes the provider with a given config.
+		// Only currently testing the explicit provider path.
+		program, err := yaml.Marshal(map[string]any{
+			"name":    "proj",
+			"runtime": "yaml",
+			"resources": map[string]any{
+				"provider": map[string]any{
+					"type": "pulumi:providers:testconfigprovider",
+					"properties": map[string]any{
+						tc.prop: tc.config,
+					},
+				},
+			},
+			"outputs": map[string]any{
+				"result": map[string]any{
+					"fn::invoke": map[string]any{
+						"function": "testconfigprovider:index:getConfig",
+						"options": map[string]any{
+							"provider": "${provider}",
+						},
+						"return": "result",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		return program
+	}
+
+	type encodedResult struct {
+		Variables any `json:"variables"`
+		Args      any `json:"args"`
+	}
+
+	getEncodedResult := func(t *testing.T, r string) encodedResult {
+		var er encodedResult
+		err := json.Unmarshal([]byte(r), &er)
+		require.NoError(t, err)
+		return er
+	}
+
+	run := func(t *testing.T, tc testCase) encodedResult {
+		dir := t.TempDir()
+
+		program := genPulumiYAML(tc)
+
+		err := os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), program, 0600)
+		require.NoError(t, err)
+
+		var encodedConfigureRequest string
+
+		pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+			Dir:      dir,
+			CloudURL: integration.MakeTempBackend(t),
+			LocalProviders: []integration.LocalDependency{
+				{
+					Package: "testconfigprovider",
+					Path:    filepath.Join("..", "testconfigprovider"),
+				},
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				encodedConfigureRequest = stack.Outputs["result"].(string)
+			},
+			NoParallel: true,
+		})
+
+		err = pt.TestLifeCyclePrepare()
+		require.NoErrorf(t, err, "TestLifeCyclePrepare failed")
+
+		err = pt.TestLifeCycleInitialize()
+		require.NoErrorf(t, err, "TestLifeCycleInitialize failed")
+
+		err = pt.TestPreviewUpdateAndEdits()
+		require.NoErrorf(t, err, "PreviewAndUpdate failed")
+
+		return getEncodedResult(t, encodedConfigureRequest)
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			er := run(t, tc)
+			assert.Equalf(t, tc.expectArgs, er.Args, "args mismatch")
+			assert.Equalf(t, tc.expectVariables, er.Variables, "variables mismatch")
 		})
 	}
 }
