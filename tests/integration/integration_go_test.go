@@ -1372,9 +1372,7 @@ func TestLogDebugGo(t *testing.T) {
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		// Run with --debug to get debug logs.
-		DebugUpdates: true,
-		Quick:        true,
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			var count int
 			for _, ev := range stack.Events {
@@ -1384,7 +1382,7 @@ func TestLogDebugGo(t *testing.T) {
 			}
 			t.Logf("Found %v debug log events", count)
 
-			// Ensure at least 1 debug log events are emitted, confirming --debug is working as expected.
+			// Ensure at least 1 debug log events are emitted, confirming debug logs are working as expected.
 			assert.Greaterf(t, count, 0, "%v is not enough debug log events", count)
 
 			// More than 25 debug log events on such a simple program is very likely unintended.
