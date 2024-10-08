@@ -36,6 +36,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -1100,6 +1101,7 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 		return
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	version = removeReleaseCandidateSuffix(version)
 	parsed, err := semver.Parse(version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
@@ -1458,4 +1460,10 @@ func (host *pythonLanguageHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+// removeReleaseCandidateSuffix removes any "rc" suffix from a semantic version string.
+func removeReleaseCandidateSuffix(version string) string {
+	re := regexp.MustCompile(`-?rc\d+$`)
+	return re.ReplaceAllString(version, "")
 }
