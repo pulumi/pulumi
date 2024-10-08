@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.136.1 (2024-10-08)
+
+
+### Miscellaneous
+
+- [sdkgen/{nodejs,python}] Bump minimum required SDK version to v3.136.0
+  [#17501](https://github.com/pulumi/pulumi/pull/17501)
+
 ## 3.136.0 (2024-10-07)
 
 
