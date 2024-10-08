@@ -111,7 +111,7 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
-		logging.V(9).Infof("trying to renew token.  Current token expiring at: %v ", state.expires)
+		logging.V(9).Infof("trying to renew token. Current token expiring at: %v ", state.expires)
 
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
 		// Renewing might fail because of network issues, or because the token is no longer valid.
