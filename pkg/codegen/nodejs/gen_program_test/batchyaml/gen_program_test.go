@@ -15,13 +15,12 @@
 package batchyaml
 
 import (
-	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	codegenNode "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
@@ -29,18 +28,9 @@ import (
 // testing/test/testdata/transpiled_examples
 func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
-	err := os.Chdir("../../../nodejs") // chdir into codegen/nodejs
+
+	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
 	assert.NoError(t, err)
 
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				codegenNode.Check(t, path, dependencies, true)
-			},
-			GenProgram: codegenNode.GenerateProgram,
-			TestCases:  test.PulumiPulumiYAMLProgramTests,
-		})
+	test.GenerateNodeJSYAMLBatchTest(t, rootDir, nodejs.GenerateProgram)
 }
