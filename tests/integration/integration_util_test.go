@@ -667,17 +667,100 @@ func testProviderConfiguration(t *testing.T, lang string) {
 
 		// What the provider should receive in the request to Configure(), under GetArgs()
 		expectArgs any
+
+		// Which languages to limit the test to. If nil, run in every language.
+		languages func(string) bool
 	}
 
 	testCases := []testCase{
-		{"s-empty", "s", "", map[string]any{"testconfigprovider:config:s": ""}, map[string]any{"s": ""}},
-		{"s-simple", "s", "x", map[string]any{"testconfigprovider:config:s": "x"}, map[string]any{"s": "x"}},
-		{"s-jsonish", "s", "{}", map[string]any{"testconfigprovider:config:s": "{}"}, map[string]any{"s": "{}"}},
+		{
+			testName:        "s-empty",
+			prop:            "s",
+			config:          "",
+			expectVariables: map[string]any{"testconfigprovider:config:s": ""},
+			expectArgs:      map[string]any{"version": "1.0.0", "s": ""},
+			languages:       func(lang string) bool { return lang != "yaml" },
+		},
+		{
+			testName:        "s-empty-yaml",
+			prop:            "s",
+			config:          "",
+			expectVariables: map[string]any{"testconfigprovider:config:s": ""},
+			languages:       func(lang string) bool { return lang == "yaml" },
+		},
+		{
+			testName:        "s-simple",
+			prop:            "s",
+			config:          "x",
+			expectVariables: map[string]any{"testconfigprovider:config:s": "x"},
+			expectArgs:      map[string]any{"version": "1.0.0", "s": "x"},
+			languages:       func(lang string) bool { return lang != "yaml" },
+		},
+		{
+			testName:        "s-simple-yaml",
+			prop:            "s",
+			config:          "x",
+			expectVariables: map[string]any{"testconfigprovider:config:s": "x"},
+			expectArgs:      map[string]any{"s": "x"},
+			languages:       func(lang string) bool { return lang == "yaml" },
+		},
+		{
+			testName:        "s-jsonish",
+			prop:            "s",
+			config:          "{}",
+			expectVariables: map[string]any{"testconfigprovider:config:s": "{}"},
+			expectArgs:      map[string]any{"version": "1.0.0", "s": "{}"},
+			languages:       func(lang string) bool { return lang != "yaml" },
+		},
+		{
+			testName:        "s-jsonish-yaml",
+			prop:            "s",
+			config:          "{}",
+			expectVariables: map[string]any{"testconfigprovider:config:s": "{}"},
+			expectArgs:      map[string]any{"s": "{}"},
+			languages:       func(lang string) bool { return lang == "yaml" },
+		},
 	}
 
-	genPulumiYAML := func(tc testCase) []byte {
-		// Simple Pulumi YAML program that initializes the provider with a given config.
-		// Only currently testing the explicit provider path.
+	testProviderPath, err := filepath.Abs(filepath.Join("..", "testconfigprovider"))
+	require.NoError(t, err)
+
+	t.Logf("Preparing the test provider SDK")
+	overrides := (func() map[string]string {
+		if lang == "yaml" {
+			return nil
+		}
+		overrides := map[string]string{}
+		e := ptesting.NewEnvironment(t)
+		e.RunCommand("pulumi", "package", "gen-sdk", testProviderPath,
+			"--language", lang,
+			"--version", "1.0.0")
+		testProviderSDKPath, err := filepath.Abs(filepath.Join(e.RootPath, "sdk", lang))
+		require.NoErrorf(t, err, "filepath.Abs failed")
+		switch lang {
+		case "nodejs":
+			subE := *e
+			subE.CWD = testProviderSDKPath
+			subE.RunCommand("yarn", "install")
+			subE.RunCommand("yarn", "run", "build")
+
+			bin := filepath.Join(testProviderSDKPath, "bin")
+
+			bytes, err := os.ReadFile(filepath.Join(testProviderSDKPath, "package.json"))
+			require.NoErrorf(t, err, "package.json read failed")
+
+			err = os.WriteFile(filepath.Join(bin, "package.json"), bytes, 0600)
+			require.NoErrorf(t, err, "package.json copy failed")
+
+			overrides["@pulumi/testconfigprovider"] = fmt.Sprintf("file:%s", bin)
+		default:
+			t.Fatalf("Language not supported yet: %v", lang)
+		}
+		t.Logf("Generated test provider SDK to %s", testProviderSDKPath)
+		return overrides
+	})()
+
+	genPulumiYAML := func(t *testing.T, tc testCase) []byte {
 		program, err := yaml.Marshal(map[string]any{
 			"name":    "proj",
 			"runtime": "yaml",
@@ -700,9 +783,51 @@ func testProviderConfiguration(t *testing.T, lang string) {
 					},
 				},
 			},
+			"plugins": map[string]any{
+				"providers": []any{
+					map[string]any{
+						"name": "testconfigprovider",
+						"path": testProviderPath,
+					},
+				},
+			},
 		})
 		require.NoError(t, err)
 		return program
+	}
+
+	genSourceDir := func(t *testing.T, tc testCase) string {
+		yamlProgram := genPulumiYAML(t, tc)
+		t.Logf("Testing YAML program:\n%s\n\n", string(yamlProgram))
+		switch lang {
+		case "yaml":
+			d := t.TempDir()
+			err := os.WriteFile(filepath.Join(d, "Pulumi.yaml"), yamlProgram, 0600)
+			require.NoError(t, err)
+			return d
+		default:
+			e := ptesting.NewEnvironment(t)
+			err := os.WriteFile(filepath.Join(e.RootPath, "Pulumi.yaml"), yamlProgram, 0600)
+			require.NoError(t, err)
+			e.RunCommand("pulumi", "convert", "--from", "yaml",
+				"--strict", "--non-interactive", "--generate-only",
+				"--language", lang, "--out", "out")
+			d := filepath.Join(e.RootPath, "out")
+			if lang == "nodejs" {
+				indexTsBytes, err := os.ReadFile(filepath.Join(d, "index.ts"))
+				require.NoErrorf(t, err, "failed to read index.ts")
+				t.Logf("Testing TypeScript program:\n%s\n\n", string(indexTsBytes))
+
+				indexTsBytes = bytes.ReplaceAll(indexTsBytes,
+					[]byte(`getConfigOutput({})`),
+					[]byte(`getConfigOutput({provider: provider})`))
+
+				t.Logf("Testing rewritten TypeScript program:\n%s\n\n", string(indexTsBytes))
+				err = os.WriteFile(filepath.Join(d, "index.ts"), indexTsBytes, 0600)
+				require.NoErrorf(t, err, "failed to overwrite index.ts")
+			}
+			return d
+		}
 	}
 
 	type encodedResult struct {
@@ -718,12 +843,11 @@ func testProviderConfiguration(t *testing.T, lang string) {
 	}
 
 	run := func(t *testing.T, tc testCase) encodedResult {
-		dir := t.TempDir()
+		if tc.languages != nil && !tc.languages(lang) {
+			t.Skipf("Test skipped in %s", lang)
+		}
 
-		program := genPulumiYAML(tc)
-
-		err := os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), program, 0600)
-		require.NoError(t, err)
+		dir := genSourceDir(t, tc)
 
 		var encodedConfigureRequest string
 
@@ -733,13 +857,17 @@ func testProviderConfiguration(t *testing.T, lang string) {
 			LocalProviders: []integration.LocalDependency{
 				{
 					Package: "testconfigprovider",
-					Path:    filepath.Join("..", "testconfigprovider"),
+					Path:    testProviderPath,
 				},
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				encodedConfigureRequest = stack.Outputs["result"].(string)
 			},
-			NoParallel: true,
+			Overrides:              overrides,
+			NoParallel:             true,
+			SkipRefresh:            true,
+			SkipEmptyPreviewUpdate: true,
+			SkipExportImport:       true,
 		})
 
 		err = pt.TestLifeCyclePrepare()

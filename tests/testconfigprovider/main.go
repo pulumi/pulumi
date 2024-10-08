@@ -107,6 +107,9 @@ func schema() pschema.PackageSpec {
 				},
 			},
 		},
+		Language: map[string]pschema.RawMessage{
+			"nodejs": []byte(`{"respectSchemaVersion": true}`),
+		},
 	}
 
 	return schema
