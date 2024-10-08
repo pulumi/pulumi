@@ -123,6 +123,7 @@ func (ts *tokenSource) handleRequests(
 			// If we failed to renew the lease, we will retry in the next cycle.
 			logging.V(3).Infof("error renewing lease: %v", err)
 		} else {
+			logging.V(5).Infof("renewed lease.  Next expiry: %v", newTokenExpires)
 			state.token = newToken
 			state.expires = newTokenExpires
 		}
