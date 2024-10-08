@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.136.0 (2024-10-07)
+
+
+### Features
+
+- [cli/engine] Allow cancelling operations with SIGTERM
+  [#17467](https://github.com/pulumi/pulumi/pull/17467)
+
+- [cli/state] Introduce the `state repair` command
+  [#17445](https://github.com/pulumi/pulumi/pull/17445)
+
+
+### Bug Fixes
+
+- [cli/display] Hide --show-secrets with --save-plan
+  [#17444](https://github.com/pulumi/pulumi/pull/17444)
+
+- [sdk/nodejs] Maintain secretness and input dependencies of output invokes
+  [#17479](https://github.com/pulumi/pulumi/pull/17479)
+
+- [sdk/python] Send plain values to the engine in output invokes and keep track of input dependencies and secrets
+  [#17460](https://github.com/pulumi/pulumi/pull/17460)
+
+- [sdk/python] Handle nested structures properly when unwrapping secrets from invoke inputs
+  [#17482](https://github.com/pulumi/pulumi/pull/17482)
+
+- [sdk/python] Significantly reduce the number of debug log calls
+  [#17489](https://github.com/pulumi/pulumi/pull/17489)
+
+- [sdk/python] Target Python 3.8 for linting SDK
+  [#17495](https://github.com/pulumi/pulumi/pull/17495)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Exclude tests from the nodejs npm package
+  [#17488](https://github.com/pulumi/pulumi/pull/17488)
+
+- [sdk/python] Update python grpcio to 1.66.2
+  [#17487](https://github.com/pulumi/pulumi/pull/17487)
+
 ## 3.135.1 (2024-10-04)
 
 
