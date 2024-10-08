@@ -145,7 +145,7 @@ func (ts *testTokenBackend) verifyTokenInner(token string) error {
 	now := ts.clock.Now()
 	expires, gotCurrentToken := ts.tokens[token]
 	if !gotCurrentToken {
-		return expiredTokenError{fmt.Errorf("Unknown token: %v", token)}
+		return expiredTokenError{fmt.Errorf("unknown token: %v", token)}
 	}
 
 	if now.After(expires) {
