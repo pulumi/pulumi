@@ -40,62 +40,18 @@ var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
-	expectedVersion := map[string]test.PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
-			OpAndVersion: "v4.26.0",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v5",
-			OpAndVersion: "v5.16.2",
-		},
-		"modpath": {
-			Pkg:          "git.example.org/thirdparty/sdk",
-			OpAndVersion: "v0.1.0",
-		},
-	}
-
-	sdkPath, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
+	rootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	require.NoError(t, err)
 
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, sdkPath)
-			},
-			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-				// Prevent tests from interfering with each other
-				return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-			},
-			TestCases: []test.ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "modpath",
-					Description: "Check that modpath is respected",
-					MockPluginVersions: map[string]string{
-						"other": "0.1.0",
-					},
-					// We don't compile because the test relies on the `other` package,
-					// which does not exist.
-					SkipCompile: codegen.NewStringSet("go"),
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      GenerateProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "go.mod",
-		})
+	test.GenerateGoProgramTest(
+		t,
+		rootDir,
+		func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+			// Prevent tests from interfering with each other
+			return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
+		},
+		GenerateProject,
+	)
 }
 
 func TestCollectImports(t *testing.T) {
