@@ -800,6 +800,19 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-provider-grpc-config": {
+		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+
+				},
+			},
+		},
+	},
 	"l2-invoke-simple": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
 		runs: []testRun{
