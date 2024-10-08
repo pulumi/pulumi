@@ -2158,14 +2158,3 @@ func TestLogDebugNode(t *testing.T) {
 		},
 	})
 }
-
-func TestProviderConfigurationNode(t *testing.T) {
-	t.Parallel()
-	testProviderConfiguration(t, "nodejs")
-}
-
-// Should this go somewhere else?
-func TestProviderConfigurationYAML(t *testing.T) {
-	t.Parallel()
-	testProviderConfiguration(t, "yaml")
-}
