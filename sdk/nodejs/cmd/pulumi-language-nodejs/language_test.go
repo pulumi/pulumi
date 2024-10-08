@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -198,7 +199,8 @@ func TestLanguage(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a temp project dir for the test to run in
-			rootDir := t.TempDir()
+			rootDir, err := filepath.Abs(t.TempDir())
+			require.NoError(t, err)
 
 			snapshotDir := "./testdata/"
 			if forceTsc {
