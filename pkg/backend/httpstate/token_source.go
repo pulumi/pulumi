@@ -115,7 +115,7 @@ func (ts *tokenSource) handleRequests(
 
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
 		// Renewing might fail because of network issues, or because the token is no longer valid.
-		// We only care about the latter, if its just a network issue we should retry again.
+		// We only care about the latter, if it's just a network issue we should retry again.
 		var expired expiredTokenError
 		if errors.As(err, &expired) {
 			logging.V(3).Infof("error renewing lease: %v", err)
