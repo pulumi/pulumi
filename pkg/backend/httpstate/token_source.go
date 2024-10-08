@@ -16,6 +16,7 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,18 @@ type tokenSource struct {
 var _ tokenSourceCapability = &tokenSource{}
 
 type tokenRequest chan<- tokenResponse
+
+type expiredTokenError struct {
+	err error
+}
+
+func (e expiredTokenError) Error() string {
+	return fmt.Sprintf("token expired: %v", e.err)
+}
+
+func (e expiredTokenError) Unwrap() error {
+	return e.err
+}
 
 type tokenResponse struct {
 	token string
@@ -98,13 +111,21 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
+		logging.V(9).Infof("trying to renew token. Current token expiring at: %v ", state.expires)
+
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
-		// If renew failed, all further GetToken requests will return this error.
-		if err != nil {
+		// Renewing might fail because of network issues, or because the token is no longer valid.
+		// We only care about the latter, if it's just a network issue we should retry again.
+		var expired expiredTokenError
+		if errors.As(err, &expired) {
 			logging.V(3).Infof("error renewing lease: %v", err)
 			state.error = fmt.Errorf("renewing lease: %w", err)
 			renewTicker.Stop()
+		} else if err != nil {
+			// If we failed to renew the lease, we will retry in the next cycle.
+			logging.V(3).Infof("error renewing lease: %v", err)
 		} else {
+			logging.V(5).Infof("renewed lease. Next expiry: %v", newTokenExpires)
 			state.token = newToken
 			state.expires = newTokenExpires
 		}
