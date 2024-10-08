@@ -35,8 +35,8 @@ import (
 
 // ConfigGrpcProvider helps testing gRPC-level payloads over CheckConfig, Configure, and DiffConfig methods.
 //
-// In particualar this provider is used to verify that all languages have parity in how the payloads that get sent on
-// the wire to the provider.
+// In particular this provider is used to verify that all languages have parity in how the payloads that get sent on the
+// wire to the provider.
 //
 // The schema for configuration is intentionally interesting and has the following properties:
 //
@@ -45,8 +45,10 @@ import (
 //	"ms", "mb", "mi", "mn": primitives wrapped in a map
 //	"os", "ob", "oi", "on": primitives wrapped in an object type {"x": t}
 //
-// A special function getConfig can be invoked to retrieve a JSON-encoded representation of what the provider received
-// over the wire for configuration.
+// Each property is suffixed by 1,2,3 to allow more simultaneous tests.
+//
+// A special resource ConfigGetter can be invoked to retrieve a JSON-encoded representation of what the provider
+// received over the wire for configuration. It exposes this as the "config" output property.
 type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -68,36 +70,38 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 	}
 	types := map[string]pschema.ComplexTypeSpec{}
 
-	for _, t := range []string{"string", "boolean", "integer", "number"} {
-		ts := pschema.TypeSpec{Type: t}
-		c := t[0:1]
-		configSpec.Variables[c] = pschema.PropertySpec{TypeSpec: ts}
-		configSpec.Variables["l"+c] = pschema.PropertySpec{
-			TypeSpec: pschema.TypeSpec{
-				Type:  "array",
-				Items: &ts,
-			},
-		}
-		configSpec.Variables["m"+c] = pschema.PropertySpec{
-			TypeSpec: pschema.TypeSpec{
-				Type:                 "object",
-				AdditionalProperties: &ts,
-			},
-		}
-		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
-		typeRef := fmt.Sprintf("#/types/%s", typeToken)
-		configSpec.Variables["o"+c] = pschema.PropertySpec{
-			TypeSpec: pschema.TypeSpec{
-				Ref: typeRef,
-			},
-		}
-		types[typeToken] = pschema.ComplexTypeSpec{
-			ObjectTypeSpec: pschema.ObjectTypeSpec{
-				Type: "object",
-				Properties: map[string]pschema.PropertySpec{
-					"x": pschema.PropertySpec{TypeSpec: ts},
+	for n := 1; n <= 3; n++ {
+		for _, t := range []string{"string", "boolean", "integer", "number"} {
+			ts := pschema.TypeSpec{Type: t}
+			c := fmt.Sprintf("%s%d", t[0:1], n)
+			configSpec.Variables[c] = pschema.PropertySpec{TypeSpec: ts}
+			configSpec.Variables["l"+c] = pschema.PropertySpec{
+				TypeSpec: pschema.TypeSpec{
+					Type:  "array",
+					Items: &ts,
 				},
-			},
+			}
+			configSpec.Variables["m"+c] = pschema.PropertySpec{
+				TypeSpec: pschema.TypeSpec{
+					Type:                 "object",
+					AdditionalProperties: &ts,
+				},
+			}
+			typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
+			typeRef := fmt.Sprintf("#/types/%s", typeToken)
+			configSpec.Variables["o"+c] = pschema.PropertySpec{
+				TypeSpec: pschema.TypeSpec{
+					Ref: typeRef,
+				},
+			}
+			types[typeToken] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]pschema.PropertySpec{
+						"x": pschema.PropertySpec{TypeSpec: ts},
+					},
+				},
+			}
 		}
 	}
 
@@ -264,17 +268,6 @@ func (p *configGrpcProviderServer) DiffConfig(
 	return p.ResourceProviderServer.DiffConfig(ctx, req)
 }
 
-func (p *configGrpcProviderServer) Invoke(
-	ctx context.Context,
-	req *pulumirpc.InvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
-	return &pulumirpc.InvokeResponse{Return: &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"result": structpb.NewStringValue(p.formatLoggedMessages()),
-		},
-	}}, nil
-}
-
 func (p *configGrpcProviderServer) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
@@ -286,7 +279,6 @@ func (p *configGrpcProviderServer) Create(
 	return &pulumirpc.CreateResponse{
 		Id: id,
 		Properties: &structpb.Struct{
-
 			Fields: map[string]*structpb.Value{
 				"config": structpb.NewStringValue(p.formatLoggedMessages()),
 			},
