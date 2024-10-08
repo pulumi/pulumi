@@ -15,12 +15,12 @@
 package batchyaml
 
 import (
-	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	codegenPy "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
@@ -28,16 +28,9 @@ import (
 // testing/test/testdata/transpiled_examples
 func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
-	err := os.Chdir("../../../python") // chdir into codegen/python
+
+	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
 	assert.NoError(t, err)
 
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      codegenPy.Check,
-			GenProgram: codegenPy.GenerateProgram,
-			TestCases:  test.PulumiPulumiYAMLProgramTests,
-		})
+	test.GeneratePythonYAMLBatchTest(t, rootDir, python.GenerateProgram)
 }
