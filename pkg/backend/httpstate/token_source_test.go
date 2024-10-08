@@ -149,7 +149,7 @@ func (ts *testTokenBackend) verifyTokenInner(token string) error {
 	}
 
 	if now.After(expires) {
-		return expiredTokenError{fmt.Errorf("Expired token %v (%v past expiration)",
+		return expiredTokenError{fmt.Errorf("expired token %v (%v past expiration)",
 			token, now.Sub(expires))}
 	}
 	return nil
