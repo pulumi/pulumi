@@ -44,7 +44,7 @@ resource "prov1" "pulumi:providers:testconfigprovider" {
     }
 }
 
-resource "prov1g" "testconfigprovider:index:ConfigGetter" {
+resource "c1" "testconfigprovider:index:ConfigGetter" {
   options {
     provider = prov1
   }

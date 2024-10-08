@@ -802,16 +802,113 @@ var languageTests = map[string]languageTest{
 	},
 	"l2-provider-grpc-config": {
 		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
-		runs: []testRun{
-			{
-				assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-
-				},
-			},
-		},
+		runs: (func() []testRun {
+			// Find ConfigGetter resource by name and extract the captured config.
+			config := func(l *L, snap *deploy.Snapshot, resourceName string) string {
+				for _, r := range snap.Resources {
+					if r.URN.Name() != resourceName {
+						continue
+					}
+					require.Equal(l, "testconfigprovider:index:ConfigGetter", string(r.Type))
+					configOut, gotConfig := r.Outputs["config"]
+					require.Truef(l, gotConfig, "No `config` output")
+					require.Truef(l, configOut.IsString(), "`config` output must be a string")
+					return configOut.StringValue()
+				}
+				require.Failf(l, "Resource not found", "resourceName=%s", resourceName)
+				return ""
+			}
+			assert := func(l *L,
+				projectDirectory string, err error,
+				s *deploy.Snapshot, changes display.ResourceChanges,
+			) {
+				c1Expect := `
+				[
+				  {
+				    "method": "pulumirpc.CheckRequest",
+				    "message": {
+				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::prov1",
+				      "olds": {},
+				      "news": {
+					"b1": "true",
+					"b2": "false",
+					"i1": "0",
+					"i2": "42",
+					"li1": "[1,2]",
+					"ls1": "[]",
+					"ls2": "[\"\",\"foo\"]",
+					"mi1": "{\"key1\":0,\"key2\":42}",
+					"ms1": "{}",
+					"ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
+					"n1": "0",
+					"n2": "42.42",
+					"oi1": "{\"x\":42}",
+					"os1": "{}",
+					"os2": "{\"x\":\"x-value\"}",
+					"s1": "",
+					"s2": "x",
+					"s3": "{}",
+					"version": "0.0.1"
+				      },
+				      "name": "prov1",
+				      "type": "pulumi:providers:testconfigprovider"
+				    }
+				  },
+				  {
+				    "method": "pulumirpc.ConfigureRequest",
+				    "message": {
+				      "variables": {
+					"testconfigprovider:config:b1": "true",
+					"testconfigprovider:config:b2": "false",
+					"testconfigprovider:config:i1": "0",
+					"testconfigprovider:config:i2": "42",
+					"testconfigprovider:config:li1": "[1,2]",
+					"testconfigprovider:config:ls1": "[]",
+					"testconfigprovider:config:ls2": "[\"\",\"foo\"]",
+					"testconfigprovider:config:mi1": "{\"key1\":0,\"key2\":42}",
+					"testconfigprovider:config:ms1": "{}",
+					"testconfigprovider:config:ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
+					"testconfigprovider:config:n1": "0",
+					"testconfigprovider:config:n2": "42.42",
+					"testconfigprovider:config:oi1": "{\"x\":42}",
+					"testconfigprovider:config:os1": "{}",
+					"testconfigprovider:config:os2": "{\"x\":\"x-value\"}",
+					"testconfigprovider:config:s1": "",
+					"testconfigprovider:config:s2": "x",
+					"testconfigprovider:config:s3": "{}"
+				      },
+				      "args": {
+					"b1": "true",
+					"b2": "false",
+					"i1": "0",
+					"i2": "42",
+					"li1": "[1,2]",
+					"ls1": "[]",
+					"ls2": "[\"\",\"foo\"]",
+					"mi1": "{\"key1\":0,\"key2\":42}",
+					"ms1": "{}",
+					"ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
+					"n1": "0",
+					"n2": "42.42",
+					"oi1": "{\"x\":42}",
+					"os1": "{}",
+					"os2": "{\"x\":\"x-value\"}",
+					"s1": "",
+					"s2": "x",
+					"s3": "{}",
+					"version": "0.0.1"
+				      },
+				      "acceptSecrets": true,
+				      "acceptResources": true,
+				      "sendsOldInputs": true,
+				      "sendsOldInputsToDelete": true
+				    }
+				  }
+				]`
+				require.JSONEq(l, c1Expect, config(l, s, "c1"))
+			}
+			return []testRun{{assert: assert}}
+		})(),
 	},
 	"l2-invoke-simple": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
