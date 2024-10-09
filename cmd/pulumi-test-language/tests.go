@@ -16,8 +16,10 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"math"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -810,67 +812,81 @@ var languageTests = map[string]languageTest{
 				) {
 					g := &grpcTestContext{l: l, s: snap}
 
+					// Like assert.Equal but allows some languages to send the JSON-encoded form.
+					assertEq := func(l *L, expectRegular any, actual any, msg string) {
+						if actualS, ok := actual.(string); ok {
+							var a any
+							err := json.Unmarshal([]byte(actualS), &a)
+							if err == nil {
+								if reflect.DeepEqual(expectRegular, a) {
+									return
+								}
+							}
+						}
+						assert.Equal(l, expectRegular, actual, msg)
+					}
+
 					// Check what schemaprov received in CheckRequest.
 					r := g.CheckReq("schemaconf")
 					assert.Equal(l, "", r.News.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", r.News.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", r.News.Fields["s3"].AsInterface(), "s3")
-					assert.Equal(l, float64(0), r.News.Fields["i1"].AsInterface(), "i1")
-					assert.Equal(l, float64(42), r.News.Fields["i2"].AsInterface(), "i2")
-					assert.Equal(l, float64(0), r.News.Fields["n1"].AsInterface(), "n1")
-					assert.Equal(l, float64(42.42), r.News.Fields["n2"].AsInterface(), "n2")
-					assert.Equal(l, true, r.News.Fields["b1"].AsInterface(), "b1")
-					assert.Equal(l, false, r.News.Fields["b2"].AsInterface(), "b2")
-					assert.Equal(l, []any{}, r.News.Fields["ls1"].AsInterface(), "ls1")
-					assert.Equal(l, []any{"", "foo"}, r.News.Fields["ls2"].GetListValue().AsSlice(), "ls2")
-					assert.Equal(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].GetListValue().AsSlice(), "li1")
-					assert.Equal(l, map[string]any{}, r.News.Fields["ms1"].GetStructValue().AsMap(), "ms1")
-					assert.Equal(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].GetStructValue().AsMap(), "ms2")
-					assert.Equal(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].GetStructValue().AsMap(), "mi1")
-					assert.Equal(l, map[string]any{}, r.News.Fields["os1"].GetStructValue().AsMap(), "os1")
-					assert.Equal(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].GetStructValue().AsMap(), "os2")
-					assert.Equal(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].GetStructValue().AsMap(), "oi1")
+					assertEq(l, float64(0), r.News.Fields["i1"].AsInterface(), "i1")
+					assertEq(l, float64(42), r.News.Fields["i2"].AsInterface(), "i2")
+					assertEq(l, float64(0), r.News.Fields["n1"].AsInterface(), "n1")
+					assertEq(l, float64(42.42), r.News.Fields["n2"].AsInterface(), "n2")
+					assertEq(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assertEq(l, false, r.News.Fields["b2"].AsInterface(), "b2")
+					assertEq(l, []any{}, r.News.Fields["ls1"].AsInterface(), "ls1")
+					assertEq(l, []any{"", "foo"}, r.News.Fields["ls2"].AsInterface(), "ls2")
+					assertEq(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].AsInterface(), "li1")
+					assertEq(l, map[string]any{}, r.News.Fields["ms1"].AsInterface(), "ms1")
+					assertEq(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].AsInterface(), "ms2")
+					assertEq(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].AsInterface(), "mi1")
+					assertEq(l, map[string]any{}, r.News.Fields["os1"].AsInterface(), "os1")
+					assertEq(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].AsInterface(), "os2")
+					assertEq(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
 
 					// Check what schemaprov received in ConfigureRequest.
 					c := g.ConfigureReq("schemaconf")
 					assert.Equal(l, "", c.Args.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", c.Args.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", c.Args.Fields["s3"].AsInterface(), "s3")
-					assert.Equal(l, float64(0), c.Args.Fields["i1"].AsInterface(), "i1")
-					assert.Equal(l, float64(42), c.Args.Fields["i2"].AsInterface(), "i2")
-					assert.Equal(l, float64(0), c.Args.Fields["n1"].AsInterface(), "n1")
-					assert.Equal(l, float64(42.42), c.Args.Fields["n2"].AsInterface(), "n2")
-					assert.Equal(l, true, c.Args.Fields["b1"].AsInterface(), "b1")
-					assert.Equal(l, false, c.Args.Fields["b2"].AsInterface(), "b2")
-					assert.Equal(l, []any{}, c.Args.Fields["ls1"].AsInterface(), "ls1")
-					assert.Equal(l, []any{"", "foo"}, c.Args.Fields["ls2"].GetListValue().AsSlice(), "ls2")
-					assert.Equal(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].GetListValue().AsSlice(), "li1")
-					assert.Equal(l, map[string]any{}, c.Args.Fields["ms1"].GetStructValue().AsMap(), "ms1")
-					assert.Equal(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].GetStructValue().AsMap(), "ms2")
-					assert.Equal(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].GetStructValue().AsMap(), "mi1")
-					assert.Equal(l, map[string]any{}, c.Args.Fields["os1"].GetStructValue().AsMap(), "os1")
-					assert.Equal(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].GetStructValue().AsMap(), "os2")
-					assert.Equal(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].GetStructValue().AsMap(), "oi1")
+					assertEq(l, float64(0), c.Args.Fields["i1"].AsInterface(), "i1")
+					assertEq(l, float64(42), c.Args.Fields["i2"].AsInterface(), "i2")
+					assertEq(l, float64(0), c.Args.Fields["n1"].AsInterface(), "n1")
+					assertEq(l, float64(42.42), c.Args.Fields["n2"].AsInterface(), "n2")
+					assertEq(l, true, c.Args.Fields["b1"].AsInterface(), "b1")
+					assertEq(l, false, c.Args.Fields["b2"].AsInterface(), "b2")
+					assertEq(l, []any{}, c.Args.Fields["ls1"].AsInterface(), "ls1")
+					assertEq(l, []any{"", "foo"}, c.Args.Fields["ls2"].AsInterface(), "ls2")
+					assertEq(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].AsInterface(), "li1")
+					assertEq(l, map[string]any{}, c.Args.Fields["ms1"].AsInterface(), "ms1")
+					assertEq(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].AsInterface(), "ms2")
+					assertEq(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].AsInterface(), "mi1")
+					assertEq(l, map[string]any{}, c.Args.Fields["os1"].AsInterface(), "os1")
+					assertEq(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].AsInterface(), "os2")
+					assertEq(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].AsInterface(), "oi1")
 
 					v := c.GetVariables()
-					assert.Equal(l, "", v["testconfigprovider:config:s1"])
-					assert.Equal(l, "x", v["testconfigprovider:config:s2"])
-					assert.Equal(l, "{}", v["testconfigprovider:config:s3"])
-					assert.Equal(l, "0", v["testconfigprovider:config:i1"])
-					assert.Equal(l, "42", v["testconfigprovider:config:i2"])
-					assert.Equal(l, "0", v["testconfigprovider:config:n1"])
-					assert.Equal(l, "42.42", v["testconfigprovider:config:n2"])
-					assert.Equal(l, "true", v["testconfigprovider:config:b1"])
-					assert.Equal(l, "false", v["testconfigprovider:config:b2"])
-					assert.Equal(l, "[]", v["testconfigprovider:config:ls1"])
-					assert.Equal(l, "[\"\",\"foo\"]", v["testconfigprovider:config:ls2"])
-					assert.Equal(l, "[1,2]", v["testconfigprovider:config:li1"])
-					assert.Equal(l, "{}", v["testconfigprovider:config:ms1"])
-					assert.Equal(l, "{\"key1\":\"value1\",\"key2\":\"value2\"}", v["testconfigprovider:config:ms2"])
-					assert.Equal(l, "{\"key1\":0,\"key2\":42}", v["testconfigprovider:config:mi1"])
-					assert.Equal(l, "{}", v["testconfigprovider:config:os1"])
-					assert.Equal(l, "{\"x\":\"x-value\"}", v["testconfigprovider:config:os2"])
-					assert.Equal(l, "{\"x\":42}", v["testconfigprovider:config:oi1"])
+					assert.Equal(l, "", v["testconfigprovider:config:s1"], "s1")
+					assert.Equal(l, "x", v["testconfigprovider:config:s2"], "s2")
+					assert.Equal(l, "{}", v["testconfigprovider:config:s3"], "s3")
+					assert.Equal(l, "0", v["testconfigprovider:config:i1"], "i1")
+					assert.Equal(l, "42", v["testconfigprovider:config:i2"], "i2")
+					assert.Equal(l, "0", v["testconfigprovider:config:n1"], "n1")
+					assert.Equal(l, "42.42", v["testconfigprovider:config:n2"], "n2")
+					assert.Equal(l, "true", v["testconfigprovider:config:b1"], "b1")
+					assert.Equal(l, "false", v["testconfigprovider:config:b2"], "b2")
+					assert.JSONEq(l, "[]", v["testconfigprovider:config:ls1"], "ls1")
+					assert.JSONEq(l, "[\"\",\"foo\"]", v["testconfigprovider:config:ls2"], "ls2")
+					assert.JSONEq(l, "[1,2]", v["testconfigprovider:config:li1"], "li1")
+					assert.JSONEq(l, "{}", v["testconfigprovider:config:ms1"], "ms1")
+					assert.JSONEq(l, "{\"key1\":\"value1\",\"key2\":\"value2\"}", v["testconfigprovider:config:ms2"], "ms2")
+					assert.JSONEq(l, "{\"key1\":0,\"key2\":42}", v["testconfigprovider:config:mi1"], "mi1")
+					assert.JSONEq(l, "{}", v["testconfigprovider:config:os1"], "os1")
+					assert.JSONEq(l, "{\"x\":\"x-value\"}", v["testconfigprovider:config:os2"], "os2")
+					assert.JSONEq(l, "{\"x\":42}", v["testconfigprovider:config:oi1"], "oi1")
 
 					// Now check first-class secrets for programsecretprov.
 					r = g.CheckReq("programsecretconf")
@@ -878,17 +894,17 @@ var languageTests = map[string]languageTest{
 					// These asserts do not look right, but are based on Go behavior. Should SECRET
 					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
 					assert.Equal(l, "SECRET", r.News.Fields["s1"].AsInterface(), "s1")
-					assert.Equal(l, float64(1234567890), r.News.Fields["i1"].AsInterface(), "i1")
-					assert.Equal(l, float64(123456.789), r.News.Fields["n1"].AsInterface(), "n1")
-					assert.Equal(l, true, r.News.Fields["b1"].AsInterface(), "b1")
-					assert.Equal(l, []any{"SECRET", "SECRET2"},
+					assertEq(l, float64(1234567890), r.News.Fields["i1"].AsInterface(), "i1")
+					assertEq(l, float64(123456.789), r.News.Fields["n1"].AsInterface(), "n1")
+					assertEq(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assertEq(l, []any{"SECRET", "SECRET2"},
 						r.News.Fields["ls1"].AsInterface(), "ls1")
-					assert.Equal(l, []any{"VALUE", "SECRET"},
-						r.News.Fields["ls2"].GetListValue().AsSlice(), "ls2")
-					assert.Equal(l, map[string]any{"key1": "value1", "key2": "SECRET"},
-						r.News.Fields["ms2"].GetStructValue().AsMap(), "ms2")
-					assert.Equal(l, map[string]any{"x": "SECRET"},
-						r.News.Fields["os2"].GetStructValue().AsMap(), "os2")
+					assertEq(l, []any{"VALUE", "SECRET"},
+						r.News.Fields["ls2"].AsInterface(), "ls2")
+					assertEq(l, map[string]any{"key1": "value1", "key2": "SECRET"},
+						r.News.Fields["ms2"].AsInterface(), "ms2")
+					assertEq(l, map[string]any{"x": "SECRET"},
+						r.News.Fields["os2"].AsInterface(), "os2")
 
 					secret := func(x any) any {
 						return map[string]any{
@@ -897,23 +913,50 @@ var languageTests = map[string]languageTest{
 						}
 					}
 
+					// Like assertEq but permits secret-encoded JSON form.
+					assertEqSecret := func(l *L, expectRegular any, expectSecretJSON any, actual any, msg string) {
+						if actualObj, ok := actual.(map[string]any); ok {
+							tagV, ok := actualObj["4dabf18193072939515e22adb298388d"]
+							if ok && tagV == "1b47061264138c4ac30d75fd1eb44270" {
+								actualS, ok := actualObj["value"].(string)
+								if ok {
+									var a any
+									err := json.Unmarshal([]byte(actualS), &a)
+									if err == nil {
+										if expectSecretJSON == nil && reflect.DeepEqual(expectRegular, secret(a)) {
+											return
+										} else if expectSecretJSON != nil && reflect.DeepEqual(expectSecretJSON, a) {
+											return
+										}
+									}
+								}
+							}
+						}
+						assert.Equal(l, expectRegular, actual, msg)
+					}
+
 					c = g.ConfigureReq("programsecretconf")
 					assert.Equal(l, secret("SECRET"), c.Args.Fields["s1"].AsInterface(), "s1")
-					assert.Equal(l, secret(float64(1234567890)), c.Args.Fields["i1"].AsInterface(), "i1")
-					assert.Equal(l, secret(float64(123456.789)), c.Args.Fields["n1"].AsInterface(), "n1")
-					assert.Equal(l, secret(true), c.Args.Fields["b1"].AsInterface(), "b1")
-					assert.Equal(l, secret([]any{"SECRET", "SECRET2"}),
+					assertEqSecret(l, secret(float64(1234567890)), nil, c.Args.Fields["i1"].AsInterface(), "i1")
+					assertEqSecret(l, secret(float64(123456.789)), nil, c.Args.Fields["n1"].AsInterface(), "n1")
+					assertEqSecret(l, secret(true), nil, c.Args.Fields["b1"].AsInterface(), "b1")
+					assertEqSecret(l, secret([]any{"SECRET", "SECRET2"}), nil,
 						c.Args.Fields["ls1"].AsInterface(), "ls1")
 
 					// Secret floating happened here, perhaps []any{"VALUE", secret("SECRET")}
 					// would be preferable instead at some point.
-					assert.Equal(l, secret([]any{"VALUE", "SECRET"}),
-						c.Args.Fields["ls2"].GetStructValue().AsMap(), "ls2")
+					assertEqSecret(l, secret([]any{"VALUE", "SECRET"}), nil,
+						c.Args.Fields["ls2"].AsInterface(), "ls2")
 
-					assert.Equal(l, map[string]any{"key1": "value1", "key2": secret("SECRET")},
-						c.Args.Fields["ms2"].GetStructValue().AsMap(), "ms2")
-					assert.Equal(l, map[string]any{"x": secret("SECRET")},
-						c.Args.Fields["os2"].GetStructValue().AsMap(), "os2")
+					assertEqSecret(l,
+						map[string]any{"key1": "value1", "key2": secret("SECRET")},
+						map[string]any{"key1": "value1", "key2": "SECRET"}, // under secret JSON-encoding the secret is elided
+						c.Args.Fields["ms2"].AsInterface(), "ms2")
+
+					assertEqSecret(l,
+						map[string]any{"x": secret("SECRET")},
+						map[string]any{"x": "SECRET"}, // under secret JSON-encoding the secret is elided
+						c.Args.Fields["os2"].AsInterface(), "os2")
 
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
 					v = c.GetVariables()
@@ -921,10 +964,10 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "1234567890", v["testconfigprovider:config:i1"], "i1")
 					assert.Equal(l, "123456.789", v["testconfigprovider:config:n1"], "n2")
 					assert.Equal(l, "true", v["testconfigprovider:config:b1"], "b1")
-					assert.Equal(l, "[\"SECRET\",\"SECRET2\"]", v["testconfigprovider:config:ls1"], "ls1")
-					assert.Equal(l, "[\"VALUE\",\"SECRET\"]", v["testconfigprovider:config:ls2"], "ls2")
-					assert.Equal(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["testconfigprovider:config:ms2"], "ms2")
-					assert.Equal(l, "{\"x\":\"SECRET\"}", v["testconfigprovider:config:os2"], "os2")
+					assert.JSONEq(l, "[\"SECRET\",\"SECRET2\"]", v["testconfigprovider:config:ls1"], "ls1")
+					assert.JSONEq(l, "[\"VALUE\",\"SECRET\"]", v["testconfigprovider:config:ls2"], "ls2")
+					assert.JSONEq(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["testconfigprovider:config:ms2"], "ms2")
+					assert.JSONEq(l, "{\"x\":\"SECRET\"}", v["testconfigprovider:config:os2"], "os2")
 				},
 			},
 		},
