@@ -102,7 +102,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 			},
 		}
 		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
-		typeRef := fmt.Sprintf("#/types/%s", typeToken)
+		typeRef := "#/types/" + typeToken
 		spec["o"+c] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Ref: typeRef,
