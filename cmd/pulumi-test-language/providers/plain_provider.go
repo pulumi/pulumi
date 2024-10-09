@@ -115,8 +115,14 @@ func (p *PlainProvider) GetSchema(
 				Plain: true,
 			},
 		},
+		"nonPlainData": {
+			TypeSpec: schema.TypeSpec{
+				Type: "ref",
+				Ref:  "#/types/plain:index:Data",
+			},
+		},
 	}
-	resourceRequired := []string{"data"}
+	resourceRequired := []string{"data", "nonPlainData"}
 
 	pkg := schema.PackageSpec{
 		Name:    "plain",
@@ -216,7 +222,7 @@ func (p *PlainProvider) Check(
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(req.News) != 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -294,6 +300,8 @@ func (p *PlainProvider) Check(
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
 		}, nil
 	}
+
+	// TODO: check nonPlainData
 
 	return plugin.CheckResponse{Properties: req.News}, nil
 }
