@@ -5,6 +5,14 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
+export interface Tb {
+    x?: boolean;
+}
+
+export interface TbArgs {
+    x?: pulumi.Input<boolean>;
+}
+
 export interface Tb1Args {
     x?: pulumi.Input<boolean>;
 }
@@ -15,6 +23,14 @@ export interface Tb2Args {
 
 export interface Tb3Args {
     x?: pulumi.Input<boolean>;
+}
+
+export interface Ti {
+    x?: number;
+}
+
+export interface TiArgs {
+    x?: pulumi.Input<number>;
 }
 
 export interface Ti1Args {
@@ -29,6 +45,14 @@ export interface Ti3Args {
     x?: pulumi.Input<number>;
 }
 
+export interface Tn {
+    x?: number;
+}
+
+export interface TnArgs {
+    x?: pulumi.Input<number>;
+}
+
 export interface Tn1Args {
     x?: pulumi.Input<number>;
 }
@@ -39,6 +63,14 @@ export interface Tn2Args {
 
 export interface Tn3Args {
     x?: pulumi.Input<number>;
+}
+
+export interface Ts {
+    x?: string;
+}
+
+export interface TsArgs {
+    x?: pulumi.Input<string>;
 }
 
 export interface Ts1Args {

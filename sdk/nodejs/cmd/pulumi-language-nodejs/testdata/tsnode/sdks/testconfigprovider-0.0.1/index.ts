@@ -10,15 +10,15 @@ export type ConfigGetter = import("./configGetter").ConfigGetter;
 export const ConfigGetter: typeof import("./configGetter").ConfigGetter = null as any;
 utilities.lazyLoad(exports, ["ConfigGetter"], () => require("./configGetter"));
 
-export { GetConfigResult } from "./getConfig";
-export const getConfig: typeof import("./getConfig").getConfig = null as any;
-export const getConfigOutput: typeof import("./getConfig").getConfigOutput = null as any;
-utilities.lazyLoad(exports, ["getConfig","getConfigOutput"], () => require("./getConfig"));
-
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
+export { ToSecretArgs, ToSecretResult, ToSecretOutputArgs } from "./toSecret";
+export const toSecret: typeof import("./toSecret").toSecret = null as any;
+export const toSecretOutput: typeof import("./toSecret").toSecretOutput = null as any;
+utilities.lazyLoad(exports, ["toSecret","toSecretOutput"], () => require("./toSecret"));
 
 
 // Export sub-modules:

@@ -5,6 +5,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
+export interface Tb {
+    x?: boolean;
+}
+
 export interface Tb1 {
     x?: boolean;
 }
@@ -15,6 +19,10 @@ export interface Tb2 {
 
 export interface Tb3 {
     x?: boolean;
+}
+
+export interface Ti {
+    x?: number;
 }
 
 export interface Ti1 {
@@ -29,6 +37,10 @@ export interface Ti3 {
     x?: number;
 }
 
+export interface Tn {
+    x?: number;
+}
+
 export interface Tn1 {
     x?: number;
 }
@@ -39,6 +51,10 @@ export interface Tn2 {
 
 export interface Tn3 {
     x?: number;
+}
+
+export interface Ts {
+    x?: string;
 }
 
 export interface Ts1 {
