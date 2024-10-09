@@ -54,8 +54,10 @@ type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
 }
 
-var _ plugin.Provider = (*ConfigGrpcProvider)(nil)
-var _ types.ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
+var (
+	_ plugin.Provider                = (*ConfigGrpcProvider)(nil)
+	_ types.ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
+)
 
 func (*ConfigGrpcProvider) Pkg() tokens.Package {
 	return "testconfigprovider"
@@ -112,7 +114,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 			ObjectTypeSpec: pschema.ObjectTypeSpec{
 				Type: "object",
 				Properties: map[string]pschema.PropertySpec{
-					"x": pschema.PropertySpec{TypeSpec: ts},
+					"x": {TypeSpec: ts},
 				},
 			},
 		}
@@ -137,10 +139,10 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 		Types: types,
 		Resources: map[string]pschema.ResourceSpec{
-			fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()): pschema.ResourceSpec{
+			fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()): {
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Properties: map[string]pschema.PropertySpec{
-						"config": pschema.PropertySpec{
+						"config": {
 							TypeSpec: pschema.TypeSpec{Type: "string"},
 						},
 					},
