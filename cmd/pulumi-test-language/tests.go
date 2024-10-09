@@ -1271,7 +1271,7 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
 
 					requireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
 					primResource := requireSingleResource(l, snap.Resources, "primitive:index:Resource")
@@ -1279,6 +1279,8 @@ var languageTests = map[string]languageTest{
 					refResource := requireSingleResource(l, snap.Resources, "primitive-ref:index:Resource")
 					requireSingleResource(l, snap.Resources, "pulumi:providers:ref-ref")
 					rrefResource := requireSingleResource(l, snap.Resources, "ref-ref:index:Resource")
+					requireSingleResource(l, snap.Resources, "pulumi:providers:plain")
+					plainResource := requireSingleResource(l, snap.Resources, "plain:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     false,
@@ -1352,6 +1354,71 @@ var languageTests = map[string]languageTest{
 					})
 					assert.Equal(l, want, rrefResource.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, rrefResource.Inputs, rrefResource.Outputs, "expected inputs and outputs to match")
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     2.17,
+								"integer":   -12,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{false, true},
+								"stringMap": map[string]interface{}{
+									"my key": "one",
+									"my.key": "two",
+									"my-key": "three",
+									"my_key": "four",
+									"MY_KEY": "five",
+									"myKey":  "six",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{true, false},
+							"stringMap": map[string]interface{}{
+								"my key": "one",
+								"my.key": "two",
+								"my-key": "three",
+								"my_key": "four",
+								"MY_KEY": "five",
+								"myKey":  "six",
+							},
+						}),
+						"nonPlainData": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     2.17,
+								"integer":   -12,
+								"string":    "Goodbye",
+								"boolArray": []interface{}{false, true},
+								"stringMap": map[string]interface{}{
+									"my key": "one",
+									"my.key": "two",
+									"my-key": "three",
+									"my_key": "four",
+									"MY_KEY": "five",
+									"myKey":  "six",
+								},
+							}),
+							"boolean":   true,
+							"float":     4.5,
+							"integer":   1024,
+							"string":    "Hello",
+							"boolArray": []interface{}{true, false},
+							"stringMap": map[string]interface{}{
+								"my key": "one",
+								"my.key": "two",
+								"my-key": "three",
+								"my_key": "four",
+								"MY_KEY": "five",
+								"myKey":  "six",
+							},
+						}),
+					})
+					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},
