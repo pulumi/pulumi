@@ -818,6 +818,34 @@ var languageTests = map[string]languageTest{
 				require.Failf(l, "Resource not found", "resourceName=%s", resourceName)
 				return ""
 			}
+
+			// Python uses a bit more white-space indentation than Node.
+			normalizers := map[string]string{
+				`[1, 2]`:                      `[1,2]`,
+				`{\"key1\": 0, \"key2\": 42}`: `{\"key1\":0,\"key2\":42}`,
+
+				`{\"key1\": \"value1\", \"key2\": \"value2\"}`: `{\"key1\":\"value1\",\"key2\":\"value2\"}`,
+
+				`[\"\", \"foo\"]`:           `[\"\",\"foo\"]`,
+				`{\"x\": 42}`:               `{\"x\":42}`,
+				`{\"x\": \"x-value\"}`:      `{\"x\":\"x-value\"}`,
+				`{\"x\": \"SECRET\"}`:       `{\"x\":\"SECRET\"}`,
+				`[\"VALUE\", \"SECRET\"]`:   `[\"VALUE\",\"SECRET\"]`,
+				`[\"SECRET\", \"SECRET2\"]`: `[\"SECRET\",\"SECRET2\"]`,
+
+				`{\"key1\": \"SECRET\", \"key2\": \"SECRET2\"}`: `{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}`,
+				`{\"key1\": \"value1\", \"key2\": \"SECRET\"}`:  `{\"key1\":\"value1\",\"key2\":\"SECRET\"}`,
+			}
+
+			norm := func(s string) string {
+				var parts []string
+				for k, v := range normalizers {
+					parts = append(parts, k, v)
+				}
+				re := strings.NewReplacer(parts...)
+				return re.Replace(s)
+			}
+
 			assert := func(l *L,
 				projectDirectory string, err error,
 				s *deploy.Snapshot, changes display.ResourceChanges,
@@ -905,7 +933,7 @@ var languageTests = map[string]languageTest{
 				    }
 				  }
 				]`
-				require.JSONEq(l, schemaProviderConfigExpected, config(l, s, "schemaconf"))
+				require.JSONEq(l, schemaProviderConfigExpected, norm(config(l, s, "schemaconf")))
 
 				programSecretProviderConfigExpected := `
 				[
@@ -996,7 +1024,8 @@ var languageTests = map[string]languageTest{
 				    }
 				  }
 				]`
-				require.JSONEq(l, programSecretProviderConfigExpected, config(l, s, "programsecretconf"))
+				require.JSONEq(l, programSecretProviderConfigExpected,
+					norm(config(l, s, "programsecretconf")))
 			}
 			return []testRun{{assert: assert}}
 		})(),
