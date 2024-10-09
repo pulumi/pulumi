@@ -48,6 +48,10 @@ setup_python() (
     # shellcheck disable=SC1090
     . venv/*/activate
     python3 -m pip install -e ../../../../sdk/python/env/src
+    echo "DEBUG INFO"
+    pwd
+    python3 -m pip list
+    python3 -c "import pulumi"
   fi
 )
 
