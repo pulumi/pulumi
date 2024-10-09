@@ -52,17 +52,10 @@ programsecretprov = testconfigprovider.Provider("programsecretprov",
         "VALUE",
         testconfigprovider.to_secret_output(s="SECRET").apply(lambda invoke: invoke.s),
     ],
-    ms1=testconfigprovider.to_secret_output(ms={
-        "key1": "SECRET",
-        "key2": "SECRET2",
-    }).apply(lambda invoke: invoke.ms),
     ms2={
         "key1": "value1",
         "key2": testconfigprovider.to_secret_output(s="SECRET").apply(lambda invoke: invoke.s),
     },
-    os1=testconfigprovider.to_secret_output(os={
-        "x": "SECRET",
-    }).apply(lambda invoke: invoke.os),
     os2={
         "x": testconfigprovider.to_secret_output(s="SECRET").apply(lambda invoke: invoke.s),
     })

@@ -67,23 +67,12 @@ const programsecretprov = new testconfigprovider.Provider("programsecretprov", {
             s: "SECRET",
         }).apply(invoke => invoke.s),
     ],
-    ms1: testconfigprovider.toSecretOutput({
-        ms: {
-            key1: "SECRET",
-            key2: "SECRET2",
-        },
-    }).apply(invoke => invoke.ms),
     ms2: {
         key1: "value1",
         key2: testconfigprovider.toSecretOutput({
             s: "SECRET",
         }).apply(invoke => invoke.s),
     },
-    os1: testconfigprovider.toSecretOutput({
-        os: {
-            x: "SECRET",
-        },
-    }).apply(invoke => invoke.os),
     os2: {
         x: testconfigprovider.toSecretOutput({
             s: "SECRET",
