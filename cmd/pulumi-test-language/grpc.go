@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
