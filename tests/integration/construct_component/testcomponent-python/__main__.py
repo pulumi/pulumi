@@ -22,7 +22,6 @@ import pulumi.provider as provider
 
 from echo import Echo
 
-
 class Component(ComponentResource):
     def __init__(self, name: str, echo: Input[Any], secret: Input[str], opts: Optional[ResourceOptions]=None):
         super().__init__('testcomponent:index:Component', name, {}, opts)
