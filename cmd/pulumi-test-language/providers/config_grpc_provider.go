@@ -17,6 +17,7 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -86,7 +87,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 ) {
 	for _, t := range []string{"string", "boolean", "integer", "number"} {
 		ts := pschema.TypeSpec{Type: t}
-		c := fmt.Sprintf("%s", t[0:1])
+		c := t[0:1]
 		if n != 0 {
 			c = fmt.Sprintf("%s%d", t[0:1], n)
 		}
@@ -234,7 +235,7 @@ func (p *ConfigGrpcProvider) Invoke(
 		}
 		return plugin.InvokeResponse{Properties: secreted}, nil
 	default:
-		return plugin.InvokeResponse{}, fmt.Errorf("Unknown function")
+		return plugin.InvokeResponse{}, errors.New("Unknown function")
 	}
 }
 
