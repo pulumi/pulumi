@@ -1616,7 +1616,11 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Write out Python property getters for each of the resource's properties.
 	mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		ty := mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/, false /*forDict*/)
-		return fmt.Sprintf("pulumi.Output[%s]", ty)
+		if prop.Plain {
+			return ty
+		} else {
+			return fmt.Sprintf("pulumi.Output[%s]", ty)
+		}
 	})
 
 	// Write out methods.

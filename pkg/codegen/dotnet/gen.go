@@ -935,7 +935,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		printComment(w, prop.Comment, "        ")
 		fmt.Fprintf(w, "        [Output(\"%s\")]\n", wireName)
-		fmt.Fprintf(w, "        public Output<%s> %s { get; private set; } = null!;\n", propertyType, propertyName)
+		if prop.Plain {
+			fmt.Fprintf(w, "        public %s %s { get; private set; } = null!;\n", propertyType, propertyName)
+		} else {
+			fmt.Fprintf(w, "        public Output<%s> %s { get; private set; } = null!;\n", propertyType, propertyName)
+		}
 		fmt.Fprintf(w, "\n")
 	}
 	if len(r.Properties) > 0 {
