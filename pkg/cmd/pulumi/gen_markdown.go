@@ -68,7 +68,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			// linkHandler emits pretty URL links.
 			linkHandler := func(s string) string {
 				link := strings.TrimSuffix(s, ".md")
-				return fmt.Sprintf("/docs/cli/commands/%s/", link)
+				return fmt.Sprintf("/docs/iac/cli/commands/%s/", link)
 			}
 
 			// Generate the .md files.
