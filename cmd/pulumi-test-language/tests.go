@@ -802,233 +802,132 @@ var languageTests = map[string]languageTest{
 	},
 	"l2-provider-grpc-config": {
 		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
-		runs: (func() []testRun {
-			// Find ConfigGetter resource by name and extract the captured config.
-			config := func(l *L, snap *deploy.Snapshot, resourceName string) string {
-				for _, r := range snap.Resources {
-					if r.URN.Name() != resourceName {
-						continue
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					g := &grpcTestContext{l: l, s: snap}
+
+					// Check what schemaprov received in CheckRequest.
+					r := g.CheckReq("schemaconf")
+					assert.Equal(l, "", r.News.Fields["s1"].AsInterface(), "s1")
+					assert.Equal(l, "x", r.News.Fields["s2"].AsInterface(), "s2")
+					assert.Equal(l, "{}", r.News.Fields["s3"].AsInterface(), "s3")
+					assert.Equal(l, float64(0), r.News.Fields["i1"].AsInterface(), "i1")
+					assert.Equal(l, float64(42), r.News.Fields["i2"].AsInterface(), "i2")
+					assert.Equal(l, float64(0), r.News.Fields["n1"].AsInterface(), "n1")
+					assert.Equal(l, float64(42.42), r.News.Fields["n2"].AsInterface(), "n2")
+					assert.Equal(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assert.Equal(l, false, r.News.Fields["b2"].AsInterface(), "b2")
+					assert.Equal(l, []any{}, r.News.Fields["ls1"].AsInterface(), "ls1")
+					assert.Equal(l, []any{"", "foo"}, r.News.Fields["ls2"].GetListValue().AsSlice(), "ls2")
+					assert.Equal(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].GetListValue().AsSlice(), "li1")
+					assert.Equal(l, map[string]any{}, r.News.Fields["ms1"].GetStructValue().AsMap(), "ms1")
+					assert.Equal(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].GetStructValue().AsMap(), "ms2")
+					assert.Equal(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].GetStructValue().AsMap(), "mi1")
+					assert.Equal(l, map[string]any{}, r.News.Fields["os1"].GetStructValue().AsMap(), "os1")
+					assert.Equal(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].GetStructValue().AsMap(), "os2")
+					assert.Equal(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].GetStructValue().AsMap(), "oi1")
+
+					// Check what schemaprov received in ConfigureRequest.
+					c := g.ConfigureReq("schemaconf")
+					assert.Equal(l, "", c.Args.Fields["s1"].AsInterface(), "s1")
+					assert.Equal(l, "x", c.Args.Fields["s2"].AsInterface(), "s2")
+					assert.Equal(l, "{}", c.Args.Fields["s3"].AsInterface(), "s3")
+					assert.Equal(l, float64(0), c.Args.Fields["i1"].AsInterface(), "i1")
+					assert.Equal(l, float64(42), c.Args.Fields["i2"].AsInterface(), "i2")
+					assert.Equal(l, float64(0), c.Args.Fields["n1"].AsInterface(), "n1")
+					assert.Equal(l, float64(42.42), c.Args.Fields["n2"].AsInterface(), "n2")
+					assert.Equal(l, true, c.Args.Fields["b1"].AsInterface(), "b1")
+					assert.Equal(l, false, c.Args.Fields["b2"].AsInterface(), "b2")
+					assert.Equal(l, []any{}, c.Args.Fields["ls1"].AsInterface(), "ls1")
+					assert.Equal(l, []any{"", "foo"}, c.Args.Fields["ls2"].GetListValue().AsSlice(), "ls2")
+					assert.Equal(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].GetListValue().AsSlice(), "li1")
+					assert.Equal(l, map[string]any{}, c.Args.Fields["ms1"].GetStructValue().AsMap(), "ms1")
+					assert.Equal(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].GetStructValue().AsMap(), "ms2")
+					assert.Equal(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].GetStructValue().AsMap(), "mi1")
+					assert.Equal(l, map[string]any{}, c.Args.Fields["os1"].GetStructValue().AsMap(), "os1")
+					assert.Equal(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].GetStructValue().AsMap(), "os2")
+					assert.Equal(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].GetStructValue().AsMap(), "oi1")
+
+					v := c.GetVariables()
+					assert.Equal(l, "", v["testconfigprovider:config:s1"])
+					assert.Equal(l, "x", v["testconfigprovider:config:s2"])
+					assert.Equal(l, "{}", v["testconfigprovider:config:s3"])
+					assert.Equal(l, "0", v["testconfigprovider:config:i1"])
+					assert.Equal(l, "42", v["testconfigprovider:config:i2"])
+					assert.Equal(l, "0", v["testconfigprovider:config:n1"])
+					assert.Equal(l, "42.42", v["testconfigprovider:config:n2"])
+					assert.Equal(l, "true", v["testconfigprovider:config:b1"])
+					assert.Equal(l, "false", v["testconfigprovider:config:b2"])
+					assert.Equal(l, "[]", v["testconfigprovider:config:ls1"])
+					assert.Equal(l, "[\"\",\"foo\"]", v["testconfigprovider:config:ls2"])
+					assert.Equal(l, "[1,2]", v["testconfigprovider:config:li1"])
+					assert.Equal(l, "{}", v["testconfigprovider:config:ms1"])
+					assert.Equal(l, "{\"key1\":\"value1\",\"key2\":\"value2\"}", v["testconfigprovider:config:ms2"])
+					assert.Equal(l, "{\"key1\":0,\"key2\":42}", v["testconfigprovider:config:mi1"])
+					assert.Equal(l, "{}", v["testconfigprovider:config:os1"])
+					assert.Equal(l, "{\"x\":\"x-value\"}", v["testconfigprovider:config:os2"])
+					assert.Equal(l, "{\"x\":42}", v["testconfigprovider:config:oi1"])
+
+					// Now check first-class secrets for programsecretprov.
+					r = g.CheckReq("programsecretconf")
+
+					// These asserts do not look right, but are based on Go behavior. Should SECRET
+					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
+					assert.Equal(l, "SECRET", r.News.Fields["s1"].AsInterface(), "s1")
+					assert.Equal(l, float64(1234567890), r.News.Fields["i1"].AsInterface(), "i1")
+					assert.Equal(l, float64(123456.789), r.News.Fields["n1"].AsInterface(), "n1")
+					assert.Equal(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assert.Equal(l, []any{"SECRET", "SECRET2"},
+						r.News.Fields["ls1"].AsInterface(), "ls1")
+					assert.Equal(l, []any{"VALUE", "SECRET"},
+						r.News.Fields["ls2"].GetListValue().AsSlice(), "ls2")
+					assert.Equal(l, map[string]any{"key1": "value1", "key2": "SECRET"},
+						r.News.Fields["ms2"].GetStructValue().AsMap(), "ms2")
+					assert.Equal(l, map[string]any{"x": "SECRET"},
+						r.News.Fields["os2"].GetStructValue().AsMap(), "os2")
+
+					secret := func(x any) any {
+						return map[string]any{
+							"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+							"value":                            x,
+						}
 					}
-					require.Equal(l, "testconfigprovider:index:ConfigGetter", string(r.Type))
-					configOut, gotConfig := r.Outputs["config"]
-					require.Truef(l, gotConfig, "No `config` output")
-					require.Truef(l, configOut.IsString(), "`config` output must be a string")
-					return configOut.StringValue()
-				}
-				require.Failf(l, "Resource not found", "resourceName=%s", resourceName)
-				return ""
-			}
 
-			// Python uses a bit more white-space indentation than Node.
-			normalizers := map[string]string{
-				`[1, 2]`:                      `[1,2]`,
-				`{\"key1\": 0, \"key2\": 42}`: `{\"key1\":0,\"key2\":42}`,
+					c = g.ConfigureReq("programsecretconf")
+					assert.Equal(l, secret("SECRET"), c.Args.Fields["s1"].AsInterface(), "s1")
+					assert.Equal(l, secret(float64(1234567890)), c.Args.Fields["i1"].AsInterface(), "i1")
+					assert.Equal(l, secret(float64(123456.789)), c.Args.Fields["n1"].AsInterface(), "n1")
+					assert.Equal(l, secret(true), c.Args.Fields["b1"].AsInterface(), "b1")
+					assert.Equal(l, secret([]any{"SECRET", "SECRET2"}),
+						c.Args.Fields["ls1"].AsInterface(), "ls1")
 
-				`{\"key1\": \"value1\", \"key2\": \"value2\"}`: `{\"key1\":\"value1\",\"key2\":\"value2\"}`,
+					// Secret floating happened here, perhaps []any{"VALUE", secret("SECRET")}
+					// would be preferable instead at some point.
+					assert.Equal(l, secret([]any{"VALUE", "SECRET"}),
+						c.Args.Fields["ls2"].GetStructValue().AsMap(), "ls2")
 
-				`[\"\", \"foo\"]`:           `[\"\",\"foo\"]`,
-				`{\"x\": 42}`:               `{\"x\":42}`,
-				`{\"x\": \"x-value\"}`:      `{\"x\":\"x-value\"}`,
-				`{\"x\": \"SECRET\"}`:       `{\"x\":\"SECRET\"}`,
-				`[\"VALUE\", \"SECRET\"]`:   `[\"VALUE\",\"SECRET\"]`,
-				`[\"SECRET\", \"SECRET2\"]`: `[\"SECRET\",\"SECRET2\"]`,
+					assert.Equal(l, map[string]any{"key1": "value1", "key2": secret("SECRET")},
+						c.Args.Fields["ms2"].GetStructValue().AsMap(), "ms2")
+					assert.Equal(l, map[string]any{"x": secret("SECRET")},
+						c.Args.Fields["os2"].GetStructValue().AsMap(), "os2")
 
-				`{\"key1\": \"SECRET\", \"key2\": \"SECRET2\"}`: `{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}`,
-				`{\"key1\": \"value1\", \"key2\": \"SECRET\"}`:  `{\"key1\":\"value1\",\"key2\":\"SECRET\"}`,
-			}
-
-			norm := func(s string) string {
-				var parts []string
-				for k, v := range normalizers {
-					parts = append(parts, k, v)
-				}
-				re := strings.NewReplacer(parts...)
-				return re.Replace(s)
-			}
-
-			assert := func(l *L,
-				projectDirectory string, err error,
-				s *deploy.Snapshot, changes display.ResourceChanges,
-			) {
-				schemaProviderConfigExpected := `
-				[
-				  {
-				    "method": "pulumirpc.CheckRequest",
-				    "message": {
-				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::schemaprov",
-				      "olds": {},
-				      "news": {
-					"b1": "true",
-					"b2": "false",
-					"i1": "0",
-					"i2": "42",
-					"li1": "[1,2]",
-					"ls1": "[]",
-					"ls2": "[\"\",\"foo\"]",
-					"mi1": "{\"key1\":0,\"key2\":42}",
-					"ms1": "{}",
-					"ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
-					"n1": "0",
-					"n2": "42.42",
-					"oi1": "{\"x\":42}",
-					"os1": "{}",
-					"os2": "{\"x\":\"x-value\"}",
-					"s1": "",
-					"s2": "x",
-					"s3": "{}",
-					"version": "0.0.1"
-				      },
-				      "name": "schemaprov",
-				      "type": "pulumi:providers:testconfigprovider"
-				    }
-				  },
-				  {
-				    "method": "pulumirpc.ConfigureRequest",
-				    "message": {
-				      "variables": {
-					"testconfigprovider:config:b1": "true",
-					"testconfigprovider:config:b2": "false",
-					"testconfigprovider:config:i1": "0",
-					"testconfigprovider:config:i2": "42",
-					"testconfigprovider:config:li1": "[1,2]",
-					"testconfigprovider:config:ls1": "[]",
-					"testconfigprovider:config:ls2": "[\"\",\"foo\"]",
-					"testconfigprovider:config:mi1": "{\"key1\":0,\"key2\":42}",
-					"testconfigprovider:config:ms1": "{}",
-					"testconfigprovider:config:ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
-					"testconfigprovider:config:n1": "0",
-					"testconfigprovider:config:n2": "42.42",
-					"testconfigprovider:config:oi1": "{\"x\":42}",
-					"testconfigprovider:config:os1": "{}",
-					"testconfigprovider:config:os2": "{\"x\":\"x-value\"}",
-					"testconfigprovider:config:s1": "",
-					"testconfigprovider:config:s2": "x",
-					"testconfigprovider:config:s3": "{}"
-				      },
-				      "args": {
-					"b1": "true",
-					"b2": "false",
-					"i1": "0",
-					"i2": "42",
-					"li1": "[1,2]",
-					"ls1": "[]",
-					"ls2": "[\"\",\"foo\"]",
-					"mi1": "{\"key1\":0,\"key2\":42}",
-					"ms1": "{}",
-					"ms2": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
-					"n1": "0",
-					"n2": "42.42",
-					"oi1": "{\"x\":42}",
-					"os1": "{}",
-					"os2": "{\"x\":\"x-value\"}",
-					"s1": "",
-					"s2": "x",
-					"s3": "{}",
-					"version": "0.0.1"
-				      },
-				      "acceptSecrets": true,
-				      "acceptResources": true,
-				      "sendsOldInputs": true,
-				      "sendsOldInputsToDelete": true
-				    }
-				  }
-				]`
-				require.JSONEq(l, schemaProviderConfigExpected, norm(config(l, s, "schemaconf")))
-
-				programSecretProviderConfigExpected := `
-				[
-				  {
-				    "method": "pulumirpc.CheckRequest",
-				    "message": {
-				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::programsecretprov",
-				      "olds": {},
-				      "news": {
-					"b1": "true",
-					"i1": "1234567890",
-					"ls1": "[\"SECRET\",\"SECRET2\"]",
-					"ls2": "[\"VALUE\",\"SECRET\"]",
-					"ms1": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}",
-					"ms2": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}",
-					"n1": "123456.789",
-					"os1": "{\"x\":\"SECRET\"}",
-					"os2": "{\"x\":\"SECRET\"}",
-					"s1": "SECRET",
-					"version": "0.0.1"
-				      },
-				      "name": "programsecretprov",
-				      "type": "pulumi:providers:testconfigprovider"
-				    }
-				  },
-				  {
-				    "method": "pulumirpc.ConfigureRequest",
-				    "message": {
-				      "variables": {
-					"testconfigprovider:config:b1": "true",
-					"testconfigprovider:config:i1": "1234567890",
-					"testconfigprovider:config:ls1": "[\"SECRET\",\"SECRET2\"]",
-					"testconfigprovider:config:ls2": "[\"VALUE\",\"SECRET\"]",
-					"testconfigprovider:config:ms1": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}",
-					"testconfigprovider:config:ms2": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}",
-					"testconfigprovider:config:n1": "123456.789",
-					"testconfigprovider:config:os1": "{\"x\":\"SECRET\"}",
-					"testconfigprovider:config:os2": "{\"x\":\"SECRET\"}",
-					"testconfigprovider:config:s1": "SECRET"
-				      },
-				      "args": {
-					"b1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "true"
-					},
-					"i1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "1234567890"
-					},
-					"ls1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "[\"SECRET\",\"SECRET2\"]"
-					},
-					"ls2": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "[\"VALUE\",\"SECRET\"]"
-					},
-					"ms1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}"
-					},
-					"ms2": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}"
-					},
-					"n1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "123456.789"
-					},
-					"os1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "{\"x\":\"SECRET\"}"
-					},
-					"os2": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "{\"x\":\"SECRET\"}"
-					},
-					"s1": {
-					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					  "value": "SECRET"
-					},
-					"version": "0.0.1"
-				      },
-				      "acceptSecrets": true,
-				      "acceptResources": true,
-				      "sendsOldInputs": true,
-				      "sendsOldInputsToDelete": true
-				    }
-				  }
-				]`
-				require.JSONEq(l, programSecretProviderConfigExpected,
-					norm(config(l, s, "programsecretconf")))
-			}
-			return []testRun{{assert: assert}}
-		})(),
+					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
+					v = c.GetVariables()
+					assert.Equal(l, "SECRET", v["testconfigprovider:config:s1"], "s1")
+					assert.Equal(l, "1234567890", v["testconfigprovider:config:i1"], "i1")
+					assert.Equal(l, "123456.789", v["testconfigprovider:config:n1"], "n2")
+					assert.Equal(l, "true", v["testconfigprovider:config:b1"], "b1")
+					assert.Equal(l, "[\"SECRET\",\"SECRET2\"]", v["testconfigprovider:config:ls1"], "ls1")
+					assert.Equal(l, "[\"VALUE\",\"SECRET\"]", v["testconfigprovider:config:ls2"], "ls2")
+					assert.Equal(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["testconfigprovider:config:ms2"], "ms2")
+					assert.Equal(l, "{\"x\":\"SECRET\"}", v["testconfigprovider:config:os2"], "os2")
+				},
+			},
+		},
 	},
 	"l2-invoke-simple": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
