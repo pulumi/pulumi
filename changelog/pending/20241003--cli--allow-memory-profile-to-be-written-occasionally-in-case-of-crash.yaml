@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Allow memory profile to be written in the background, so it's available in case of crash
