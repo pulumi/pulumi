@@ -580,7 +580,7 @@ func objectKey(item model.ObjectConsItem) string {
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
-	td := g.typedDictEnabled(expr, destType) || g.insideTypedDict
+	td := g.typedDictEnabled(expr, destType)
 	if typeName != "" && !td {
 		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
 		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
@@ -607,14 +607,10 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Indented(func() {
 				for _, item := range expr.Items {
 					if td {
-						// If we're inside a typedDict, use the PyName of the key and keep track of
-						// the fact that we're inside a typedDict for the recursive calls when
-						// printing the value.
-						g.insideTypedDict = true
+						// If we're inside a typedDict, use the PyName of the key.
 						propertyKey := objectKey(item)
 						key := PyName(propertyKey)
 						g.Fgenf(w, "\n%s%q: %.v,", g.Indent, key, item.Value)
-						g.insideTypedDict = false
 					} else {
 						g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
 					}

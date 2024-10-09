@@ -51,10 +51,6 @@ type generator struct {
 	configCreated bool
 	quotes        map[model.Expression]string
 	isComponent   bool
-
-	// insideTypedDict is used to track if the generator is currently inside a TypedDict so that
-	// nested TypedDicts can be handled correctly.
-	insideTypedDict bool
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
