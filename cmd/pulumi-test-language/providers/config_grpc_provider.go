@@ -62,7 +62,7 @@ func (*ConfigGrpcProvider) Pkg() tokens.Package {
 }
 
 func (*ConfigGrpcProvider) version() string {
-	return "0.0.1"
+	return "1.0.0"
 }
 
 func (p *ConfigGrpcProvider) generateSchema(
