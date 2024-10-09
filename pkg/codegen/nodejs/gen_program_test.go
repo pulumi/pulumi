@@ -17,7 +17,6 @@ package nodejs
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -28,46 +27,15 @@ import (
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
-	expectedVersion := map[string]test.PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"4.26.0\"",
+	test.GenerateNodeJSProgramTest(
+		t,
+		GenerateProgram,
+		func(
+			directory string, project workspace.Project, program *pcl.Program, localDependencies map[string]string,
+		) error {
+			return GenerateProject(directory, project, program, localDependencies, false)
 		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"5.16.2\"",
-		},
-	}
-
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, true)
-			},
-			GenProgram: GenerateProgram,
-			TestCases: []test.ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject: true,
-			GenProject: func(
-				directory string, project workspace.Project, program *pcl.Program, localDependencies map[string]string,
-			) error {
-				return GenerateProject(directory, project, program, localDependencies, false)
-			},
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "package.json",
-		})
+	)
 }
 
 func TestEnumReferencesCorrectIdentifier(t *testing.T) {

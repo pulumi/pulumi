@@ -56,44 +56,14 @@ func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
-	expectedVersion := map[string]test.PkgVersionInfo{
-		"aws-resource-options-4.3.8": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==4.26.0",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==5.16.2",
-		},
-	}
-
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      Check,
-			GenProgram: GenerateProgram,
-			TestCases: []test.ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject: true,
-			GenProject: func(
-				directory string, project workspace.Project,
-				program *pcl.Program, localDependencies map[string]string,
-			) error {
-				return GenerateProject(directory, project, program, localDependencies, "")
-			},
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "requirements.txt",
+	test.GeneratePythonProgramTest(
+		t,
+		GenerateProgram,
+		func(
+			directory string, project workspace.Project,
+			program *pcl.Program, localDependencies map[string]string,
+		) error {
+			return GenerateProject(directory, project, program, localDependencies, "")
 		},
 	)
 }

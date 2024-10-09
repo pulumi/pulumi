@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Don't publish test code in `pkg/codegen`

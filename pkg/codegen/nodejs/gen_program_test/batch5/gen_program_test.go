@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,20 @@ package batch5
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-	os.Chdir("../../../nodejs") // chdir into codegen/nodejs
-	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(5, 6))
+	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
+	require.NoError(t, err)
+
+	// Change into pkg/codegen/nodejs
+	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
+	test.GenerateProgramBatchTest("nodejs")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(5, 6))
 }
