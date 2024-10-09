@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/types"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -64,45 +65,64 @@ func (*ConfigGrpcProvider) version() string {
 	return "0.0.1"
 }
 
-func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
-	configSpec := pschema.ConfigSpec{
-		Variables: map[string]pschema.PropertySpec{},
+func (p *ConfigGrpcProvider) generateSchema(
+	types map[string]pschema.ComplexTypeSpec,
+	minN int,
+	maxN int,
+) map[string]pschema.PropertySpec {
+	spec := map[string]pschema.PropertySpec{}
+	for n := minN; n <= maxN; n++ {
+		p.populateSchema(types, n, spec)
 	}
-	types := map[string]pschema.ComplexTypeSpec{}
+	return spec
+}
 
-	for n := 1; n <= 3; n++ {
-		for _, t := range []string{"string", "boolean", "integer", "number"} {
-			ts := pschema.TypeSpec{Type: t}
-			c := fmt.Sprintf("%s%d", t[0:1], n)
-			configSpec.Variables[c] = pschema.PropertySpec{TypeSpec: ts}
-			configSpec.Variables["l"+c] = pschema.PropertySpec{
-				TypeSpec: pschema.TypeSpec{
-					Type:  "array",
-					Items: &ts,
-				},
-			}
-			configSpec.Variables["m"+c] = pschema.PropertySpec{
-				TypeSpec: pschema.TypeSpec{
-					Type:                 "object",
-					AdditionalProperties: &ts,
-				},
-			}
-			typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
-			typeRef := fmt.Sprintf("#/types/%s", typeToken)
-			configSpec.Variables["o"+c] = pschema.PropertySpec{
-				TypeSpec: pschema.TypeSpec{
-					Ref: typeRef,
-				},
-			}
-			types[typeToken] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: pschema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]pschema.PropertySpec{
-						"x": pschema.PropertySpec{TypeSpec: ts},
-					},
-				},
-			}
+func (p *ConfigGrpcProvider) populateSchema(
+	types map[string]pschema.ComplexTypeSpec,
+	n int,
+	spec map[string]pschema.PropertySpec,
+) {
+	for _, t := range []string{"string", "boolean", "integer", "number"} {
+		ts := pschema.TypeSpec{Type: t}
+		c := fmt.Sprintf("%s", t[0:1])
+		if n != 0 {
+			c = fmt.Sprintf("%s%d", t[0:1], n)
 		}
+		spec[c] = pschema.PropertySpec{TypeSpec: ts}
+		spec["l"+c] = pschema.PropertySpec{
+			TypeSpec: pschema.TypeSpec{
+				Type:  "array",
+				Items: &ts,
+			},
+		}
+		spec["m"+c] = pschema.PropertySpec{
+			TypeSpec: pschema.TypeSpec{
+				Type:                 "object",
+				AdditionalProperties: &ts,
+			},
+		}
+		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
+		typeRef := fmt.Sprintf("#/types/%s", typeToken)
+		spec["o"+c] = pschema.PropertySpec{
+			TypeSpec: pschema.TypeSpec{
+				Ref: typeRef,
+			},
+		}
+		types[typeToken] = pschema.ComplexTypeSpec{
+			ObjectTypeSpec: pschema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]pschema.PropertySpec{
+					"x": pschema.PropertySpec{TypeSpec: ts},
+				},
+			},
+		}
+	}
+}
+
+func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
+	types := map[string]pschema.ComplexTypeSpec{}
+	configSpec := pschema.ConfigSpec{
+		Variables: p.generateSchema(types, 1, 3),
 	}
 
 	schema := pschema.PackageSpec{
@@ -128,19 +148,25 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 				},
 			},
 		},
-		Functions: map[string]pschema.FunctionSpec{
-			fmt.Sprintf("%s:index:getConfig", p.Pkg()): pschema.FunctionSpec{
-				Outputs: &pschema.ObjectTypeSpec{
-					Properties: map[string]pschema.PropertySpec{
-						"result": pschema.PropertySpec{
-							TypeSpec: pschema.TypeSpec{Type: "string"},
-						},
-					},
-				},
-			},
-		},
+		Functions: map[string]pschema.FunctionSpec{},
 		Language: map[string]pschema.RawMessage{
 			"nodejs": []byte(`{"respectSchemaVersion": true}`),
+		},
+	}
+
+	toSecretSchema := p.generateSchema(types, 0, 0)
+	allProps := []string{}
+	for k := range toSecretSchema {
+		allProps = append(allProps, k)
+	}
+
+	schema.Functions[fmt.Sprintf("%s:index:toSecret", p.Pkg())] = pschema.FunctionSpec{
+		Inputs: &pschema.ObjectTypeSpec{
+			Properties: toSecretSchema,
+		},
+		Outputs: &pschema.ObjectTypeSpec{
+			Properties: toSecretSchema,
+			Required:   allProps,
 		},
 	}
 
@@ -193,6 +219,21 @@ func (p *ConfigGrpcProvider) DiffConfig(
 	context.Context, plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{}, nil
+}
+
+func (p *ConfigGrpcProvider) Invoke(
+	ctx context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	switch {
+	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.Pkg()):
+		secreted := req.Args.Copy()
+		for k, v := range secreted {
+			secreted[k] = resource.MakeSecret(v)
+		}
+		return plugin.InvokeResponse{Properties: secreted}, nil
+	default:
+		return plugin.InvokeResponse{}, fmt.Errorf("Unknown function")
+	}
 }
 
 // This lower level implementation should be used at runtime specifically to test at the lower level, since not all

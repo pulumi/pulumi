@@ -822,12 +822,12 @@ var languageTests = map[string]languageTest{
 				projectDirectory string, err error,
 				s *deploy.Snapshot, changes display.ResourceChanges,
 			) {
-				c1Expect := `
+				schemaProviderConfigExpected := `
 				[
 				  {
 				    "method": "pulumirpc.CheckRequest",
 				    "message": {
-				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::prov1",
+				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::schemaprov",
 				      "olds": {},
 				      "news": {
 					"b1": "true",
@@ -850,7 +850,7 @@ var languageTests = map[string]languageTest{
 					"s3": "{}",
 					"version": "0.0.1"
 				      },
-				      "name": "prov1",
+				      "name": "schemaprov",
 				      "type": "pulumi:providers:testconfigprovider"
 				    }
 				  },
@@ -905,7 +905,98 @@ var languageTests = map[string]languageTest{
 				    }
 				  }
 				]`
-				require.JSONEq(l, c1Expect, config(l, s, "c1"))
+				require.JSONEq(l, schemaProviderConfigExpected, config(l, s, "schemaconf"))
+
+				programSecretProviderConfigExpected := `
+				[
+				  {
+				    "method": "pulumirpc.CheckRequest",
+				    "message": {
+				      "urn": "urn:pulumi:test::l2-provider-grpc-config::pulumi:providers:testconfigprovider::programsecretprov",
+				      "olds": {},
+				      "news": {
+					"b1": "true",
+					"i1": "1234567890",
+					"ls1": "[\"SECRET\",\"SECRET2\"]",
+					"ls2": "[\"VALUE\",\"SECRET\"]",
+					"ms1": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}",
+					"ms2": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}",
+					"n1": "123456.789",
+					"os1": "{\"x\":\"SECRET\"}",
+					"os2": "{\"x\":\"SECRET\"}",
+					"s1": "SECRET",
+					"version": "0.0.1"
+				      },
+				      "name": "programsecretprov",
+				      "type": "pulumi:providers:testconfigprovider"
+				    }
+				  },
+				  {
+				    "method": "pulumirpc.ConfigureRequest",
+				    "message": {
+				      "variables": {
+					"testconfigprovider:config:b1": "true",
+					"testconfigprovider:config:i1": "1234567890",
+					"testconfigprovider:config:ls1": "[\"SECRET\",\"SECRET2\"]",
+					"testconfigprovider:config:ls2": "[\"VALUE\",\"SECRET\"]",
+					"testconfigprovider:config:ms1": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}",
+					"testconfigprovider:config:ms2": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}",
+					"testconfigprovider:config:n1": "123456.789",
+					"testconfigprovider:config:os1": "{\"x\":\"SECRET\"}",
+					"testconfigprovider:config:os2": "{\"x\":\"SECRET\"}",
+					"testconfigprovider:config:s1": "SECRET"
+				      },
+				      "args": {
+					"b1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "true"
+					},
+					"i1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "1234567890"
+					},
+					"ls1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "[\"SECRET\",\"SECRET2\"]"
+					},
+					"ls2": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "[\"VALUE\",\"SECRET\"]"
+					},
+					"ms1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "{\"key1\":\"SECRET\",\"key2\":\"SECRET2\"}"
+					},
+					"ms2": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "{\"key1\":\"value1\",\"key2\":\"SECRET\"}"
+					},
+					"n1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "123456.789"
+					},
+					"os1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "{\"x\":\"SECRET\"}"
+					},
+					"os2": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "{\"x\":\"SECRET\"}"
+					},
+					"s1": {
+					  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					  "value": "SECRET"
+					},
+					"version": "0.0.1"
+				      },
+				      "acceptSecrets": true,
+				      "acceptResources": true,
+				      "sendsOldInputs": true,
+				      "sendsOldInputsToDelete": true
+				    }
+				  }
+				]`
+				require.JSONEq(l, programSecretProviderConfigExpected, config(l, s, "programsecretconf"))
 			}
 			return []testRun{{assert: assert}}
 		})(),

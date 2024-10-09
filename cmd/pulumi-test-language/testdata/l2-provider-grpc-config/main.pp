@@ -1,4 +1,5 @@
-resource "prov1" "pulumi:providers:testconfigprovider" {
+# The schema provider covers interesting schema shapes.
+resource "schemaprov" "pulumi:providers:testconfigprovider" {
 
     # Strings
     s1 = ""
@@ -44,8 +45,34 @@ resource "prov1" "pulumi:providers:testconfigprovider" {
     }
 }
 
-resource "c1" "testconfigprovider:index:ConfigGetter" {
+resource "schemaconf" "testconfigprovider:index:ConfigGetter" {
   options {
-    provider = prov1
+    provider = schemaprov
+  }
+}
+
+# The program_secret_provider covers scenarios where user passes secret values to the provider.
+resource "programsecretprov" "pulumi:providers:testconfigprovider" {
+    s1 = invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s
+    i1 = invoke("testconfigprovider:index:toSecret", {i = 1234567890}).i
+    n1 = invoke("testconfigprovider:index:toSecret", {n = 123456.7890}).n
+    b1 = invoke("testconfigprovider:index:toSecret", {b = true}).b
+
+    ls1 = invoke("testconfigprovider:index:toSecret", {ls = ["SECRET", "SECRET2"]}).ls
+    ls2 = ["VALUE", invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s]
+
+    ms1 = invoke("testconfigprovider:index:toSecret", {ms = { key1 = "SECRET", key2 = "SECRET2" }}).ms
+    ms2 = {
+       key1 = "value1"
+       key2 = invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s
+    }
+
+    os1 = invoke("testconfigprovider:index:toSecret", {os = { x = "SECRET" }}).os
+    os2 = { x = invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s }
+}
+
+resource "programsecretconf" "testconfigprovider:index:ConfigGetter" {
+  options {
+    provider = programsecretprov
   }
 }
