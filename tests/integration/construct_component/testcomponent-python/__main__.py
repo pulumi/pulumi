@@ -17,9 +17,9 @@ import sys
 
 import os
 
-print("sys.path", sys.path)
-print("VIRTUAL_ENV", os.environ['VIRTUAL_ENV'])
-print("PWD", os.environ['PWD'])
+# print("sys.path", sys.path)
+# print("VIRTUAL_ENV", os.environ['VIRTUAL_ENV'])
+# print("PWD", os.environ['PWD'])
 
 from pulumi import Input, Inputs, ComponentResource, ResourceOptions
 import pulumi
