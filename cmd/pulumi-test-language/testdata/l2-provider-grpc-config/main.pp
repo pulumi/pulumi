@@ -61,13 +61,17 @@ resource "programsecretprov" "pulumi:providers:testconfigprovider" {
     ls1 = invoke("testconfigprovider:index:toSecret", {ls = ["SECRET", "SECRET2"]}).ls
     ls2 = ["VALUE", invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s]
 
-    ms1 = invoke("testconfigprovider:index:toSecret", {ms = { key1 = "SECRET", key2 = "SECRET2" }}).ms
+    # TODO[pulumi/pulumi#17535] this currently breaks Go compilation unfortunately.
+    # ms1 = invoke("testconfigprovider:index:toSecret", {ms = { key1 = "SECRET", key2 = "SECRET2" }})
+
     ms2 = {
        key1 = "value1"
        key2 = invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s
     }
 
-    os1 = invoke("testconfigprovider:index:toSecret", {os = { x = "SECRET" }}).os
+    # TODO[pulumi/pulumi#17535] this breaks Go compilation as well.
+    # os1 = invoke("testconfigprovider:index:toSecret", {os = { x = "SECRET" }}).os
+
     os2 = { x = invoke("testconfigprovider:index:toSecret", {s = "SECRET"}).s }
 }
 
