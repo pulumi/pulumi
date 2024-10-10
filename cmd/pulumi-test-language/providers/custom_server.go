@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package types
+package providers
 
 import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Permits test providers to override plugin.NewProviderServer to capture calls deeper.
+// Permits test providers to override plugin.NewProviderServer to capture RPC-level calls.
 type ProviderWithCustomServer interface {
 	NewProviderServer() pulumirpc.ResourceProviderServer
 }

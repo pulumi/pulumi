@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/cmd/pulumi-test-language/types"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -210,7 +210,7 @@ func (w *grpcWrapper) Close() error {
 }
 
 func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServer {
-	if pwcs, ok := provider.(types.ProviderWithCustomServer); ok {
+	if pwcs, ok := provider.(providers.ProviderWithCustomServer); ok {
 		return pwcs.NewProviderServer()
 	}
 	return plugin.NewProviderServer(provider)

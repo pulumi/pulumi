@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/cmd/pulumi-test-language/types"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -56,8 +55,8 @@ type ConfigGrpcProvider struct {
 }
 
 var (
-	_ plugin.Provider                = (*ConfigGrpcProvider)(nil)
-	_ types.ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
+	_ plugin.Provider          = (*ConfigGrpcProvider)(nil)
+	_ ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
 )
 
 func (*ConfigGrpcProvider) Pkg() tokens.Package {
