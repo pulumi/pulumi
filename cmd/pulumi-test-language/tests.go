@@ -835,8 +835,15 @@ var languageTests = map[string]languageTest{
 					assertEqualOrJSONEncoded(l, []any{"", "foo"}, r.News.Fields["ls2"].AsInterface(), "ls2")
 					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].AsInterface(), "li1")
 					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["ms1"].AsInterface(), "ms1")
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].AsInterface(), "ms2")
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].AsInterface(), "mi1")
+
+					assertEqualOrJSONEncoded(l,
+						map[string]any{"key1": "value1", "key2": "value2"},
+						r.News.Fields["ms2"].AsInterface(), "ms2")
+
+					assertEqualOrJSONEncoded(l,
+						map[string]any{"key1": float64(0), "key2": float64(42)},
+						r.News.Fields["mi1"].AsInterface(), "mi1")
+
 					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["os1"].AsInterface(), "os1")
 					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].AsInterface(), "os2")
 					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
@@ -856,8 +863,15 @@ var languageTests = map[string]languageTest{
 					assertEqualOrJSONEncoded(l, []any{"", "foo"}, c.Args.Fields["ls2"].AsInterface(), "ls2")
 					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].AsInterface(), "li1")
 					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["ms1"].AsInterface(), "ms1")
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].AsInterface(), "ms2")
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].AsInterface(), "mi1")
+
+					assertEqualOrJSONEncoded(l,
+						map[string]any{"key1": "value1", "key2": "value2"},
+						c.Args.Fields["ms2"].AsInterface(), "ms2")
+
+					assertEqualOrJSONEncoded(l,
+						map[string]any{"key1": float64(0), "key2": float64(42)},
+						c.Args.Fields["mi1"].AsInterface(), "mi1")
+
 					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["os1"].AsInterface(), "os1")
 					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].AsInterface(), "os2")
 					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].AsInterface(), "oi1")
