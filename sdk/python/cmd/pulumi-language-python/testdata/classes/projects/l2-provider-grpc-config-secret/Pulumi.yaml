@@ -1,0 +1,6 @@
+name: l2-provider-grpc-config-secret
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
