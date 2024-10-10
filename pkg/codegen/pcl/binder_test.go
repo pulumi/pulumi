@@ -603,7 +603,7 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	assert.NotNil(t, program)
 }
 
-func TestBindingComponentFailsWhenReferencingParentParentAsSource(t *testing.T) {
+func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
 	t.Parallel()
 	source := `component example "." {}`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp",
