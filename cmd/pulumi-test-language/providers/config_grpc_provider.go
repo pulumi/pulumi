@@ -247,7 +247,7 @@ func (p *ConfigGrpcProvider) Create(
 			Status: resource.StatusOK,
 		}, nil
 	}
-	return plugin.CreateResponse{}, fmt.Errorf("Unknown resource")
+	return plugin.CreateResponse{}, errors.New("Unknown resource")
 }
 
 func (p *ConfigGrpcProvider) DiffConfig(
