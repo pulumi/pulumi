@@ -812,20 +812,6 @@ var languageTests = map[string]languageTest{
 				) {
 					g := &grpcTestContext{l: l, s: snap}
 
-					// Like assert.Equal but allows some languages to send the JSON-encoded form.
-					assertEq := func(l *L, expectRegular any, actual any, msg string) {
-						if actualS, ok := actual.(string); ok {
-							var a any
-							err := json.Unmarshal([]byte(actualS), &a)
-							if err == nil {
-								if reflect.DeepEqual(expectRegular, a) {
-									return
-								}
-							}
-						}
-						assert.Equal(l, expectRegular, actual, msg)
-					}
-
 					// Check what schemaprov received in CheckRequest.
 					//
 					// Looks like in the test setup, proper partitioning of provider space is not
@@ -839,42 +825,42 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "", r.News.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", r.News.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", r.News.Fields["s3"].AsInterface(), "s3")
-					assertEq(l, float64(0), r.News.Fields["i1"].AsInterface(), "i1")
-					assertEq(l, float64(42), r.News.Fields["i2"].AsInterface(), "i2")
-					assertEq(l, float64(0), r.News.Fields["n1"].AsInterface(), "n1")
-					assertEq(l, float64(42.42), r.News.Fields["n2"].AsInterface(), "n2")
-					assertEq(l, true, r.News.Fields["b1"].AsInterface(), "b1")
-					assertEq(l, false, r.News.Fields["b2"].AsInterface(), "b2")
-					assertEq(l, []any{}, r.News.Fields["ls1"].AsInterface(), "ls1")
-					assertEq(l, []any{"", "foo"}, r.News.Fields["ls2"].AsInterface(), "ls2")
-					assertEq(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].AsInterface(), "li1")
-					assertEq(l, map[string]any{}, r.News.Fields["ms1"].AsInterface(), "ms1")
-					assertEq(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].AsInterface(), "ms2")
-					assertEq(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].AsInterface(), "mi1")
-					assertEq(l, map[string]any{}, r.News.Fields["os1"].AsInterface(), "os1")
-					assertEq(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].AsInterface(), "os2")
-					assertEq(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
+					assertEqualOrJSONEncoded(l, float64(0), r.News.Fields["i1"].AsInterface(), "i1")
+					assertEqualOrJSONEncoded(l, float64(42), r.News.Fields["i2"].AsInterface(), "i2")
+					assertEqualOrJSONEncoded(l, float64(0), r.News.Fields["n1"].AsInterface(), "n1")
+					assertEqualOrJSONEncoded(l, float64(42.42), r.News.Fields["n2"].AsInterface(), "n2")
+					assertEqualOrJSONEncoded(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assertEqualOrJSONEncoded(l, false, r.News.Fields["b2"].AsInterface(), "b2")
+					assertEqualOrJSONEncoded(l, []any{}, r.News.Fields["ls1"].AsInterface(), "ls1")
+					assertEqualOrJSONEncoded(l, []any{"", "foo"}, r.News.Fields["ls2"].AsInterface(), "ls2")
+					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, r.News.Fields["li1"].AsInterface(), "li1")
+					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["ms1"].AsInterface(), "ms1")
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "value2"}, r.News.Fields["ms2"].AsInterface(), "ms2")
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": float64(0), "key2": float64(42)}, r.News.Fields["mi1"].AsInterface(), "mi1")
+					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["os1"].AsInterface(), "os1")
+					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, r.News.Fields["os2"].AsInterface(), "os2")
+					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
 
 					// Check what schemaprov received in ConfigureRequest.
 					c := g.ConfigureReq("schemaconf", 1)
 					assert.Equal(l, "", c.Args.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", c.Args.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", c.Args.Fields["s3"].AsInterface(), "s3")
-					assertEq(l, float64(0), c.Args.Fields["i1"].AsInterface(), "i1")
-					assertEq(l, float64(42), c.Args.Fields["i2"].AsInterface(), "i2")
-					assertEq(l, float64(0), c.Args.Fields["n1"].AsInterface(), "n1")
-					assertEq(l, float64(42.42), c.Args.Fields["n2"].AsInterface(), "n2")
-					assertEq(l, true, c.Args.Fields["b1"].AsInterface(), "b1")
-					assertEq(l, false, c.Args.Fields["b2"].AsInterface(), "b2")
-					assertEq(l, []any{}, c.Args.Fields["ls1"].AsInterface(), "ls1")
-					assertEq(l, []any{"", "foo"}, c.Args.Fields["ls2"].AsInterface(), "ls2")
-					assertEq(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].AsInterface(), "li1")
-					assertEq(l, map[string]any{}, c.Args.Fields["ms1"].AsInterface(), "ms1")
-					assertEq(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].AsInterface(), "ms2")
-					assertEq(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].AsInterface(), "mi1")
-					assertEq(l, map[string]any{}, c.Args.Fields["os1"].AsInterface(), "os1")
-					assertEq(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].AsInterface(), "os2")
-					assertEq(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].AsInterface(), "oi1")
+					assertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["i1"].AsInterface(), "i1")
+					assertEqualOrJSONEncoded(l, float64(42), c.Args.Fields["i2"].AsInterface(), "i2")
+					assertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["n1"].AsInterface(), "n1")
+					assertEqualOrJSONEncoded(l, float64(42.42), c.Args.Fields["n2"].AsInterface(), "n2")
+					assertEqualOrJSONEncoded(l, true, c.Args.Fields["b1"].AsInterface(), "b1")
+					assertEqualOrJSONEncoded(l, false, c.Args.Fields["b2"].AsInterface(), "b2")
+					assertEqualOrJSONEncoded(l, []any{}, c.Args.Fields["ls1"].AsInterface(), "ls1")
+					assertEqualOrJSONEncoded(l, []any{"", "foo"}, c.Args.Fields["ls2"].AsInterface(), "ls2")
+					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, c.Args.Fields["li1"].AsInterface(), "li1")
+					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["ms1"].AsInterface(), "ms1")
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "value2"}, c.Args.Fields["ms2"].AsInterface(), "ms2")
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": float64(0), "key2": float64(42)}, c.Args.Fields["mi1"].AsInterface(), "mi1")
+					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["os1"].AsInterface(), "os1")
+					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, c.Args.Fields["os2"].AsInterface(), "os2")
+					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, c.Args.Fields["oi1"].AsInterface(), "oi1")
 
 					v := c.GetVariables()
 					assert.Equal(l, "", v["testconfigprovider:config:s1"], "s1")
@@ -902,68 +888,58 @@ var languageTests = map[string]languageTest{
 					// These asserts do not look right, but are based on Go behavior. Should SECRET
 					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
 					assert.Equal(l, "SECRET", r.News.Fields["s1"].AsInterface(), "s1")
-					assertEq(l, float64(1234567890), r.News.Fields["i1"].AsInterface(), "i1")
-					assertEq(l, float64(123456.789), r.News.Fields["n1"].AsInterface(), "n1")
-					assertEq(l, true, r.News.Fields["b1"].AsInterface(), "b1")
-					assertEq(l, []any{"SECRET", "SECRET2"},
+					assertEqualOrJSONEncoded(l, float64(1234567890), r.News.Fields["i1"].AsInterface(), "i1")
+					assertEqualOrJSONEncoded(l, float64(123456.789), r.News.Fields["n1"].AsInterface(), "n1")
+					assertEqualOrJSONEncoded(l, true, r.News.Fields["b1"].AsInterface(), "b1")
+					assertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
 						r.News.Fields["ls1"].AsInterface(), "ls1")
-					assertEq(l, []any{"VALUE", "SECRET"},
+					assertEqualOrJSONEncoded(l, []any{"VALUE", "SECRET"},
 						r.News.Fields["ls2"].AsInterface(), "ls2")
-					assertEq(l, map[string]any{"key1": "value1", "key2": "SECRET"},
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "SECRET"},
 						r.News.Fields["ms2"].AsInterface(), "ms2")
-					assertEq(l, map[string]any{"x": "SECRET"},
+					assertEqualOrJSONEncoded(l, map[string]any{"x": "SECRET"},
 						r.News.Fields["os2"].AsInterface(), "os2")
 
-					secret := func(x any) any {
-						return map[string]any{
-							"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-							"value":                            x,
-						}
-					}
-
-					// Like assertEq but permits secret-encoded JSON form.
-					assertEqSecret := func(l *L, expectRegular any, expectSecretJSON any, actual any, msg string) {
-						if actualObj, ok := actual.(map[string]any); ok {
-							tagV, ok := actualObj["4dabf18193072939515e22adb298388d"]
-							if ok && tagV == "1b47061264138c4ac30d75fd1eb44270" {
-								actualS, ok := actualObj["value"].(string)
-								if ok {
-									var a any
-									err := json.Unmarshal([]byte(actualS), &a)
-									if err == nil {
-										if expectSecretJSON == nil && reflect.DeepEqual(expectRegular, secret(a)) {
-											return
-										} else if expectSecretJSON != nil && reflect.DeepEqual(expectSecretJSON, a) {
-											return
-										}
-									}
-								}
-							}
-						}
-						assert.Equal(l, expectRegular, actual, msg)
-					}
-
+					// The secret versions have two options, JSON-encoded or not. Languages do not
+					// agree yet on which form to use.
 					c = g.ConfigureReq("programsecretconf", 2)
 					assert.Equal(l, secret("SECRET"), c.Args.Fields["s1"].AsInterface(), "s1")
-					assertEqSecret(l, secret(float64(1234567890)), nil, c.Args.Fields["i1"].AsInterface(), "i1")
-					assertEqSecret(l, secret(float64(123456.789)), nil, c.Args.Fields["n1"].AsInterface(), "n1")
-					assertEqSecret(l, secret(true), nil, c.Args.Fields["b1"].AsInterface(), "b1")
-					assertEqSecret(l, secret([]any{"SECRET", "SECRET2"}), nil,
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(1234567890)),
+						float64(1234567890),
+						c.Args.Fields["i1"].AsInterface(), "i1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(123456.789)),
+						float64(123456.789),
+						c.Args.Fields["n1"].AsInterface(), "n1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(true),
+						true,
+						c.Args.Fields["b1"].AsInterface(), "b1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret([]any{"SECRET", "SECRET2"}),
+						[]any{"SECRET", "SECRET2"},
 						c.Args.Fields["ls1"].AsInterface(), "ls1")
 
 					// Secret floating happened here, perhaps []any{"VALUE", secret("SECRET")}
 					// would be preferable instead at some point.
-					assertEqSecret(l, secret([]any{"VALUE", "SECRET"}), nil,
+					assertEqualOrJSONEncodedSecret(l,
+						secret([]any{"VALUE", "SECRET"}),
+						[]any{"VALUE", "SECRET"},
 						c.Args.Fields["ls2"].AsInterface(), "ls2")
 
-					assertEqSecret(l,
+					assertEqualOrJSONEncodedSecret(l,
 						map[string]any{"key1": "value1", "key2": secret("SECRET")},
-						map[string]any{"key1": "value1", "key2": "SECRET"}, // under secret JSON-encoding the secret is elided
+						map[string]any{"key1": "value1", "key2": "SECRET"},
 						c.Args.Fields["ms2"].AsInterface(), "ms2")
 
-					assertEqSecret(l,
+					assertEqualOrJSONEncodedSecret(l,
 						map[string]any{"x": secret("SECRET")},
-						map[string]any{"x": "SECRET"}, // under secret JSON-encoding the secret is elided
+						map[string]any{"x": "SECRET"},
 						c.Args.Fields["os2"].AsInterface(), "os2")
 
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
@@ -1254,4 +1230,52 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+}
+
+// Like assert.Equal but also permits the actual value to be the JSON-serialized string form of the expected value.
+func assertEqualOrJSONEncoded(l *L, expect any, actual any, msg string) {
+	if actualS, ok := actual.(string); ok {
+		var a any
+		err := json.Unmarshal([]byte(actualS), &a)
+		if err == nil {
+			if reflect.DeepEqual(expect, a) {
+				return
+			}
+		}
+	}
+	assert.Equal(l, expect, actual, msg)
+}
+
+// Like assert.Equal but also permits secreted JSON-encoded values. The assert succeeds if either:
+//
+//	actual == expect
+//	actual == secret(json(expect2))
+//
+// The second form expect2 usually has secrets stripped. If nil, the code assumes expect2=expect.
+func assertEqualOrJSONEncodedSecret(l *L, expect, expect2, actual any, msg string) {
+	if expect2 == nil {
+		expect2 = expect
+	}
+	if actualObj, ok := actual.(map[string]any); ok {
+		tagV, ok := actualObj["4dabf18193072939515e22adb298388d"]
+		if ok && tagV == "1b47061264138c4ac30d75fd1eb44270" {
+			actualS, ok := actualObj["value"].(string)
+			if ok {
+				var a any
+				err := json.Unmarshal([]byte(actualS), &a)
+				if err == nil && reflect.DeepEqual(expect2, a) {
+					return
+				}
+			}
+		}
+	}
+	assert.Equal(l, expect, actual, msg)
+}
+
+// Wraps a value in secret sentinel as seen on the RPC wire.
+func secret(x any) any {
+	return map[string]any{
+		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		"value":                            x,
+	}
 }
