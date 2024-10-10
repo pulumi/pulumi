@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
@@ -29,43 +30,39 @@ type grpcTestContext struct {
 	s *deploy.Snapshot
 }
 
-func (ctx *grpcTestContext) CheckReq(resourceName string) *pulumirpc.CheckRequest {
-	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), "CheckRequest")
+// Find i-th request to CheckConfig.
+func (ctx *grpcTestContext) CheckConfigReq(resourceName string, i int) *pulumirpc.CheckRequest {
+	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.CheckConfigMethod, i)
 	var req pulumirpc.CheckRequest
 	err := protojson.Unmarshal(bytes, &req)
 	require.NoError(ctx.l, err)
 	return &req
 }
 
-func (ctx *grpcTestContext) ConfigureReq(resourceName string) *pulumirpc.ConfigureRequest {
-	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), "ConfigureRequest")
+// Find i-th request to Configure.
+func (ctx *grpcTestContext) ConfigureReq(resourceName string, i int) *pulumirpc.ConfigureRequest {
+	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.ConfigureMethod, i)
 	var req pulumirpc.ConfigureRequest
 	err := protojson.Unmarshal(bytes, &req)
 	require.NoError(ctx.l, err)
 	return &req
 }
 
-func (ctx *grpcTestContext) parseCapturedConfig(raw string, method string) json.RawMessage {
-	// The provider sends tagged proto messages in this format.
-	type tagged struct {
-		Method  string          `json:"method"`
-		Message json.RawMessage `json:"message"`
-	}
-	var entries []tagged
+func (ctx *grpcTestContext) parseCapturedConfig(raw string, method providers.RPCMethod, i int) json.RawMessage {
+	var entries []providers.RPCRequest
 	err := json.Unmarshal([]byte(raw), &entries)
 	require.NoErrorf(ctx.l, err, "Failed to parse captured config")
-	require.Equal(ctx.l, 2, len(entries), "Expected two entries captured config")
-	require.Equal(ctx.l, "pulumirpc.CheckRequest", entries[0].Method)
-	require.Equal(ctx.l, "pulumirpc.ConfigureRequest", entries[1].Method)
-	switch method {
-	case "CheckRequest":
-		return entries[0].Message
-	case "ConfigureRequest":
-		return entries[1].Message
-	default:
-		require.Fail(ctx.l, "unsupported method")
-		return nil
+	counter := 0
+	for _, e := range entries {
+		if e.Method == method {
+			if counter == i {
+				return e.Message
+			}
+			counter++
+		}
 	}
+	require.Failf(ctx.l, "No data", "Could not find an entry %d for method %s", i, method)
+	return nil
 }
 
 func (ctx *grpcTestContext) configGetterCapturedConfig(resourceName string) string {

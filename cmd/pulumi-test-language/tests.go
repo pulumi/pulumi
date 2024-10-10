@@ -827,7 +827,15 @@ var languageTests = map[string]languageTest{
 					}
 
 					// Check what schemaprov received in CheckRequest.
-					r := g.CheckReq("schemaconf")
+					//
+					// Looks like in the test setup, proper partitioning of provider space is not
+					// yet working. Normally each explicit provider should receive their own
+					// process. This is not happening in the test setup. To compensate we index the
+					// requests. The first CheckConfig/Configure request pair i=0 pertains to the
+					// default provider. The i=1 pair pertains to schemaprof/schemaconf. The i=2
+					// pair pertains to programsecretprov/programsecretconf.
+
+					r := g.CheckConfigReq("schemaconf", 1)
 					assert.Equal(l, "", r.News.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", r.News.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", r.News.Fields["s3"].AsInterface(), "s3")
@@ -848,7 +856,7 @@ var languageTests = map[string]languageTest{
 					assertEq(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
 
 					// Check what schemaprov received in ConfigureRequest.
-					c := g.ConfigureReq("schemaconf")
+					c := g.ConfigureReq("schemaconf", 1)
 					assert.Equal(l, "", c.Args.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", c.Args.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", c.Args.Fields["s3"].AsInterface(), "s3")
@@ -889,7 +897,7 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{\"x\":42}", v["testconfigprovider:config:oi1"], "oi1")
 
 					// Now check first-class secrets for programsecretprov.
-					r = g.CheckReq("programsecretconf")
+					r = g.CheckConfigReq("programsecretconf", 2)
 
 					// These asserts do not look right, but are based on Go behavior. Should SECRET
 					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
@@ -935,7 +943,7 @@ var languageTests = map[string]languageTest{
 						assert.Equal(l, expectRegular, actual, msg)
 					}
 
-					c = g.ConfigureReq("programsecretconf")
+					c = g.ConfigureReq("programsecretconf", 2)
 					assert.Equal(l, secret("SECRET"), c.Args.Fields["s1"].AsInterface(), "s1")
 					assertEqSecret(l, secret(float64(1234567890)), nil, c.Args.Fields["i1"].AsInterface(), "i1")
 					assertEqSecret(l, secret(float64(123456.789)), nil, c.Args.Fields["n1"].AsInterface(), "n1")

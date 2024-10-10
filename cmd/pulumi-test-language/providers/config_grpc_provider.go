@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -29,9 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // ConfigGrpcProvider helps testing gRPC-level payloads over CheckConfig, Configure, and DiffConfig methods.
@@ -52,6 +48,7 @@ import (
 // received over the wire for configuration. It exposes this as the "config" output property.
 type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
+	server *grpcCapturingProviderServer
 }
 
 var (
@@ -176,9 +173,12 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 }
 
 func (p *ConfigGrpcProvider) NewProviderServer() pulumirpc.ResourceProviderServer {
-	return &configGrpcProviderServer{
-		ResourceProviderServer: plugin.NewProviderServer(p),
+	if p.server == nil {
+		p.server = &grpcCapturingProviderServer{
+			ResourceProviderServer: plugin.NewProviderServer(p),
+		}
 	}
+	return p.server
 }
 
 func (p *ConfigGrpcProvider) GetSchema(
@@ -217,6 +217,39 @@ func (p *ConfigGrpcProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
+func (p *ConfigGrpcProvider) Create(
+	ctx context.Context,
+	req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
+	if string(req.Type) == fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()) {
+		requests := p.server.grpcCapturedRequests()
+		configRequests := []RPCRequest{}
+		for _, req := range requests {
+			switch req.Method {
+			case CheckConfigMethod, ConfigureMethod, DiffConfigMethod:
+				configRequests = append(configRequests, req)
+			}
+		}
+		requestsJSON, err := json.Marshal(configRequests)
+		contract.AssertNoErrorf(err, "json.Marshal failed")
+
+		id := ""
+		if !req.Preview {
+			id = "id0"
+		}
+
+		// Send out Config-related requests.
+		return plugin.CreateResponse{
+			ID: resource.ID(id),
+			Properties: resource.PropertyMap{
+				"config": resource.NewStringProperty(string(requestsJSON)),
+			},
+			Status: resource.StatusOK,
+		}, nil
+	}
+	return plugin.CreateResponse{}, fmt.Errorf("Unknown resource")
+}
+
 func (p *ConfigGrpcProvider) DiffConfig(
 	context.Context, plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
@@ -236,95 +269,4 @@ func (p *ConfigGrpcProvider) Invoke(
 	default:
 		return plugin.InvokeResponse{}, errors.New("Unknown function")
 	}
-}
-
-// This lower level implementation should be used at runtime specifically to test at the lower level, since not all
-// actual providers use plugin.Provider consistently but some are using older or modified versions.
-// pulumirpc.UnimplementedResourceProviderServer
-type configGrpcProviderServer struct {
-	pulumirpc.ResourceProviderServer
-
-	// Guard the state.
-	sync.Mutex
-
-	// State to capture of configuration-related requests.
-	configRequests []json.RawMessage
-}
-
-func (p *configGrpcProviderServer) logMessage(msg proto.Message) error {
-	req, err := protojson.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	p.Mutex.Lock()
-	defer p.Mutex.Unlock()
-	type tagged struct {
-		Method  string          `json:"method"`
-		Message json.RawMessage `json:"message"`
-	}
-	bytes, err := json.Marshal(tagged{
-		Method:  string(msg.ProtoReflect().Descriptor().FullName()),
-		Message: req,
-	})
-	if err != nil {
-		return err
-	}
-	p.configRequests = append(p.configRequests, bytes)
-	return nil
-}
-
-func (p *configGrpcProviderServer) formatLoggedMessages() string {
-	p.Mutex.Lock()
-	defer p.Mutex.Unlock()
-	bytes, err := json.Marshal(p.configRequests)
-	contract.AssertNoErrorf(err, "json.Marshal failed")
-	return string(bytes)
-}
-
-func (p *configGrpcProviderServer) CheckConfig(
-	ctx context.Context,
-	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
-	if err := p.logMessage(req); err != nil {
-		return nil, err
-	}
-	return p.ResourceProviderServer.CheckConfig(ctx, req)
-}
-
-func (p *configGrpcProviderServer) Configure(
-	ctx context.Context,
-	req *pulumirpc.ConfigureRequest,
-) (resp *pulumirpc.ConfigureResponse, err error) {
-	if err := p.logMessage(req); err != nil {
-		return nil, err
-	}
-	return p.ResourceProviderServer.Configure(ctx, req)
-}
-
-func (p *configGrpcProviderServer) DiffConfig(
-	ctx context.Context,
-	req *pulumirpc.DiffRequest,
-) (*pulumirpc.DiffResponse, error) {
-	if err := p.logMessage(req); err != nil {
-		return nil, err
-	}
-	return p.ResourceProviderServer.DiffConfig(ctx, req)
-}
-
-func (p *configGrpcProviderServer) Create(
-	ctx context.Context,
-	req *pulumirpc.CreateRequest,
-) (*pulumirpc.CreateResponse, error) {
-	id := ""
-	if !req.Preview {
-		id = "id0"
-	}
-	return &pulumirpc.CreateResponse{
-		Id: id,
-		Properties: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"config": structpb.NewStringValue(p.formatLoggedMessages()),
-			},
-		},
-	}, nil
 }
