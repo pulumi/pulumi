@@ -312,14 +312,16 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check nonPlainData
-	nonPlainData := req.News["nonPlainData"].ObjectValue()
-	check = checkData(nonPlainData)
-	if check != nil {
-		return *check, nil
-	}
-	check = checkInnerData(data)
-	if check != nil {
-		return *check, nil
+	if _, ok := req.News["nonPlainData"]; ok {
+		nonPlainData := req.News["nonPlainData"].ObjectValue()
+		check = checkData(nonPlainData)
+		if check != nil {
+			return *check, nil
+		}
+		check = checkInnerData(nonPlainData)
+		if check != nil {
+			return *check, nil
+		}
 	}
 
 	return plugin.CheckResponse{Properties: req.News}, nil
