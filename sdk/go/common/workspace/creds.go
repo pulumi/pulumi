@@ -184,8 +184,8 @@ func GetStoredCredentials() (Credentials, error) {
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please re-run "+
-			"`pulumi login` to reset your credentials file: %w", err)
+		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please fix "+
+			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
 
 	secrets := slice.Prealloc[string](len(creds.AccessTokens))
