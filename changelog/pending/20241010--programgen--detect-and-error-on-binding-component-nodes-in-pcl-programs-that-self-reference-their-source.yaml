@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Detect and error on binding component nodes in PCL programs that self-reference their source
