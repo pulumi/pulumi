@@ -579,8 +579,9 @@ func objectKey(item model.ObjectConsItem) string {
 }
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
-	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
-	td := g.typedDictEnabled(expr, destType)
+	targetType := pcl.LowerConversion(expr, destType)
+	typeName := g.argumentTypeName(expr, targetType) // Example: aws.s3.BucketLoggingArgs
+	td := g.typedDictEnabled(expr, targetType)
 	if typeName != "" && !td {
 		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
 		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)

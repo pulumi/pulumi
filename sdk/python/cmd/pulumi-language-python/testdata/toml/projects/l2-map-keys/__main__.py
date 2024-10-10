@@ -69,15 +69,33 @@ rref = ref_ref.Resource("rref", data={
         "myKey": "six",
     },
 })
-plains = plain.Resource("plains", data={
-    "inner_data": {
-        "boolean": False,
-        "float": 2.17,
-        "integer": -12,
-        "string": "Goodbye",
+plains = plain.Resource("plains",
+    data={
+        "inner_data": {
+            "boolean": False,
+            "float": 2.17,
+            "integer": -12,
+            "string": "Goodbye",
+            "bool_array": [
+                False,
+                True,
+            ],
+            "string_map": {
+                "my key": "one",
+                "my.key": "two",
+                "my-key": "three",
+                "my_key": "four",
+                "MY_KEY": "five",
+                "myKey": "six",
+            },
+        },
+        "boolean": True,
+        "float": 4.5,
+        "integer": 1024,
+        "string": "Hello",
         "bool_array": [
-            False,
             True,
+            False,
         ],
         "string_map": {
             "my key": "one",
@@ -88,20 +106,39 @@ plains = plain.Resource("plains", data={
             "myKey": "six",
         },
     },
-    "boolean": True,
-    "float": 4.5,
-    "integer": 1024,
-    "string": "Hello",
-    "bool_array": [
-        True,
-        False,
-    ],
-    "string_map": {
-        "my key": "one",
-        "my.key": "two",
-        "my-key": "three",
-        "my_key": "four",
-        "MY_KEY": "five",
-        "myKey": "six",
-    },
-})
+    non_plain_data={
+        "inner_data": {
+            "boolean": False,
+            "float": 2.17,
+            "integer": -12,
+            "string": "Goodbye",
+            "bool_array": [
+                False,
+                True,
+            ],
+            "string_map": {
+                "my key": "one",
+                "my.key": "two",
+                "my-key": "three",
+                "my_key": "four",
+                "MY_KEY": "five",
+                "myKey": "six",
+            },
+        },
+        "boolean": True,
+        "float": 4.5,
+        "integer": 1024,
+        "string": "Hello",
+        "bool_array": [
+            True,
+            False,
+        ],
+        "string_map": {
+            "my key": "one",
+            "my.key": "two",
+            "my-key": "three",
+            "my_key": "four",
+            "MY_KEY": "five",
+            "myKey": "six",
+        },
+    })
