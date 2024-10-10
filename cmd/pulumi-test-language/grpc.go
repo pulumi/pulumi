@@ -30,39 +30,36 @@ type grpcTestContext struct {
 	s *deploy.Snapshot
 }
 
-// Find i-th request to CheckConfig.
-func (ctx *grpcTestContext) CheckConfigReq(resourceName string, i int) *pulumirpc.CheckRequest {
-	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.CheckConfigMethod, i)
+func (ctx *grpcTestContext) CheckConfigReq(resourceName string) *pulumirpc.CheckRequest {
+	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.CheckConfigMethod)
 	var req pulumirpc.CheckRequest
 	err := protojson.Unmarshal(bytes, &req)
 	require.NoError(ctx.l, err)
 	return &req
 }
 
-// Find i-th request to Configure.
-func (ctx *grpcTestContext) ConfigureReq(resourceName string, i int) *pulumirpc.ConfigureRequest {
-	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.ConfigureMethod, i)
+func (ctx *grpcTestContext) ConfigureReq(resourceName string) *pulumirpc.ConfigureRequest {
+	bytes := ctx.parseCapturedConfig(ctx.configGetterCapturedConfig(resourceName), providers.ConfigureMethod)
 	var req pulumirpc.ConfigureRequest
 	err := protojson.Unmarshal(bytes, &req)
 	require.NoError(ctx.l, err)
 	return &req
 }
 
-func (ctx *grpcTestContext) parseCapturedConfig(raw string, method providers.RPCMethod, i int) json.RawMessage {
+func (ctx *grpcTestContext) parseCapturedConfig(raw string, method providers.RPCMethod) json.RawMessage {
 	var entries []providers.RPCRequest
 	err := json.Unmarshal([]byte(raw), &entries)
 	require.NoErrorf(ctx.l, err, "Failed to parse captured config")
-	counter := 0
+	foundCount := 0
+	var foundEntry providers.RPCRequest
 	for _, e := range entries {
 		if e.Method == method {
-			if counter == i {
-				return e.Message
-			}
-			counter++
+			foundEntry = e
+			foundCount++
 		}
 	}
-	require.Failf(ctx.l, "No data", "Could not find an entry %d for method %s", i, method)
-	return nil
+	require.Equal(ctx.l, 1, foundCount, "Expected exactly 1 call %s call, got %d", method, foundCount)
+	return foundEntry.Message
 }
 
 func (ctx *grpcTestContext) configGetterCapturedConfig(resourceName string) string {

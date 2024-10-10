@@ -812,16 +812,7 @@ var languageTests = map[string]languageTest{
 				) {
 					g := &grpcTestContext{l: l, s: snap}
 
-					// Check what schemaprov received in CheckRequest.
-					//
-					// Looks like in the test setup, proper partitioning of provider space is not
-					// yet working. Normally each explicit provider should receive their own
-					// process. This is not happening in the test setup. To compensate we index the
-					// requests. The first CheckConfig/Configure request pair i=0 pertains to the
-					// default provider. The i=1 pair pertains to schemaprof/schemaconf. The i=2
-					// pair pertains to programsecretprov/programsecretconf.
-
-					r := g.CheckConfigReq("schemaconf", 1)
+					r := g.CheckConfigReq("schemaconf")
 					assert.Equal(l, "", r.News.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", r.News.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", r.News.Fields["s3"].AsInterface(), "s3")
@@ -849,7 +840,7 @@ var languageTests = map[string]languageTest{
 					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, r.News.Fields["oi1"].AsInterface(), "oi1")
 
 					// Check what schemaprov received in ConfigureRequest.
-					c := g.ConfigureReq("schemaconf", 1)
+					c := g.ConfigureReq("schemaconf")
 					assert.Equal(l, "", c.Args.Fields["s1"].AsInterface(), "s1")
 					assert.Equal(l, "x", c.Args.Fields["s2"].AsInterface(), "s2")
 					assert.Equal(l, "{}", c.Args.Fields["s3"].AsInterface(), "s3")
@@ -895,9 +886,26 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{}", v["testconfigprovider:config:os1"], "os1")
 					assert.JSONEq(l, "{\"x\":\"x-value\"}", v["testconfigprovider:config:os2"], "os2")
 					assert.JSONEq(l, "{\"x\":42}", v["testconfigprovider:config:oi1"], "oi1")
+				},
+			},
+		},
+	},
+	// Looks like in the test setup, proper partitioning of provider space is not yet working and Configure calls
+	// race with Create calls when talking to a provider. It makes it too difficult to test more than one explicit
+	// provider per test case. To compensate, more test cases are added.
+	"l2-provider-grpc-config-secret": {
+		// Check what schemaprov received in CheckRequest.
+		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					g := &grpcTestContext{l: l, s: snap}
 
 					// Now check first-class secrets for programsecretprov.
-					r = g.CheckConfigReq("programsecretconf", 2)
+					r := g.CheckConfigReq("programsecretconf")
 
 					// These asserts do not look right, but are based on Go behavior. Should SECRET
 					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
@@ -916,7 +924,7 @@ var languageTests = map[string]languageTest{
 
 					// The secret versions have two options, JSON-encoded or not. Languages do not
 					// agree yet on which form to use.
-					c = g.ConfigureReq("programsecretconf", 2)
+					c := g.ConfigureReq("programsecretconf")
 					assert.Equal(l, secret("SECRET"), c.Args.Fields["s1"].AsInterface(), "s1")
 
 					assertEqualOrJSONEncodedSecret(l,
@@ -957,7 +965,7 @@ var languageTests = map[string]languageTest{
 						c.Args.Fields["os2"].AsInterface(), "os2")
 
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
-					v = c.GetVariables()
+					v := c.GetVariables()
 					assert.Equal(l, "SECRET", v["testconfigprovider:config:s1"], "s1")
 					assert.Equal(l, "1234567890", v["testconfigprovider:config:i1"], "i1")
 					assert.Equal(l, "123456.789", v["testconfigprovider:config:n1"], "n2")

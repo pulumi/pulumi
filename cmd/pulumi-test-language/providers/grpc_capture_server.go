@@ -35,21 +35,15 @@ import (
 type grpcCapturingProviderServer struct {
 	pulumirpc.ResourceProviderServer
 	sync.Mutex
-	requests []RPCRequest
+	onRequest func(RPCRequest)
 }
 
 func (p *grpcCapturingProviderServer) logMessage(method RPCMethod, msg proto.Message) error {
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
 	r := newRPCRequest(method, msg)
-	p.requests = append(p.requests, r)
+	p.onRequest(r)
 	return nil
-}
-
-func (p *grpcCapturingProviderServer) grpcCapturedRequests() []RPCRequest {
-	p.Mutex.Lock()
-	defer p.Mutex.Unlock()
-	return p.requests
 }
 
 func (p *grpcCapturingProviderServer) CheckConfig(

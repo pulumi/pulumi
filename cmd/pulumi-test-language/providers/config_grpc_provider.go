@@ -48,7 +48,8 @@ import (
 // received over the wire for configuration. It exposes this as the "config" output property.
 type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
-	server *grpcCapturingProviderServer
+	lastCheckConfigRequest RPCRequest
+	lastConfigureRequest   RPCRequest
 }
 
 var (
@@ -173,12 +174,17 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 }
 
 func (p *ConfigGrpcProvider) NewProviderServer() pulumirpc.ResourceProviderServer {
-	if p.server == nil {
-		p.server = &grpcCapturingProviderServer{
-			ResourceProviderServer: plugin.NewProviderServer(p),
-		}
+	return &grpcCapturingProviderServer{
+		ResourceProviderServer: plugin.NewProviderServer(p),
+		onRequest: func(r RPCRequest) {
+			switch r.Method {
+			case ConfigureMethod:
+				p.lastConfigureRequest = r
+			case CheckConfigMethod:
+				p.lastCheckConfigRequest = r
+			}
+		},
 	}
-	return p.server
 }
 
 func (p *ConfigGrpcProvider) GetSchema(
@@ -222,15 +228,10 @@ func (p *ConfigGrpcProvider) Create(
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	if string(req.Type) == fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()) {
-		requests := p.server.grpcCapturedRequests()
-		configRequests := []RPCRequest{}
-		for _, req := range requests {
-			switch req.Method {
-			case CheckConfigMethod, ConfigureMethod, DiffConfigMethod:
-				configRequests = append(configRequests, req)
-			}
-		}
-		requestsJSON, err := json.Marshal(configRequests)
+		requestsJSON, err := json.Marshal([]RPCRequest{
+			p.lastCheckConfigRequest,
+			p.lastConfigureRequest,
+		})
 		contract.AssertNoErrorf(err, "json.Marshal failed")
 
 		id := ""
