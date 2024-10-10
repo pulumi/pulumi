@@ -10,7 +10,8 @@ PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
 # nodejs and python codegen tests are much slower than go/dotnet:
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
-TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
+PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
+TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
@@ -141,6 +142,9 @@ test_integration_subpkgs:
 	@cd tests && $(GO_TEST) $(TESTS_PKGS)
 
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
+
+test_performance:
+	@cd tests && go test -count=1 -tags=all -timeout 1h -parallel=1 $(PERFORMANCE_PKG)
 
 # Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
 .PHONY: gotestsum/%
