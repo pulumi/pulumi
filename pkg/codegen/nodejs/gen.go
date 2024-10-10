@@ -707,7 +707,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if mod.compatibility == kubernetes20 {
 			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		if prop.Plain {
+			fmt.Fprintf(w, "    public %sreadonly %s!: %s;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		} else {
+			fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		}
 	}
 	fmt.Fprintf(w, "\n")
 
