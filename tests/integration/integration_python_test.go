@@ -1599,6 +1599,11 @@ outer:
 	wg.Wait()
 }
 
+func TestConstructFailuresPython(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 // TestLogDebugPython tests that the amount of debug logs is reasonable.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

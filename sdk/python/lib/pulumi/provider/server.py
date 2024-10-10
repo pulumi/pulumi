@@ -35,13 +35,22 @@ from pulumi.resource import (
     _parse_resource_reference,
 )
 from pulumi.runtime import known_types, proto, rpc
-from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.runtime.proto import (
+    provider_pb2_grpc,
+    ResourceProviderServicer,
+    status_pb2,
+    errors_pb2,
+)
 from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
-
+from pulumi.errors import (
+    InputPropertiesError,
+    InputPropertyError,
+    InputPropertyErrorDetails,
+)
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
@@ -63,6 +72,38 @@ class ProviderServicer(ResourceProviderServicer):
     args: List[str]
     lock: asyncio.Lock
 
+    def create_grpc_invalid_properties_status(
+        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+    ):
+        status = grpc.Status()  # type: ignore[attr-defined]
+        # We don't care about the exact status code here, since they are pretty web centric, and don't
+        # necessarily make sense in this context.  Pick one that's close enough.
+        # type: ignore
+        status.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+        status.details = message
+
+        if errors is not None:
+            s = status_pb2.Status()  # type: ignore[attr-defined]
+            # This code needs to match the code above.
+            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+            s.message = message
+
+            error_details = errors_pb2.InputPropertiesError()
+            for error in errors:
+                property_error = errors_pb2.InputPropertiesError.PropertyError()
+                property_error.property_path = error["property_path"]
+                property_error.reason = error["reason"]
+                error_details.errors.append(property_error)
+
+            details_container = s.details.add()
+            details_container.Pack(error_details)
+
+            status.trailing_metadata = (
+                ("grpc-status-details-bin", s.SerializeToString()),
+            )
+
+        return status
+
     async def Construct(  # pylint: disable=invalid-overridden-method
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
@@ -71,6 +112,19 @@ class ProviderServicer(ResourceProviderServicer):
         await self.lock.acquire()
         try:
             return await self._construct(request, context)
+        except InputPropertiesError as e:
+            status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
+        except InputPropertyError as e:
+            status = self.create_grpc_invalid_properties_status(
+                "", [{"property_path": e.property_path, "reason": e.reason}]
+            )
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
+
         finally:
             self.lock.release()
 

@@ -42,6 +42,9 @@ from .deprecated import (
 
 from .errors import (
     RunError,
+    InputPropertyError,
+    InputPropertyErrorDetails,
+    InputPropertiesError,
 )
 
 from .invoke import (
@@ -128,6 +131,9 @@ __all__ = [
     "deprecated",
     # errors
     "RunError",
+    "InputPropertiesError",
+    "InputPropertyError",
+    "InputPropertyErrorDetails",
     # invoke
     "InvokeOptions",
     "InvokeTransform",

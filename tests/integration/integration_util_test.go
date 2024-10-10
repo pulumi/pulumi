@@ -626,6 +626,9 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		{
 			componentDir: "testcomponent-go",
 		},
+		{
+			componentDir: "testcomponent-python",
+		},
 	}
 	for _, test := range tests {
 		test := test
