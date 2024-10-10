@@ -2132,6 +2132,9 @@ func (pkg *pkgContext) genResource(
 		if useGenericVariant {
 			outputType = pkg.genericOutputType(p.Type)
 		}
+		if p.Plain {
+			outputType = pkg.typeString(p.Type)
+		}
 
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), outputType, p.Name)
 
@@ -2728,8 +2731,12 @@ func (pkg *pkgContext) genResource(
 		}
 		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 		if !useGenericVariant {
+			funcReturnType := outputType
+			if p.Plain {
+				funcReturnType = pkg.typeString(p.Type)
+			}
 			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s { return v.%s }).(%s)\n",
-				name, outputType, pkg.fieldName(r, p), outputType)
+				name, funcReturnType, pkg.fieldName(r, p), outputType)
 		} else {
 			needsCast := genericTypeNeedsExplicitCasting(outputType)
 
