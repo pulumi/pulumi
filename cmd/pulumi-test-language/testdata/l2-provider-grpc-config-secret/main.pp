@@ -22,7 +22,7 @@ resource "config_grpc_provider" "pulumi:providers:config-grpc" {
     objString2 = { x = invoke("config-grpc:index:toSecret", {string1 = "SECRET"}).string1 }
 }
 
-resource "config" "config-grpc:index:Config" {
+resource "config" "config-grpc:index:ConfigFetcher" {
   options {
     provider = config_grpc_provider
   }

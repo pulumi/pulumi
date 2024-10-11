@@ -45,8 +45,8 @@ import (
 //
 // Each property is suffixed by 1,2,3 to allow more simultaneous tests.
 //
-// A special resource Config can be invoked to retrieve a JSON-encoded representation of what the provider received over
-// the wire for configuration. It exposes this as the "config" output property.
+// A special resource ConfigFetcher can be invoked to retrieve a JSON-encoded representation of what the provider
+// received over the wire for configuration. It exposes this as the "config" output property.
 type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
 	lastCheckConfigRequest RPCRequest
@@ -144,7 +144,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 		Types: types,
 		Resources: map[string]pschema.ResourceSpec{
-			fmt.Sprintf("%s:index:Config", p.Pkg()): {
+			fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()): {
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Properties: map[string]pschema.PropertySpec{
 						"config": {
@@ -234,7 +234,7 @@ func (p *ConfigGrpcProvider) Create(
 	ctx context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.Type) == fmt.Sprintf("%s:index:Config", p.Pkg()) {
+	if string(req.Type) == fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()) {
 		requestsJSON, err := json.Marshal([]RPCRequest{
 			p.lastCheckConfigRequest,
 			p.lastConfigureRequest,

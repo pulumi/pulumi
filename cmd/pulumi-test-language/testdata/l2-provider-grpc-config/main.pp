@@ -38,7 +38,7 @@ resource "config_grpc_provider" "pulumi:providers:config-grpc" {
     }
 }
 
-resource "config" "config-grpc:index:Config" {
+resource "config" "config-grpc:index:ConfigFetcher" {
   options {
     provider = config_grpc_provider
   }
