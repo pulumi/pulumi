@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -233,6 +234,21 @@ func requireStackResource(t TestingT, err error, changes display.ResourceChanges
 	if !assertStackResource(t, err, changes) {
 		t.FailNow()
 	}
+}
+
+func requireSingleResource(t TestingT, resources []*resource.State, typ tokens.Type) *resource.State {
+	t.Helper()
+
+	var result *resource.State
+	for _, res := range resources {
+		if res.Type == typ {
+			require.Nil(t, result, "expected exactly 1 resource of type %q, got multiple", typ)
+			result = res
+		}
+	}
+
+	require.NotNil(t, result, "expected exactly 1 resource of type %q, got none", typ)
+	return result
 }
 
 // assertPropertyMapMember asserts that the given property map has a member with the given key and value.

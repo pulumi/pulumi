@@ -29,8 +29,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// A small provider with a single resource "Resource" that takes all its inputs via plain properties.
+// A small provider with a single resource "Resource" that takes most of its inputs via plain properties.
 // It includes nested types "Data" and "InnerData" that are also plain.
+// The nonPlainData input tests nesting of plain and non-plain types.
 type PlainProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -113,6 +114,13 @@ func (p *PlainProvider) GetSchema(
 				Type:  "ref",
 				Ref:   "#/types/plain:index:Data",
 				Plain: true,
+			},
+		},
+		"nonPlainData": {
+			Description: "A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.",
+			TypeSpec: schema.TypeSpec{
+				Type: "ref",
+				Ref:  "#/types/plain:index:Data",
 			},
 		},
 	}
@@ -216,13 +224,12 @@ func (p *PlainProvider) Check(
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	// Should have one or two properties: data is required, nonPlainData is optional
+	if len(req.News) > 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
-
-	data := req.News["data"].ObjectValue()
 
 	checkData := func(data resource.PropertyMap) *plugin.CheckResponse {
 		// Expect all required properties
@@ -268,31 +275,54 @@ func (p *PlainProvider) Check(
 		return nil
 	}
 
+	checkInnerData := func(data resource.PropertyMap) *plugin.CheckResponse {
+		inner := data["innerData"]
+		if !inner.IsObject() {
+			return &plugin.CheckResponse{
+				Failures: makeCheckFailure("innerData", "value is not an object"),
+			}
+		}
+		check = checkData(inner.ObjectValue())
+		if check != nil {
+			return check
+		}
+		if len(inner.ObjectValue()) != 6 {
+			return &plugin.CheckResponse{
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
+			}
+		}
+
+		if len(data) != 7 {
+			return &plugin.CheckResponse{
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
+			}
+		}
+
+		return nil
+	}
+
+	// Check data
+	data := req.News["data"].ObjectValue()
 	check = checkData(data)
 	if check != nil {
 		return *check, nil
 	}
-
-	inner := data["innerData"]
-	if !inner.IsObject() {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("innerData", "value is not an object"),
-		}, nil
-	}
-	check = checkData(inner.ObjectValue())
+	check = checkInnerData(data)
 	if check != nil {
 		return *check, nil
 	}
-	if len(inner.ObjectValue()) != 6 {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
-		}, nil
-	}
 
-	if len(data) != 7 {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
-		}, nil
+	// Check nonPlainData
+	if _, ok := req.News["nonPlainData"]; ok {
+		nonPlainData := req.News["nonPlainData"].ObjectValue()
+		check = checkData(nonPlainData)
+		if check != nil {
+			return *check, nil
+		}
+		check = checkInnerData(nonPlainData)
+		if check != nil {
+			return *check, nil
+		}
 	}
 
 	return plugin.CheckResponse{Properties: req.News}, nil

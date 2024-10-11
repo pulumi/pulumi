@@ -7,9 +7,9 @@ bar = kubernetes.core.v1.Pod("bar",
         "namespace": "foo",
         "name": "bar",
         "labels": {
-            "app_kubernetes_io_name": "cilium-agent",
-            "app_kubernetes_io_part_of": "cilium",
-            "k8s_app": "cilium",
+            "app.kubernetes.io/name": "cilium-agent",
+            "app.kubernetes.io/part-of": "cilium",
+            "k8s-app": "cilium",
         },
     },
     spec={

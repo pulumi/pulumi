@@ -21,11 +21,15 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 data: 'DataArgs'):
+                 data: 'DataArgs',
+                 non_plain_data: Optional[pulumi.Input['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
+        :param pulumi.Input['DataArgs'] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         pulumi.set(__self__, "data", data)
+        if non_plain_data is not None:
+            pulumi.set(__self__, "non_plain_data", non_plain_data)
 
     @property
     @pulumi.getter
@@ -36,6 +40,18 @@ class ResourceArgs:
     def data(self, value: 'DataArgs'):
         pulumi.set(self, "data", value)
 
+    @property
+    @pulumi.getter(name="nonPlainData")
+    def non_plain_data(self) -> Optional[pulumi.Input['DataArgs']]:
+        """
+        A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
+        """
+        return pulumi.get(self, "non_plain_data")
+
+    @non_plain_data.setter
+    def non_plain_data(self, value: Optional[pulumi.Input['DataArgs']]):
+        pulumi.set(self, "non_plain_data", value)
+
 
 class Resource(pulumi.CustomResource):
     @overload
@@ -43,11 +59,13 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
+                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input[Union['DataArgs', 'DataArgsDict']] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         ...
     @overload
@@ -73,6 +91,7 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
+                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -85,6 +104,7 @@ class Resource(pulumi.CustomResource):
             if data is None and not opts.urn:
                 raise TypeError("Missing required property 'data'")
             __props__.__dict__["data"] = data
+            __props__.__dict__["non_plain_data"] = non_plain_data
         super(Resource, __self__).__init__(
             'plain:index:Resource',
             resource_name,
@@ -108,10 +128,19 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["data"] = None
+        __props__.__dict__["non_plain_data"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "data")
+
+    @property
+    @pulumi.getter(name="nonPlainData")
+    def non_plain_data(self) -> pulumi.Output[Optional['outputs.Data']]:
+        """
+        A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
+        """
+        return pulumi.get(self, "non_plain_data")
 
