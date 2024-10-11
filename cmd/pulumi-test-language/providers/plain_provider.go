@@ -224,7 +224,8 @@ func (p *PlainProvider) Check(
 		return *check, nil
 	}
 
-	if len(req.News) != 2 {
+	// Should have one or two properties: data is required, nonPlainData is optional
+	if len(req.News) > 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
