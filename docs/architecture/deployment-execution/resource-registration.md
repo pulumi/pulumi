@@ -197,9 +197,9 @@ broken dependencies). The step generator does this as follows:
 1. Compute the full set of resources that transitively depend on the resource
    being replaced.
 2. Remove from this set any resources that would *not themselves be replaced* by
-   changes to their dependencies. This is determined by substituting unknown
-   values for any inputs that stem from a dependency and calling the provider's
-   [](pulumirpc.ResourceProvider.Diff) method.
+   changes to their dependencies. This is determined by substituting
+   [unknown](output-unknowns) values for any inputs that stem from a dependency
+   and calling the provider's [](pulumirpc.ResourceProvider.Diff) method.
 3. Process the replacements in reverse topological order.
 
 To better illustrate this, consider the following example (written in

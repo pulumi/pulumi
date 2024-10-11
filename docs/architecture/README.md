@@ -121,6 +121,7 @@ well as discussing how they are verified and tested.
 :titlesonly:
 
 /docs/architecture/deployment-execution/README
+/docs/architecture/types/README
 /docs/architecture/languages
 /docs/architecture/providers
 /docs/architecture/plugins
