@@ -602,3 +602,17 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 	assert.NotNil(t, program)
 }
+
+func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
+	t.Parallel()
+	source := `component example "." {}`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp",
+		pcl.DirPath("."),
+		pcl.AllowMissingVariables,
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	require.Nil(t, program)
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "cannot bind component example from the same directory as the parent program")
+}

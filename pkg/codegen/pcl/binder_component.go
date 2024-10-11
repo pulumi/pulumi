@@ -292,6 +292,27 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		return diagnostics
 	}
 
+	componentDirPath := filepath.Join(b.options.dirPath, node.source)
+	absoluteBinderPath, err := filepath.Abs(b.options.dirPath)
+	if err != nil {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"failed to get absolute path for binder directory %s: %s", b.options.dirPath, err.Error()))
+		return diagnostics
+	}
+
+	absoluteComponentPath, err := filepath.Abs(componentDirPath)
+	if err != nil {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"failed to get absolute path for component directory %s: %s", componentDirPath, err.Error()))
+		return diagnostics
+	}
+
+	if absoluteBinderPath == absoluteComponentPath {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"cannot bind component %s from the same directory as the parent program", node.Name()))
+		return diagnostics
+	}
+
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
 		AllowMissingVariables:        b.options.allowMissingVariables,
 		AllowMissingProperties:       b.options.allowMissingProperties,
@@ -319,7 +340,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	node.Program = componentProgram
 	programVariableType := componentVariableType(componentProgram)
 	node.VariableType = transformComponentType(programVariableType)
-	node.dirPath = filepath.Join(b.options.dirPath, node.source)
+	node.dirPath = componentDirPath
 
 	componentInputs := componentInputs(componentProgram)
 	providedInputs := []string{}
