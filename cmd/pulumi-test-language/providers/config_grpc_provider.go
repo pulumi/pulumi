@@ -189,6 +189,8 @@ func (p *ConfigGrpcProvider) NewProviderServer() pulumirpc.ResourceProviderServe
 				p.lastConfigureRequest = r
 			case CheckConfigMethod:
 				p.lastCheckConfigRequest = r
+			case DiffConfigMethod:
+				return
 			}
 		},
 	}

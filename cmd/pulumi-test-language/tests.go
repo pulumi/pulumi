@@ -836,7 +836,10 @@ var languageTests = map[string]languageTest{
 						r.News.Fields["mapInt1"].AsInterface(), "mapInt1")
 
 					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["objString1"].AsInterface(), "objString1")
-					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, r.News.Fields["objString2"].AsInterface(), "objString2")
+
+					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
+						r.News.Fields["objString2"].AsInterface(), "objString2")
+
 					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, r.News.Fields["objInt1"].AsInterface(), "objInt1")
 
 					// Check what schemaprov received in ConfigureRequest.
@@ -864,7 +867,10 @@ var languageTests = map[string]languageTest{
 						c.Args.Fields["mapInt1"].AsInterface(), "mapInt1")
 
 					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["objString1"].AsInterface(), "objString1")
-					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"}, c.Args.Fields["objString2"].AsInterface(), "objString2")
+
+					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
+						c.Args.Fields["objString2"].AsInterface(), "objString2")
+
 					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, c.Args.Fields["objInt1"].AsInterface(), "objInt1")
 
 					v := c.GetVariables()
