@@ -1,53 +1,53 @@
 package main
 
 import (
-	"example.com/pulumi-testconfigprovider/sdk/go/testconfigprovider"
+	"example.com/pulumi-config-grpc/sdk/go/configgrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		// The schema provider covers interesting schema shapes.
-		schemaprov, err := testconfigprovider.NewProvider(ctx, "schemaprov", &testconfigprovider.ProviderArgs{
-			S1:  pulumi.String(""),
-			S2:  pulumi.String("x"),
-			S3:  pulumi.String("{}"),
-			I1:  pulumi.Int(0),
-			I2:  pulumi.Int(42),
-			N1:  pulumi.Float64(0),
-			N2:  pulumi.Float64(42.42),
-			B1:  pulumi.Bool(true),
-			B2:  pulumi.Bool(false),
-			Ls1: pulumi.StringArray{},
-			Ls2: pulumi.StringArray{
+		// Cover interesting schema shapes.
+		config_grpc_provider, err := configgrpc.NewProvider(ctx, "config_grpc_provider", &configgrpc.ProviderArgs{
+			String1:     pulumi.String(""),
+			String2:     pulumi.String("x"),
+			String3:     pulumi.String("{}"),
+			Int1:        pulumi.Int(0),
+			Int2:        pulumi.Int(42),
+			Num1:        pulumi.Float64(0),
+			Num2:        pulumi.Float64(42.42),
+			Bool1:       pulumi.Bool(true),
+			Bool2:       pulumi.Bool(false),
+			ListString1: pulumi.StringArray{},
+			ListString2: pulumi.StringArray{
 				pulumi.String(""),
 				pulumi.String("foo"),
 			},
-			Li1: pulumi.IntArray{
+			ListInt1: pulumi.IntArray{
 				pulumi.Int(1),
 				pulumi.Int(2),
 			},
-			Ms1: pulumi.StringMap{},
-			Ms2: pulumi.StringMap{
+			MapString1: pulumi.StringMap{},
+			MapString2: pulumi.StringMap{
 				"key1": pulumi.String("value1"),
 				"key2": pulumi.String("value2"),
 			},
-			Mi1: pulumi.IntMap{
+			MapInt1: pulumi.IntMap{
 				"key1": pulumi.Int(0),
 				"key2": pulumi.Int(42),
 			},
-			Os1: &testconfigprovider.Ts1Args{},
-			Os2: &testconfigprovider.Ts2Args{
+			ObjString1: &configgrpc.Tstring1Args{},
+			ObjString2: &configgrpc.Tstring2Args{
 				X: pulumi.String("x-value"),
 			},
-			Oi1: &testconfigprovider.Ti1Args{
+			ObjInt1: &configgrpc.Tint1Args{
 				X: pulumi.Int(42),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		_, err = testconfigprovider.NewConfigGetter(ctx, "schemaconf", nil, pulumi.Provider(schemaprov))
+		_, err = configgrpc.NewConfigFetcher(ctx, "config", nil, pulumi.Provider(config_grpc_provider))
 		if err != nil {
 			return err
 		}

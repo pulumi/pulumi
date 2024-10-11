@@ -1,40 +1,40 @@
 import pulumi
-import pulumi_testconfigprovider as testconfigprovider
+import pulumi_config_grpc as config_grpc
 
-# The schema provider covers interesting schema shapes.
-schemaprov = testconfigprovider.Provider("schemaprov",
-    s1="",
-    s2="x",
-    s3="{}",
-    i1=0,
-    i2=42,
-    n1=0,
-    n2=42.42,
-    b1=True,
-    b2=False,
-    ls1=[],
-    ls2=[
+# Cover interesting schema shapes.
+config_grpc_provider = config_grpc.Provider("config_grpc_provider",
+    string1="",
+    string2="x",
+    string3="{}",
+    int1=0,
+    int2=42,
+    num1=0,
+    num2=42.42,
+    bool1=True,
+    bool2=False,
+    list_string1=[],
+    list_string2=[
         "",
         "foo",
     ],
-    li1=[
+    list_int1=[
         1,
         2,
     ],
-    ms1={},
-    ms2={
+    map_string1={},
+    map_string2={
         "key1": "value1",
         "key2": "value2",
     },
-    mi1={
+    map_int1={
         "key1": 0,
         "key2": 42,
     },
-    os1=testconfigprovider.Ts1Args(),
-    os2=testconfigprovider.Ts2Args(
+    obj_string1=config_grpc.Tstring1Args(),
+    obj_string2=config_grpc.Tstring2Args(
         x="x-value",
     ),
-    oi1=testconfigprovider.Ti1Args(
+    obj_int1=config_grpc.Tint1Args(
         x=42,
     ))
-schemaconf = testconfigprovider.ConfigGetter("schemaconf", opts = pulumi.ResourceOptions(provider=schemaprov))
+config = config_grpc.ConfigFetcher("config", opts = pulumi.ResourceOptions(provider=config_grpc_provider))
