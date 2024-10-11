@@ -136,8 +136,7 @@ name, type, parent, and so on.
 (component-providers)=
 ## Component providers
 
-Authors of Pulumi programs can use [component
-resources](https://www.pulumi.com/docs/concepts/resources/components/) to
+Authors of Pulumi programs can use [component resources](component-resources) to
 logically group related resources together. For instance, a TypeScript program
 might specify a component that combines AWS and PostgreSQL providers to abstract
 the management of an RDS database and logical databases within it:
