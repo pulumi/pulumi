@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -37,15 +38,15 @@ import (
 //
 // The schema for configuration is intentionally interesting and has the following properties:
 //
-//	"s", "b", "i", "n": string, boolean, integer and number-typed properties.
-//	"ls", "lb", "li", "ln": primitives wrapped in a list
-//	"ms", "mb", "mi", "mn": primitives wrapped in a map
-//	"os", "ob", "oi", "on": primitives wrapped in an object type {"x": t}
+//	"string1", "bool1", "int1", "num1": string, boolean, integer and number-typed properties.
+//	"listString1", "listBool1", "listInt1", "listNum1": primitives wrapped in a list
+//	"mapString1", "mapBool1", "mapInt1", "mapNum1": primitives wrapped in a map
+//	"objString1", "objBool1", "objInt1", "objNum1": primitives wrapped in an object type {"x": t}
 //
 // Each property is suffixed by 1,2,3 to allow more simultaneous tests.
 //
-// A special resource ConfigGetter can be invoked to retrieve a JSON-encoded representation of what the provider
-// received over the wire for configuration. It exposes this as the "config" output property.
+// A special resource Config can be invoked to retrieve a JSON-encoded representation of what the provider received over
+// the wire for configuration. It exposes this as the "config" output property.
 type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
 	lastCheckConfigRequest RPCRequest
@@ -58,7 +59,7 @@ var (
 )
 
 func (*ConfigGrpcProvider) Pkg() tokens.Package {
-	return "testconfigprovider"
+	return "config-grpc"
 }
 
 func (*ConfigGrpcProvider) version() string {
@@ -82,20 +83,26 @@ func (p *ConfigGrpcProvider) populateSchema(
 	n int,
 	spec map[string]pschema.PropertySpec,
 ) {
-	for _, t := range []string{"string", "boolean", "integer", "number"} {
+	for name, t := range map[string]string{
+		"string": "string",
+		"bool":   "boolean",
+		"int":    "integer",
+		"num":    "number",
+	} {
 		ts := pschema.TypeSpec{Type: t}
-		c := t[0:1]
+		c := name
 		if n != 0 {
-			c = fmt.Sprintf("%s%d", t[0:1], n)
+			c = fmt.Sprintf("%s%d", c, n)
 		}
+		cUpper := strings.ToUpper(c[0:1]) + c[1:]
 		spec[c] = pschema.PropertySpec{TypeSpec: ts}
-		spec["l"+c] = pschema.PropertySpec{
+		spec["list"+cUpper] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Type:  "array",
 				Items: &ts,
 			},
 		}
-		spec["m"+c] = pschema.PropertySpec{
+		spec["map"+cUpper] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Type:                 "object",
 				AdditionalProperties: &ts,
@@ -103,7 +110,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 		}
 		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
 		typeRef := "#/types/" + typeToken
-		spec["o"+c] = pschema.PropertySpec{
+		spec["obj"+cUpper] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Ref: typeRef,
 			},
@@ -137,7 +144,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 		Types: types,
 		Resources: map[string]pschema.ResourceSpec{
-			fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()): {
+			fmt.Sprintf("%s:index:Config", p.Pkg()): {
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Properties: map[string]pschema.PropertySpec{
 						"config": {
@@ -154,7 +161,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 	}
 
-	toSecretSchema := p.generateSchema(types, 0, 0)
+	toSecretSchema := p.generateSchema(types, 1, 3)
 	allProps := []string{}
 	for k := range toSecretSchema {
 		allProps = append(allProps, k)
@@ -227,7 +234,7 @@ func (p *ConfigGrpcProvider) Create(
 	ctx context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.Type) == fmt.Sprintf("%s:index:ConfigGetter", p.Pkg()) {
+	if string(req.Type) == fmt.Sprintf("%s:index:Config", p.Pkg()) {
 		requestsJSON, err := json.Marshal([]RPCRequest{
 			p.lastCheckConfigRequest,
 			p.lastConfigureRequest,
