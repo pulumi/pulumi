@@ -436,6 +436,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests whether using inline invoke expressions works",
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
+	{
+		Directory:   "python-import-external-type",
+		Description: "Tests importing external types in python",
+		Skip:        allProgLanguages.Except("python"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

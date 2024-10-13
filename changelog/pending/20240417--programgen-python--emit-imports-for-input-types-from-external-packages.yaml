@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Emit imports for input types from external packages
