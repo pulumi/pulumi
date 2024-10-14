@@ -135,7 +135,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	options map[string]interface{}, disableProviderPreview bool, jsonConfig string, projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
@@ -182,21 +182,14 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
 
-		// TODO: where should this config come from?
-		projPath, err := workspace.DetectProjectPath()
-		if err == nil && projPath != "" {
-			project, err := workspace.LoadProject(projPath)
-			if err == nil {
-				if pkg == tokens.Package(nodejsDynamicProviderPackage) {
-					env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", project.Name))
-					env = append(env, "PULUMI_NODEJS_STACK=%sbanana")
-					env = append(env, "PULUMI_NODEJS_ORGANIZATION=%stheorganizationgoeshere")
-				} else {
-					env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", project.Name))
-					env = append(env, "PULUMI_STACK=%sbanana")
-					env = append(env, "PULUMI_ORGANIZATION=%stheorganizationgoeshere")
-				}
+		if projectName != "" {
+			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
+				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
+				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
+				// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
+				env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", projectName))
 			}
+			env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", projectName))
 		}
 
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
