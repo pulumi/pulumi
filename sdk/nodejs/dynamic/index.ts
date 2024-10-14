@@ -243,6 +243,8 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old input properties to use for validation.
      * @param news
      *  The new input properties to use for validation.
+     * @param config
+     *  The config for the current stack.
      */
     check?: (olds: Inputs, news: Inputs, config?: Config) => Promise<CheckResult<Inputs>>;
 
@@ -256,6 +258,8 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old values of properties to diff.
      * @param news
      *  The new values of properties to diff.
+     * @param config
+     *  The config for the current stack.
      */
     diff?: (id: resource.ID, olds: Outputs, news: Inputs, config?: Config) => Promise<DiffResult>;
 
@@ -266,6 +270,8 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *
      * @param inputs
      *  The properties to set during creation.
+     * @param config
+     *  The config for the current stack.
      */
     create: (inputs: Inputs, config?: Config) => Promise<CreateResult<Outputs>>;
 
@@ -273,6 +279,13 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      * Reads the current live state associated with a resource. Enough state
      * must be included in the inputs to uniquely identify the resource; this is
      * typically just the resource ID, but it may also include some properties.
+     *
+     * @param id
+     *  The ID of the resource to delete.
+     * @param props
+     *  The current properties on the resource.
+     * @param config
+     *  The config for the current stack.
      */
     read?: (id: resource.ID, props?: Outputs, config?: Config) => Promise<ReadResult<Outputs>>;
 
@@ -285,6 +298,8 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old values of properties to update.
      * @param news
      *  The new values of properties to update.
+     * @param config
+     *  The config for the current stack.
      */
     update?: (id: resource.ID, olds: Outputs, news: Inputs, config?: Config) => Promise<UpdateResult<Outputs>>;
 
@@ -296,6 +311,8 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The ID of the resource to delete.
      * @param props
      *  The current properties on the resource.
+     * @param config
+     *  The config for the current stack.
      */
     delete?: (id: resource.ID, props: Outputs, config?: Config) => Promise<void>;
 }
