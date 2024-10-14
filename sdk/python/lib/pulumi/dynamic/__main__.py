@@ -28,7 +28,6 @@ import grpc
 from google.protobuf import empty_pb2
 from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import configure, proto, rpc, Settings
-from pulumi.runtime.sync_await import _ensure_event_loop
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import Config, ResourceProvider
 
@@ -95,7 +94,6 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         raise NotImplementedError(f"unknown function {request.token}")
 
     def Diff(self, request, context):
-        _ensure_event_loop()
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
@@ -128,7 +126,6 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         return proto.DiffResponse(**fields)
 
     def Update(self, request, context):
-        loop = _ensure_event_loop()
         olds = rpc.deserialize_properties(request.olds)
         news = rpc.deserialize_properties(request.news)
         provider = get_provider(news)
@@ -143,13 +140,14 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             outs = result.outs
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
+        loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
 
         fields = {"properties": outs_proto}
         return proto.UpdateResponse(**fields)
 
     def Delete(self, request, context):
-        _ensure_event_loop()
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
@@ -164,7 +162,6 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         return empty_pb2.Empty()
 
     def Create(self, request, context):
-        loop = _ensure_event_loop()
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         config = self._get_config_arg(provider.create)
@@ -175,13 +172,14 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
+        loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
 
     def Check(self, request, context):
-        loop = _ensure_event_loop()
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
@@ -199,7 +197,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
+        loop = asyncio.new_event_loop()
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
+        loop.close()
 
         failures_proto = [
             proto.CheckFailure(property=f.property, reason=f.reason) for f in failures
@@ -224,7 +224,6 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         )
 
     def Read(self, request, context):
-        loop = _ensure_event_loop()
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
@@ -236,7 +235,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
+        loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.ReadResponse(**fields)
