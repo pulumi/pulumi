@@ -26,7 +26,7 @@ import * as serializeClosure from "../runtime/closure/serializeClosure";
  * runtime, secrets will not be serialized as part of Pulumi's dynamic provider
  * implementation, and it is safe to use the plain get and require methods
  * instead. Do note however that you should not log or print the values.
-*/
+ */
 export class Config {
     /**
      * name is the configuration bag's logical name and uniquely identifies it.  The default is the name of the current
@@ -84,7 +84,6 @@ export class Config {
         return this.config.getObject(key);
     }
 
-
     /**
      * require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
      *
@@ -94,7 +93,6 @@ export class Config {
     public require<K extends string = string>(key: string, opts?: pulumiConfig.StringConfigOptions<K>): K {
         return this.config.require(key, opts);
     }
-
 
     /**
      * requireBoolean loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
@@ -106,7 +104,6 @@ export class Config {
         return this.config.requireBoolean(key);
     }
 
-
     /**
      * requireNumber loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
      * configuration value is not a legal number, an error is thrown.
@@ -117,7 +114,6 @@ export class Config {
     public requireNumber(key: string, opts?: pulumiConfig.NumberConfigOptions): number {
         return this.config.requireNumber(key, opts);
     }
-
 
     /**
      * requireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
