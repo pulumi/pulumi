@@ -34,7 +34,7 @@ func TestTokenSource(t *testing.T) {
 	ctx := context.Background()
 	dur := 20 * time.Millisecond
 	clock := clockwork.NewFakeClock()
-	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock}
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
 
 	tok0, tok0Expires := backend.NewToken(dur)
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
