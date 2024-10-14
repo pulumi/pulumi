@@ -99,7 +99,7 @@ type Host interface {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, config map[config.Key]string,
-	debugging DebugEventEmitter,
+	debugging DebugEventEmitter, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -141,6 +141,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
 		debugging:               debugging,
+		projectName:             projectName,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -244,6 +245,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	debugging               DebugEventEmitter
+	projectName             tokens.PackageName
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -432,7 +434,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 
 		plug, err := NewProvider(
 			host, host.ctx, tokens.Package(pkg), version,
-			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig))
+			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
