@@ -413,10 +413,6 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 		//   PULUMI_CONFIG='{}'
 		result := make(map[string]string)
 
-		fmt.Printf("host.runtimeOptions = %+v\n", host.runtimeOptions)
-		fmt.Printf("host.config = %+v\n", host.config)
-		fmt.Printf("host.resourcePlugins = %+v\n", host.resourcePlugins)
-
 		if isDynamicProvider(pkg) {
 			for k, v := range host.config {
 				result[k.String()] = v
