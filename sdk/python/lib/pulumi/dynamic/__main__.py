@@ -101,7 +101,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news)
         config = self._get_config_arg(provider.diff)
-        if config is not None:
+        if config:
             result = provider.diff(request.id, olds, news, config=config)
         else:
             result = provider.diff(request.id, olds, news)
@@ -131,7 +131,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         provider = get_provider(news)
 
         config = self._get_config_arg(provider.diff)
-        if config is not None:
+        if config:
             result = provider.update(request.id, olds, news, config=config)
         else:
             result = provider.update(request.id, olds, news)
@@ -152,7 +152,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         config = self._get_config_arg(provider.delete)
-        if config is not None:
+        if config:
             provider.delete(id_, props, config=config)
         else:
             provider.delete(id_, props)
@@ -165,7 +165,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         config = self._get_config_arg(provider.create)
-        if config is not None:
+        if config:
             result = provider.create(props, config=config)
         else:
             result = provider.create(props)
@@ -188,7 +188,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(news)
 
         config = self._get_config_arg(provider.check)
-        if config is not None:
+        if config:
             result = provider.check(olds, news, config=config)
         else:
             result = provider.check(olds, news)
@@ -228,7 +228,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         config = self._get_config_arg(provider.read)
-        if config is not None:
+        if config:
             result = provider.read(id_, props, config=config)
         else:
             result = provider.read(id_, props)
@@ -247,7 +247,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
     def _get_config_arg(self, method: Callable) -> Optional[Config]:
         sig = signature(method)
-        if len(sig.parameters) == 2 and sig.parameters.get("config") is not None:
+        if sig.parameters.get("config"):
             return Config()
         return None
 
