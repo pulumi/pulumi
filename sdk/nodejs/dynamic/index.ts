@@ -15,7 +15,7 @@
 import { Inputs, Input, Output } from "../output";
 import * as resource from "../resource";
 import { getProject } from "../metadata";
-import * as pulumiConfig from "../config"
+import * as pulumiConfig from "../config";
 import * as settings from "../runtime/settings";
 import * as serializeClosure from "../runtime/closure/serializeClosure";
 
@@ -131,8 +131,6 @@ export class Config implements ConfigType {
         return this.config.requireObject(key);
     }
 }
-
-const c = new Config()
 
 /**
  * {@link CheckResult} represents the results of a call to {@link ResourceProvider.check}.
