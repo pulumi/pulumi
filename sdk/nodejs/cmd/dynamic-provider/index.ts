@@ -115,7 +115,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         let inputs: any = news;
         let failures: any[] = [];
         if (provider.check) {
-            const config = new dynamic.Config()
+            const config = new dynamic.Config();
             const result = await provider.check(olds, news, config);
             if (result.inputs) {
                 inputs = result.inputs;
@@ -176,7 +176,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         const news = req.getNews().toJavaScript();
         const provider = getProvider(news[providerKey] === rpc.unknownValue ? olds : news);
         if (provider.diff) {
-            const config = new dynamic.Config()
+            const config = new dynamic.Config();
             const result: any = await provider.diff(req.getId(), olds, news, config);
 
             if (result.changes === true) {
@@ -219,7 +219,7 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         const props = req.getProperties().toJavaScript();
         const provider = getProvider(props);
-        const config = new dynamic.Config()
+        const config = new dynamic.Config();
         const result = await provider.create(props, config);
         const resultProps = resultIncludingProvider(result.outs, props);
         resp.setId(result.id);
@@ -243,7 +243,7 @@ async function readRPC(call: any, callback: any): Promise<void> {
         if (provider.read) {
             // If there's a read function, consult the provider. Ensure to propagate the special __provider
             // value too, so that the provider's CRUD operations continue to function after a refresh.
-            const config = new dynamic.Config()
+            const config = new dynamic.Config();
             const result: any = await provider.read(id, props, config);
             resp.setId(result.id);
             const resultProps = resultIncludingProvider(result.props, props);
@@ -272,7 +272,7 @@ async function updateRPC(call: any, callback: any): Promise<void> {
         let result: any = {};
         const provider = getProvider(news);
         if (provider.update) {
-            const config = new dynamic.Config()
+            const config = new dynamic.Config();
             result = (await provider.update(req.getId(), olds, news, config)) || {};
         }
 
@@ -292,7 +292,7 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
         const props: any = req.getProperties().toJavaScript();
         const provider: any = await getProvider(props);
         if (provider.delete) {
-            const config = new dynamic.Config()
+            const config = new dynamic.Config();
             await provider.delete(req.getId(), props, config);
         }
         callback(undefined, new emptyproto.Empty());
