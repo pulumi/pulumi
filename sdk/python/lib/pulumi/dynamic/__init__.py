@@ -28,7 +28,12 @@ from .dynamic import (
     ResourceProvider,
 )
 
+from .config import (
+    Config,
+)
+
 __all__ = [
+    # dynamic
     "CheckResult",
     "CheckFailure",
     "DiffResult",
@@ -37,4 +42,6 @@ __all__ = [
     "UpdateResult",
     "Resource",
     "ResourceProvider",
+    # config
+    "Config",
 ]
