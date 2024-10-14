@@ -25,6 +25,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenSource(t *testing.T) {
@@ -33,7 +34,7 @@ func TestTokenSource(t *testing.T) {
 	ctx := context.Background()
 	dur := 20 * time.Millisecond
 	clock := clockwork.NewFakeClock()
-	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock}
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
 
 	tok0, tok0Expires := backend.NewToken(dur)
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
@@ -65,29 +66,31 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	dur := 40 * time.Millisecond
+	dur := 80 * time.Millisecond
 	clock := clockwork.NewFakeClock()
-	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock}
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
 
-	tok0, tok0Expires := backend.NewToken(dur / 10)
+	tok0, tok0Expires := backend.NewToken(dur / 10) // token expires after 8ms
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 80; i++ {
 		tok, err := ts.GetToken(ctx)
-		assert.NoError(t, err)
-		assert.NoError(t, backend.VerifyToken(tok))
+		require.NoError(t, err)
+		require.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
-		clock.Advance(dur / 16)
+		clock.Advance(dur / 80)
 	}
 }
 
 type testTokenBackend struct {
-	mu      sync.Mutex
-	counter int
-	tokens  map[string]time.Time
-	clock   clockwork.Clock
+	mu                  sync.Mutex
+	counter             int
+	tokens              map[string]time.Time
+	clock               clockwork.Clock
+	networkErrorCounter int
+	t                   *testing.T
 }
 
 func (ts *testTokenBackend) NewToken(duration time.Duration) (string, time.Time) {
@@ -104,10 +107,19 @@ func (ts *testTokenBackend) Refresh(
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	// Simulate some network errors
-	if rand.Float32() < 0.1 { //nolint:gosec // test is not security sensitive
+	// Simulate some network errors.  We retry getting the token
+	// after half the token duration has elapsed, and we run the
+	// refresh function every 1/8th of the token duration. This
+	// means we have 4 retries before the token expires. We want
+	// to simulate some network errors, but not so many that we
+	// can hit the retry limit, and the test flakes.
+	if ts.networkErrorCounter < 2 && rand.Float32() < 0.1 { //nolint:gosec // test is not security sensitive
+		ts.networkErrorCounter++
+		ts.t.Log("network error")
 		return "", time.Time{}, errors.New("network error")
 	}
+
+	ts.networkErrorCounter = 0
 
 	if err := ts.verifyTokenInner(currentToken); err != nil {
 		return "", time.Time{}, err
