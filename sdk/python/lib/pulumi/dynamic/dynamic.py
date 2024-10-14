@@ -32,6 +32,7 @@ import pulumi
 
 from .. import CustomResource, ResourceOptions
 from ..runtime._serialization import _serialize
+from .config import Config
 
 if TYPE_CHECKING:
     from ..output import Inputs, Output
@@ -190,7 +191,13 @@ class ResourceProvider:
     if any secret Outputs were captured during serialization of the provider.
     """
 
-    def check(self, _olds: Dict[str, Any], news: Dict[str, Any]) -> CheckResult:
+    def check(
+        self,
+        _olds: Dict[str, Any],
+        news: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
+    ) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
@@ -201,13 +208,20 @@ class ResourceProvider:
         _id: str,
         _olds: Dict[str, Any],
         _news: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
     ) -> DiffResult:
         """
         Diff checks what impacts a hypothetical update will have on the resource's properties.
         """
         return DiffResult()
 
-    def create(self, props: Dict[str, Any]) -> CreateResult:
+    def create(
+        self,
+        props: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
+    ) -> CreateResult:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
@@ -215,7 +229,13 @@ class ResourceProvider:
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 
-    def read(self, id_: str, props: Dict[str, Any]) -> ReadResult:
+    def read(
+        self,
+        id_: str,
+        props: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
+    ) -> ReadResult:
         """
         Reads the current live state associated with a resource.  Enough state must be included in
         the inputs to uniquely identify the resource; this is typically just the resource ID, but it
@@ -228,13 +248,21 @@ class ResourceProvider:
         _id: str,
         _olds: Dict[str, Any],
         _news: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
     ) -> UpdateResult:
         """
         Update updates an existing resource with new values.
         """
         return UpdateResult()
 
-    def delete(self, _id: str, _props: Dict[str, Any]) -> None:
+    def delete(
+        self,
+        _id: str,
+        _props: Dict[str, Any],
+        *,
+        config: Optional[Config] = None,  # pylint: disable=unused-argument
+    ) -> None:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.

@@ -558,9 +558,12 @@ func TestDynamicProviderSecretsPython(t *testing.T) {
 						}
 					}
 					// Ensure the resulting output had the expected value
-					code, ok := stackInfo.Outputs["out"].(string)
+					code, ok := stackInfo.Outputs["authenticated_with_config"].(string)
 					assert.True(t, ok)
 					assert.Equal(t, "200", code)
+					code, ok = stackInfo.Outputs["authenticated_without_config"].(string)
+					assert.True(t, ok)
+					assert.Equal(t, "304", code)
 				},
 			})
 		})

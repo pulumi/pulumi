@@ -14,13 +14,15 @@
 
 import asyncio
 import base64
-from concurrent import futures
-from threading import Event, Lock
 import os
 import sys
 import time
-
 import typing
+from concurrent import futures
+from inspect import signature
+from threading import Event, Lock
+from typing import Callable, Optional
+
 import dill
 import grpc
 from google.protobuf import empty_pb2
@@ -28,7 +30,7 @@ from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import configure, proto, rpc, Settings
 from pulumi.runtime.sync_await import _ensure_event_loop
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
-from pulumi.dynamic import ResourceProvider
+from pulumi.dynamic import Config, ResourceProvider
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
@@ -46,10 +48,9 @@ def get_provider(props) -> ResourceProvider:
     # Ensure Settings are configured in the thread that calls get_provider
     configure(
         Settings(
-            project=os.environ["PULUMI_PROJECT"],
-            stack=os.environ["PULUMI_STACK"],
-            # PULUMI_ORGANIZATION might not be set for diy backends
-            organization=os.environ.get("PULUMI_ORGANIZATION", "organization"),
+            project=os.environ.get("PULUMI_PROJECT", "project"),
+            stack="stack",
+            organization="organization"
         )
     )
     providerStr = props[PROVIDER_KEY]
@@ -101,7 +102,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(olds)
         else:
             provider = get_provider(news)
-        result = provider.diff(request.id, olds, news)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.diff)
+        if config is not None:
+            result = provider.diff(request.id, olds, news, config=config)
+        else:
+            result = provider.diff(request.id, olds, news)
         fields = {}
         if result.changes is not None:
             if result.changes:
@@ -128,7 +133,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         news = rpc.deserialize_properties(request.news)
         provider = get_provider(news)
 
-        result = provider.update(request.id, olds, news)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.diff)
+        if config is not None:
+            result = provider.update(request.id, olds, news, config=config)
+        else:
+            result = provider.update(request.id, olds, news)
         outs = {}
         if result.outs is not None:
             outs = result.outs
@@ -144,7 +153,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        provider.delete(id_, props)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.delete)
+        if config is not None:
+            provider.delete(id_, props, config=config)
+        else:
+            provider.delete(id_, props)
         return empty_pb2.Empty()
 
     def Cancel(self, request, context):
@@ -154,7 +167,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         loop = _ensure_event_loop()
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        result = provider.create(props)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.create)
+        if config is not None:
+            result = provider.create(props, config=config)
+        else:
+            result = provider.create(props)
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -172,7 +189,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news)
 
-        result = provider.check(olds, news)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.check)
+        if config is not None:
+            result = provider.check(olds, news, config=config)
+        else:
+            result = provider.check(olds, news)
         inputs = result.inputs
         failures = result.failures
 
@@ -207,7 +228,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        result = provider.read(id_, props)  # pylint: disable=no-member
+        config = self._get_config_arg(provider.read)
+        if config is not None:
+            result = provider.read(id_, props, config=config)
+        else:
+            result = provider.read(id_, props)
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -218,6 +243,12 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
     def __init__(self):
         pass
+
+    def _get_config_arg(self, method: Callable) -> Optional[Config]:
+        sig = signature(method)
+        if len(sig.parameters) == 2 and sig.parameters.get("config") is not None:
+            return Config()
+        return None
 
 
 def main():
