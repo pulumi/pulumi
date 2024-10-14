@@ -381,7 +381,6 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
-		// =======
 		// There are cases where a provider may want to make use of configuration
 		// defined at a stack level, as well as configuration that is explicitly
 		// passed to the provider during its lifetime (e.g. with a Configure call).

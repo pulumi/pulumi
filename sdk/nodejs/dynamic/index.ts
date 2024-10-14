@@ -19,8 +19,6 @@ import * as pulumiConfig from "../config";
 import * as settings from "../runtime/settings";
 import * as serializeClosure from "../runtime/closure/serializeClosure";
 
-export type ConfigType = Pick<pulumiConfig.Config,
-    "get" | "getBoolean" | "getNumber" | "getObject">;
 /**
  * Config is a wrapper around {@link pulumi.Config} that can be used in
  * dynamic providers. This class does not provide methods to retrieve secrets
@@ -29,7 +27,7 @@ export type ConfigType = Pick<pulumiConfig.Config,
  * implementation, and it is safe to use the plain get and require methods
  * instead. Do note however that you should not log or print the values.
 */
-export class Config implements ConfigType {
+export class Config {
     /**
      * name is the configuration bag's logical name and uniquely identifies it.  The default is the name of the current
      * project.
