@@ -50,7 +50,7 @@ def get_provider(props) -> ResourceProvider:
         Settings(
             project=os.environ.get("PULUMI_PROJECT", "project"),
             stack="stack",
-            organization="organization"
+            organization="organization",
         )
     )
     providerStr = props[PROVIDER_KEY]
