@@ -24,7 +24,7 @@ class Config:
     dynamic providers. This class does not provide methods to retrieve secrets
     in the form of `:class:`pulumi.Output`. Since these methods are called at
     runtime, secrets will not be serialized as part of Pulumi's dynamic provider
-    implementation, and it is safe to use the plain get an require methods
+    implementation, and it is safe to use the plain get and require methods
     instead. Do note however that you should not log or print the values.
     """
 
@@ -57,4 +57,3 @@ class Config:
         self.require_int = self._config.require_int
         self.require_float = self._config.require_float
         self.require_object = self._config.require_object
-        self.full_key = self._config.full_key
