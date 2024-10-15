@@ -55,9 +55,6 @@ as in:
 			}
 
 			language := proj.Runtime.Name()
-			if language == "yaml" {
-				return errors.New("pulumi package add does not currently support YAML projects")
-			}
 
 			ctx := cmd.Context()
 
