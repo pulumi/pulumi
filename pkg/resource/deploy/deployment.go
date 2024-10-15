@@ -83,8 +83,6 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
-	// true to debug the program.
-	EnableDebugging bool
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
