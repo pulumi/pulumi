@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: yaml
+  description: Allow `pulumi package add` for YAML projects
