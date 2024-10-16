@@ -25,6 +25,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -376,12 +377,29 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 }
 
 func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+	load := func() (interface{}, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
 
-		// Try to load and bind to a plugin.
-
+		// There are cases where a provider may want to make use of configuration defined at a stack level, as well
+		// as configuration that is explicitly passed to the provider during its lifetime (e.g. with a Configure call).
+		// To support these cases, we set the PULUMI_CONFIG environment variable to a JSON object containing host
+		// configuration that is namespaced by the provider's package, stripping the namespace from the keys in the
+		// configuration object.
+		//
+		// So, given an example host configuration of:
+		//
+		// config:
+		//   aws:region: eu-west-1
+		//   foo:bar: baz
+		//
+		// * A provider with package "aws" would receive:
+		//
+		//   PULUMI_CONFIG='{"region":"eu-west-1"}'
+		//
+		// * A provider with package "gcp" would receive:
+		//
+		//   PULUMI_CONFIG='{}'
 		result := make(map[string]string)
 		for k, v := range host.config {
 			if k.Namespace() != pkg {
@@ -403,7 +421,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 				return nil, infoerr
 			}
 
-			// Warn if the plugin version was not what we expected
+			// Warn if the plugin version was not what we expected.
 			if version != nil && !env.Dev.Value() {
 				if info.Version == nil || !info.Version.GTE(*version) {
 					var v string
@@ -432,11 +450,42 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 		}
 
 		return plug, err
-	})
-	if plugin == nil || err != nil {
+	}
+
+	plugin, err := host.loadPlugin(host.loadRequests, load)
+	if err == nil && plugin != nil {
+		return plugin.(Provider), nil
+	}
+
+	// We might fail to load a plugin because it's missing, e.g. due to it not being picked up by GetRequiredPlugins.
+	// Before we give up and report an error, we'll first try to install it and attempt another load.
+
+	var me *workspace.MissingError
+	if !errors.As(err, &me) {
+		// We didn't fail because the plugin was missing -- return the error as-is.
 		return nil, err
 	}
-	return plugin.(Provider), nil
+
+	// If automatic plugin installation is disabled, we can't attempt an installation, so return the missing error as-is.
+	if env.DisableAutomaticPluginAcquisition.Value() {
+		return nil, err
+	}
+
+	log := func(sev diag.Severity, msg string) {
+		host.Log(sev, "", msg, 0)
+	}
+
+	_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin, err = host.loadPlugin(host.loadRequests, load)
+	if err == nil && plugin != nil {
+		return plugin.(Provider), nil
+	}
+
+	return nil, err
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,

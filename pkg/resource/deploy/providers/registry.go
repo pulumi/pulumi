@@ -25,10 +25,7 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -306,37 +303,6 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		},
 	}
 
-	provider, err := host.Provider(descriptor)
-	if err == nil {
-		return provider, nil
-	}
-
-	// host.Provider _might_ return MissingError,  this could be due to the fact that a transitive
-	// version of a plugin is required which are not picked up by initial pass of required plugin
-	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
-	// install the plugin now, and only error if we can't do that.
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
-		// Not a MissingError, return the original error.
-		return nil, err
-	}
-
-	// Try to install the plugin, unless auto plugin installs are turned off, we have all the specific information we
-	// need to do so here while once we call into `host.Provider` we no longer have the download URL or checksums.
-	if env.DisableAutomaticPluginAcquisition.Value() {
-		return nil, err
-	}
-
-	log := func(sev diag.Severity, msg string) {
-		host.Log(sev, "", msg, 0)
-	}
-
-	_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
-	if err != nil {
-		return nil, err
-	}
-
-	// Try to load the provider again, this time it should succeed.
 	return host.Provider(descriptor)
 }
 
