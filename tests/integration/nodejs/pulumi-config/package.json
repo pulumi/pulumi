@@ -1,0 +1,12 @@
+{
+    "name": "pulumi-config",
+    "devDependencies": {
+        "typescript": "^3.0.0"
+    },
+    "dependencies": {
+        "@pulumi/testprovider": "file:./sdk/nodejs"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

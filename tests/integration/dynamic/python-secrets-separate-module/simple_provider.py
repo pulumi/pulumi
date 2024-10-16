@@ -8,16 +8,14 @@ class SimpleProviderWithConfig(ResourceProvider):
     def create(self, props, config: Config = None):
         password = config.require("password")
         # This simulates using this as a credential to talk to an external system.
-        return CreateResult(
-            "0", {"authenticated": "200" if password == "s3cret" else "401"}
-        )
+        return CreateResult("0", { "authenticated": "200" if password == "s3cret" else "401" })
 
 
 class SimpleResourceWithConfig(Resource):
     authenticated: pulumi.Output[str]
 
     def __init__(self, name):
-        super().__init__(SimpleProviderWithConfig(), name, {"authenticated": None})
+        super().__init__(SimpleProviderWithConfig(), name, { "authenticated": None })
 
 
 class SimpleProvider(ResourceProvider):
@@ -30,12 +28,3 @@ class SimpleResource(Resource):
 
     def __init__(self, name):
         super().__init__(SimpleProvider(), name, {"authenticated": None})
-
-
-# password_outside.get() # should raise an exception
-
-r_with_config = SimpleResourceWithConfig("with-config")
-pulumi.export("authenticated_with_config", r_with_config.authenticated)
-
-r_without_config = SimpleResource("without-config")
-pulumi.export("authenticated_without_config", r_without_config.authenticated)
