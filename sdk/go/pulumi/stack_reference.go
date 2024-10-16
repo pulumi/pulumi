@@ -42,7 +42,7 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 		ApplyT(func(args []interface{}) (interface{}, error) {
 			n, stack := args[0].(string), args[1].(resource.PropertyMap)
 			if !stack["outputs"].IsObject() {
-				return Any(nil), fmt.Errorf("failed to convert %T to object", stack)
+				return Any(nil), fmt.Errorf("failed to convert stack output %T to object", stack)
 			}
 			outs := stack["outputs"].ObjectValue()
 			v, ok := outs[resource.PropertyKey(n)]
