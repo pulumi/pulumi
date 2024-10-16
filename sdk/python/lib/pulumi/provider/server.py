@@ -261,6 +261,18 @@ class ProviderServicer(ResourceProviderServicer):
         await self.lock.acquire()
         try:
             return await self._call(request, context)
+        except InputPropertiesError as e:
+            status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
+        except InputPropertyError as e:
+            status = self.create_grpc_invalid_properties_status(
+                "", [{"property_path": e.property_path, "reason": e.reason}]
+            )
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
         finally:
             self.lock.release()
 

@@ -450,7 +450,17 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 callback(undefined, resp);
             } catch (e) {
-                console.error(`${e}: ${e.stack}`);
+                if (InputPropertiesError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError(e.message, e.errors);
+                    callback(error, undefined);
+                    return;
+                } else if (InputPropertyError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError("", [
+                        { propertyPath: e.propertyPath, reason: e.reason },
+                    ]);
+                    callback(error, undefined);
+                    return;
+                }
                 callback(e, undefined);
             } finally {
                 // remove the gRPC callback context from the map of in-flight callbacks

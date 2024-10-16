@@ -865,6 +865,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		Options: options,
 	})
 	if err != nil {
+		err = rpcerror.WrapDetailedError(err)
 		return nil, err
 	}
 

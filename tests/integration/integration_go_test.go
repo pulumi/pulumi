@@ -1368,6 +1368,11 @@ func TestConstructFailuresGo(t *testing.T) {
 	testConstructFailures(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
+func TestCallFailuresGo(t *testing.T) {
+	t.Parallel()
+	testCallFailures(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 // TestLogDebugGo tests that the amount of debug logs is reasonable.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

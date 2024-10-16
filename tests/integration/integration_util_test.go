@@ -625,3 +625,47 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		})
 	}
 }
+
+// Test failures returned from call.
+func testCallFailures(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "call_component_failures"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:
+    		- property foo has a problem: the failure reason`
+
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
