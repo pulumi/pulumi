@@ -76,7 +76,6 @@ require (
 	github.com/creack/pty v1.1.17
 	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/edsrzf/mmap-go v1.1.0
-	github.com/erikgeiser/promptkit v0.9.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0

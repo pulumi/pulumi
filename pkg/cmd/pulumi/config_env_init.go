@@ -25,7 +25,6 @@ import (
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -155,12 +154,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	fmt.Fprint(cmd.parent.stdout, preview)
 
 	if !cmd.yes {
-		save, err := confirmation.New("Save?", confirmation.Yes).RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := promptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 
