@@ -15,9 +15,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/blang/semver"
@@ -280,12 +282,15 @@ func runConvert(
 		language = "nodejs"
 	}
 
+	localDependencies := map[string]string{}
+
+	// TODO localDependencies for java and pulumi generation
 	var projectGenerator projectGeneratorFunction
 	switch language {
 	case "dotnet":
 		projectGenerator = generatorWrapper(
 			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+				return dotnet.GenerateProject(targetDirectory, proj, program, localDependencies)
 			}, language)
 	case "java":
 		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
@@ -323,7 +328,7 @@ func runConvert(
 
 			diagnostics, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
+				strict, grpcServer.Addr(), localDependencies)
 			if err != nil {
 				return diagnostics, err
 			}
@@ -352,6 +357,7 @@ func runConvert(
 			Name: string(provider),
 			Kind: apitype.ResourcePlugin,
 		}
+
 		version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
@@ -359,11 +365,37 @@ func runConvert(
 		}
 		return version
 	}
+	installTerraformProvider := func(providerSource string) *schema.Package {
+		// This is a terraform conversion, so we need to use the
+		// terraform-provider to fetch/setup dependencies.
+		if from != "terraform" {
+			pCtx.Diag.Errorf(diag.Message("", "terraform provider can only be installed when converting from terraform"))
+			return nil
+		}
+
+		// TODO we need to save this package schema for the mapping I think.
+		pkg, err := schemaFromSchemaSource(context.TODO(), "terraform-provider", []string{string(providerSource)})
+		if err != nil {
+			pCtx.Diag.Errorf(diag.Message("", "failed to get schema for terraform package: %q: %v"), providerSource, err)
+			return nil
+		}
+
+		err = generateSdkSource(language, pkg, outDir, ws)
+		if err != nil {
+			pCtx.Diag.Warningf(diag.Message("", "failed to generate sdk source for terraform package: %q: %v"), providerSource, err)
+		}
+
+		pCtx.Diag.Infof(diag.Message("", "generated SDK for terraform provider %q..."), providerSource)
+
+		localDependencies[pkg.Name] = path.Join(outDir, pkg.Name)
+
+		return pkg
+	}
 
 	loader := schema.NewPluginLoader(pCtx.Host)
 	mapper, err := convert.NewPluginMapper(
 		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-		from, mappings, installProvider)
+		from, mappings, installProvider, installTerraformProvider)
 	if err != nil {
 		return fmt.Errorf("create provider mapper: %w", err)
 	}
@@ -393,8 +425,8 @@ func runConvert(
 		mapperServer := convert.NewMapperServer(mapper)
 		loaderServer := schema.NewLoaderServer(loader)
 		grpcServer, err := plugin.NewServer(pCtx,
-			convert.MapperRegistration(mapperServer),
-			schema.LoaderRegistration(loaderServer))
+		convert.MapperRegistration(mapperServer),
+		schema.LoaderRegistration(loaderServer))
 		if err != nil {
 			return err
 		}

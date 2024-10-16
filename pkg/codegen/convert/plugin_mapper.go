@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -113,8 +114,10 @@ type pluginMapper struct {
 	providerFactory ProviderFactory
 	conversionKey   string
 	plugins         []mapperPluginSpec
+	terraformPlugins map[string][]byte // Cache of serialzed terraform provider mappings.
 	entries         map[string][]byte
 	installProvider func(tokens.Package) *semver.Version
+	installTerraformProvider func(string) *schema.Package
 	lock            sync.Mutex
 }
 
@@ -122,6 +125,7 @@ func NewPluginMapper(ws Workspace,
 	providerFactory ProviderFactory,
 	key string, mappings []string,
 	installProvider func(tokens.Package) *semver.Version,
+	installTerraformProvider func(string) *schema.Package,
 ) (Mapper, error) {
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
 	contract.Requiref(ws != nil, "ws", "must not be nil")
@@ -196,8 +200,10 @@ func NewPluginMapper(ws Workspace,
 		providerFactory: providerFactory,
 		conversionKey:   key,
 		plugins:         plugins,
+		terraformPlugins: make(map[string][]byte),
 		entries:         entries,
 		installProvider: installProvider,
+		installTerraformProvider: installTerraformProvider,
 	}, nil
 }
 
@@ -250,6 +256,7 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec, provider
 	return nil, "", err
 }
 
+// TODO do I need ot do something special for terraform providers here?
 func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provider string) ([]byte, bool, error) {
 	var providerPlugin plugin.Provider
 	if !pluginSpec.calledGetMappings {
@@ -262,6 +269,7 @@ func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provid
 		}
 		defer contract.IgnoreClose(providerPlugin)
 
+		// TODO need to make sure this works.
 		mappings, err := providerPlugin.GetMappings(context.TODO(), plugin.GetMappingsRequest{
 			Key: l.conversionKey,
 		})
@@ -464,3 +472,25 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 		}
 	}
 }
+
+func (l *pluginMapper) GetTerraformMapping(
+	ctx context.Context, provider string, terraformProvider string,
+) ([]byte, error) {
+	if pkgJson, ok := l.terraformPlugins[terraformProvider]; ok {
+		return pkgJson, nil
+	}
+
+	// the Package type available is already the terraform schema, so we should
+	// return that as the mapping of the provider.
+	pkg := l.installTerraformProvider(terraformProvider)
+	data, err := pkg.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not serialize terraform mapping: %w", err)
+	}
+
+	// Memoize
+	l.terraformPlugins[terraformProvider] = data
+
+	return data, nil
+}
+

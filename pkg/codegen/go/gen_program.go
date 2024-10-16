@@ -86,6 +86,7 @@ type generator struct {
 type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
 	ExternalCache              *Cache
+	LocalDependencies          map[string]string
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -105,6 +106,10 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 	}
 
 	for _, pkg := range packageDefs {
+		if _, ok := opts.LocalDependencies[pkg.Name]; ok {
+			// skip if this package is a local dependency
+			continue
+		}
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
 	}
 

@@ -69,46 +69,52 @@ as in:
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
 
-			tempOut, err := os.MkdirTemp("", "pulumi-package-add-")
-			if err != nil {
-				return fmt.Errorf("failed to create temporary directory: %w", err)
-			}
-
-			local := true
-
-			err = genSDK(
-				language,
-				tempOut,
-				pkg,
-				"",    /*overlays*/
-				local, /*local*/
-			)
-			if err != nil {
-				return fmt.Errorf("failed to generate SDK: %w", err)
-			}
-
-			out := filepath.Join(root, "sdks")
-			err = os.MkdirAll(out, 0o755)
-			if err != nil {
-				return fmt.Errorf("failed to create directory for SDK: %w", err)
-			}
-
-			out = filepath.Join(out, pkg.Name)
-			err = copyAll(out, filepath.Join(tempOut, language))
-			if err != nil {
-				return fmt.Errorf("failed to move SDK to project: %w", err)
-			}
-
-			err = os.RemoveAll(tempOut)
-			if err != nil {
-				return fmt.Errorf("failed to remove temporary directory: %w", err)
-			}
-
-			return printLinkInstructions(ws, language, root, pkg, out)
+			return generateSdkSource(language, pkg, root, ws)
 		}),
 	}
 
 	return cmd
+}
+
+// TODO move?
+func generateSdkSource(language string, pkg *schema.Package, root string, ws pkgWorkspace.Context) error {
+	tempOut, err := os.MkdirTemp("", "pulumi-package-add-")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+
+	local := true
+
+	err = genSDK(
+		language,
+		tempOut,
+		pkg,
+		"",
+		local,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to generate SDK: %w", err)
+	}
+
+	out := filepath.Join(root, "sdks")
+	err = os.MkdirAll(out, 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory for SDK: %w", err)
+	}
+
+	out = filepath.Join(out, pkg.Name)
+	err = copyAll(out, filepath.Join(tempOut, language))
+	if err != nil {
+		return fmt.Errorf("failed to move SDK to project: %w", err)
+	}
+
+	err = os.RemoveAll(tempOut)
+	if err != nil {
+		return fmt.Errorf("failed to remove temporary directory: %w", err)
+	}
+
+	// TODO instead of printing link instructions can we shell this out automatically?
+	return printLinkInstructions(ws, language, root, pkg, out)
 }
 
 // Prints instructions for linking a locally generated SDK to an existing

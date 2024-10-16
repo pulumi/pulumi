@@ -39,7 +39,13 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 	label := "GetMapping"
 	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
 
-	data, err := m.mapper.GetMapping(ctx, req.Provider, req.PulumiProvider)
+	var data []byte
+	var err error
+	if req.IsTerraform {
+		data, err = m.mapper.GetTerraformMapping(ctx, req.Provider, /*terraformProvider*/ req.PulumiProvider)
+	} else {
+		data, err = m.mapper.GetMapping(ctx, req.Provider, req.PulumiProvider)
+	}
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err

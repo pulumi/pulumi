@@ -11,6 +11,8 @@ export class GetMappingRequest extends jspb.Message {
     setProvider(value: string): GetMappingRequest;
     getPulumiProvider(): string;
     setPulumiProvider(value: string): GetMappingRequest;
+    getIsTerraform(): boolean;
+    setIsTerraform(value: boolean): GetMappingRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetMappingRequest.AsObject;
@@ -26,6 +28,7 @@ export namespace GetMappingRequest {
     export type AsObject = {
         provider: string,
         pulumiProvider: string,
+        isTerraform: boolean,
     }
 }
 

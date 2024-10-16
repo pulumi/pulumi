@@ -23,4 +23,11 @@ type Mapper interface {
 	// hint for which pulumi plugin will provider this mapping. Returns an empty result if no mapping
 	// information was available.
 	GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error)
+
+	// TODO make it's own interface and only construct where needed (in tf converter?)
+
+	// Same as above except for Terraform providers (where a provider is not
+	// available in the pulumi registry).  This will use the terraform bridge
+	// provider.
+	GetTerraformMapping(ctx context.Context, provider string, terraformProvider string) ([]byte, error)
 }

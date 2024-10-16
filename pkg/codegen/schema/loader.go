@@ -48,6 +48,7 @@ type PackageDescriptor struct {
 	Version          *semver.Version             // the plugin's semantic version, if present.
 	DownloadURL      string                      // an optional server to use when downloading this plugin.
 	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
+	IsTerraform 		 bool                        // whether the package is a terraform provider.
 }
 
 type Loader interface {

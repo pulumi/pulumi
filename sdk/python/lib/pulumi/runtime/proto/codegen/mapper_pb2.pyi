@@ -37,17 +37,21 @@ class GetMappingRequest(google.protobuf.message.Message):
 
     PROVIDER_FIELD_NUMBER: builtins.int
     PULUMI_PROVIDER_FIELD_NUMBER: builtins.int
+    IS_TERRAFORM_FIELD_NUMBER: builtins.int
     provider: builtins.str
     """the provider name for the mapping being requested."""
     pulumi_provider: builtins.str
     """the expected name of the pulumi provider that maps to the requested provider. Defaults to the same as 'provider'."""
+    is_terraform: builtins.bool
+    """Whether or not the provider is a terraform provider."""
     def __init__(
         self,
         *,
         provider: builtins.str = ...,
         pulumi_provider: builtins.str = ...,
+        is_terraform: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["is_terraform", b"is_terraform", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
 
 global___GetMappingRequest = GetMappingRequest
 

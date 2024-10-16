@@ -710,9 +710,10 @@ func newImportCmd() *cobra.Command {
 					return version
 				}
 
+				// TODO do not use nil, share code with convert.go (or handle it as unsupported)
 				mapper, err := convert.NewPluginMapper(
 					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-					from, nil, installProvider)
+					from, nil, installProvider, nil)
 				if err != nil {
 					return err
 				}

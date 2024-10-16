@@ -148,6 +148,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			Kill: func() error { return nil },
 		}
 	} else {
+		// TODO if this is a terraform provider and not a pulumi plugin I doubt this will work so this is likely where the fix needs to be.
 		// Load the plugin's path by using the standard workspace logic.
 		path, err := workspace.GetPluginPath(ctx.Diag,
 			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),

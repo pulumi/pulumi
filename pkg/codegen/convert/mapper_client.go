@@ -64,13 +64,29 @@ func (m *mapperClient) Close() error {
 }
 
 func (m *mapperClient) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
-	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, provider, pulumiProvider)
-
-	resp, err := m.clientRaw.GetMapping(ctx, &codegenrpc.GetMappingRequest{
+	return getMapping(ctx, provider, pulumiProvider, m, &codegenrpc.GetMappingRequest{
 		Provider:       provider,
 		PulumiProvider: pulumiProvider,
 	})
+}
+
+func (m *mapperClient) GetTerraformMapping(
+	ctx context.Context, provider string, terraformProvider string,
+) ([]byte, error) {
+	return getMapping(ctx, provider, terraformProvider, m, &codegenrpc.GetMappingRequest{
+		Provider:       provider,
+		PulumiProvider: terraformProvider,
+		IsTerraform:    true,
+	})
+}
+
+func getMapping(
+	ctx context.Context, provider string, pulumiProvider string, m *mapperClient, request *codegenrpc.GetMappingRequest,
+) ([]byte, error) {
+	label := "GetMapping"
+	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, provider, pulumiProvider)
+
+	resp, err := m.clientRaw.GetMapping(ctx, request)
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError)
