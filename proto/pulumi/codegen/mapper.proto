@@ -32,6 +32,7 @@ message GetMappingRequest {
     string provider = 1;
     // the expected name of the pulumi provider that maps to the requested provider. Defaults to the same as 'provider'.
     string pulumi_provider = 2;
+    // TODO don't do this, just use the provider name as "terraform"
     // Whether or not the provider is a terraform provider.
     bool is_terraform = 3;
 }

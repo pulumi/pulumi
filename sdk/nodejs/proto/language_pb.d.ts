@@ -663,6 +663,9 @@ export class GenerateProjectRequest extends jspb.Message {
     getLocalDependenciesMap(): jspb.Map<string, string>;
     clearLocalDependenciesMap(): void;
 
+    getLocalDependencySchemasMap(): jspb.Map<string, string>;
+    clearLocalDependencySchemasMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProjectRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GenerateProjectRequest): GenerateProjectRequest.AsObject;
@@ -682,6 +685,8 @@ export namespace GenerateProjectRequest {
         loaderTarget: string,
 
         localDependenciesMap: Array<[string, string]>,
+
+        localDependencySchemasMap: Array<[string, string]>,
     }
 }
 

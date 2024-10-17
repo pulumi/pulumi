@@ -127,11 +127,15 @@ type PackageCache struct {
 
 	// cache by (name, version)
 	entries map[PackageInfo]*packageSchema
+	
+	// HACK preloaded schema 
+	preloadedSchemas map[string]schema.PackageReference
 }
 
 func NewPackageCache() *PackageCache {
 	return &PackageCache{
 		entries: map[PackageInfo]*packageSchema{},
+		preloadedSchemas: map[string]schema.PackageReference{},
 	}
 }
 
@@ -147,6 +151,10 @@ func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) 
 // GetSchema method.
 // If a version is passed in, the cache will be bypassed and the package will be reloaded.
 func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
+	if schema, ok := c.preloadedSchemas[name]; ok {
+		return newPackageSchema(schema), nil
+	}
+
 	pkgInfo := PackageInfo{
 		name:    name,
 		version: version,
@@ -271,6 +279,12 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	for _, name := range packageNames.SortedValues() {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
+		}
+
+		// TODO preload packageCache with schemas from local terraform packages.
+		if schema, ok := b.options.packageCache.preloadedSchemas[name]; ok {
+			b.referencedPackages[name] = schema
+			return nil
 		}
 
 		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)

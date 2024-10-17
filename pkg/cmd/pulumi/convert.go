@@ -282,7 +282,8 @@ func runConvert(
 		language = "nodejs"
 	}
 
-	localDependencies := map[string]string{}
+	localDependencies := make(map[string]string)
+	localDependencySchemas := make(map[string]string)
 
 	// TODO localDependencies for java and pulumi generation
 	var projectGenerator projectGeneratorFunction
@@ -328,7 +329,7 @@ func runConvert(
 
 			diagnostics, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), localDependencies)
+				strict, grpcServer.Addr(), localDependencies, localDependencySchemas)
 			if err != nil {
 				return diagnostics, err
 			}
@@ -387,7 +388,20 @@ func runConvert(
 
 		pCtx.Diag.Infof(diag.Message("", "generated SDK for terraform provider %q..."), providerSource)
 
-		localDependencies[pkg.Name] = path.Join(outDir, pkg.Name)
+		dependencyPath := path.Join(outDir, pkg.Name)
+		localDependencies[pkg.Name] = dependencyPath
+
+		// pass schema to language generator.
+		// TODO THIS IS A HACK SIDECHANNEL.  First of all, this needs to be handled in each language generator.
+		// Second, as Will said we should add a section to pcl files that just contains this instead of side channeling it in a request (perhaps referencing a schema.json). 
+		// If we do that then we can gen pcl, then gen anything instead of needing to gen directly wiht an extra hack parameter to the request.
+		// I think this should stay prototype ONLY.
+		pkgJson, err := pkg.MarshalJSON()
+		if err != nil {
+			pCtx.Diag.Warningf(diag.Message("", "failed to serialize terraform package %s schema to JSON: %v"), providerSource, err)
+		}
+		
+		localDependencySchemas[pkg.Name] = string(pkgJson)
 
 		return pkg
 	}

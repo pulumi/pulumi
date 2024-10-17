@@ -106,10 +106,10 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 	}
 
 	for _, pkg := range packageDefs {
-		if _, ok := opts.LocalDependencies[pkg.Name]; ok {
-			// skip if this package is a local dependency
-			continue
-		}
+		// if _, ok := opts.LocalDependencies[pkg.Name]; ok {
+		// 	// skip if this package is a local dependency
+		// 	continue
+		// }
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
 	}
 

@@ -494,6 +494,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 func (h *langhost) GenerateProject(
 	sourceDirectory, targetDirectory, project string, strict bool,
 	loaderTarget string, localDependencies map[string]string,
+	localDependencySchemas map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
@@ -503,6 +504,7 @@ func (h *langhost) GenerateProject(
 		Strict:            strict,
 		LoaderTarget:      loaderTarget,
 		LocalDependencies: localDependencies,
+		LocalDependencySchemas: localDependencySchemas,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

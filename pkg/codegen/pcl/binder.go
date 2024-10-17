@@ -130,6 +130,15 @@ func Cache(cache *PackageCache) BindOption {
 	}
 }
 
+func CacheWithPreloadedSchemas(cache *PackageCache, schemas map[string]schema.PackageReference) BindOption {
+	return func(options *bindOptions) {
+		options.packageCache = cache
+		for name, pkg := range schemas {
+			options.packageCache.preloadedSchemas[name] = pkg
+		}
+	}
+}
+
 func DirPath(path string) BindOption {
 	return func(options *bindOptions) {
 		options.dirPath = path

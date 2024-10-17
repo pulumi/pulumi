@@ -1223,12 +1223,29 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	packageCache := pcl.NewPackageCache()
+	preloadedSchemas := map[string]schema.PackageReference{}
+	for name, pkg := range req.LocalDependencySchemas {
+		var partialPkgSpec schema.PartialPackageSpec
+		err := json.Unmarshal([]byte(pkg), &partialPkgSpec)
+		if err != nil {
+			return nil, fmt.Errorf("HUMPH HACK FAILED for %s:\n%s\n %w", name, pkg, err)
+		}
+
+		schema, err := schema.ImportPartialSpec(partialPkgSpec, nil, loader)
+		if err != nil {
+			return nil, fmt.Errorf("HUMPH HACK FAILED for %s: %w", name, err)
+		}
+		
+		preloadedSchemas[name] = schema
+	}
+
+	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes, pcl.CacheWithPreloadedSchemas(packageCache, preloadedSchemas)}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader),  extraOptions...)
 	if err != nil {
 		return nil, err
 	}
