@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Fix PCL bind error "cannot iterate over a value of type number" when conditionals are used in range expressions 

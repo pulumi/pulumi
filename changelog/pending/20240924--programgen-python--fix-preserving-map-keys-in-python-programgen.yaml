@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fix preserving map keys in python programgen
