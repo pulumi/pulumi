@@ -89,9 +89,10 @@ func (ts *tokenSource) handleRequests(
 	defer renewTicker.Stop()
 
 	state := struct {
-		token   string    // most recently renewed token
-		error   error     // non-nil indicates a terminal error state
-		expires time.Time // assumed expiry of the token
+		token    string    // most recently renewed token
+		error    error     // non-nil indicates a terminal error state
+		expires  time.Time // assumed expiry of the token
+		errorLog string    // log that's displayed to the user in case of error renewing the token for debugging purposes
 	}{
 		token:   initialToken,
 		expires: initialTokenExpires,
@@ -112,6 +113,9 @@ func (ts *tokenSource) handleRequests(
 		}
 
 		logging.V(9).Infof("trying to renew token. Current token expiring at: %v ", state.expires)
+		state.errorLog = fmt.Sprintf(
+			"%v\n[%s] trying to renew token. Current token expiring at: %v ",
+			state.errorLog, time.Now().Format(time.RFC3339), state.expires)
 
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
 		// Renewing might fail because of network issues, or because the token is no longer valid.
@@ -120,12 +124,18 @@ func (ts *tokenSource) handleRequests(
 		if errors.As(err, &expired) {
 			logging.V(3).Infof("error renewing lease: %v", err)
 			state.error = fmt.Errorf("renewing lease: %w", err)
+			state.errorLog = fmt.Sprintf("%v\n[%s] error renewing lease: %v",
+				state.errorLog, time.Now().Format(time.RFC3339), err)
 			renewTicker.Stop()
 		} else if err != nil {
 			// If we failed to renew the lease, we will retry in the next cycle.
 			logging.V(3).Infof("error renewing lease: %v", err)
+			state.errorLog = fmt.Sprintf("%v\n[%s] error renewing lease: %v",
+				state.errorLog, time.Now().Format(time.RFC3339), err)
 		} else {
 			logging.V(5).Infof("renewed lease. Next expiry: %v", newTokenExpires)
+			state.errorLog = fmt.Sprintf("%v\n[%s] renewed lease. Next expiry: %v",
+				state.errorLog, time.Now().Format(time.RFC3339), newTokenExpires)
 			state.token = newToken
 			state.expires = newTokenExpires
 		}
@@ -144,10 +154,16 @@ func (ts *tokenSource) handleRequests(
 			// renewing rather than risking returning a
 			// stale token.
 			renewUpdateLeaseIfStale()
-			if state.error == nil {
+			// If we had a non-terminal error, it's still possible that we failed to renew the token.
+			// In that case, we should return the error to the caller.
+			if state.error == nil && state.expires.After(ts.clock.Now()) {
 				c <- tokenResponse{token: state.token}
 			} else {
-				c <- tokenResponse{err: state.error}
+				//nolint:lll // This is a debug message and it's okay to be long.
+				err := fmt.Errorf(
+					"error renewing token. Please report the following log in https://github.com/pulumi/pulumi/issues/7094:\n%v",
+					state.errorLog)
+				c <- tokenResponse{err: err}
 			}
 		}
 	}
