@@ -113,7 +113,7 @@ lint_golang:: lint_deps
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
 lint_actions:
-	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.17 \
+	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 test_fast:: build get_schemas
