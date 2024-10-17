@@ -497,6 +497,19 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 	return resourceOptions, diagnostics
 }
 
+// unwrapOptionalType returns T from an optional type that is modelled as Union[T, None] or Union[None, T]
+// if the input type is not optional, it returns the input type as is.
+func unwrapOptionalType(t model.Type) model.Type {
+	if union, ok := t.(*model.UnionType); ok && len(union.ElementTypes) == 2 {
+		if union.ElementTypes[0] == model.NoneType {
+			return union.ElementTypes[1]
+		} else if union.ElementTypes[1] == model.NoneType {
+			return union.ElementTypes[0]
+		}
+	}
+	return t
+}
+
 // bindResourceBody binds the body of a resource.
 func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
@@ -512,11 +525,18 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
 				typ := model.ResolveOutputs(expr.Type())
+				if model.IsOptionalType(typ) {
+					// if the range expression type is wrapped as an optional type
+					// due to the range expression being a conditional.
+					// unwrap it to get the actual type
+					typ = unwrapOptionalType(typ)
+				}
 
 				resourceVar := &model.Variable{
 					Name:         "r",
 					VariableType: node.VariableType,
 				}
+
 				switch {
 				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
 					condExpr := &model.ConditionalExpression{

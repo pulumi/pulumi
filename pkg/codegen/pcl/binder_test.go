@@ -616,3 +616,28 @@ func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
 	require.True(t, diags.HasErrors(), "There are error diagnostics")
 	require.Contains(t, diags.Error(), "cannot bind component example from the same directory as the parent program")
 }
+
+func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
+	t.Parallel()
+	source := `
+config "createVpc" "bool" { default = false }
+config "subnets" "list(string)" { default = [] }
+config "prefixes" "list(string)" { default = [] }
+
+lenPublicSubnets = invoke("std:index:max", {
+  input = [
+    length(subnets), 
+    length(prefixes)
+  ]
+})
+
+resource "defaultVpc" "aws:ec2/vpc:Vpc" {
+  options { range = createVpc ? lenPublicSubnets.result : 0 }
+  cidrBlock = "10.0.0.1/16"
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
