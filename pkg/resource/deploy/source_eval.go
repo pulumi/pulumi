@@ -2246,7 +2246,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Options: options,
 		})
 		if err != nil {
-			rpcError := rpcerror.Convert(err)
+			var rpcError error
+			rpcError, ok := rpcerror.FromError(err)
+			if !ok {
+				rpcError = err
+			}
 			message := errorToMessage(rpcError, props)
 			rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 

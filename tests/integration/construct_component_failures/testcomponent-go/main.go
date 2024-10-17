@@ -21,8 +21,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 )
 
@@ -42,7 +42,7 @@ func main() {
 				return nil, fmt.Errorf("unknown resource type %s", typ)
 			}
 
-			err := rpcerror.NewInputPropertiesError("failing for a reason", rpcerror.InputPropertyErrorDetails{
+			err := perrors.NewInputPropertiesError("failing for a reason", perrors.InputPropertyErrorDetails{
 				PropertyPath: "foo",
 				Reason:       "the failure reason",
 			})
