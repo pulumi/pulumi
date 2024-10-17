@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.137.0 (2024-10-17)
+
+
+### Features
+
+- [cli] Allow memory profile to be written in the background, so it's available in case of crash
+  [#17461](https://github.com/pulumi/pulumi/pull/17461)
+
+- [sdk/go] Enable better error messsages to be returned from provider construct failures
+  [#17464](https://github.com/pulumi/pulumi/pull/17464)
+
+- [sdk/python] Enable better error messsages to be returned from provider construct failures
+  [#17429](https://github.com/pulumi/pulumi/pull/17429)
+
+- [sdk/python] Support Python 3.13
+  [#17520](https://github.com/pulumi/pulumi/pull/17520)
+
+
+### Bug Fixes
+
+- [engine] Fix token expired errors due to network issues
+  [#17519](https://github.com/pulumi/pulumi/pull/17519)
+
+- [pkg] Don't publish test code in `pkg/codegen`
+  [#17517](https://github.com/pulumi/pulumi/pull/17517)
+
+- [programgen] Detect and error on binding component nodes in PCL programs that self-reference their source
+  [#17538](https://github.com/pulumi/pulumi/pull/17538)
+
+- [programgen] Fix PCL bind error "cannot iterate over a value of type number" when conditionals are used in range expressions
+  [#17569](https://github.com/pulumi/pulumi/pull/17569)
+
+- [yaml] Allow `pulumi package add` for YAML projects
+  [#17560](https://github.com/pulumi/pulumi/pull/17560)
+
+- [sdk/go] Improve error message when credentials file invalid
+  [#17541](https://github.com/pulumi/pulumi/pull/17541)
+
+- [programgen/python] Fix preserving map keys in python programgen
+  [#17350](https://github.com/pulumi/pulumi/pull/17350)
+
+
+### Miscellaneous
+
+- [yaml] Update YAML to 1.11.1
+  [#17540](https://github.com/pulumi/pulumi/pull/17540)
+
 ## 3.136.1 (2024-10-08)
 
 
