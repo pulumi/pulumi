@@ -634,7 +634,7 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
-			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason:
+			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
     		- property foo with value '{bar}' has a problem: the failure reason`
 
 			localProvider := integration.LocalDependency{
