@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: docs
+  description: Update function comments to remove outdated DIY backend note
