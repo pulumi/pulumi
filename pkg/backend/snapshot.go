@@ -17,7 +17,9 @@ package backend
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -671,19 +673,46 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
 }
 
-// saveSnapshot persists the current snapshot and optionally verifies it afterwards.
+// saveSnapshot persists the current snapshot. If integrity checking is enabled,
+// the snapshot's integrity is also verified. If the snapshot is invalid,
+// metadata about this write operation is added to the snapshot before it is
+// written, in order to aid debugging should future operations fail with an
+// error.
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap, err := sm.snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
+
+	// In order to persist metadata about snapshot integrity issues, we check the
+	// snapshot's validity *before* we write it. However, should an error occur,
+	// we will only raise this *after* the write has completed. In the event that
+	// integrity checking is disabled, we still actually perform the check (and
+	// write metadata appropriately), but we will not raise the error following a
+	// successful write.
+	//
+	// If the actual write fails for any reason, this error will supersede any
+	// integrity error. This matches behaviour prior to when integrity metadata
+	// writing was introduced.
+	//
+	// Metadata will be cleared out by a successful operation (even if integrity
+	// checking is being enforced).
+	integrityError := snap.VerifyIntegrity()
+	if integrityError == nil {
+		snap.Metadata.IntegrityErrorMetadata = nil
+	} else {
+		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
+			Version: version.Version,
+			Command: strings.Join(os.Args, " "),
+			Error:   integrityError.Error(),
+		}
+	}
+
 	if err := sm.persister.Save(snap); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if !DisableIntegrityChecking {
-		if err := snap.VerifyIntegrity(); err != nil {
-			return fmt.Errorf("failed to verify snapshot: %w", err)
-		}
+	if !DisableIntegrityChecking && integrityError != nil {
+		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
 }
