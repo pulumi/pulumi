@@ -1165,7 +1165,18 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		Options: options,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
+		var rpcError error
+		rpcError, ok := rpcerror.FromError(err)
+		if !ok {
+			rpcError = err
+		}
+
+		message := errorToMessage(rpcError, args)
+		rm.diagnostics.Errorf(diag.GetCallFailedError(), tok, message)
+
+		rm.abortChan <- true
+		<-rm.cancel
+		return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
 	}
 
 	if ret.ReturnDependencies == nil {
@@ -1764,7 +1775,7 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 					}
 				}
 				message = fmt.Sprintf("%v\n\t\t- property %v has a problem: %v",
-					message, err.Reason, err.Reason)
+					message, err.PropertyPath, err.Reason)
 			}
 		}
 		return message

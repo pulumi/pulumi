@@ -90,3 +90,7 @@ func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
 		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
 	)
 }
+
+func GetCallFailedError() *Diag {
+	return newError("", 2017, "call to function '%v' failed: %v")
+}
