@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1745,31 +1744,33 @@ func (rm *resmon) resolveProvider(
 // of the possible details types, which can be expanded later.  If the details type is not recognized, we
 // still return the message, but will leave out the details.  This will allow us to be forward compatible
 // when new details types are added.
-func statusToMessage(st *status.Status, inputs resource.PropertyMap) string {
-	message := st.Message()
-	for i, d := range st.Details() {
-		if i == 0 && message != "" {
-			message = message + ":"
+func errorToMessage(err error, inputs resource.PropertyMap) string {
+	switch e := err.(type) {
+	case *rpcerror.Error:
+		message := e.Message()
+		if e.Cause() != nil {
+			message = fmt.Sprintf("%v: %v", message, e.Cause().Message())
 		}
-		switch d := d.(type) {
-		case *pulumirpc.InputPropertiesError:
+		if len(e.InputPropertiesErrors()) > 0 {
 			props := resource.NewObjectProperty(inputs)
-			for _, err := range d.GetErrors() {
-				propertyPath, e := resource.ParsePropertyPath(err.GetPropertyPath())
+			for _, err := range e.InputPropertiesErrors() {
+				propertyPath, e := resource.ParsePropertyPath(err.PropertyPath)
 				if e == nil {
 					value, ok := propertyPath.Get(props)
 					if ok {
 						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
-							message, err.GetPropertyPath(), value, err.GetReason())
+							message, err.PropertyPath, value, err.Reason)
 						continue
 					}
 				}
 				message = fmt.Sprintf("%v\n\t\t- property %v has a problem: %v",
-					message, err.GetPropertyPath(), err.GetReason())
+					message, err.Reason, err.Reason)
 			}
 		}
+		return message
+	default:
+		return err.Error()
 	}
-	return message
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
@@ -2245,12 +2246,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Options: options,
 		})
 		if err != nil {
-			if st, ok := status.FromError(err); ok {
-				message := statusToMessage(st, props)
-				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
-			} else {
-				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, err)
-			}
+			rpcError := rpcerror.Convert(err)
+			message := errorToMessage(rpcError, props)
+			rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
 			rm.abortChan <- true
 			<-rm.cancel

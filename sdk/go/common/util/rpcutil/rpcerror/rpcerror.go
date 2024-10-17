@@ -44,10 +44,11 @@ import (
 // It contains a gRPC error code, a message, and a chain of "wrapped"
 // errors that led to the final dispatch of this particular error message.
 type Error struct {
-	code    codes.Code
-	message string
-	cause   *ErrorCause
-	details []interface{}
+	code                  codes.Code
+	message               string
+	cause                 *ErrorCause
+	inputPropertiesErrors []InputPropertyErrorDetails
+	details               []interface{}
 }
 
 var _ error = (*Error)(nil)
@@ -81,6 +82,12 @@ func (r *Error) Cause() *ErrorCause {
 // downcast them to look for the one they are interested in.
 func (r *Error) Details() []interface{} {
 	return r.details
+}
+
+// InputPropertiesErrors returns the list of input properties error that
+// were attached to this error.
+func (r *Error) InputPropertiesErrors() []InputPropertyErrorDetails {
+	return r.inputPropertiesErrors
 }
 
 // ErrorCause represents a root cause of an error that ultimately caused
@@ -146,6 +153,25 @@ func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}
 	return status.Err()
 }
 
+func WrapDetailedError(err error) error {
+	var iperr *InputPropertiesError
+	if errors.As(err, &iperr) {
+		status := status.New(codes.InvalidArgument, iperr.Message)
+		errorDetails := pulumirpc.InputPropertiesError{}
+		for _, e := range iperr.Errors {
+			errorDetails.Errors = append(errorDetails.Errors, &pulumirpc.InputPropertiesError_PropertyError{
+				PropertyPath: e.PropertyPath,
+				Reason:       e.Reason,
+			})
+		}
+		status, newErr := status.WithDetails(&errorDetails)
+		contract.AssertNoErrorf(newErr, "error adding details to status")
+		return status.Err()
+	}
+	status := status.New(codes.Unknown, err.Error())
+	return status.Err()
+}
+
 // WithDetails adds arbitrary protobuf payloads to errors created by this package.
 // These errors will be accessible by calling `Details` on `Error` instances created
 // by `FromError`.
@@ -177,6 +203,15 @@ func FromError(err error) (*Error, bool) {
 	rpcError.message = status.Message()
 	rpcError.details = status.Details()
 	for _, details := range status.Details() {
+		if d, ok := details.(*pulumirpc.InputPropertiesError); ok {
+			rpcError.inputPropertiesErrors = make([]InputPropertyErrorDetails, len(d.Errors))
+			for i, e := range d.GetErrors() {
+				rpcError.inputPropertiesErrors[i] = InputPropertyErrorDetails{
+					PropertyPath: e.GetPropertyPath(),
+					Reason:       e.GetReason(),
+				}
+			}
+		}
 		if errorCause, ok := details.(*pulumirpc.ErrorCause); ok {
 			contract.Assertf(rpcError.cause == nil, "RPC endpoint sent more than one ErrorCause")
 			rpcError.cause = &ErrorCause{
@@ -217,4 +252,70 @@ func serializeErrorCause(err error) *pulumirpc.ErrorCause {
 		Message:    message,
 		StackTrace: stackTrace,
 	}
+}
+
+// InputPropertyErrorDetails contains the error details for an input property error.
+type InputPropertyErrorDetails struct {
+	PropertyPath string
+	Reason       string
+}
+
+func (d InputPropertyErrorDetails) String() string {
+	return fmt.Sprintf("%s: %s", d.PropertyPath, d.Reason)
+}
+
+// InputPropertiesError can be used to indicate that the client has made a request with
+// bad input properties.
+type InputPropertiesError struct {
+	Message string
+	Errors  []InputPropertyErrorDetails
+}
+
+// Create a new InputPropertiesError with a single property error.
+func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesError {
+	return NewInputPropertiesError("", InputPropertyErrorDetails{
+		PropertyPath: propertyPath,
+		Reason:       reason,
+	})
+}
+
+// Create a new InputPropertiesError with a single property error.
+func InputPropertyErrorf(propertyPath string, format string, args ...interface{}) *InputPropertiesError {
+	return NewInputPropertiesError("", InputPropertyErrorDetails{
+		PropertyPath: propertyPath,
+		Reason:       fmt.Sprintf(format, args...),
+	})
+}
+
+// Create a new InputPropertiesError with a message and a list of property errors.
+func NewInputPropertiesError(message string, details ...InputPropertyErrorDetails) *InputPropertiesError {
+	return &InputPropertiesError{
+		Message: message,
+		Errors:  details,
+	}
+}
+
+// Create a new InputPropertiesError with a message.
+func InputPropertiesErrorf(format string, args ...interface{}) *InputPropertiesError {
+	return NewInputPropertiesError(fmt.Sprintf(format, args...))
+}
+
+func (ipe *InputPropertiesError) Error() string {
+	message := ipe.Message
+	if message != "" && len(ipe.Errors) > 0 {
+		message += ": "
+	}
+	for i, err := range ipe.Errors {
+		if i == 0 {
+			message += "\n "
+		}
+		message += err.String()
+	}
+	return message
+}
+
+// WithDetails adds additional property errors to an existing InputPropertiesError.
+func (ipe *InputPropertiesError) WithDetails(details ...InputPropertyErrorDetails) *InputPropertiesError {
+	ipe.Errors = append(ipe.Errors, details...)
+	return ipe
 }
