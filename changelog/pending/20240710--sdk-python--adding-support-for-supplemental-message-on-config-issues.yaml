@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description:  Adding support for supplemental message on config issues
