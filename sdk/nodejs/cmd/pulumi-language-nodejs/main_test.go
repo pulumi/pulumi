@@ -165,6 +165,14 @@ func TestGetRequiredPackages(t *testing.T) {
 			filepath.Join(dir, "node_modules", "malformed", "tests", "malformed_test", "package.json"),
 			`{`,
 		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "false_main", "package.json"),
+			`{ "name": "false_main", "main": false }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "invalid_main", "package.json"),
+			`{ "name": "invalid_main", "main": ["why is this a thing", "srsly omg wtf"]}`,
+		},
 	}
 	for _, file := range files {
 		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
