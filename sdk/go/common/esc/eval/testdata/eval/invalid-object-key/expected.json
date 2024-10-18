@@ -2,26 +2,26 @@
     "loadDiags": [
         {
             "Severity": 1,
-            "Summary": "the argument to fn::join must be a two-valued list",
+            "Summary": "object keys must be strings",
             "Detail": "",
             "Subject": {
-                "Filename": "invalid-join",
+                "Filename": "invalid-object-key",
                 "Start": {
                     "Line": 3,
-                    "Column": 15,
-                    "Byte": 30
+                    "Column": 8,
+                    "Byte": 26
                 },
                 "End": {
                     "Line": 3,
-                    "Column": 19,
-                    "Byte": 34
+                    "Column": 12,
+                    "Byte": 30
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.join[\"fn::join\"]"
+            "Path": "values.b[\"${a}\"]"
         }
     ]
 }

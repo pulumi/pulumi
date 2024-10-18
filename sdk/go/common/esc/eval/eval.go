@@ -66,6 +66,10 @@ func LoadYAMLBytes(filename string, source []byte) (*ast.EnvironmentDecl, syntax
 
 	t, tdiags := ast.ParseEnvironment(source, syn)
 	diags.Extend(tdiags...)
+	if tdiags.HasErrors() {
+		return nil, diags, nil
+	}
+
 	return t, diags, nil
 }
 
