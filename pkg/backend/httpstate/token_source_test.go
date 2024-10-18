@@ -84,6 +84,28 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	}
 }
 
+func TestTokenSourceExpiredToken(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	dur := 20 * time.Millisecond
+	clock := clockwork.NewFakeClock()
+	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
+
+	tok0, tok0Expires := backend.NewToken(dur)
+	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
+	require.NoError(t, err)
+	defer ts.Close()
+
+	// advance clock past token expiration
+	clock.Advance(dur * 2)
+
+	tok, err := ts.GetToken(ctx)
+	require.ErrorContains(t, err, "error renewing token. Please report the following log in https://github.com/pulumi/pulumi/issues/7094")
+	require.ErrorContains(t, err, "trying to renew token.")
+	require.ErrorContains(t, backend.VerifyToken(tok), "token expired: unknown token")
+}
+
 type testTokenBackend struct {
 	mu                  sync.Mutex
 	counter             int
