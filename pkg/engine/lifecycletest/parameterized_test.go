@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -108,11 +109,12 @@ func TestPackageRef(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	snap, err := TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 
@@ -336,11 +338,11 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	snap, err := TestOp(Update).RunStep(
+	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -362,13 +364,13 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		},
 	}), prov.Inputs)
 
-	snap, err = TestOp(Refresh).RunStep(
+	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 7)
 
-	snap, err = TestOp(Destroy).RunStep(
+	snap, err = lt.TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -460,15 +462,15 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Config: config.Map{
 			config.MustParseKey("pkgA:name"):   config.NewValue("testingBase"),
 			config.MustParseKey("pkgExt:name"): config.NewValue("testingExt"),
 		},
 	}
 
-	snap, err := TestOp(Update).RunStep(
+	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -487,13 +489,13 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 		},
 	}), prov.Inputs)
 
-	snap, err = TestOp(Refresh).RunStep(
+	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
-	snap, err = TestOp(Destroy).RunStep(
+	snap, err = lt.TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -609,11 +611,11 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	snap, err := TestOp(Update).RunStep(
+	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)

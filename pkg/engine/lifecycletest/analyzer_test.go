@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -80,8 +81,8 @@ func TestSimpleAnalyzer(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
@@ -91,7 +92,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 }
 
@@ -125,8 +126,8 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
@@ -136,7 +137,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Error(t, err)
 }
 
@@ -170,8 +171,8 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T:                t,
 			SkipDisplayTests: true, // TODO: this seems flaky, could use some more investigation.
 			UpdateOptions: UpdateOptions{
@@ -182,7 +183,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Error(t, err)
 }
 
@@ -234,8 +235,8 @@ func TestResourceRemediation(t *testing.T) {
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
@@ -245,7 +246,7 @@ func TestResourceRemediation(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
@@ -292,8 +293,8 @@ func TestRemediationDiagnostic(t *testing.T) {
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
@@ -303,7 +304,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	// Expect no error, valid snapshot, two resources:
 	assert.NoError(t, err)
@@ -336,8 +337,8 @@ func TestRemediateFailure(t *testing.T) {
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
@@ -347,7 +348,7 @@ func TestRemediateFailure(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, res := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 0, len(snap.Resources))
@@ -383,15 +384,15 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
 			HostF: hostF,
 		},
-		Steps: []TestStep{
+		Steps: []lt.TestStep{
 			{
 				Op:            Update,
 				SkipPreview:   true,
@@ -448,8 +449,8 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T:                t,
 			SkipDisplayTests: true, // TODO: this seems flaky, could use some more investigation.
 			UpdateOptions: UpdateOptions{
@@ -457,7 +458,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 			},
 			HostF: hostF,
 		},
-		Steps: []TestStep{
+		Steps: []lt.TestStep{
 			{
 				Op:            Update,
 				SkipPreview:   true,

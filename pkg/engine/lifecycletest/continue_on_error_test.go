@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -74,8 +75,8 @@ func TestDestroyContinueOnError(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			// Skip display tests because different ordering makes the colouring different.
 			SkipDisplayTests: true,
@@ -89,13 +90,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
 
 	createResource = false
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed delete")
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
@@ -196,8 +197,8 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -210,7 +211,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
 
@@ -329,8 +330,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -343,7 +344,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 3, len(snap.Resources)) // 2 resources + 1 provider
@@ -353,7 +354,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	expectedURNs := []string{
@@ -446,8 +447,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -460,7 +461,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
@@ -470,7 +471,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
@@ -531,8 +532,8 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -544,7 +545,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
 	require.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
@@ -616,8 +617,8 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -629,7 +630,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
@@ -639,7 +640,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
@@ -685,8 +686,8 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			// Skip display tests because different ordering makes the colouring different.
 			SkipDisplayTests: true,
@@ -700,7 +701,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2) // We expect 1 resource + 1 provider
@@ -708,7 +709,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::willBeDeleted"), snap.Resources[1].URN)
 
 	update = true
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed create")
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1) // We expect 1 provider
@@ -750,8 +751,8 @@ func TestContinueOnErrorImport(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -763,7 +764,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "inputs to import do not match the existing resource")
 	require.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // 1 provider
@@ -835,8 +836,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -849,7 +850,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
 
@@ -873,7 +874,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	upLoaders := []*deploytest.ProviderLoader{
@@ -903,13 +904,13 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
-	upOptions := TestUpdateOptions{
+	upOptions := lt.TestUpdateOptions{
 		T: t, HostF: upHostF, UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
 		},
 	}
 
-	snap, err := TestOp(Update).
+	snap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -951,14 +952,14 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		return nil
 	})
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
-	replaceOptions := TestUpdateOptions{
+	replaceOptions := lt.TestUpdateOptions{
 		T: t, HostF: replaceHostF,
 		UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
 		},
 	}
 
-	snap, err = TestOp(Update).
+	snap, err = lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, snap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 

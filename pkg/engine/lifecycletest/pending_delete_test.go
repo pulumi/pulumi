@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -41,9 +42,9 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
+	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -72,7 +73,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -118,9 +119,9 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
-	p := &TestPlan{
+	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -149,7 +150,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, err error,
