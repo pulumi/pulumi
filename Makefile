@@ -122,7 +122,16 @@ test_fast:: build get_schemas
 test_all:: test_pkg test_integration
 
 test_lifecycle:
+	#@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest -run TestFoo -rapid.checks=100 -rapid.seed=4393796846787400738
+	# @cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest -run TestRepro
 	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest
+
+test_lifecycle_repro:
+	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest -run TestRepro
+
+test_lifecycle_fuzz:
+	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest -run TestFoo -rapid.checks=100_000
+	# @cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest -run TestRepro
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
 test_codegen_%: get_schemas
