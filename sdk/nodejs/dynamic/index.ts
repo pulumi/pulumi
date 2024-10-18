@@ -14,8 +14,117 @@
 
 import { Inputs, Input, Output } from "../output";
 import * as resource from "../resource";
+import { getProject } from "../metadata";
+import * as pulumiConfig from "../config";
 import * as settings from "../runtime/settings";
 import * as serializeClosure from "../runtime/closure/serializeClosure";
+
+/**
+ * Config is a wrapper around {@link pulumi.Config} that can be used in
+ * dynamic providers. This class does not provide methods to retrieve secrets
+ * in the form of {@link pulumi.Output}. Since these methods are called at
+ * runtime, secrets will not be serialized as part of Pulumi's dynamic provider
+ * implementation, and it is safe to use the plain get and require methods
+ * instead. Do note however that you should not log or print the values.
+ */
+export class Config {
+    /**
+     * name is the configuration bag's logical name and uniquely identifies it.  The default is the name of the current
+     * project.
+     */
+    public readonly name: string;
+    private readonly config: pulumiConfig.Config;
+
+    constructor(name?: string) {
+        if (name === undefined) {
+            name = getProject();
+        }
+        this.name = name;
+        this.config = new pulumiConfig.Config(name);
+    }
+
+    /**
+     * get loads an optional configuration value by its key, or undefined if it doesn't exist.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public get<K extends string = string>(key: string, opts?: pulumiConfig.StringConfigOptions<K>): K | undefined {
+        return this.config.get(key, opts);
+    }
+
+    /**
+     * getBoolean loads an optional configuration value, as a boolean, by its key, or undefined if it doesn't exist.
+     * If the configuration value isn't a legal boolean, this function will throw an error.
+     *
+     * @param key The key to lookup.
+     */
+    public getBoolean(key: string): boolean | undefined {
+        return this.config.getBoolean(key);
+    }
+
+    /**
+     * getNumber loads an optional configuration value, as a number, by its key, or undefined if it doesn't exist.
+     * If the configuration value isn't a legal number, this function will throw an error.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public getNumber(key: string, opts?: pulumiConfig.NumberConfigOptions): number | undefined {
+        return this.config.getNumber(key, opts);
+    }
+
+    /**
+     * getObject loads an optional configuration value, as an object, by its key, or undefined if it doesn't exist.
+     * This routine simply JSON parses and doesn't validate the shape of the contents.
+     *
+     * @param key The key to lookup.
+     */
+    public getObject<T>(key: string): T | undefined {
+        return this.config.getObject(key);
+    }
+
+    /**
+     * require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public require<K extends string = string>(key: string, opts?: pulumiConfig.StringConfigOptions<K>): K {
+        return this.config.require(key, opts);
+    }
+
+    /**
+     * requireBoolean loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
+     * configuration value is not a legal boolean, an error is thrown.
+     *
+     * @param key The key to lookup.
+     */
+    public requireBoolean(key: string): boolean {
+        return this.config.requireBoolean(key);
+    }
+
+    /**
+     * requireNumber loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+     * configuration value is not a legal number, an error is thrown.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public requireNumber(key: string, opts?: pulumiConfig.NumberConfigOptions): number {
+        return this.config.requireNumber(key, opts);
+    }
+
+    /**
+     * requireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
+     * it doesn't exist, or the configuration value is not a legal JSON string, an error is thrown.
+     *
+     * @param key The key to lookup.
+     */
+    public requireObject<T>(key: string): T {
+        return this.config.requireObject(key);
+    }
+}
 
 /**
  * {@link CheckResult} represents the results of a call to {@link ResourceProvider.check}.
@@ -130,8 +239,10 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old input properties to use for validation.
      * @param news
      *  The new input properties to use for validation.
+     * @param config
+     *  The config for the current stack.
      */
-    check?: (olds: Inputs, news: Inputs) => Promise<CheckResult<Inputs>>;
+    check?: (olds: Inputs, news: Inputs, config?: Config) => Promise<CheckResult<Inputs>>;
 
     /**
      * Checks what impacts a hypothetical update will have on the resource's
@@ -143,8 +254,10 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old values of properties to diff.
      * @param news
      *  The new values of properties to diff.
+     * @param config
+     *  The config for the current stack.
      */
-    diff?: (id: resource.ID, olds: Outputs, news: Inputs) => Promise<DiffResult>;
+    diff?: (id: resource.ID, olds: Outputs, news: Inputs, config?: Config) => Promise<DiffResult>;
 
     /**
      * Allocates a new instance of the provided resource and returns its unique
@@ -153,15 +266,24 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *
      * @param inputs
      *  The properties to set during creation.
+     * @param config
+     *  The config for the current stack.
      */
-    create: (inputs: Inputs) => Promise<CreateResult<Outputs>>;
+    create: (inputs: Inputs, config?: Config) => Promise<CreateResult<Outputs>>;
 
     /**
      * Reads the current live state associated with a resource. Enough state
      * must be included in the inputs to uniquely identify the resource; this is
      * typically just the resource ID, but it may also include some properties.
+     *
+     * @param id
+     *  The ID of the resource to delete.
+     * @param props
+     *  The current properties on the resource.
+     * @param config
+     *  The config for the current stack.
      */
-    read?: (id: resource.ID, props?: Outputs) => Promise<ReadResult<Outputs>>;
+    read?: (id: resource.ID, props?: Outputs, config?: Config) => Promise<ReadResult<Outputs>>;
 
     /**
      * Updates an existing resource with new values.
@@ -172,8 +294,10 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The old values of properties to update.
      * @param news
      *  The new values of properties to update.
+     * @param config
+     *  The config for the current stack.
      */
-    update?: (id: resource.ID, olds: Outputs, news: Inputs) => Promise<UpdateResult<Outputs>>;
+    update?: (id: resource.ID, olds: Outputs, news: Inputs, config?: Config) => Promise<UpdateResult<Outputs>>;
 
     /**
      * Tears down an existing resource with the given ID.  If it fails,
@@ -183,8 +307,10 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
      *  The ID of the resource to delete.
      * @param props
      *  The current properties on the resource.
+     * @param config
+     *  The config for the current stack.
      */
-    delete?: (id: resource.ID, props: Outputs) => Promise<void>;
+    delete?: (id: resource.ID, props: Outputs, config?: Config) => Promise<void>;
 }
 
 const providerCache = new WeakMap<ResourceProvider, Input<string>>();

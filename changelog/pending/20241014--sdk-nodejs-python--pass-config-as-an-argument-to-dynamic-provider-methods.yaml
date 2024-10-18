@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs,python
+  description: Pass config as an argument to dynamic provider methods
