@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -68,8 +69,8 @@ func TestParallelRefresh(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
 			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{Parallel: 4},
@@ -78,7 +79,7 @@ func TestParallelRefresh(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 5)
@@ -88,7 +89,7 @@ func TestParallelRefresh(t *testing.T) {
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
 	assert.Len(t, snap.Resources, 5)
@@ -118,9 +119,9 @@ func TestExternalRefresh(t *testing.T) {
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Update}},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
@@ -130,9 +131,9 @@ func TestExternalRefresh(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 
-	p = &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Refresh}},
+	p = &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Refresh}},
 	}
 
 	snap = p.RunWithName(t, snap, "1")
@@ -186,16 +187,16 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Update}},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 
 	snap := p.RunWithName(t, nil, "0")
 
-	p = &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Refresh}},
+	p = &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Refresh}},
 	}
 
 	p.RunWithName(t, snap, "1")
@@ -206,7 +207,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 func TestRefreshInitFailure(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -293,7 +294,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	//
 	// Refresh DOES NOT fail, causing the initialization error to disappear.
 	//
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap := p.Run(t, old)
 
 	for _, resource := range snap.Resources {
@@ -314,7 +315,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// DOES NOT fail. The initialization error is still persisted.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
+	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
@@ -360,8 +361,8 @@ func TestRefreshWithDelete(t *testing.T) {
 			})
 
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-			p := &TestPlan{
-				Options: TestUpdateOptions{
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{
 					T: t,
 					// Skip display tests because different ordering makes the colouring different.
 					SkipDisplayTests: true,
@@ -370,10 +371,10 @@ func TestRefreshWithDelete(t *testing.T) {
 				},
 			}
 
-			p.Steps = []TestStep{{Op: Update}}
+			p.Steps = []lt.TestStep{{Op: Update}}
 			snap := p.RunWithName(t, nil, "0")
 
-			p.Steps = []TestStep{{Op: Refresh}}
+			p.Steps = []lt.TestStep{{Op: Refresh}}
 			snap = p.RunWithName(t, snap, "1")
 
 			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
@@ -438,9 +439,9 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 3)
@@ -452,7 +453,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	err := snap.VerifyIntegrity()
 	assert.NoError(t, err)
 
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
 	assert.Len(t, snap.Resources, 2)
@@ -498,9 +499,9 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 3)
@@ -512,7 +513,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	err := snap.VerifyIntegrity()
 	assert.NoError(t, err)
 
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
 	assert.Len(t, snap.Resources, 2)
@@ -539,7 +540,7 @@ func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, 
 }
 
 func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string, name string) {
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	const resType = "pkgA:m:typA"
 
@@ -608,7 +609,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 	p.Options.T = t
 
-	p.Steps = []TestStep{
+	p.Steps = []lt.TestStep{
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -708,7 +709,7 @@ func TestRefreshBasics(t *testing.T) {
 }
 
 func validateRefreshBasicsCombination(t *testing.T, names []string, targets []string, name string) {
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	const resType = "pkgA:m:typA"
 
@@ -792,7 +793,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 	p.Options.T = t
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -895,7 +896,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 func TestCanceledRefresh(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	const resType = "pkgA:m:typA"
 
@@ -974,8 +975,8 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	refreshed := make(map[resource.ID]bool)
-	op := TestOp(Refresh)
-	options := TestUpdateOptions{
+	op := lt.TestOp(Refresh)
+	options := lt.TestUpdateOptions{
 		T:     t,
 		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
@@ -1076,7 +1077,7 @@ func TestCanceledRefresh(t *testing.T) {
 func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -1125,7 +1126,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
+	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
 	snap := p.Run(t, old)
 
 	for _, resource := range snap.Resources {
@@ -1146,7 +1147,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	idBefore := resource.ID("myid")
@@ -1183,7 +1184,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, old)
 	assert.Equal(t, 0, len(snap.Resources))
 }

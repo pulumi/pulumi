@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:revive
-package lifecycletest
+package framework
 
 import (
 	"bytes"
@@ -39,7 +38,6 @@ import (
 	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -58,6 +56,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// TB is a subset of testing.TB that admits other T-like things, such as *rapid.T from the Rapid property-testing
+// library. It covers the set of functionality that we actually need for lifecycle testing, and satisfies the interfaces
+// of testify.assert and testify.require.
+type TB interface {
+	Helper()
+	Name() string
+	Logf(format string, args ...any)
+	Log(args ...any)
+	Skipf(format string, args ...any)
+	Skip(args ...any)
+	SkipNow()
+	Errorf(format string, args ...any)
+	Error(args ...any)
+	Fatalf(format string, args ...any)
+	Fatal(args ...any)
+	FailNow()
+	Fail()
+	Failed() bool
+}
 
 func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	// Just want to check the same operations and resources are counted, but order might be slightly different.
@@ -129,17 +147,22 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 }
 
 func ImportOp(imports []deploy.Import) TestOp {
-	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
+	return TestOp(func(info engine.UpdateInfo, ctx *engine.Context, opts engine.UpdateOptions,
 		dryRun bool,
 	) (*deploy.Plan, display.ResourceChanges, error) {
-		return Import(info, ctx, opts, imports, dryRun)
+		return engine.Import(info, ctx, opts, imports, dryRun)
 	})
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, error)
+type TestOp func(
+	engine.UpdateInfo,
+	*engine.Context,
+	engine.UpdateOptions,
+	bool,
+) (*deploy.Plan, display.ResourceChanges, error)
 
-type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
-	events []Event, err error) error
+type ValidateFunc func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+	events []engine.Event, err error) error
 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
@@ -196,17 +219,17 @@ func (op TestOp) runWithContext(
 		}
 	}()
 
-	events := make(chan Event)
-	journal := NewJournal()
+	events := make(chan engine.Event)
+	journal := engine.NewJournal()
 	persister := &backend.InMemoryPersister{}
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
 
-	combined := &CombinedManager{
-		Managers: []SnapshotManager{journal, snapshotManager},
+	combined := &engine.CombinedManager{
+		Managers: []engine.SnapshotManager{journal, snapshotManager},
 	}
 
-	ctx := &Context{
+	ctx := &engine.Context{
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: combined,
@@ -221,8 +244,8 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Begin draining events.
-	firedEventsPromise := promise.Run(func() ([]Event, error) {
-		var firedEvents []Event
+	firedEventsPromise := promise.Run(func() ([]engine.Event, error) {
+		var firedEvents []engine.Event
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
@@ -270,7 +293,7 @@ func (op TestOp) runWithContext(
 				testName = base64.StdEncoding.EncodeToString([]byte(testName))
 			}
 		}
-		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
+		AssertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
 	}
 
 	entries := journal.Entries()
@@ -305,7 +328,7 @@ func (op TestOp) runWithContext(
 // here, because all that matters is that we have the same events in
 // some order.  The non-display tests are responsible for actually
 // checking the events properly.
-func compareEvents(t testing.TB, expected, actual []engine.Event) {
+func compareEvents(t TB, expected, actual []engine.Event) {
 	encountered := make(map[int]struct{})
 	if len(expected) != len(actual) {
 		t.Logf("expected %d events, got %d", len(expected), len(actual))
@@ -370,7 +393,7 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
-func assertDisplay(t testing.TB, events []Event, path string) {
+func AssertDisplay(t TB, events []engine.Event, path string) {
 	var expectedStdout []byte
 	var expectedStderr []byte
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
@@ -503,8 +526,8 @@ type TestStep struct {
 
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	o := t.Validate
-	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		events []Event, err error,
+	t.Validate = func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
 	) error {
 		r := o(project, target, entries, events, err)
 		if r != nil {
@@ -516,15 +539,15 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 
 // TestUpdateOptions is UpdateOptions for a TestPlan.
 type TestUpdateOptions struct {
-	UpdateOptions
+	engine.UpdateOptions
 	// a factory to produce a plugin host for an update operation.
 	HostF            deploytest.PluginHostFactory
-	T                testing.TB
+	T                TB
 	SkipDisplayTests bool
 }
 
 // Options produces UpdateOptions for an update operation.
-func (o TestUpdateOptions) Options() UpdateOptions {
+func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	opts := o.UpdateOptions
 	if o.HostF != nil {
 		opts.Host = o.HostF()
@@ -584,7 +607,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -604,7 +627,7 @@ func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Tar
 }
 
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
-func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
+func CloneSnapshot(t TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()
 	if snap != nil {
 		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
@@ -615,7 +638,7 @@ func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	return snap
 }
 
-func (p *TestPlan) RunWithName(t testing.TB, snapshot *deploy.Snapshot, name string) *deploy.Snapshot {
+func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
 	for i, step := range p.Steps {
@@ -657,11 +680,11 @@ func (p *TestPlan) RunWithName(t testing.TB, snapshot *deploy.Snapshot, name str
 		assert.NoError(t, err)
 	}
 
-	p.run += 1
+	p.run++
 	return snap
 }
 
-func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
+func (p *TestPlan) Run(t TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	return p.RunWithName(t, snapshot, "")
 }
 
@@ -670,9 +693,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 	return []TestStep{
 		// Initial update
 		{
-			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -689,9 +712,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Refresh,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -708,9 +731,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op update
 		{
-			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -727,9 +750,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Refresh,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -746,9 +769,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// Destroy
 		{
-			Op: Destroy,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Destroy,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -769,9 +792,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, err error,
+			Op: engine.Refresh,
+			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+				_ []engine.Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -785,21 +808,21 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 	}
 }
 
-type testBuilder struct {
+type TestBuilder struct {
 	t       *testing.T
 	loaders []*deploytest.ProviderLoader
 	snap    *deploy.Snapshot
 }
 
-func newTestBuilder(t *testing.T, snap *deploy.Snapshot) *testBuilder {
-	return &testBuilder{
+func NewTestBuilder(t *testing.T, snap *deploy.Snapshot) *TestBuilder {
+	return &TestBuilder{
 		t:       t,
 		snap:    snap,
 		loaders: slice.Prealloc[*deploytest.ProviderLoader](1),
 	}
 }
 
-func (b *testBuilder) WithProvider(name string, version string, prov *deploytest.Provider) *testBuilder {
+func (b *TestBuilder) WithProvider(name string, version string, prov *deploytest.Provider) *TestBuilder {
 	loader := deploytest.NewProviderLoader(
 		tokens.Package(name), semver.MustParse(version), func() (plugin.Provider, error) {
 			return prov, nil
@@ -813,7 +836,7 @@ type Result struct {
 	err  error
 }
 
-func (b *testBuilder) RunUpdate(
+func (b *TestBuilder) RunUpdate(
 	program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error, skipDisplayTests bool,
 ) *Result {
 	programF := deploytest.NewLanguageRuntimeF(program)
@@ -825,7 +848,7 @@ func (b *testBuilder) RunUpdate(
 
 	// Run an update for initial state.
 	var err error
-	snap, err := TestOp(Update).Run(
+	snap, err := TestOp(engine.Update).Run(
 		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
 	return &Result{
 		snap: snap,

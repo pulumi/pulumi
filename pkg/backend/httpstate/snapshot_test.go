@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest"
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -302,11 +302,11 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	var journalEntries engine.JournalEntries
-	p := &lifecycletest.TestPlan{
+	p := &lt.TestPlan{
 		// This test generates big amounts of data so the event streams that would need to be
 		// checked in get too big.  Skip them instead.
-		Options: lifecycletest.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps: []lifecycletest.TestStep{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{
 			{
 				Op:          engine.Update,
 				SkipPreview: true,
