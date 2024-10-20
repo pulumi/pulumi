@@ -323,6 +323,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
 		BinderLoader:                 b.options.loader,
 		BinderDirPath:                b.options.dirPath,
+		PackageCache:                 b.options.packageCache,
 		ComponentSource:              node.source,
 		ComponentNodeRange:           node.SyntaxNode().Range(),
 	})
