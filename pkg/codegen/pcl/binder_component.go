@@ -179,6 +179,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			Loader(loader),
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()),
+			Cache(args.PackageCache),
 		}
 
 		if args.AllowMissingVariables {
