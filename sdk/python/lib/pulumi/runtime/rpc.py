@@ -205,9 +205,9 @@ async def serialize_properties(
         py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
         types = _types.input_type_types(typ)
         # pylint: disable=C3001
-        translate = lambda k: py_name_to_pulumi_name.get(k) or k
+        def translate(k): return py_name_to_pulumi_name.get(k) or k
         # pylint: disable=C3001
-        get_type = lambda k: types.get(translate(k))  # type: ignore
+        def get_type(k): return types.get(translate(k))  # type: ignore
 
     struct = struct_pb2.Struct()
     # We're deliberately not using `inputs.items()` here in case inputs is a subclass of `dict` that redefines items.
@@ -225,9 +225,15 @@ async def serialize_properties(
                 keep_output_values,
             )
         except ValueError as e:
-            raise ValueError(f"During processing input field called: {repr(k)} of type {type(k)} with value {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+            raise ValueError(
+                f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
+                + f"ValueError has risen: {e}"
+            )
         except AssertionError as e:
-            raise AssertionError(f"During processing input field called: {repr(k)} of type {type(k)} with value {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+            raise AssertionError(
+                f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
+                + f"AssertionError has risen: {e}"
+            )
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the
@@ -625,7 +631,7 @@ async def serialize_property(
                 # pylint: disable=C3001
                 types = _types.input_type_types(typ)
                 # pylint: disable=C3001
-                translate = lambda k: py_name_to_pulumi_name.get(k) or k
+                def translate(k): return py_name_to_pulumi_name.get(k) or k
                 get_type = types.get
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
@@ -634,7 +640,7 @@ async def serialize_property(
                     args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
-                        get_type = lambda k: args[1]
+                        def get_type(k): return args[1]
                         translate = None
                 else:
                     translate = None
@@ -1200,12 +1206,12 @@ def translate_output_properties(
                 args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001
-                    get_type = lambda k: args[1]
+                    def get_type(k): return args[1]
                     # If transform_using_type_metadata is True, don't translate its keys because
                     # it is intended to be a user-defined dict.
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
-                        translate = lambda k: k
+                        def translate(k): return k
             elif return_none_on_dict_type_mismatch:
                 return None
             else:
@@ -1345,9 +1351,9 @@ def resolve_outputs(
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
         # pylint: disable=C3001
-        translate = lambda prop: pulumi_to_py_names.get(prop) or prop
+        def translate(prop): return pulumi_to_py_names.get(prop) or prop
         # pylint: disable=C3001
-        translate_to_pass = lambda prop: prop
+        def translate_to_pass(prop): return prop
 
     for key, value in deserialize_properties(outputs, keep_unknowns).items():
         # Outputs coming from the provider are NOT translated. Do so here.
@@ -1501,7 +1507,8 @@ def register_resource_package(pkg: str, package: ResourcePackage):
         for existing in resource_packages:
             if same_version(existing.version(), package.version()):
                 raise ValueError(
-                    f"Cannot re-register package {pkg}@{package.version()}. Previous registration was {existing}, new registration was {package}."
+                    f"Cannot re-register package {pkg}@{package.version()
+                                                        }. Previous registration was {existing}, new registration was {package}."
                 )
     else:
         resource_packages = []
@@ -1550,7 +1557,8 @@ def register_resource_module(pkg: str, mod: str, module: ResourceModule):
         for existing in resource_modules:
             if same_version(existing.version(), module.version()):
                 raise ValueError(
-                    f"Cannot re-register module {key}@{module.version()}. Previous registration was {existing}, new registration was {module}."
+                    f"Cannot re-register module {key}@{module.version()
+                                                       }. Previous registration was {existing}, new registration was {module}."
                 )
     else:
         resource_modules = []
