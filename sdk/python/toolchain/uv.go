@@ -1,0 +1,209 @@
+// Copyright 2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package toolchain
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
+
+type uv struct {
+	// The absolute path to the virtual env.
+	virtualenvPath string
+	// The root directory of the project.
+	root string
+}
+
+var _ Toolchain = &uv{}
+
+func newUv(root, virtualenv string) (*uv, error) {
+	if virtualenv == "" {
+		// If virtualenv is not set, look for uv.lock or pyproject.toml, and
+		// create the virtualenv next to the these.
+		uvLockDir, err := searchup(root, "uv.lock")
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
+			}
+			// No uv.lock, do we have a pyproject.toml?
+			pyprojectTomlDir, err := searchup(root, "pyproject.toml")
+			if err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
+				}
+				// We have no uv.lock and no pyproject.toml, place the virtualenv in the project root.
+				virtualenv = filepath.Join(root, ".venv")
+			} else {
+				// We have a pyproject.toml, place the virtualenv next to it.
+				virtualenv = filepath.Join(pyprojectTomlDir, ".venv")
+			}
+		} else {
+			// We have a uv.lock
+			virtualenv = filepath.Join(uvLockDir, ".venv")
+		}
+	}
+	if !filepath.IsAbs(virtualenv) {
+		virtualenv = filepath.Join(root, virtualenv)
+	}
+	return &uv{
+		virtualenvPath: virtualenv,
+		root:           root,
+	}, nil
+}
+
+func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	if useLanguageVersionTools {
+		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			return err
+		}
+	}
+
+	// Create the virtualenv
+	if err := u.EnsureVenv(ctx, cwd, false, showOutput, infoWriter, errorWriter); err != nil {
+		return err
+	}
+
+	// Look for a uv.lock file.
+	// If no uv.lock file is found, look for a pyproject.toml file.
+	// If no pyproject.toml file is found, create it, and then look for a
+	// requirements.txt file to install dependencies.
+	if _, err := searchup(cwd, "uv.lock"); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
+		}
+
+		// No uv.lock found, look for pyproject.toml.
+		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
+			}
+
+			// No pyproject.toml found, create one using `uv`
+			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "init", "--no-readme", "--no-package")
+			if err := initCmd.Run(); err != nil {
+				return fmt.Errorf("error initializing python project: %w", err)
+			}
+
+			// `uv init` creates a `hello.py` file, delete it.
+			contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
+
+			// Look for a requirements.txt file and use it to install dependencies
+			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
+			}
+			// We have a requirements.txt file
+			requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
+			addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
+			if err := addCmd.Run(); err != nil {
+				return fmt.Errorf("error installing dependecies from requirements.txt: %w", err)
+			}
+			// Remove the requirements.txt file, dependencies are tracked in pyproject.toml.
+			if err := os.Remove(requirementsTxt); err != nil {
+				return fmt.Errorf("failed to remove %q", requirementsTxt)
+			}
+		}
+	}
+
+	// We now have either a uv.lock or a pyproject.toml file, and we can use uv
+	// install the dependencies.
+	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
+	return syncCmd.Run()
+}
+
+func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet", u.virtualenvPath)
+	if err := venvCmd.Run(); err != nil {
+		return fmt.Errorf("error creating virtual environment: %w", err)
+	}
+
+	return nil
+}
+
+func (u *uv) ValidateVenv(ctx context.Context) error {
+	if !IsVirtualEnv(u.virtualenvPath) {
+		return fmt.Errorf("'%s' is not a virtualenv", u.virtualenvPath)
+	}
+	return nil
+}
+
+func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
+	cmd := exec.CommandContext(ctx, "uv", "pip", "list", "--format", "json")
+	// `uv pip` commands require the virtualenv to be activated.
+	cmd.Env = ActivateVirtualEnv(cmd.Env, u.virtualenvPath)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("error listing packages: %w", err)
+	}
+
+	var packages []PythonPackage
+	if err := json.Unmarshal(output, &packages); err != nil {
+		return nil, fmt.Errorf("error parsing package list: %w", err)
+	}
+
+	return packages, nil
+}
+
+func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
+	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "python"}, args...)...), nil
+}
+
+func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
+	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--moduule"}, args...)...), nil
+}
+
+func (u *uv) About(ctx context.Context) (Info, error) {
+	cmd, err := u.Command(ctx, "--version")
+	if err != nil {
+		return Info{}, err
+	}
+	executable := cmd.Path + " run python" // TODO can we ask uv to give us the current python path?
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return Info{}, fmt.Errorf("failed to get version: %w", err)
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+
+	return Info{
+		Executable: executable,
+		Version:    version,
+	}, nil
+}
+
+func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "uv", args...)
+	if cwd != "" {
+		cmd.Dir = cwd
+	}
+	if showOutput {
+		cmd.Stdout = infoWriter
+		cmd.Stderr = errorWriter
+	}
+	cmd.Env = append(cmd.Env, "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
+	return cmd
+}
+
+func validateUvVersion(versionOut string) error {
+	return nil
+}

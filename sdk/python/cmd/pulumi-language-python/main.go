@@ -233,6 +233,8 @@ func parseOptions(root string, programDir string, options map[string]interface{}
 				pythonOptions.Toolchain = toolchain.Pip
 			case "poetry":
 				pythonOptions.Toolchain = toolchain.Poetry
+			case "uv":
+				pythonOptions.Toolchain = toolchain.Uv
 			default:
 				return pythonOptions, fmt.Errorf("unsupported toolchain option: %s", tc)
 			}
@@ -1165,7 +1167,7 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		}
 		// Pip is always available in a Python installation or virtual environment.
 		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
-		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry")...)
+		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",

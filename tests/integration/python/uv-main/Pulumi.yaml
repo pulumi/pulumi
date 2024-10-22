@@ -1,0 +1,8 @@
+name: pulumi-python-uv
+description: A Python project that uses the uv toolchain and a main directory.
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    virtualenv: my-venv
+main: src
