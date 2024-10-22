@@ -224,10 +224,10 @@ async def serialize_properties(
                 get_type(k),
                 keep_output_values,
             )
-        except ValueError as e: 
-            raise ValueError(f"During processing input field called: {repr(k)} of type {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
-        except AssertionError as e: 
-            raise AssertionError(f"During processing input field called: {repr(k)} of type {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+        except ValueError as e:
+            raise ValueError(f"During processing input field called: {repr(k)} of type {type(k)} with value {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+        except AssertionError as e:
+            raise AssertionError(f"During processing input field called: {repr(k)} of type {type(k)} with value {repr(v)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the

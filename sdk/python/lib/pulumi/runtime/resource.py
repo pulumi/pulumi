@@ -935,9 +935,9 @@ def register_resource(
             try:
                 resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             except ValueError as e:
-                raise ValueError(f"During processing resource: {repr(name)} of type {repr(res)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+                raise ValueError(f"During processing resource: {repr(name)} of type {repr(ty)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
             except AssertionError as e:
-                raise AssertionError(f"During processing resource: {repr(name)} of type {repr(res)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
+                raise AssertionError(f"During processing resource: {repr(name)} of type {repr(ty)} ValueError has risen: '{repr(e)}'").with_traceback(e.__traceback__)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             callbacks: List[callback_pb2.Callback] = []
