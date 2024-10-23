@@ -3,7 +3,7 @@
 ## Contributing
 
 The sources of all the pages on this website are maintained in the
-[developer-docs](https://github.com/pulumi/pulumi/tree/master/developer-docs) folder of the
+[docs](https://github.com/pulumi/pulumi/tree/master/docs) folder of the
 [pulumi](https://github.com/pulumi/pulumi) GitHub repository. Pulumi welcomes contributions to the developer
 documentation via Pull Requests.
 
