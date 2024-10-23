@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ type Host interface {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, config map[config.Key]string,
-	debugging DebugEventEmitter,
+	debugging DebugEventEmitter, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -141,6 +141,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
 		debugging:               debugging,
+		projectName:             projectName,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -244,6 +245,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	debugging               DebugEventEmitter
+	projectName             tokens.PackageName
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -379,15 +381,50 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
-
-		// Try to load and bind to a plugin.
-
+		// There are cases where a provider may want to make use of configuration
+		// defined at a stack level, as well as configuration that is explicitly
+		// passed to the provider during its lifetime (e.g. with a Configure call).
+		// To support these cases, we set the PULUMI_CONFIG environment variable to
+		// a JSON object containing host configuration as follows:
+		//
+		// * If the provider is a dynamic provider, we send *all* configuration,
+		//   with namespaces intact. This enables us to support what is arguably the
+		//   "correct" behaviour for dynamic providers: since they are "part of the
+		//   program", they should have access to the entirety of the stack
+		//   configuration just like any other part of the program.
+		// * If the provider is not a dynamic provider, we send only the configuration
+		//   that is namespaced by the provider's package. In this case we also
+		//   strip the namespace from the keys in the configuration object.
+		//
+		// So, given an example host configuration of:
+		//
+		// config:
+		//   aws:region: eu-west-1
+		//   foo:bar: baz
+		//
+		// * A dynamic provider (e.g. pulumi-python) would receive:
+		//
+		//   PULUMI_CONFIG='{"aws:region":"eu-west-1","foo:bar":"baz"}'
+		//
+		// * A normal provider with package "aws" would receive:
+		//
+		//   PULUMI_CONFIG='{"region":"eu-west-1"}'
+		//
+		// * A normal provider with package "gcp" would receive:
+		//
+		//   PULUMI_CONFIG='{}'
 		result := make(map[string]string)
-		for k, v := range host.config {
-			if k.Namespace() != pkg {
-				continue
+		if isDynamicProvider(tokens.Package(pkg)) {
+			for k, v := range host.config {
+				result[k.String()] = v
 			}
-			result[k.Name()] = v
+		} else {
+			for k, v := range host.config {
+				if k.Namespace() != pkg {
+					continue
+				}
+				result[k.Name()] = v
+			}
 		}
 		jsonConfig, err := json.Marshal(result)
 		if err != nil {
@@ -396,7 +433,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 
 		plug, err := NewProvider(
 			host, host.ctx, tokens.Package(pkg), version,
-			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig))
+			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
