@@ -161,6 +161,14 @@ Pulumi employees have write access to Pulumi repositories and should push direct
 
 Please ensure that you nest your branches under a unique identifier such as your name (e.g. `refs/heads/pulumipus/cool_feature`).
 
+## Understanding Pulumi
+
+The Pulumi system is robust and offers many features that might seem overwhelming at first. To assist you in getting
+started, our team has put together the [Pulumi Developer
+Documentation](https://pulumi-developer-docs.readthedocs.io/latest/docs/README.html). This resource provides valuable
+insights into how the system is structured and can be incredibly helpful for both new contributors and maintainers
+alike. We encourage you to explore it and reach out if you have any questions!
+
 ## Getting Help
 
 We're sure there are rough edges and we appreciate you helping out. If you want to talk with other folks in the Pulumi community (including members of the Pulumi team) come hang out in the `#contribute` channel on the [Pulumi Community Slack](https://slack.pulumi.com/).
