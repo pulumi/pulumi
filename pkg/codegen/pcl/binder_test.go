@@ -641,3 +641,64 @@ resource "defaultVpc" "aws:ec2/vpc:Vpc" {
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
 	assert.NotNil(t, program)
 }
+
+func TestBindingElementFunctionWithSplatExpression(t *testing.T) {
+	t.Parallel()
+	source := `
+config "randomPrefixes" "list(object({ prefix: string }))" {
+	default = []
+}
+
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	options { range = length(randomPrefixes) }
+	prefix = element(randomPrefixes[*].prefix, range.value)
+}
+`
+	// binding in strict mode
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+
+	// binding in non-strict mode
+	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
+	t.Parallel()
+	source := `
+azs = invoke("aws:index:getAvailabilityZones", {})
+
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	options { range = length(azs.filters) }
+	prefix = element(azs.filters[*].name, range.value)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.PreferOutputVersionedInvokes)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingElementFunctionWithDynamicInput(t *testing.T) {
+	t.Parallel()
+	source := `
+config "data" "any" {}
+value = element(data, 0)
+`
+	// strict mode produces an error: the first argument to 'element' must be a list or tuple
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "the first argument to 'element' must be a list or tuple")
+	require.Nil(t, program)
+
+	// non-strict mode should bind without errors
+	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
