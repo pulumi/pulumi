@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Implement package descriptor blocks in PCL to load parameterized packages

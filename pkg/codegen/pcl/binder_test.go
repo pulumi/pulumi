@@ -16,6 +16,7 @@ package pcl_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"os"
 	"path/filepath"
 	"testing"
@@ -615,6 +616,52 @@ func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
 	require.NotNil(t, err)
 	require.True(t, diags.HasErrors(), "There are error diagnostics")
 	require.Contains(t, diags.Error(), "cannot bind component example from the same directory as the parent program")
+}
+
+func TestParsingPackageDescriptorsWorks(t *testing.T) {
+	t.Parallel()
+	source := `
+// basic package
+package "aws" { }
+
+// package with version
+package "azure" { baseProviderVersion = "1.2.3" }
+
+// parameterized package
+package "random" {
+	baseProviderName = "terraform-provider"
+	baseProviderVersion = "0.1.0"
+    baseProviderDownloadUrl = "https://example.com/terraform-provider.zip"
+    parameterization {
+ 		name = "random"
+        version = "4.5.6"
+        value = "SGVsbG8=" // base64 encoded "Hello"
+    }
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
+	require.NoError(t, err)
+	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.Equal(t, 3, len(packageDescriptors), "There are two package descriptors")
+
+	require.Equal(t, "aws", packageDescriptors["aws"].Name)
+	require.Nil(t, packageDescriptors["aws"].Version)
+	require.Equal(t, "", packageDescriptors["aws"].DownloadURL)
+	require.Nil(t, packageDescriptors["aws"].Parameterization)
+
+	require.Equal(t, "azure", packageDescriptors["azure"].Name)
+	require.Equal(t, "1.2.3", packageDescriptors["azure"].Version.String())
+
+	assert.Equal(t, "terraform-provider", packageDescriptors["random"].Name)
+	assert.Equal(t, "0.1.0", packageDescriptors["random"].Version.String())
+	assert.Equal(t, "https://example.com/terraform-provider.zip", packageDescriptors["random"].DownloadURL)
+	require.NotNil(t, packageDescriptors["random"].Parameterization)
+	assert.Equal(t, "random", packageDescriptors["random"].Parameterization.Name)
+	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
+	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
+	assert.Equal(t, "SGVsbG8=", base64Value)
 }
 
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
