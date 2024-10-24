@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/display
-  description: colorize selected stack when listing
+  description: Colorize selected stack when listing
