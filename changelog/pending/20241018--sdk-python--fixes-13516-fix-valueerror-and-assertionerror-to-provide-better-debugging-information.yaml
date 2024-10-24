@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: "Fixes #13516 - fix ValueError and AssertionError to provide better debugging information"
