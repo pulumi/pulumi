@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -270,6 +271,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		name := summary.Name().String()
 		if name == currentStack {
 			name += "*"
+			name = cmdutil.GetGlobalColorization().Colorize(colors.SpecInfo + colors.Bold + name + colors.Reset)
 		}
 
 		// Last update column
