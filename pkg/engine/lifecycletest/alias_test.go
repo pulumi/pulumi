@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -184,9 +185,9 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 			return err
 		})
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		p := &TestPlan{
-			Options: TestUpdateOptions{T: t, HostF: hostF},
-			Steps: []TestStep{
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
 				{
 					Op:            Update,
 					ExpectFailure: expectFailure,
@@ -1294,14 +1295,14 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the starting A resource
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1309,7 +1310,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 	// Set mode to try and create A then a B that aliases to it, this should fail
 	mode = 1
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1317,7 +1318,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 	// Set mode to try and create B first then a A, this should fail
 	mode = 2
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1397,14 +1398,14 @@ func TestCorrectResourceChosen(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update for initial state with "resA", "resB with resA as its parent", and "resB with no parent".
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1415,7 +1416,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 
 	// Run the next case, with "resA" and "resB with no parent and alias to have resA as its parent".
 	mode = 1
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1472,14 +1473,14 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
@@ -1496,7 +1497,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that A is now a custom
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -1515,7 +1516,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	// Assert that A is now a custom
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
@@ -1584,21 +1585,21 @@ func TestParentAlias(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
 	firstRun = false
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(project workspace.Project, target deploy.Target,
 			entries JournalEntries, events []Event, err error,
 		) error {
@@ -1660,21 +1661,21 @@ func TestEmptyParentAlias(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 
 	// Now run again with the rearranged parents, we don't expect to see any replaces
 	firstRun = false
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(project workspace.Project, target deploy.Target,
 			entries JournalEntries, events []Event, err error,
 		) error {
@@ -1782,14 +1783,14 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update for initial state with "resA", "resB", and "resC".
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1806,7 +1807,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	// tell it needed to delete due to the error), C should have it's old URN but new parent because it wasn't
 	// registered.
 	mode = 1
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1819,7 +1820,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[3].Parent)
 
 	mode = 2
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1914,14 +1915,14 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update for initial state with "resA"
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1930,7 +1931,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 	// Run the next case, resA should be aliased
 	mode = 1
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
@@ -1940,7 +1941,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// Run the last case, resAX should try to delete and resA should be created. We can't possibly know that resA ==
 	// resAX at this point because we're not being sent aliases.
 	mode = 2
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())

@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -53,12 +54,12 @@ func TestDuplicateURN(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
-	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Error(t, err)
 }
 
@@ -83,13 +84,13 @@ func TestDuplicateAlias(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -105,7 +106,7 @@ func TestDuplicateAlias(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 }
 
@@ -141,13 +142,13 @@ func TestSecretMasked(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
+	p := &lt.TestPlan{
 		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
-		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 
 	assert.NotNil(t, snap)
@@ -161,7 +162,7 @@ func TestReadReplaceStep(t *testing.T) {
 	t.Parallel()
 
 	// Create resource.
-	newTestBuilder(t, nil).
+	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
@@ -186,7 +187,7 @@ func TestReadReplaceStep(t *testing.T) {
 			assert.False(t, snap.Resources[1].External)
 
 			// ReadReplace resource.
-			newTestBuilder(t, snap).
+			lt.NewTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
@@ -216,7 +217,7 @@ func TestRelinquishStep(t *testing.T) {
 	t.Parallel()
 
 	const resourceID = "my-resource-id"
-	newTestBuilder(t, nil).
+	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				// Should match the ReadResource resource ID.
@@ -239,7 +240,7 @@ func TestRelinquishStep(t *testing.T) {
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.False(t, snap.Resources[1].External)
 
-			newTestBuilder(t, snap).
+			lt.NewTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
@@ -268,7 +269,7 @@ func TestRelinquishStep(t *testing.T) {
 func TestTakeOwnershipStep(t *testing.T) {
 	t.Parallel()
 
-	newTestBuilder(t, nil).
+	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{
@@ -292,7 +293,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 			assert.True(t, snap.Resources[1].External)
 
 			// Create new resource for this snapshot.
-			newTestBuilder(t, snap).
+			lt.NewTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						// Should match the ReadF resource ID.
@@ -324,7 +325,7 @@ func TestInitErrorsStep(t *testing.T) {
 	t.Parallel()
 
 	// Create new resource for this snapshot.
-	newTestBuilder(t, &deploy.Snapshot{
+	lt.NewTestBuilder(t, &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
@@ -374,7 +375,7 @@ func TestReadNilOutputs(t *testing.T) {
 	t.Parallel()
 
 	const resourceID = "my-resource-id"
-	newTestBuilder(t, nil).
+	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{}, nil

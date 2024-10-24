@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -57,7 +58,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 	targets []string,
 	name string,
 ) {
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	// NOTE: This is the only difference between this test and TestRefreshBasics.
 	// Setting this flag should trigger old behaviour, where refresh diffs only
@@ -141,7 +142,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 	p.Options.T = t
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
