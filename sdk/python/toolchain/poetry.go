@@ -354,17 +354,3 @@ func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 
 	return deps, nil
 }
-
-func searchup(currentDir, fileToFind string) (string, error) {
-	if _, err := os.Stat(filepath.Join(currentDir, fileToFind)); err == nil {
-		return currentDir, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	parentDir := filepath.Dir(currentDir)
-	if currentDir == parentDir {
-		// Reached the root directory, file not found
-		return "", os.ErrNotExist
-	}
-	return searchup(parentDir, fileToFind)
-}

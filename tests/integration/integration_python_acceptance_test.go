@@ -404,6 +404,59 @@ func TestPoetryInstallWithMainAndParent(t *testing.T) {
 	}
 }
 
+func TestUv(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		template     string
+		cwd          string
+		expectedVenv string
+	}{
+		{
+			template:     "uv",
+			expectedVenv: "my-venv",
+		}, {
+			template:     "uv-main",
+			expectedVenv: "my-venv",
+		}, {
+			template:     "uv-parent",
+			cwd:          "subfolder",
+			expectedVenv: "subfolder/my-venv",
+		}, {
+			template:     "uv-no-venv-option",
+			expectedVenv: ".venv",
+		},
+		{
+			template:     "uv-no-venv-option-parent",
+			cwd:          "subfolder",
+			expectedVenv: ".venv", // The virtualenv is relative to pyproject.toml
+		},
+	} {
+		test := test
+		t.Run(test.template, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			e.ImportDirectory(filepath.Join("python", test.template))
+
+			if test.cwd != "" {
+				e.CWD = filepath.Join(e.RootPath, test.cwd)
+			}
+
+			e.RunCommand("pulumi", "install")
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+			e.RunCommand("pulumi", "preview")
+
+			venv := filepath.Join(e.RootPath, test.expectedVenv)
+			if !toolchain.IsVirtualEnv(venv) {
+				t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+			}
+		})
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMypySupport(t *testing.T) {
 	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
