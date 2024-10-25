@@ -602,6 +602,38 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
+//nolint:paralleltest // Modifies env
+func TestNewPythonChooseUv(t *testing.T) {
+	// The windows acceptance tests are run using git bash, but the survey library does not support this
+	// https://github.com/AlecAivazis/survey/issues/148
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping: survey library does not support git bash on Windows")
+	}
+
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.Stdin = strings.NewReader("uv\n")
+	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using uv as toolchain",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain": "uv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+
+	e.RunCommand("pulumi", "install")
+
+	require.True(t, e.PathExists(".venv"))
+	require.True(t, e.PathExists("uv.lock"))
+	require.True(t, e.PathExists("pyproject.toml"))
+	require.False(t, e.PathExists("requirements.txt"))
+}
+
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestNewPythonRuntimeOptions(t *testing.T) {
 	if runtime.GOOS != "windows" {
