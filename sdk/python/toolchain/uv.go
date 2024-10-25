@@ -200,12 +200,21 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 	if err != nil {
 		return Info{}, err
 	}
-	executable := cmd.Path + " run python" // TODO can we ask uv to give us the current python path?
 	var out []byte
 	if out, err = cmd.Output(); err != nil {
 		return Info{}, fmt.Errorf("failed to get version: %w", err)
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+
+	cmd, err = u.Command(ctx, "-c", "import sys; print(sys.executable)")
+	if err != nil {
+		return Info{}, err
+	}
+	out, err = cmd.Output()
+	if err != nil {
+		return Info{}, fmt.Errorf("failed to get python executable path: %w", err)
+	}
+	executable := strings.TrimSpace(string(out))
 
 	return Info{
 		Executable: executable,
