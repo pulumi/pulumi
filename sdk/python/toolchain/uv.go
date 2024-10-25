@@ -79,11 +79,6 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		}
 	}
 
-	// Create the virtualenv
-	if err := u.EnsureVenv(ctx, cwd, false, showOutput, infoWriter, errorWriter); err != nil {
-		return err
-	}
-
 	// Look for a uv.lock file.
 	// If no uv.lock file is found, look for a pyproject.toml file.
 	// If no pyproject.toml file is found, create it, and then look for a
@@ -100,7 +95,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			}
 
 			// No pyproject.toml found, create one using `uv`
-			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "init", "--no-readme", "--no-package")
+			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "init", "--no-readme", "--no-package", "--no-pin-python")
 			if err := initCmd.Run(); err != nil {
 				return fmt.Errorf("error initializing python project: %w", err)
 			}
@@ -110,23 +105,25 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 			// Look for a requirements.txt file and use it to install dependencies
 			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
+			fmt.Printf("%s %s\n", requirementsTxtDir, err)
+			if err == nil {
+				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
+				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
+				if err := addCmd.Run(); err != nil {
+					return fmt.Errorf("error installing dependecies from requirements.txt: %w", err)
+				}
+				// Remove the requirements.txt file, after calling `uv add`, the
+				// dependencies are tracked in pyproject.toml.
+				if err := os.Remove(requirementsTxt); err != nil {
+					return fmt.Errorf("failed to remove %q", requirementsTxt)
+				}
+			} else if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
-			}
-			// We have a requirements.txt file
-			requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
-			addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
-			if err := addCmd.Run(); err != nil {
-				return fmt.Errorf("error installing dependecies from requirements.txt: %w", err)
-			}
-			// Remove the requirements.txt file, dependencies are tracked in pyproject.toml.
-			if err := os.Remove(requirementsTxt); err != nil {
-				return fmt.Errorf("failed to remove %q", requirementsTxt)
 			}
 		}
 	}
 
-	// We now have either a uv.lock or a pyproject.toml file, and we can use uv
+	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
 	return syncCmd.Run()
