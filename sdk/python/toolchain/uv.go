@@ -89,7 +89,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get uv version: %w", err)
 	}
-	version, err := u.version(string(versionString))
+	version, err := u.uvVersion(string(versionString))
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool, infoWri
 	return cmd
 }
 
-func (u *uv) version(versionString string) (semver.Version, error) {
+func (u *uv) uvVersion(versionString string) (semver.Version, error) {
 	versionString = strings.TrimSpace(versionString)
 	re := regexp.MustCompile(`uv (?P<version>\d+\.\d+(.\d+)?).*`)
 	matches := re.FindStringSubmatch(versionString)

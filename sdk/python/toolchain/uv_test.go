@@ -91,11 +91,11 @@ func TestUvVersion(t *testing.T) {
 		"uv 0.4.26 (Homebrew 2024-10-23)",
 		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
 	} {
-		v, err := uv.version(versionString)
+		v, err := uv.uvVersion(versionString)
 		require.NoError(t, err)
 		require.Equal(t, semver.MustParse("0.4.26"), v)
 	}
 
-	_, err = uv.version("uv 0.4.25")
+	_, err = uv.uvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
 }
