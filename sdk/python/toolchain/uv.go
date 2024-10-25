@@ -131,7 +131,6 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 			// Look for a requirements.txt file and use it to install dependencies
 			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
-			fmt.Printf("%s %s\n", requirementsTxtDir, err)
 			if err == nil {
 				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
