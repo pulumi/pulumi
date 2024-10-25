@@ -98,7 +98,9 @@ func newUv(root, virtualenv string) (*uv, error) {
 	return u, nil
 }
 
-func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
 	if useLanguageVersionTools {
 		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
 			return err
@@ -121,7 +123,8 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			}
 
 			// No pyproject.toml found, create one using `uv`
-			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "init", "--no-readme", "--no-package", "--no-pin-python")
+			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter,
+				"init", "--no-readme", "--no-package", "--no-pin-python")
 			if err := initCmd.Run(); err != nil {
 				return fmt.Errorf("error initializing python project: %w", err)
 			}
@@ -154,7 +157,9 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	return syncCmd.Run()
 }
 
-func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
+	infoWriter, errorWriter io.Writer,
+) error {
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
 		return fmt.Errorf("error creating virtual environment: %w", err)
@@ -222,7 +227,9 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 	}, nil
 }
 
-func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer, args ...string) *exec.Cmd {
+func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
+	infoWriter, errorWriter io.Writer, args ...string,
+) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "uv", args...)
 	if cwd != "" {
 		cmd.Dir = cwd
@@ -249,7 +256,8 @@ func (u *uv) uvVersion(versionString string) (semver.Version, error) {
 		return semver.Version{}, fmt.Errorf("failed to parse uv version %q: %w", versionString, err)
 	}
 	if sem.LT(minUvVersion) {
-		return semver.Version{}, fmt.Errorf("uv version %s is less than the minimum required version %s", versionString, minUvVersion)
+		return semver.Version{}, fmt.Errorf("uv version %s is less than the minimum required version %s",
+			versionString, minUvVersion)
 	}
 	return sem, nil
 }

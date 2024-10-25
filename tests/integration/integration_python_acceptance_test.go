@@ -415,14 +415,17 @@ func TestUv(t *testing.T) {
 		{
 			template:     "uv",
 			expectedVenv: "my-venv",
-		}, {
+		},
+		{
 			template:     "uv-main",
 			expectedVenv: "my-venv",
-		}, {
+		},
+		{
 			template:     "uv-parent",
 			cwd:          "subfolder",
 			expectedVenv: "subfolder/my-venv",
-		}, {
+		},
+		{
 			template:     "uv-no-venv-option",
 			expectedVenv: ".venv",
 		},

@@ -38,7 +38,7 @@ func TestUvVirtualenvPath(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
 		pulumiRoot := filepath.Join(root, "subfolder")
-		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o600))
 		require.NoError(t, os.Mkdir(pulumiRoot, 0o755))
 
 		uv, err := newUv(pulumiRoot, "")
@@ -50,13 +50,14 @@ func TestUvVirtualenvPath(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
 		pulumiRoot := filepath.Join(root, "subfolder")
-		require.NoError(t, os.Mkdir(pulumiRoot, 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o644))
-		require.NoError(t, os.WriteFile(filepath.Join(pulumiRoot, "uv.lock"), []byte{}, 0o644))
+		require.NoError(t, os.Mkdir(pulumiRoot, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(pulumiRoot, "uv.lock"), []byte{}, 0o600))
 
 		uv, err := newUv(pulumiRoot, "")
 		require.NoError(t, err)
-		require.Equal(t, filepath.Join(pulumiRoot, ".venv"), uv.virtualenvPath, "virtualenv is next to the uv.lock closest to the project root")
+		require.Equal(t, filepath.Join(pulumiRoot, ".venv"), uv.virtualenvPath,
+			"virtualenv is next to the uv.lock closest to the project root")
 	})
 
 	t.Run("virtualenv option is provided", func(t *testing.T) {
