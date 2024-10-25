@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,4 +78,24 @@ func TestUvVirtualenvPath(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, filepath.Join(pulumiRoot, "banana"), uv.virtualenvPath, "virtualenv is in the project root")
 	})
+}
+
+func TestUvVersion(t *testing.T) {
+	t.Parallel()
+
+	uv, err := newUv(".", "")
+	require.NoError(t, err)
+
+	for _, versionString := range []string{
+		"uv 0.4.26",
+		"uv 0.4.26 (Homebrew 2024-10-23)",
+		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
+	} {
+		v, err := uv.version(versionString)
+		require.NoError(t, err)
+		require.Equal(t, semver.MustParse("0.4.26"), v)
+	}
+
+	_, err = uv.version("uv 0.4.25")
+	require.ErrorContains(t, err, "less than the minimum required version")
 }

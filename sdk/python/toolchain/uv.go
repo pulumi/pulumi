@@ -23,9 +23,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type uv struct {
@@ -35,12 +38,20 @@ type uv struct {
 	root string
 }
 
+var minUvVersion = semver.MustParse("0.4.26")
+
 var _ Toolchain = &uv{}
 
 func newUv(root, virtualenv string) (*uv, error) {
+	_, err := exec.LookPath("uv")
+	if err != nil {
+		return nil, errors.New("Could not find `uv` executable.\n" +
+			"Install uv and make sure is is in your PATH.")
+	}
+
 	if virtualenv == "" {
-		// If virtualenv is not set, look for uv.lock or pyproject.toml, and
-		// create the virtualenv next to the these.
+		// If virtualenv is not set, look for the nearest uv.lock or pyproject.toml to
+		// determine where to place the virtualenv.
 		uvLockDir, err := searchup(root, "uv.lock")
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
@@ -59,17 +70,32 @@ func newUv(root, virtualenv string) (*uv, error) {
 				virtualenv = filepath.Join(pyprojectTomlDir, ".venv")
 			}
 		} else {
-			// We have a uv.lock
+			// We have a uv.lock, place the virtualenv next to it.
 			virtualenv = filepath.Join(uvLockDir, ".venv")
 		}
 	}
 	if !filepath.IsAbs(virtualenv) {
 		virtualenv = filepath.Join(root, virtualenv)
 	}
-	return &uv{
+
+	u := &uv{
 		virtualenvPath: virtualenv,
 		root:           root,
-	}, nil
+	}
+
+	// Validate the version
+	cmd := u.uvCommand(context.Background(), "", false, nil, nil, "--version")
+	versionString, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get uv version: %w", err)
+	}
+	version, err := u.version(string(versionString))
+	if err != nil {
+		return nil, err
+	}
+	logging.V(9).Infof("Python toolchain: using uv version %s", version)
+
+	return u, nil
 }
 
 func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
@@ -201,6 +227,21 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool, infoWri
 	return cmd
 }
 
-func validateUvVersion(versionOut string) error {
-	return nil
+func (u *uv) version(versionString string) (semver.Version, error) {
+	versionString = strings.TrimSpace(versionString)
+	re := regexp.MustCompile(`uv (?P<version>\d+\.\d+(.\d+)?).*`)
+	matches := re.FindStringSubmatch(versionString)
+	i := re.SubexpIndex("version")
+	if i < 0 || len(matches) < i {
+		return semver.Version{}, fmt.Errorf("unexpected output from `uv --version`: %q", versionString)
+	}
+	v := matches[i]
+	sem, err := semver.ParseTolerant(v)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse uv version %q: %w", versionString, err)
+	}
+	if sem.LT(minUvVersion) {
+		return semver.Version{}, fmt.Errorf("uv version %s is less than the minimum required version %s", versionString, minUvVersion)
+	}
+	return sem, nil
 }
