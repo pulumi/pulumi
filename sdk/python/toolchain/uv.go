@@ -192,7 +192,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 }
 
 func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
-	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--moduule"}, args...)...), nil
+	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--module"}, args...)...), nil
 }
 
 func (u *uv) About(ctx context.Context) (Info, error) {
