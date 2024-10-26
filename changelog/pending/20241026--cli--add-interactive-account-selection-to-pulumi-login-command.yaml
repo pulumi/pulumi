@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add interactive account selection to pulumi login command
