@@ -19,13 +19,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -36,6 +40,7 @@ func newLoginCmd() *cobra.Command {
 	var defaultOrg string
 	var localMode bool
 	var insecure bool
+	var interactive bool
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -123,6 +128,18 @@ func newLoginCmd() *cobra.Command {
 				return err
 			}
 
+			isInteractive := cmdutil.Interactive() && interactive
+			if cloudURL == "" && isInteractive {
+				creds, err := pkgWorkspace.Instance.GetStoredCredentials()
+				if err != nil {
+					return err
+				}
+				act, err := chooseAccount(creds.Accounts, displayOptions)
+				if err != nil {
+					return err
+				}
+				cloudURL = act
+			}
 			if cloudURL == "" {
 				var err error
 				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
@@ -176,6 +193,7 @@ func newLoginCmd() *cobra.Command {
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
+	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false, "Show interactive login options based on known accounts")
 
 	return cmd
 }
@@ -191,4 +209,33 @@ func validateCloudBackendType(typ string) error {
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
+}
+
+// chooseAccount will prompt the user to choose amongst the available accounts.
+func chooseAccount(accounts map[string]workspace.Account, opts display.Options) (string, error) {
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+
+	acts := make([]string, 0, len(accounts))
+	for url := range accounts {
+		acts = append(acts, url)
+	}
+
+	sort.Strings(acts)
+
+	nopts := len(acts)
+	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+	message := fmt.Sprintf("\rPlease choose an account (%d total):\n", nopts)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message:  message,
+		Options:  acts,
+		PageSize: pageSize,
+	}, &option, surveyIcons(opts.Color)); err != nil {
+		return "", errors.New("no account selected; please use `pulumi login --interactive` to choose one")
+	}
+
+	return option, nil
 }
