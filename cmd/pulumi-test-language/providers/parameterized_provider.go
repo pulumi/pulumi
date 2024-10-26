@@ -115,11 +115,11 @@ func (p *ParameterizedProvider) Parameterize(
 	}
 
 	if param.Value == nil {
-		return plugin.ParameterizeResponse{}, fmt.Errorf("expected a non-nil value when parameterizing")
+		return plugin.ParameterizeResponse{}, errors.New("expected a non-nil value when parameterizing")
 	}
 
 	if param.Name == "" {
-		return plugin.ParameterizeResponse{}, fmt.Errorf("expected a non-empty name when parameterizing")
+		return plugin.ParameterizeResponse{}, errors.New("expected a non-empty name when parameterizing")
 	}
 
 	p.parameterPackage = param.Name
