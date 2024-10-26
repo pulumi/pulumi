@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: "Make plugin downloads/installation cancellable, fixing #17594."
