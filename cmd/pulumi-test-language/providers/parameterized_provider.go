@@ -17,6 +17,7 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -55,11 +56,11 @@ func (p *ParameterizedProvider) GetSchema(
 	_ context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	if p.parameterPackage == "" {
-		return plugin.GetSchemaResponse{}, fmt.Errorf("expected a parameter package name for a parameterized provider")
+		return plugin.GetSchemaResponse{}, errors.New("expected a parameter package name for a parameterized provider")
 	}
 
 	if p.parameterVersion == "" {
-		return plugin.GetSchemaResponse{}, fmt.Errorf("expected a parameter version for a parameterized provider")
+		return plugin.GetSchemaResponse{}, errors.New("expected a parameter version for a parameterized provider")
 	}
 
 	subpackage := p.parameterPackage
@@ -68,7 +69,7 @@ func (p *ParameterizedProvider) GetSchema(
 	// the name of the resource is the parameterized value
 	parameterizedResource := string(p.parameterValue)
 	if parameterizedResource == "" {
-		return plugin.GetSchemaResponse{}, fmt.Errorf("expected parameter value to be non-empty")
+		return plugin.GetSchemaResponse{}, errors.New("expected parameter value to be non-empty")
 	}
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
