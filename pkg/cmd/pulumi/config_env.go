@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -190,15 +189,11 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	if !yes {
 		fmt.Fprintln(cmd.stdout)
 
-		confirm := confirmation.New("Save?", confirmation.Yes)
-		confirm.Input, confirm.Output = cmd.stdin, cmd.stdout
-
-		save, err := confirm.RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := promptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 
