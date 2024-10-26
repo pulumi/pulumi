@@ -40,6 +40,8 @@ type uv struct {
 
 var minUvVersion = semver.MustParse("0.4.26")
 
+var defaultVirtualEnv = ".venv"
+
 var _ Toolchain = &uv{}
 
 func newUv(root, virtualenv string) (*uv, error) {
@@ -64,14 +66,14 @@ func newUv(root, virtualenv string) (*uv, error) {
 					return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
 				}
 				// We have no uv.lock and no pyproject.toml, place the virtualenv in the project root.
-				virtualenv = filepath.Join(root, ".venv")
+				virtualenv = filepath.Join(root, defaultVirtualEnv)
 			} else {
 				// We have a pyproject.toml, place the virtualenv next to it.
-				virtualenv = filepath.Join(pyprojectTomlDir, ".venv")
+				virtualenv = filepath.Join(pyprojectTomlDir, defaultVirtualEnv)
 			}
 		} else {
 			// We have a uv.lock, place the virtualenv next to it.
-			virtualenv = filepath.Join(uvLockDir, ".venv")
+			virtualenv = filepath.Join(uvLockDir, defaultVirtualEnv)
 		}
 	}
 	if !filepath.IsAbs(virtualenv) {
