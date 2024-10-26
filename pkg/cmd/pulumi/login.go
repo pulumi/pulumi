@@ -193,7 +193,8 @@ func newLoginCmd() *cobra.Command {
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
-	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false, "Show interactive login options based on known accounts")
+	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false,
+		"Show interactive login options based on known accounts")
 
 	return cmd
 }
