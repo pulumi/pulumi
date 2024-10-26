@@ -87,7 +87,7 @@ type pluginInstallCmd struct {
 	color colors.Colorization
 
 	pluginGetLatestVersion func(
-		workspace.PluginSpec,
+		workspace.PluginSpec, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
 }
 
@@ -102,7 +102,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.color = cmdutil.GetGlobalColorization()
 	}
 	if cmd.pluginGetLatestVersion == nil {
-		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
+		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersionWithContext
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -167,7 +167,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		// If we don't have a version try to look one up
 		if version == nil {
-			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec)
+			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
 			if err != nil {
 				return err
 			}
@@ -233,7 +233,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 					diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
 			}
 
-			r, err := workspace.DownloadToFile(install, withProgress, retry)
+			r, err := workspace.DownloadToFileWithContext(ctx, install, withProgress, retry)
 			if err != nil {
 				return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 			}

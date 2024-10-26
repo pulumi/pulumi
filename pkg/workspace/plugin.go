@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -58,11 +59,16 @@ func (err *InstallPluginError) Unwrap() error {
 }
 
 func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) (*semver.Version, error) {
+	return InstallPluginWithContext(context.Background(), pluginSpec, log)
+}
+
+func InstallPluginWithContext(ctx context.Context, pluginSpec workspace.PluginSpec,
+	log func(sev diag.Severity, msg string)) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
 	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
-		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
+		pluginSpec.Version, err = pluginSpec.GetLatestVersionWithContext(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}
@@ -80,7 +86,7 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	}
 
 	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
-	downloadedFile, err := workspace.DownloadToFile(pluginSpec, wrapper, retry)
+	downloadedFile, err := workspace.DownloadToFileWithContext(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,

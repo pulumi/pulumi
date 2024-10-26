@@ -331,7 +331,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
+	_, err = pkgWorkspace.InstallPluginWithContext(host.Context(), descriptor.PluginSpec, log)
 	if err != nil {
 		return nil, err
 	}

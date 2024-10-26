@@ -190,12 +190,22 @@ func (err *MissingError) Error() string {
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-	Download(
+	Download(version semver.Version, opSy string, arch string,
+		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
+	// DownloadWithContext fetches an io.ReadCloser for this plugin and also returns the size of the response
+	// (if known). This variant takes a context to facilitate cancellation.
+	DownloadWithContext(ctx context.Context,
 		version semver.Version, opSy string, arch string,
 		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
+
 	// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
-	// plugins we can get from github releases.
+	// plugins we can get from GitHub releases.
 	GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
+	// GetLatestVersionWithContext tries to find the latest version for this plugin. This is currently only supported
+	// for plugins we can get from GitHub releases. This variant takes a context to facilitate cancellation.
+	GetLatestVersionWithContext(ctx context.Context,
+		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
+
 	// A base URL that can uniquely identify the source. Has the same structure as the PluginDownloadURL
 	// schema option. Example: "github://api.github.com/pulumi/pulumi-aws".
 	URL() string
@@ -220,13 +230,21 @@ func (source *getPulumiSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *getPulumiSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	serverURL := "https://get.pulumi.com/releases/plugins"
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
 		url.QueryEscape(standardAssetName(source.name, source.kind, version, opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "")
+	req, err := buildHTTPRequest(ctx, endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -270,13 +288,13 @@ func newGitlabSource(url *url.URL, name string, kind apitype.PluginKind) (*gitla
 	}, nil
 }
 
-func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
+func (source *gitlabSource) newHTTPRequest(ctx context.Context, url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
 		authorization = "Bearer " + source.token
 	}
 
-	req, err := buildHTTPRequest(url, authorization)
+	req, err := buildHTTPRequest(ctx, url, authorization)
 	if err != nil {
 		return nil, err
 	}
@@ -287,11 +305,18 @@ func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, e
 func (source *gitlabSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
+	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
+}
+
+func (source *gitlabSource) GetLatestVersionWithContext(
+	ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/api/v4/projects/%s/releases/permalink/latest",
 		source.host, source.project)
 	logging.V(9).Infof("plugin GitLab releases url: %s", releaseURL)
-	req, err := source.newHTTPRequest(releaseURL, "application/json")
+	req, err := source.newHTTPRequest(ctx, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +344,14 @@ func (source *gitlabSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *gitlabSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 
 	assetURL := fmt.Sprintf(
@@ -326,7 +359,7 @@ func (source *gitlabSource) Download(
 		source.host, source.project, version, assetName)
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
 
-	req, err := source.newHTTPRequest(assetURL, "application/octet-stream")
+	req, err := source.newHTTPRequest(ctx, assetURL, "application/octet-stream")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -420,13 +453,13 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 	}, nil
 }
 
-func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
+func (source *githubSource) newHTTPRequest(ctx context.Context, url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
 		authorization = "token " + source.token
 	}
 
-	req, err := buildHTTPRequest(url, authorization)
+	req, err := buildHTTPRequest(ctx, url, authorization)
 	if err != nil {
 		return nil, err
 	}
@@ -435,10 +468,11 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 }
 
 func (source *githubSource) getHTTPResponse(
+	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 	url, accept string,
 ) (io.ReadCloser, int64, error) {
-	req, err := source.newHTTPRequest(url, accept)
+	req, err := source.newHTTPRequest(ctx, url, accept)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -454,7 +488,7 @@ func (source *githubSource) getHTTPResponse(
 		if downErr != nil && downErr.code == 401 && source.token != "" {
 			source.token = ""
 			source.tokenDisabled = true
-			return source.getHTTPResponse(getHTTPResponse, url, accept)
+			return source.getHTTPResponse(ctx, getHTTPResponse, url, accept)
 		}
 		return nil, -1, err
 	}
@@ -488,11 +522,18 @@ func (source *githubSource) getHTTPResponse(
 func (source *githubSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
+	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
+}
+
+func (source *githubSource) GetLatestVersionWithContext(
+	ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
+	resp, length, err := source.getHTTPResponse(ctx, getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -516,11 +557,19 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *githubSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
+	resp, length, err := source.getHTTPResponse(ctx, getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -550,7 +599,7 @@ func (source *githubSource) Download(
 	}
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
-	return source.getHTTPResponse(getHTTPResponse, assetURL, "application/octet-stream")
+	return source.getHTTPResponse(ctx, getHTTPResponse, assetURL, "application/octet-stream")
 }
 
 func (source *githubSource) URL() string {
@@ -579,6 +628,13 @@ func newHTTPSource(name string, kind apitype.PluginKind, url *url.URL) *httpSour
 func (source *httpSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
+	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
+}
+
+func (source *httpSource) GetLatestVersionWithContext(
+	ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
 }
 
@@ -596,6 +652,14 @@ func (source *httpSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *httpSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
@@ -604,7 +668,7 @@ func (source *httpSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "")
+	req, err := buildHTTPRequest(ctx, endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -637,12 +701,19 @@ func urlMustParse(rawURL string) *url.URL {
 func (source *fallbackSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
+	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
+}
+
+func (source *fallbackSource) GetLatestVersionWithContext(
+	ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	// Try and get this package from our public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
 		return nil, err
 	}
-	version, err := public.GetLatestVersion(getHTTPResponse)
+	version, err := public.GetLatestVersionWithContext(ctx, getHTTPResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -654,12 +725,20 @@ func (source *fallbackSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *fallbackSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	// Try and get this package from public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
 		return nil, -1, err
 	}
-	resp, length, err := public.Download(version, opSy, arch, getHTTPResponse)
+	resp, length, err := public.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
 	if err == nil {
 		return resp, length, nil
 	}
@@ -667,7 +746,7 @@ func (source *fallbackSource) Download(
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
-	return pulumi.Download(version, opSy, arch, getHTTPResponse)
+	return pulumi.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
 }
 
 func (source *fallbackSource) URL() string {
@@ -703,7 +782,14 @@ func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksu
 func (source *checksumSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	return source.source.GetLatestVersion(getHTTPResponse)
+	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
+}
+
+func (source *checksumSource) GetLatestVersionWithContext(
+	ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
+	return source.source.GetLatestVersionWithContext(ctx, getHTTPResponse)
 }
 
 type checksumReader struct {
@@ -740,8 +826,16 @@ func (source *checksumSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
+}
+
+func (source *checksumSource) DownloadWithContext(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	checksum, ok := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
-	response, length, err := source.source.Download(version, opSy, arch, getHTTPResponse)
+	response, length, err := source.source.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -1002,15 +1096,27 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 // plugins we can get from github releases.
 func (spec PluginSpec) GetLatestVersion() (*semver.Version, error) {
+	return spec.GetLatestVersionWithContext(context.Background())
+}
+
+// GetLatestVersionWithContext tries to find the latest version for this plugin. This is currently only supported for
+// plugins we can get from github releases. This variant accepts a context for I/O cancellation purposes.
+func (spec PluginSpec) GetLatestVersionWithContext(ctx context.Context) (*semver.Version, error) {
 	source, err := spec.GetSource()
 	if err != nil {
 		return nil, err
 	}
-	return source.GetLatestVersion(getHTTPResponseWithRetry)
+	return source.GetLatestVersionWithContext(ctx, getHTTPResponseWithRetry)
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
+	return spec.DownloadWithContext(context.Background())
+}
+
+// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
+// This variant accepts a context for I/O cancellation purposes.
+func (spec PluginSpec) DownloadWithContext(ctx context.Context) (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
 	var opSy string
 	switch runtime.GOOS {
@@ -1036,11 +1142,11 @@ func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
 	if err != nil {
 		return nil, -1, err
 	}
-	return source.Download(*spec.Version, opSy, arch, getHTTPResponse)
+	return source.DownloadWithContext(ctx, *spec.Version, opSy, arch, getHTTPResponse)
 }
 
-func buildHTTPRequest(pluginEndpoint string, authorization string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", pluginEndpoint, nil)
+func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1229,9 +1335,9 @@ func (d *pluginDownloader) copyBuffer(dst io.Writer, src io.Reader) (written int
 	}
 }
 
-func (d *pluginDownloader) tryDownload(pkgPlugin PluginSpec, dst io.WriteCloser) (error, error) {
+func (d *pluginDownloader) tryDownload(ctx context.Context, pkgPlugin PluginSpec, dst io.WriteCloser) (error, error) {
 	defer dst.Close()
-	tarball, expectedByteCount, err := pkgPlugin.Download()
+	tarball, expectedByteCount, err := pkgPlugin.DownloadWithContext(ctx)
 	if err != nil {
 		return err, nil
 	}
@@ -1250,12 +1356,12 @@ func (d *pluginDownloader) tryDownload(pkgPlugin PluginSpec, dst io.WriteCloser)
 	return nil, nil
 }
 
-func (d *pluginDownloader) tryDownloadToFile(pkgPlugin PluginSpec) (string, error, error) {
+func (d *pluginDownloader) tryDownloadToFile(ctx context.Context, pkgPlugin PluginSpec) (string, error, error) {
 	file, err := os.CreateTemp("" /* default temp dir */, "pulumi-plugin-tar")
 	if err != nil {
 		return "", nil, err
 	}
-	readErr, writeErr := d.tryDownload(pkgPlugin, file)
+	readErr, writeErr := d.tryDownload(ctx, pkgPlugin, file)
 	logging.V(10).Infof("try downloaded plugin %s to %s: %v %v", pkgPlugin, file.Name(), readErr, writeErr)
 	if readErr != nil || writeErr != nil {
 		err2 := os.Remove(file.Name())
@@ -1273,7 +1379,7 @@ func (d *pluginDownloader) tryDownloadToFile(pkgPlugin PluginSpec) (string, erro
 	return file.Name(), nil, nil
 }
 
-func (d *pluginDownloader) downloadToFileWithRetry(pkgPlugin PluginSpec) (string, error) {
+func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugin PluginSpec) (string, error) {
 	delay := 80 * time.Millisecond
 	backoff := 2.0
 	maxAttempts := 5
@@ -1288,7 +1394,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(pkgPlugin PluginSpec) (string
 				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
 			}
 
-			tempFile, readErr, writeErr := d.tryDownloadToFile(pkgPlugin)
+			tempFile, readErr, writeErr := d.tryDownloadToFile(ctx, pkgPlugin)
 			if readErr == nil && writeErr == nil {
 				return true, tempFile, nil
 			}
@@ -1324,12 +1430,17 @@ func (d *pluginDownloader) downloadToFileWithRetry(pkgPlugin PluginSpec) (string
 	return path.(string), nil
 }
 
-// DownloadToFile downloads the given PluginSpec to a temporary file
-// and returns that temporary file.
-//
-// This has some retry logic to re-attempt the download if it errors for any reason.
-func (d *pluginDownloader) DownloadToFile(pkgPlugin PluginSpec) (*os.File, error) {
-	tarball, err := d.downloadToFileWithRetry(pkgPlugin)
+// DownloadToFile downloads the given PluginSpec to a temporary file and returns that temporary file. This has
+// some retry logic to re-attempt the download if it errors for any reason.
+func (d *pluginDownloader) DownloadToFile(ctx context.Context, pkgPlugin PluginSpec) (*os.File, error) {
+	return d.DownloadToFile(context.Background(), pkgPlugin)
+}
+
+// DownloadToFileWithContext downloads the given PluginSpec to a temporary file and returns that temporary file.
+// This has some retry logic to re-attempt the download if it errors for any reason. This variant accepts a Context
+// to allow for I/O cancellation.
+func (d *pluginDownloader) DownloadToFileWithContext(ctx context.Context, pkgPlugin PluginSpec) (*os.File, error) {
+	tarball, err := d.downloadToFileWithRetry(ctx, pkgPlugin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
 	}
@@ -1343,6 +1454,19 @@ func (d *pluginDownloader) DownloadToFile(pkgPlugin PluginSpec) (*os.File, error
 // DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
 // This has some retry logic to re-attempt the download if it errors for any reason.
 func DownloadToFile(
+	ctx context.Context,
+	pkgPlugin PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (*os.File, error) {
+	return DownloadToFileWithContext(context.Background(), pkgPlugin, wrapper, retry)
+}
+
+// DownloadToFileWithContext downloads the given PluginInfo to a temporary file and returns that temporary file.
+// This has some retry logic to re-attempt the download if it errors for any reason. This variant
+// accepts a context for I/O cancellation purposes.
+func DownloadToFileWithContext(
+	ctx context.Context,
 	pkgPlugin PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration),
@@ -1350,7 +1474,7 @@ func DownloadToFile(
 	return (&pluginDownloader{
 		WrapStream: wrapper,
 		OnRetry:    retry,
-	}).DownloadToFile(pkgPlugin)
+	}).DownloadToFileWithContext(ctx, pkgPlugin)
 }
 
 type PluginContent interface {

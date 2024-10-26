@@ -77,7 +77,7 @@ func loadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+		_, err = pkgWorkspace.InstallPluginWithContext(ctx.BaseContext(), pluginSpec, log)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}
@@ -352,7 +352,7 @@ func runConvert(
 			Name: string(provider),
 			Kind: apitype.ResourcePlugin,
 		}
-		version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
+		version, err := pkgWorkspace.InstallPluginWithContext(pCtx.BaseContext(), pluginSpec, log)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
 			return nil

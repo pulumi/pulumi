@@ -46,6 +46,10 @@ type MockHost struct {
 
 var _ Host = (*MockHost)(nil)
 
+func (m *MockHost) Context() context.Context {
+	return context.Background()
+}
+
 func (m *MockHost) ServerAddr() string {
 	if m.ServerAddrF != nil {
 		return m.ServerAddrF()

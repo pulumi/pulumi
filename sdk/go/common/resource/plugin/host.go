@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,10 @@ import (
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
+	// Context returns the plugin context this host was initialized with. This is useful
+	// when needing to interact with I/O cancellation.
+	Context() context.Context
+
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
 
@@ -267,6 +272,10 @@ type languagePlugin struct {
 type resourcePlugin struct {
 	Plugin Provider
 	Info   workspace.PluginInfo
+}
+
+func (host *defaultHost) Context() context.Context {
+	return host.ctx.BaseContext()
 }
 
 func (host *defaultHost) ServerAddr() string {

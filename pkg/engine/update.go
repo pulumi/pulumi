@@ -229,12 +229,22 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 func RunInstallPlugins(
 	proj *workspace.Project, opts *deploymentOptions, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
 ) error {
-	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, opts, plugctx, true /*returnInstallErrors*/)
+	return RunInstallPluginsWithContext(context.Background(), proj, opts, pwd, main, target, plugctx)
+}
+
+// RunInstallPluginsWithContext calls installPlugins and just returns the error (avoids having to export pluginSet).
+// This variant accepts a context for I/O cancellation purposes.
+func RunInstallPluginsWithContext(
+	ctx context.Context,
+	proj *workspace.Project, opts *deploymentOptions, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
+) error {
+	_, _, err := installPlugins(ctx, proj, pwd, main, target, opts, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
 func installPlugins(
-	ctx context.Context, proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
+	ctx context.Context,
+	proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
 	plugctx *plugin.Context, returnInstallErrors bool,
 ) (PluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
