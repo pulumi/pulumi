@@ -630,10 +630,8 @@ async def serialize_property(
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
                 # pylint: disable=C3001
                 types = _types.input_type_types(typ)
-
                 # pylint: disable=C3001
-                def translate(k):
-                    return py_name_to_pulumi_name.get(k) or k
+                translate = lambda k: py_name_to_pulumi_name.get(k) or k
 
                 get_type = types.get
             else:
@@ -643,9 +641,7 @@ async def serialize_property(
                     args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
-                        def get_type(k):
-                            return args[1]
-
+                        get_type = lambda k: args[1]
                         translate = None
                 else:
                     translate = None
@@ -1218,8 +1214,7 @@ def translate_output_properties(
                     # it is intended to be a user-defined dict.
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
-                        def translate(k):
-                            return k
+                        get_type = lambda k: args[1]
 
             elif return_none_on_dict_type_mismatch:
                 return None
@@ -1361,12 +1356,9 @@ def resolve_outputs(
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
 
         # pylint: disable=C3001
-        def translate(prop):
-            return pulumi_to_py_names.get(prop) or prop
-
+        translate = lambda prop: pulumi_to_py_names.get(prop) or prop
         # pylint: disable=C3001
-        def translate_to_pass(prop):
-            return prop
+        translate_to_pass = lambda prop: prop
 
     for key, value in deserialize_properties(outputs, keep_unknowns).items():
         # Outputs coming from the provider are NOT translated. Do so here.
@@ -1520,8 +1512,7 @@ def register_resource_package(pkg: str, package: ResourcePackage):
         for existing in resource_packages:
             if same_version(existing.version(), package.version()):
                 raise ValueError(
-                    f"Cannot re-register package {pkg}@{package.version()
-                                                        }. Previous registration was {existing}, new registration was {package}."
+                    f"Cannot re-register package {pkg}@{package.version()}. Previous registration was {existing}, new registration was {package}."
                 )
     else:
         resource_packages = []
@@ -1570,8 +1561,7 @@ def register_resource_module(pkg: str, mod: str, module: ResourceModule):
         for existing in resource_modules:
             if same_version(existing.version(), module.version()):
                 raise ValueError(
-                    f"Cannot re-register module {key}@{module.version()
-                                                       }. Previous registration was {existing}, new registration was {module}."
+                    f"Cannot re-register module {key}@{module.version()}. Previous registration was {existing}, new registration was {module}."
                 )
     else:
         resource_modules = []
