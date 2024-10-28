@@ -204,14 +204,10 @@ async def serialize_properties(
     if typ is not None:
         py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
         types = _types.input_type_types(typ)
-
         # pylint: disable=C3001
-        def translate(k):
-            return py_name_to_pulumi_name.get(k) or k
-
+        translate = lambda k: py_name_to_pulumi_name.get(k) or k
         # pylint: disable=C3001
-        def get_type(k):
-            return types.get(translate(k))  # type: ignore
+        get_type = lambda k: types.get(translate(k))  # type: ignore
 
     struct = struct_pb2.Struct()
     # We're deliberately not using `inputs.items()` here in case inputs is a subclass of `dict` that redefines items.
