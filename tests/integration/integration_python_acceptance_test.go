@@ -436,8 +436,14 @@ func TestUv(t *testing.T) {
 		},
 	} {
 		test := test
+		// On windows, when running in parallel, we can run into issues when Uv tries
+		// to write the same cache file concurrently. This is the same issue we see
+		// for Poetry https://github.com/pulumi/pulumi/pull/17337
+		//nolint:paralleltest
 		t.Run(test.template, func(t *testing.T) {
-			t.Parallel()
+			if runtime.GOOS != "windows" {
+				t.Parallel()
+			}
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
