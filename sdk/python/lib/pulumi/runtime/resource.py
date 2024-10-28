@@ -940,12 +940,12 @@ def register_resource(
                 raise ValueError(
                     f"While processing resource: {repr(name)}, type: {repr(ty)}\n"
                     + f"ValueError has risen: {e}"
-                )
+                ) from e
             except AssertionError as e:
                 raise AssertionError(
                     f"While processing resource: {repr(name)}, type {repr(ty)}\n"
                     + f"AssertionError has risen: {e}"
-                )
+                ) from e
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             callbacks: List[callback_pb2.Callback] = []

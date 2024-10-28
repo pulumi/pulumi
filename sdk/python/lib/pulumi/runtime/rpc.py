@@ -232,12 +232,12 @@ async def serialize_properties(
             raise ValueError(
                 f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
                 + f"ValueError has risen: {e}"
-            )
+            ) from e
         except AssertionError as e:
             raise AssertionError(
                 f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
                 + f"AssertionError has risen: {e}"
-            )
+            ) from e
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the
