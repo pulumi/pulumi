@@ -1207,14 +1207,12 @@ def translate_output_properties(
                 args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001
-                    def get_type(k):
-                        return args[1]
-
+                    get_type = lambda k: args[1]
                     # If transform_using_type_metadata is True, don't translate its keys because
                     # it is intended to be a user-defined dict.
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
-                        get_type = lambda k: args[1]
+                        translate = lambda k: k
 
             elif return_none_on_dict_type_mismatch:
                 return None
