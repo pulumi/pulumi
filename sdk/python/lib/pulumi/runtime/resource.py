@@ -933,7 +933,9 @@ def register_resource(
                     opts.version = None
 
             try:
-                resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
+                resolver = await prepare_resource(
+                    res, ty, custom, remote, props, opts, typ
+                )
             except ValueError as e:
                 raise ValueError(
                     f"While processing resource: {repr(name)}, type: {repr(ty)}\n"
