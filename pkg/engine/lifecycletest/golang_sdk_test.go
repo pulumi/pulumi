@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -114,10 +115,10 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
+	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   MakeBasicLifecycleSteps(t, 4),
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -181,9 +182,9 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 		})
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		p := &TestPlan{
-			Options: TestUpdateOptions{T: t, HostF: hostF},
-			Steps: []TestStep{
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -215,7 +216,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -284,12 +285,12 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
 	p.Options.SkipDisplayTests = true
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Should create before replace
 	inputsA.Foo = pulumi.String("bar")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -313,7 +314,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A.
 	// replacement should be delete-before-replace.
 	dbrA, inputsA.Foo = &dbrValue, pulumi.String("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -378,9 +379,9 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 		})
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		p := &TestPlan{
-			Options: TestUpdateOptions{T: t, HostF: hostF},
-			Steps: []TestStep{
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -585,9 +586,9 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Update}},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
 }
@@ -637,9 +638,9 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	expectedOps := []display.StepOp{deploy.OpCreate}
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps: []TestStep{
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []lt.TestStep{
 			{
 				Op: Update,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -768,9 +769,9 @@ func TestRemoteComponentGolang(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Update}},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
 }

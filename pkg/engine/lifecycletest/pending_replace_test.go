@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -42,7 +43,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	diffsCalled := make(map[string]bool)
@@ -125,9 +126,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
-	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
-	upSnap, err := TestOp(Update).
+	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -148,9 +149,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	}
 
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
-	replaceOptions := TestUpdateOptions{T: t, HostF: replaceHostF}
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
-	replaceSnap, err := TestOp(Update).
+	replaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -185,9 +186,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	}
 
 	retryHostF := deploytest.NewPluginHostF(nil, nil, programF, retryLoaders...)
-	retryOptions := TestUpdateOptions{T: t, HostF: retryHostF}
+	retryOptions := lt.TestUpdateOptions{T: t, HostF: retryHostF}
 
-	retrySnap, err := TestOp(Update).
+	retrySnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), retryOptions, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 
@@ -218,7 +219,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
@@ -286,9 +287,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
-	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
-	upSnap, err := TestOp(Update).
+	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -309,9 +310,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	}
 
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
-	replaceOptions := TestUpdateOptions{T: t, HostF: replaceHostF}
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
-	replaceSnap, err := TestOp(Update).
+	replaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -336,9 +337,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	}
 
 	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
-	removeOptions := TestUpdateOptions{T: t, HostF: removeHostF}
+	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
-	removeSnap, err := TestOp(Update).
+	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 
@@ -364,7 +365,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
@@ -432,9 +433,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
-	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
-	upSnap, err := TestOp(Update).
+	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -455,9 +456,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	}
 
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
-	replaceOptions := TestUpdateOptions{T: t, HostF: replaceHostF}
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
-	replaceSnap, err := TestOp(Update).
+	replaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -489,9 +490,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	})
 
 	removeHostF := deploytest.NewPluginHostF(nil, nil, removeProgramF, removeLoaders...)
-	removeOptions := TestUpdateOptions{T: t, HostF: removeHostF}
+	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
-	removeSnap, err := TestOp(Update).
+	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 
@@ -520,7 +521,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
@@ -602,9 +603,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
-	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
-	upSnap, err := TestOp(Update).
+	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -625,9 +626,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	}
 
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
-	replaceOptions := TestUpdateOptions{T: t, HostF: replaceHostF}
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
-	replaceSnap, err := TestOp(Update).
+	replaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -655,9 +656,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	}
 
 	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
-	removeOptions := TestUpdateOptions{T: t, HostF: removeHostF}
+	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
-	removeSnap, err := TestOp(Update).
+	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 
@@ -675,7 +676,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	// Act.
@@ -704,9 +705,9 @@ func TestInteruptedPendingReplace(t *testing.T) {
 	})
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
-	upSnap, err := TestOp(Update).
+	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
@@ -739,7 +740,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		}
 	}
 
-	replaceSnap, err := TestOp(Update).
+	replaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, upSnap), upOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -751,7 +752,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 
 	// Operation 3 -- try and resume the replacement with the same program, but fail the create again.
 
-	secondReplaceSnap, err := TestOp(Update).
+	secondReplaceSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), upOptions, false, p.BackendClient, nil, "2")
 	assert.ErrorContains(t, err, "interrupt replace")
 
@@ -785,7 +786,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		}
 	}
 
-	secondUpSnap, err := TestOp(Update).
+	secondUpSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, secondReplaceSnap), upOptions, false, p.BackendClient, nil, "3")
 	assert.NoError(t, err)
 

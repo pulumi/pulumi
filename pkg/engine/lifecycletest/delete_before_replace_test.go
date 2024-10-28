@@ -24,6 +24,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -38,7 +39,7 @@ type propertyDependencies map[resource.PropertyKey][]resource.URN
 var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
 func generateComplexTestDependencyGraph(
-	t *testing.T, p *TestPlan,
+	t *testing.T, p *lt.TestPlan,
 ) ([]resource.URN, *deploy.Snapshot, deploytest.LanguageRuntimeFactory) {
 	resType := tokens.Type("pkgA:m:typA")
 
@@ -153,7 +154,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	//
 	// With that in mind, the following resources should require replacement: A, B, C, E, F, and K
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	urns, old, programF := generateComplexTestDependencyGraph(t, p)
 	names := complexTestDependencyGraphNames
@@ -185,7 +186,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
 		SkipPreview:   true,
@@ -264,9 +265,9 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []TestStep{{Op: Update}},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
 	for _, res := range snap.Resources {
@@ -291,7 +292,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	dbrDiff := false
 	loaders := []*deploytest.ProviderLoader{
@@ -354,12 +355,12 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	inputsA["A"] = resource.NewStringProperty("bar")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -383,7 +384,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrA, inputsA["A"] = &dbrValue, resource.NewStringProperty("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -408,7 +409,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the value of resB.A. Only resB should be replaced, and the replacement should be create-before-delete.
 	inputsB["A"] = resource.NewStringProperty("qux")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -432,7 +433,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it no longer requires delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, inputsA["A"] = nil, resource.NewStringProperty("zam")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -456,7 +457,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the diff of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrDiff, inputsA["A"] = true, resource.NewStringProperty("foo")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -482,7 +483,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it disables delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewStringProperty("bar")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -507,7 +508,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 func TestDependencyChangeDBR(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -564,7 +565,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	inputsA["A"] = resource.NewStringProperty("bar")
@@ -585,7 +586,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 	})
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p.Steps = []TestStep{
+	p.Steps = []lt.TestStep{
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -672,26 +673,26 @@ func TestDBRProtect(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{T: t, HostF: hostF}
-	p := &TestPlan{}
+	options := lt.TestUpdateOptions{T: t, HostF: hostF}
+	p := &lt.TestPlan{}
 
 	project := p.GetProject()
 
 	// First update just create the two resources.
-	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
 	inputsA["A"] = resource.NewStringProperty("bar")
-	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
 		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
 
 	// Remove the protect flag and try again
 	assert.Equal(t, snap.Resources[2].Protect, true)
 	snap.Resources[2].Protect = false
-	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }

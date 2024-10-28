@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -56,9 +57,9 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 
@@ -97,9 +98,9 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 }
@@ -120,8 +121,8 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -166,17 +167,17 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	}
 
 	// Run a single update step using the base snapshot.
-	p.Steps = []TestStep{{Op: Update, Validate: validate}}
+	p.Steps = []lt.TestStep{{Op: Update, Validate: validate}}
 	p.Run(t, old)
 
 	// Run a single refresh step using the base snapshot.
 	isRefresh = true
-	p.Steps = []TestStep{{Op: Refresh, Validate: validate}}
+	p.Steps = []lt.TestStep{{Op: Refresh, Validate: validate}}
 	p.Run(t, old)
 
 	// Run a single destroy step using the base snapshot.
 	isRefresh = false
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -205,7 +206,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Run(t, old)
 
 	// Run a partial lifecycle using the base snapshot, skipping the initial update step.
-	p.Steps = MakeBasicLifecycleSteps(t, 2)[1:]
+	p.Steps = lt.MakeBasicLifecycleSteps(t, 2)[1:]
 	p.Run(t, old)
 }
 
@@ -237,15 +238,15 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "foo"): config.NewValue("bar"),
 		},
 	}
 
 	// Build a basic lifecycle.
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 
 	// Run the lifecycle through its no-op update+refresh.
 	p.Steps = steps[:4]
@@ -253,7 +254,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 
 	// Change the config and run an update. We expect everything to require replacement.
 	p.Config[config.MustMakeKey("pkgA", "foo")] = config.NewValue("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -337,12 +338,12 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	// Build a basic lifecycle.
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 
 	// Run the lifecycle through its no-op update+refresh.
 	p.Steps = steps[:4]
@@ -350,7 +351,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 
 	// Change the config and run an update. We expect everything to require replacement.
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -488,12 +489,12 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	// Build a basic lifecycle.
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 
 	// Run the lifecycle through its initial update+refresh.
 	p.Steps = steps[:4]
@@ -509,7 +510,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
 	registerResource = false
 
-	p.Steps = []TestStep{{Op: Update}}
+	p.Steps = []lt.TestStep{{Op: Update}}
 	_ = p.Run(t, snap)
 
 	// Check the identity of the provider that performed the delete.
@@ -581,12 +582,12 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	// Build a basic lifecycle.
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 
 	// Run the lifecycle through its no-op update+refresh.
 	p.Steps = steps[:4]
@@ -599,7 +600,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	// change the provider name
 	providerName = "provB"
 	// run an update expecting no-op respecting the aliases.
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -616,7 +617,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 
 	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
 	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -725,12 +726,12 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	// Build a basic lifecycle.
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 
 	// Run the lifecycle through its no-op update+refresh.
 	p.Steps = steps[:4]
@@ -738,7 +739,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 
 	// Change the config and run an update. We expect everything to require replacement.
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
@@ -833,9 +834,9 @@ func TestDefaultProviderDiff(t *testing.T) {
 			return nil
 		})
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		p := &TestPlan{
-			Options: TestUpdateOptions{T: t, HostF: hostF},
-			Steps: []TestStep{
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -961,9 +962,9 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 			return nil
 		})
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		p := &TestPlan{
-			Options: TestUpdateOptions{T: t, HostF: hostF},
-			Steps: []TestStep{
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -1061,9 +1062,9 @@ func TestProviderVersionDefault(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 
@@ -1109,9 +1110,9 @@ func TestProviderVersionOption(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 
@@ -1159,9 +1160,9 @@ func TestProviderVersionInput(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 
@@ -1210,9 +1211,9 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
 
@@ -1254,7 +1255,7 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	steps := MakeBasicLifecycleSteps(t, 2)
+	steps := lt.MakeBasicLifecycleSteps(t, 2)
 	steps[0].ValidateAnd(func(project workspace.Project, target deploy.Target, entries JournalEntries,
 		_ []Event, err error,
 	) error {
@@ -1269,8 +1270,8 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 		}
 		return nil
 	})
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   steps,
 	}
 	p.Run(t, nil)
@@ -1295,11 +1296,11 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 		return err
 	})
 
-	snapshot := (&TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+	snapshot := (&lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
 		// The first step is the update. We don't want the full lifecycle because we want to see the
 		// created resources.
-		Steps: MakeBasicLifecycleSteps(t, 2)[:1],
+		Steps: lt.MakeBasicLifecycleSteps(t, 2)[:1],
 	}).Run(t, nil)
 
 	foundDefaultProvider := false
@@ -1396,10 +1397,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			if tt.expectFail {
 				expectedCreated = 0
 			}
-			update := MakeBasicLifecycleSteps(t, expectedCreated)[:1]
+			update := lt.MakeBasicLifecycleSteps(t, expectedCreated)[:1]
 			update[0].ExpectFailure = tt.expectFail
-			p := &TestPlan{
-				Options: TestUpdateOptions{T: t, HostF: hostF},
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 				Steps:   update,
 				Config:  c,
 			}
@@ -1514,7 +1515,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			}
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-			update := []TestStep{{Op: Update, Validate: func(
+			update := []lt.TestStep{{Op: Update, Validate: func(
 				project workspace.Project, target deploy.Target, entries JournalEntries,
 				events []Event, err error,
 			) error {
@@ -1529,8 +1530,8 @@ func TestProviderVersionAssignment(t *testing.T) {
 				return nil
 			}}}
 
-			p := &TestPlan{
-				Options: TestUpdateOptions{T: t, HostF: hostF},
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 				Steps:   update,
 			}
 			p.Run(t, &deploy.Snapshot{})
@@ -1575,12 +1576,12 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[2:] {
 		assert.Equal(t, deletionDepURN, res.DeletedWith)
 	}
@@ -1647,12 +1648,12 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[2:] {
 		assert.Equal(t, deletionDepURN, res.DeletedWith)
 	}
@@ -1739,12 +1740,12 @@ func TestComponentProvidersInheritance(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
-	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 }
 
@@ -1769,8 +1770,8 @@ func TestRefreshLegacyState(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
-	p := &TestPlan{
-		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	snapshot := &deploy.Snapshot{
@@ -1787,7 +1788,7 @@ func TestRefreshLegacyState(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Refresh).Run(project, p.GetTarget(t, snapshot), p.Options, false, p.BackendClient, nil)
+	snap, err := lt.TestOp(Refresh).Run(project, p.GetTarget(t, snapshot), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 
 	prov := snap.Resources[0]
