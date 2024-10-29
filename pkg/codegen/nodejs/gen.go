@@ -795,9 +795,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
 				}
 
-				// provider properties must be marshaled as JSON strings.
 				if r.IsProvider && !isStringType(prop.Type) {
-					arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+					encode := !mod.getNodePackageInfo().DoNotJSONEncodeProviderConfiguration
+					if encode {
+						// For legacy providers, properties must be marshaled as JSON strings.
+						arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+					} else {
+						arg = fmt.Sprintf("pulumi.output(%s)", arg)
+					}
 				}
 			}
 			fmt.Fprintf(w, "%sresourceInputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
@@ -1476,12 +1481,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return false
 	}
 
-	var nodePackageInfo NodePackageInfo
-	def, err := mod.pkg.Definition()
-	contract.AssertNoErrorf(err, "error loading definition for package %v", mod.pkg.Name())
-	if languageInfo, hasLanguageInfo := def.Language["nodejs"]; hasLanguageInfo {
-		nodePackageInfo = languageInfo.(NodePackageInfo)
-	}
+	nodePackageInfo := mod.getNodePackageInfo()
 
 	writeImports := func(pkg string) {
 		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
@@ -2901,6 +2901,15 @@ export async function getPackage() : Promise<string | undefined> {
 	}
 
 	return err
+}
+
+func (mod *modContext) getNodePackageInfo() NodePackageInfo {
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "error loading definition for package %v", mod.pkg.Name())
+	if languageInfo, hasLanguageInfo := def.Language["nodejs"]; hasLanguageInfo {
+		return languageInfo.(NodePackageInfo)
+	}
+	return NodePackageInfo{}
 }
 
 // Used to sort ObjectType values.
