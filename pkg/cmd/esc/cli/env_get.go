@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/style"
+	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -281,7 +282,7 @@ func (get *envGetCommand) getEnvironmentMember(
 	}
 
 	if len(path) != 0 && path[0] == "imports" {
-		node, _ := yamlNode{&docNode}.get(path)
+		node, _ := encoding.YAMLSyntax{Node: &docNode}.Get(path)
 		if node == nil {
 			return nil, nil
 		}
@@ -313,8 +314,8 @@ func (get *envGetCommand) getEnvironmentMember(
 	}
 
 	definitionYAML := ""
-	if valuesNode, ok := (yamlNode{&docNode}.get(resource.PropertyPath{"values"})); ok {
-		if node, _ := (yamlNode{valuesNode}.get(path)); node != nil {
+	if valuesNode, ok := (encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})); ok {
+		if node, _ := (encoding.YAMLSyntax{Node: valuesNode}.Get(path)); node != nil {
 			expr, ok := getEnvExpr(esc.Expr{Object: env.Exprs}, path)
 			if !ok {
 				return nil, fmt.Errorf("internal error: no expr for path %v", path)

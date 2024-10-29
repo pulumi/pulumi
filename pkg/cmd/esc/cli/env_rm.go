@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	pulumienv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -84,11 +85,11 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 			if docNode.Kind != yaml.DocumentNode {
 				return nil
 			}
-			valuesNode, ok := yamlNode{&docNode}.get(resource.PropertyPath{"values"})
+			valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
 			if !ok {
 				return nil
 			}
-			err = yamlNode{valuesNode}.delete(nil, path)
+			err = encoding.YAMLSyntax{Node: valuesNode}.Delete(nil, path)
 			if err != nil {
 				return err
 			}

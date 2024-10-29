@@ -24,6 +24,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/esc/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/rivo/uniseg"
 	"gopkg.in/yaml.v3"
 
@@ -89,6 +91,153 @@ func (s YAMLSyntax) LineComment() string {
 
 func (s YAMLSyntax) FootComment() string {
 	return s.Node.FootComment
+}
+
+func (s YAMLSyntax) Get(path resource.PropertyPath) (_ *yaml.Node, ok bool) {
+	if s.Kind == yaml.DocumentNode {
+		return YAMLSyntax{Node: s.Content[0]}.Get(path)
+	}
+
+	if len(path) == 0 {
+		return s.Node, true
+	}
+
+	switch s.Kind {
+	case yaml.SequenceNode:
+		index, ok := path[0].(int)
+		if !ok || index < 0 || index >= len(s.Content) {
+			return nil, false
+		}
+		return YAMLSyntax{Node: s.Content[index]}.Get(path[1:])
+	case yaml.MappingNode:
+		key, ok := path[0].(string)
+		if !ok {
+			return nil, false
+		}
+		for i := 0; i < len(s.Content); i += 2 {
+			keyNode, valueNode := s.Content[i], s.Content[i+1]
+			if keyNode.Value == key {
+				return YAMLSyntax{Node: valueNode}.Get(path[1:])
+			}
+		}
+		return nil, false
+	default:
+		return nil, false
+	}
+}
+
+func (s YAMLSyntax) Set(prefix, path resource.PropertyPath, new yaml.Node) (*yaml.Node, error) {
+	if s.Kind == yaml.DocumentNode {
+		return YAMLSyntax{Node: s.Content[0]}.Set(prefix, path, new)
+	}
+
+	if len(path) == 0 {
+		s.Content = new.Content
+		s.Kind = new.Kind
+		s.Tag = new.Tag
+		s.Value = new.Value
+		return s.Node, nil
+	}
+
+	prefix = append(prefix, path[0])
+	switch s.Kind {
+	case 0:
+		switch accessor := path[0].(type) {
+		case int:
+			s.Kind, s.Tag = yaml.SequenceNode, "!!seq"
+		case string:
+			s.Kind, s.Tag = yaml.MappingNode, "!!map"
+		default:
+			contract.Failf("unexpected accessor kind %T", accessor)
+			return nil, nil
+		}
+		return s.Set(prefix[:len(prefix)-1], path, new)
+	case yaml.SequenceNode:
+		index, ok := path[0].(int)
+		if !ok {
+			return nil, fmt.Errorf("%v: key for an array must be an int", prefix)
+		}
+		if index < 0 || index > len(s.Content) {
+			return nil, fmt.Errorf("%v: array index out of range", prefix)
+		}
+		if index == len(s.Content) {
+			s.Content = append(s.Content, &yaml.Node{})
+		}
+		elem := s.Content[index]
+		return YAMLSyntax{Node: elem}.Set(prefix, path[1:], new)
+	case yaml.MappingNode:
+		key, ok := path[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("%v: key for a map must be a string", prefix)
+		}
+
+		var valueNode *yaml.Node
+		for i := 0; i < len(s.Content); i += 2 {
+			keyNode, value := s.Content[i], s.Content[i+1]
+			if keyNode.Value == key {
+				valueNode = value
+				break
+			}
+		}
+		if valueNode == nil {
+			s.Content = append(s.Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: key,
+				Tag:   "!!str",
+			})
+			s.Content = append(s.Content, &yaml.Node{})
+			valueNode = s.Content[len(s.Content)-1]
+		}
+		return YAMLSyntax{Node: valueNode}.Set(prefix, path[1:], new)
+	default:
+		return nil, fmt.Errorf("%v: expected an array or an object", prefix)
+	}
+}
+
+func (s YAMLSyntax) Delete(prefix, path resource.PropertyPath) error {
+	if s.Kind == yaml.DocumentNode {
+		return YAMLSyntax{Node: s.Content[0]}.Delete(prefix, path)
+	}
+
+	prefix = append(prefix, path[0])
+	switch s.Kind {
+	case yaml.SequenceNode:
+		index, ok := path[0].(int)
+		if !ok {
+			return fmt.Errorf("%v: key for an array must be an int", prefix)
+		}
+		if index < 0 || index >= len(s.Content) {
+			return fmt.Errorf("%v: array index out of range", prefix)
+		}
+		if len(path) == 1 {
+			s.Content = append(s.Content[:index], s.Content[index+1:]...)
+			return nil
+		}
+		elem := s.Content[index]
+		return YAMLSyntax{Node: elem}.Delete(prefix, path[1:])
+	case yaml.MappingNode:
+		key, ok := path[0].(string)
+		if !ok {
+			return fmt.Errorf("%v: key for a map must be a string", prefix)
+		}
+
+		i := 0
+		for ; i < len(s.Content); i += 2 {
+			if s.Content[i].Value == key {
+				break
+			}
+		}
+		if len(path) == 1 {
+			if i != len(s.Content) {
+				s.Content = append(s.Content[:i], s.Content[i+2:]...)
+			}
+			return nil
+		}
+		valueNode := s.Content[i+1]
+		return YAMLSyntax{Node: valueNode}.Delete(prefix, path[1:])
+	default:
+		return fmt.Errorf("%v: expected an array or an object", prefix)
+	}
 }
 
 type linePosition struct {

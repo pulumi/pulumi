@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -107,18 +108,18 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			}
 
 			if path[0] == "imports" {
-				_, err = yamlNode{&docNode}.set(nil, path, yamlValue)
+				_, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, path, yamlValue)
 			} else {
-				valuesNode, ok := yamlNode{&docNode}.get(resource.PropertyPath{"values"})
+				valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
 				if !ok {
-					valuesNode, err = yamlNode{&docNode}.set(nil, resource.PropertyPath{"values"}, yaml.Node{
+					valuesNode, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, resource.PropertyPath{"values"}, yaml.Node{
 						Kind: yaml.MappingNode,
 					})
 					if err != nil {
 						return fmt.Errorf("internal error: %w", err)
 					}
 				}
-				_, err = yamlNode{valuesNode}.set(nil, path, yamlValue)
+				_, err = encoding.YAMLSyntax{Node: valuesNode}.Set(nil, path, yamlValue)
 			}
 			if err != nil {
 				return err
@@ -186,155 +187,4 @@ func looksLikeSecret(path resource.PropertyPath, n yaml.Node) bool {
 	entropyPerChar := info.Entropy / float64(len(v))
 	return info.Entropy >= entropyThreshold ||
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
-}
-
-type yamlNode struct {
-	*yaml.Node
-}
-
-func (n yamlNode) get(path resource.PropertyPath) (_ *yaml.Node, ok bool) {
-	if n.Kind == yaml.DocumentNode {
-		return yamlNode{n.Content[0]}.get(path)
-	}
-
-	if len(path) == 0 {
-		return n.Node, true
-	}
-
-	switch n.Kind {
-	case yaml.SequenceNode:
-		index, ok := path[0].(int)
-		if !ok || index < 0 || index >= len(n.Content) {
-			return nil, false
-		}
-		return yamlNode{n.Content[index]}.get(path[1:])
-	case yaml.MappingNode:
-		key, ok := path[0].(string)
-		if !ok {
-			return nil, false
-		}
-		for i := 0; i < len(n.Content); i += 2 {
-			keyNode, valueNode := n.Content[i], n.Content[i+1]
-			if keyNode.Value == key {
-				return yamlNode{valueNode}.get(path[1:])
-			}
-		}
-		return nil, false
-	default:
-		return nil, false
-	}
-}
-
-func (n yamlNode) set(prefix, path resource.PropertyPath, new yaml.Node) (*yaml.Node, error) {
-	if n.Kind == yaml.DocumentNode {
-		return yamlNode{n.Content[0]}.set(prefix, path, new)
-	}
-
-	if len(path) == 0 {
-		n.Content = new.Content
-		n.Kind = new.Kind
-		n.Tag = new.Tag
-		n.Value = new.Value
-		return n.Node, nil
-	}
-
-	prefix = append(prefix, path[0])
-	switch n.Kind {
-	case 0:
-		switch accessor := path[0].(type) {
-		case int:
-			n.Kind, n.Tag = yaml.SequenceNode, "!!seq"
-		case string:
-			n.Kind, n.Tag = yaml.MappingNode, "!!map"
-		default:
-			contract.Failf("unexpected accessor kind %T", accessor)
-			return nil, nil
-		}
-		return n.set(prefix[:len(prefix)-1], path, new)
-	case yaml.SequenceNode:
-		index, ok := path[0].(int)
-		if !ok {
-			return nil, fmt.Errorf("%v: key for an array must be an int", prefix)
-		}
-		if index < 0 || index > len(n.Content) {
-			return nil, fmt.Errorf("%v: array index out of range", prefix)
-		}
-		if index == len(n.Content) {
-			n.Content = append(n.Content, &yaml.Node{})
-		}
-		elem := n.Content[index]
-		return yamlNode{elem}.set(prefix, path[1:], new)
-	case yaml.MappingNode:
-		key, ok := path[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("%v: key for a map must be a string", prefix)
-		}
-
-		var valueNode *yaml.Node
-		for i := 0; i < len(n.Content); i += 2 {
-			keyNode, value := n.Content[i], n.Content[i+1]
-			if keyNode.Value == key {
-				valueNode = value
-				break
-			}
-		}
-		if valueNode == nil {
-			n.Content = append(n.Content, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: key,
-				Tag:   "!!str",
-			})
-			n.Content = append(n.Content, &yaml.Node{})
-			valueNode = n.Content[len(n.Content)-1]
-		}
-		return yamlNode{valueNode}.set(prefix, path[1:], new)
-	default:
-		return nil, fmt.Errorf("%v: expected an array or an object", prefix)
-	}
-}
-
-func (n yamlNode) delete(prefix, path resource.PropertyPath) error {
-	if n.Kind == yaml.DocumentNode {
-		return yamlNode{n.Content[0]}.delete(prefix, path)
-	}
-
-	prefix = append(prefix, path[0])
-	switch n.Kind {
-	case yaml.SequenceNode:
-		index, ok := path[0].(int)
-		if !ok {
-			return fmt.Errorf("%v: key for an array must be an int", prefix)
-		}
-		if index < 0 || index >= len(n.Content) {
-			return fmt.Errorf("%v: array index out of range", prefix)
-		}
-		if len(path) == 1 {
-			n.Content = append(n.Content[:index], n.Content[index+1:]...)
-			return nil
-		}
-		elem := n.Content[index]
-		return yamlNode{elem}.delete(prefix, path[1:])
-	case yaml.MappingNode:
-		key, ok := path[0].(string)
-		if !ok {
-			return fmt.Errorf("%v: key for a map must be a string", prefix)
-		}
-
-		i := 0
-		for ; i < len(n.Content); i += 2 {
-			if n.Content[i].Value == key {
-				break
-			}
-		}
-		if len(path) == 1 {
-			if i != len(n.Content) {
-				n.Content = append(n.Content[:i], n.Content[i+2:]...)
-			}
-			return nil
-		}
-		valueNode := n.Content[i+1]
-		return yamlNode{valueNode}.delete(prefix, path[1:])
-	default:
-		return fmt.Errorf("%v: expected an array or an object", prefix)
-	}
 }

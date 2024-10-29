@@ -151,7 +151,7 @@ func (c comment) HeadComment() string { return string(c) }
 func (c comment) LineComment() string { return "" }
 func (c comment) FootComment() string { return "" }
 
-func TestYAMLEdit(t *testing.T) {
+func TestYAMLSyntaxEdit(t *testing.T) {
 	const doc = `foo: bar # line comment
 baz: qux
 `
