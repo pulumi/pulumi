@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Inputs } from "./output";
+import { Inputs, Input } from "./output";
 import { ProviderResource, Resource } from "./resource";
 
 /**
@@ -53,6 +53,17 @@ export interface InvokeOptions {
      * time.
      */
     async?: boolean;
+}
+
+/**
+ * {@link InvokeOptionsOutput} is a bag of options that control the behavior of a call
+ * to `runtime.invokeOutput`.
+ */
+export interface InvokeOptionsOutput extends InvokeOptions {
+    /**
+     * An optional set of additional explicit dependencies on other resources.
+     */
+    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
 }
 
 /**

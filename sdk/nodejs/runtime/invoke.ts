@@ -16,7 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
-import { InvokeOptions } from "../invoke";
+import { InvokeOptions, InvokeOptionsOutput } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
@@ -34,6 +34,7 @@ import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive
 import { DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
+import { gatherExplicitDependencies } from "./dependsOn";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as resourceproto from "../proto/resource_pb";
@@ -97,7 +98,7 @@ export function invoke(
 export function invokeOutput<T>(
     tok: string,
     props: Inputs,
-    opts: InvokeOptions = {},
+    opts: InvokeOptionsOutput = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
@@ -215,7 +216,7 @@ export async function streamInvoke(
 async function invokeAsync(
     tok: string,
     props: Inputs,
-    opts: InvokeOptions,
+    opts: InvokeOptionsOutput,
     packageRef?: Promise<string | undefined>,
 ): Promise<{
     result: Inputs | undefined;
@@ -231,6 +232,9 @@ async function invokeAsync(
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
+        // Wait for any explicit dependencies to complete before proceeding.
+        await gatherExplicitDependencies(opts.dependsOn);
+
         const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
         if (containsUnknownValues(serialized)) {
             // if any of the input properties are unknown,
