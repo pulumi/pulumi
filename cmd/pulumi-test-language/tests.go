@@ -984,6 +984,26 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	// This test checks how SDKs propagate properties marked as secret to the provider Configure on the gRPC level.
+	"l2-provider-grpc-config-schema-secret": {
+		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					g := &grpcTestContext{l: l, s: snap}
+
+					// Now check first-class secrets for programsecretprov.
+					r := g.CheckConfigReq("config")
+
+					// CheckConfig receives the secrets in the plain, suspect.
+					assert.Equal(l, "SECRET", r.News.Fields["secretString1"].AsInterface(), "string1")
+				},
+			},
+		},
+	},
 	"l2-invoke-simple": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
 		runs: []testRun{
