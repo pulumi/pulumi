@@ -952,7 +952,6 @@ class Stack:
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
         Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
-        This command is not supported for diy backends.
         """
         self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
