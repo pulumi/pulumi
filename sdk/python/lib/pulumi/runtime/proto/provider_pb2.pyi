@@ -180,10 +180,10 @@ class ConfigureRequest(google.protobuf.message.Message):
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """a map of configuration keys to values."""
+        """the input properties for the provider, with nested values JSON-encoded; please read from `args` instead."""
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
-        """the input properties for the provider. Only filled in for newer providers."""
+        """the input properties for the provider"""
     acceptSecrets: builtins.bool
     """when true, operations should return secrets as strongly typed."""
     acceptResources: builtins.bool

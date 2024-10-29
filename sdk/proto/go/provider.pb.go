@@ -398,12 +398,13 @@ type ConfigureRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Variables              map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map of configuration keys to values.
-	Args                   *structpb.Struct  `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                   // the input properties for the provider. Only filled in for newer providers.
-	AcceptSecrets          bool              `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`                                                                                // when true, operations should return secrets as strongly typed.
-	AcceptResources        bool              `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                                            // when true, operations should return resources as strongly typed values to the provider.
-	SendsOldInputs         bool              `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`                                                      // when true, diff and update will be called with the old outputs and the old inputs.
-	SendsOldInputsToDelete bool              `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`                          // when true, delete will be called with the old outputs and the old inputs.
+	// the input properties for the provider, with nested values JSON-encoded; please read from `args` instead.
+	Variables              map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Args                   *structpb.Struct  `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                          // the input properties for the provider
+	AcceptSecrets          bool              `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`                                                       // when true, operations should return secrets as strongly typed.
+	AcceptResources        bool              `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                   // when true, operations should return resources as strongly typed values to the provider.
+	SendsOldInputs         bool              `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`                             // when true, diff and update will be called with the old outputs and the old inputs.
+	SendsOldInputsToDelete bool              `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"` // when true, delete will be called with the old outputs and the old inputs.
 }
 
 func (x *ConfigureRequest) Reset() {
