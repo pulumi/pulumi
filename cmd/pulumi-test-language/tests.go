@@ -995,11 +995,35 @@ var languageTests = map[string]languageTest{
 				) {
 					g := &grpcTestContext{l: l, s: snap}
 
-					// Now check first-class secrets for programsecretprov.
+					// Verify the CheckConfig request received by the provider.
 					r := g.CheckConfigReq("config")
 
-					// CheckConfig receives the secrets in the plain, suspect.
-					assert.Equal(l, "SECRET", r.News.Fields["secretString1"].AsInterface(), "string1")
+					// CheckConfig request gets the secrets in the plain, suspect.
+					assert.Equal(l, "SECRET",
+						r.News.Fields["secretString1"].AsInterface(), "secretString1")
+
+					assertEqualOrJSONEncoded(l, float64(16),
+						r.News.Fields["secretInt1"].AsInterface(), "secretInt1")
+
+					assertEqualOrJSONEncoded(l, float64(123456.7890),
+						r.News.Fields["secretNum1"].AsInterface(), "secretNum1")
+
+					assertEqualOrJSONEncoded(l, true,
+						r.News.Fields["secretBool1"].AsInterface(), "secretBool1")
+
+					assertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
+						r.News.Fields["listSecretString1"].AsInterface(), "listSecretString1")
+
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": "SECRET", "key2": "SECRET2"},
+						r.News.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
+
+					// TODO Languages do not agree on the object property casing sent to CheckConfig.
+					//
+					// Node and Go send "secretX".
+					// Python sends "secret_x" though.
+					//
+					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
+					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
 				},
 			},
 		},
