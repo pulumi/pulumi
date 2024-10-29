@@ -35,6 +35,18 @@ class ProviderArgs:
                  list_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_bool1: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool2: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool3: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_int1: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int2: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int3: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
@@ -47,6 +59,18 @@ class ProviderArgs:
                  map_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_bool1: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool2: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool3: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_int1: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int2: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int3: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
@@ -62,9 +86,33 @@ class ProviderArgs:
                  obj_num1: Optional[pulumi.Input['Tnum1Args']] = None,
                  obj_num2: Optional[pulumi.Input['Tnum2Args']] = None,
                  obj_num3: Optional[pulumi.Input['Tnum3Args']] = None,
+                 obj_secret_bool1: Optional[pulumi.Input['TsecretBool1Args']] = None,
+                 obj_secret_bool2: Optional[pulumi.Input['TsecretBool2Args']] = None,
+                 obj_secret_bool3: Optional[pulumi.Input['TsecretBool3Args']] = None,
+                 obj_secret_int1: Optional[pulumi.Input['TsecretInt1Args']] = None,
+                 obj_secret_int2: Optional[pulumi.Input['TsecretInt2Args']] = None,
+                 obj_secret_int3: Optional[pulumi.Input['TsecretInt3Args']] = None,
+                 obj_secret_num1: Optional[pulumi.Input['TsecretNum1Args']] = None,
+                 obj_secret_num2: Optional[pulumi.Input['TsecretNum2Args']] = None,
+                 obj_secret_num3: Optional[pulumi.Input['TsecretNum3Args']] = None,
+                 obj_secret_string1: Optional[pulumi.Input['TsecretString1Args']] = None,
+                 obj_secret_string2: Optional[pulumi.Input['TsecretString2Args']] = None,
+                 obj_secret_string3: Optional[pulumi.Input['TsecretString3Args']] = None,
                  obj_string1: Optional[pulumi.Input['Tstring1Args']] = None,
                  obj_string2: Optional[pulumi.Input['Tstring2Args']] = None,
                  obj_string3: Optional[pulumi.Input['Tstring3Args']] = None,
+                 secret_bool1: Optional[pulumi.Input[bool]] = None,
+                 secret_bool2: Optional[pulumi.Input[bool]] = None,
+                 secret_bool3: Optional[pulumi.Input[bool]] = None,
+                 secret_int1: Optional[pulumi.Input[int]] = None,
+                 secret_int2: Optional[pulumi.Input[int]] = None,
+                 secret_int3: Optional[pulumi.Input[int]] = None,
+                 secret_num1: Optional[pulumi.Input[float]] = None,
+                 secret_num2: Optional[pulumi.Input[float]] = None,
+                 secret_num3: Optional[pulumi.Input[float]] = None,
+                 secret_string1: Optional[pulumi.Input[str]] = None,
+                 secret_string2: Optional[pulumi.Input[str]] = None,
+                 secret_string3: Optional[pulumi.Input[str]] = None,
                  string1: Optional[pulumi.Input[str]] = None,
                  string2: Optional[pulumi.Input[str]] = None,
                  string3: Optional[pulumi.Input[str]] = None):
@@ -101,6 +149,30 @@ class ProviderArgs:
             pulumi.set(__self__, "list_num2", list_num2)
         if list_num3 is not None:
             pulumi.set(__self__, "list_num3", list_num3)
+        if list_secret_bool1 is not None:
+            pulumi.set(__self__, "list_secret_bool1", list_secret_bool1)
+        if list_secret_bool2 is not None:
+            pulumi.set(__self__, "list_secret_bool2", list_secret_bool2)
+        if list_secret_bool3 is not None:
+            pulumi.set(__self__, "list_secret_bool3", list_secret_bool3)
+        if list_secret_int1 is not None:
+            pulumi.set(__self__, "list_secret_int1", list_secret_int1)
+        if list_secret_int2 is not None:
+            pulumi.set(__self__, "list_secret_int2", list_secret_int2)
+        if list_secret_int3 is not None:
+            pulumi.set(__self__, "list_secret_int3", list_secret_int3)
+        if list_secret_num1 is not None:
+            pulumi.set(__self__, "list_secret_num1", list_secret_num1)
+        if list_secret_num2 is not None:
+            pulumi.set(__self__, "list_secret_num2", list_secret_num2)
+        if list_secret_num3 is not None:
+            pulumi.set(__self__, "list_secret_num3", list_secret_num3)
+        if list_secret_string1 is not None:
+            pulumi.set(__self__, "list_secret_string1", list_secret_string1)
+        if list_secret_string2 is not None:
+            pulumi.set(__self__, "list_secret_string2", list_secret_string2)
+        if list_secret_string3 is not None:
+            pulumi.set(__self__, "list_secret_string3", list_secret_string3)
         if list_string1 is not None:
             pulumi.set(__self__, "list_string1", list_string1)
         if list_string2 is not None:
@@ -125,6 +197,30 @@ class ProviderArgs:
             pulumi.set(__self__, "map_num2", map_num2)
         if map_num3 is not None:
             pulumi.set(__self__, "map_num3", map_num3)
+        if map_secret_bool1 is not None:
+            pulumi.set(__self__, "map_secret_bool1", map_secret_bool1)
+        if map_secret_bool2 is not None:
+            pulumi.set(__self__, "map_secret_bool2", map_secret_bool2)
+        if map_secret_bool3 is not None:
+            pulumi.set(__self__, "map_secret_bool3", map_secret_bool3)
+        if map_secret_int1 is not None:
+            pulumi.set(__self__, "map_secret_int1", map_secret_int1)
+        if map_secret_int2 is not None:
+            pulumi.set(__self__, "map_secret_int2", map_secret_int2)
+        if map_secret_int3 is not None:
+            pulumi.set(__self__, "map_secret_int3", map_secret_int3)
+        if map_secret_num1 is not None:
+            pulumi.set(__self__, "map_secret_num1", map_secret_num1)
+        if map_secret_num2 is not None:
+            pulumi.set(__self__, "map_secret_num2", map_secret_num2)
+        if map_secret_num3 is not None:
+            pulumi.set(__self__, "map_secret_num3", map_secret_num3)
+        if map_secret_string1 is not None:
+            pulumi.set(__self__, "map_secret_string1", map_secret_string1)
+        if map_secret_string2 is not None:
+            pulumi.set(__self__, "map_secret_string2", map_secret_string2)
+        if map_secret_string3 is not None:
+            pulumi.set(__self__, "map_secret_string3", map_secret_string3)
         if map_string1 is not None:
             pulumi.set(__self__, "map_string1", map_string1)
         if map_string2 is not None:
@@ -155,12 +251,60 @@ class ProviderArgs:
             pulumi.set(__self__, "obj_num2", obj_num2)
         if obj_num3 is not None:
             pulumi.set(__self__, "obj_num3", obj_num3)
+        if obj_secret_bool1 is not None:
+            pulumi.set(__self__, "obj_secret_bool1", obj_secret_bool1)
+        if obj_secret_bool2 is not None:
+            pulumi.set(__self__, "obj_secret_bool2", obj_secret_bool2)
+        if obj_secret_bool3 is not None:
+            pulumi.set(__self__, "obj_secret_bool3", obj_secret_bool3)
+        if obj_secret_int1 is not None:
+            pulumi.set(__self__, "obj_secret_int1", obj_secret_int1)
+        if obj_secret_int2 is not None:
+            pulumi.set(__self__, "obj_secret_int2", obj_secret_int2)
+        if obj_secret_int3 is not None:
+            pulumi.set(__self__, "obj_secret_int3", obj_secret_int3)
+        if obj_secret_num1 is not None:
+            pulumi.set(__self__, "obj_secret_num1", obj_secret_num1)
+        if obj_secret_num2 is not None:
+            pulumi.set(__self__, "obj_secret_num2", obj_secret_num2)
+        if obj_secret_num3 is not None:
+            pulumi.set(__self__, "obj_secret_num3", obj_secret_num3)
+        if obj_secret_string1 is not None:
+            pulumi.set(__self__, "obj_secret_string1", obj_secret_string1)
+        if obj_secret_string2 is not None:
+            pulumi.set(__self__, "obj_secret_string2", obj_secret_string2)
+        if obj_secret_string3 is not None:
+            pulumi.set(__self__, "obj_secret_string3", obj_secret_string3)
         if obj_string1 is not None:
             pulumi.set(__self__, "obj_string1", obj_string1)
         if obj_string2 is not None:
             pulumi.set(__self__, "obj_string2", obj_string2)
         if obj_string3 is not None:
             pulumi.set(__self__, "obj_string3", obj_string3)
+        if secret_bool1 is not None:
+            pulumi.set(__self__, "secret_bool1", secret_bool1)
+        if secret_bool2 is not None:
+            pulumi.set(__self__, "secret_bool2", secret_bool2)
+        if secret_bool3 is not None:
+            pulumi.set(__self__, "secret_bool3", secret_bool3)
+        if secret_int1 is not None:
+            pulumi.set(__self__, "secret_int1", secret_int1)
+        if secret_int2 is not None:
+            pulumi.set(__self__, "secret_int2", secret_int2)
+        if secret_int3 is not None:
+            pulumi.set(__self__, "secret_int3", secret_int3)
+        if secret_num1 is not None:
+            pulumi.set(__self__, "secret_num1", secret_num1)
+        if secret_num2 is not None:
+            pulumi.set(__self__, "secret_num2", secret_num2)
+        if secret_num3 is not None:
+            pulumi.set(__self__, "secret_num3", secret_num3)
+        if secret_string1 is not None:
+            pulumi.set(__self__, "secret_string1", secret_string1)
+        if secret_string2 is not None:
+            pulumi.set(__self__, "secret_string2", secret_string2)
+        if secret_string3 is not None:
+            pulumi.set(__self__, "secret_string3", secret_string3)
         if string1 is not None:
             pulumi.set(__self__, "string1", string1)
         if string2 is not None:
@@ -304,6 +448,114 @@ class ProviderArgs:
         pulumi.set(self, "list_num3", value)
 
     @property
+    @pulumi.getter(name="listSecretBool1")
+    def list_secret_bool1(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]:
+        return pulumi.get(self, "list_secret_bool1")
+
+    @list_secret_bool1.setter
+    def list_secret_bool1(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]):
+        pulumi.set(self, "list_secret_bool1", value)
+
+    @property
+    @pulumi.getter(name="listSecretBool2")
+    def list_secret_bool2(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]:
+        return pulumi.get(self, "list_secret_bool2")
+
+    @list_secret_bool2.setter
+    def list_secret_bool2(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]):
+        pulumi.set(self, "list_secret_bool2", value)
+
+    @property
+    @pulumi.getter(name="listSecretBool3")
+    def list_secret_bool3(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]:
+        return pulumi.get(self, "list_secret_bool3")
+
+    @list_secret_bool3.setter
+    def list_secret_bool3(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]]):
+        pulumi.set(self, "list_secret_bool3", value)
+
+    @property
+    @pulumi.getter(name="listSecretInt1")
+    def list_secret_int1(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]:
+        return pulumi.get(self, "list_secret_int1")
+
+    @list_secret_int1.setter
+    def list_secret_int1(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]):
+        pulumi.set(self, "list_secret_int1", value)
+
+    @property
+    @pulumi.getter(name="listSecretInt2")
+    def list_secret_int2(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]:
+        return pulumi.get(self, "list_secret_int2")
+
+    @list_secret_int2.setter
+    def list_secret_int2(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]):
+        pulumi.set(self, "list_secret_int2", value)
+
+    @property
+    @pulumi.getter(name="listSecretInt3")
+    def list_secret_int3(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]:
+        return pulumi.get(self, "list_secret_int3")
+
+    @list_secret_int3.setter
+    def list_secret_int3(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]]):
+        pulumi.set(self, "list_secret_int3", value)
+
+    @property
+    @pulumi.getter(name="listSecretNum1")
+    def list_secret_num1(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]:
+        return pulumi.get(self, "list_secret_num1")
+
+    @list_secret_num1.setter
+    def list_secret_num1(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]):
+        pulumi.set(self, "list_secret_num1", value)
+
+    @property
+    @pulumi.getter(name="listSecretNum2")
+    def list_secret_num2(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]:
+        return pulumi.get(self, "list_secret_num2")
+
+    @list_secret_num2.setter
+    def list_secret_num2(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]):
+        pulumi.set(self, "list_secret_num2", value)
+
+    @property
+    @pulumi.getter(name="listSecretNum3")
+    def list_secret_num3(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]:
+        return pulumi.get(self, "list_secret_num3")
+
+    @list_secret_num3.setter
+    def list_secret_num3(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]]):
+        pulumi.set(self, "list_secret_num3", value)
+
+    @property
+    @pulumi.getter(name="listSecretString1")
+    def list_secret_string1(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
+        return pulumi.get(self, "list_secret_string1")
+
+    @list_secret_string1.setter
+    def list_secret_string1(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]):
+        pulumi.set(self, "list_secret_string1", value)
+
+    @property
+    @pulumi.getter(name="listSecretString2")
+    def list_secret_string2(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
+        return pulumi.get(self, "list_secret_string2")
+
+    @list_secret_string2.setter
+    def list_secret_string2(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]):
+        pulumi.set(self, "list_secret_string2", value)
+
+    @property
+    @pulumi.getter(name="listSecretString3")
+    def list_secret_string3(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
+        return pulumi.get(self, "list_secret_string3")
+
+    @list_secret_string3.setter
+    def list_secret_string3(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]):
+        pulumi.set(self, "list_secret_string3", value)
+
+    @property
     @pulumi.getter(name="listString1")
     def list_string1(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
         return pulumi.get(self, "list_string1")
@@ -410,6 +662,114 @@ class ProviderArgs:
     @map_num3.setter
     def map_num3(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]):
         pulumi.set(self, "map_num3", value)
+
+    @property
+    @pulumi.getter(name="mapSecretBool1")
+    def map_secret_bool1(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]:
+        return pulumi.get(self, "map_secret_bool1")
+
+    @map_secret_bool1.setter
+    def map_secret_bool1(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]):
+        pulumi.set(self, "map_secret_bool1", value)
+
+    @property
+    @pulumi.getter(name="mapSecretBool2")
+    def map_secret_bool2(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]:
+        return pulumi.get(self, "map_secret_bool2")
+
+    @map_secret_bool2.setter
+    def map_secret_bool2(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]):
+        pulumi.set(self, "map_secret_bool2", value)
+
+    @property
+    @pulumi.getter(name="mapSecretBool3")
+    def map_secret_bool3(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]:
+        return pulumi.get(self, "map_secret_bool3")
+
+    @map_secret_bool3.setter
+    def map_secret_bool3(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]]):
+        pulumi.set(self, "map_secret_bool3", value)
+
+    @property
+    @pulumi.getter(name="mapSecretInt1")
+    def map_secret_int1(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]:
+        return pulumi.get(self, "map_secret_int1")
+
+    @map_secret_int1.setter
+    def map_secret_int1(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]):
+        pulumi.set(self, "map_secret_int1", value)
+
+    @property
+    @pulumi.getter(name="mapSecretInt2")
+    def map_secret_int2(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]:
+        return pulumi.get(self, "map_secret_int2")
+
+    @map_secret_int2.setter
+    def map_secret_int2(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]):
+        pulumi.set(self, "map_secret_int2", value)
+
+    @property
+    @pulumi.getter(name="mapSecretInt3")
+    def map_secret_int3(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]:
+        return pulumi.get(self, "map_secret_int3")
+
+    @map_secret_int3.setter
+    def map_secret_int3(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]]):
+        pulumi.set(self, "map_secret_int3", value)
+
+    @property
+    @pulumi.getter(name="mapSecretNum1")
+    def map_secret_num1(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]:
+        return pulumi.get(self, "map_secret_num1")
+
+    @map_secret_num1.setter
+    def map_secret_num1(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]):
+        pulumi.set(self, "map_secret_num1", value)
+
+    @property
+    @pulumi.getter(name="mapSecretNum2")
+    def map_secret_num2(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]:
+        return pulumi.get(self, "map_secret_num2")
+
+    @map_secret_num2.setter
+    def map_secret_num2(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]):
+        pulumi.set(self, "map_secret_num2", value)
+
+    @property
+    @pulumi.getter(name="mapSecretNum3")
+    def map_secret_num3(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]:
+        return pulumi.get(self, "map_secret_num3")
+
+    @map_secret_num3.setter
+    def map_secret_num3(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]]):
+        pulumi.set(self, "map_secret_num3", value)
+
+    @property
+    @pulumi.getter(name="mapSecretString1")
+    def map_secret_string1(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]:
+        return pulumi.get(self, "map_secret_string1")
+
+    @map_secret_string1.setter
+    def map_secret_string1(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]):
+        pulumi.set(self, "map_secret_string1", value)
+
+    @property
+    @pulumi.getter(name="mapSecretString2")
+    def map_secret_string2(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]:
+        return pulumi.get(self, "map_secret_string2")
+
+    @map_secret_string2.setter
+    def map_secret_string2(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]):
+        pulumi.set(self, "map_secret_string2", value)
+
+    @property
+    @pulumi.getter(name="mapSecretString3")
+    def map_secret_string3(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]:
+        return pulumi.get(self, "map_secret_string3")
+
+    @map_secret_string3.setter
+    def map_secret_string3(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]):
+        pulumi.set(self, "map_secret_string3", value)
 
     @property
     @pulumi.getter(name="mapString1")
@@ -547,6 +907,114 @@ class ProviderArgs:
         pulumi.set(self, "obj_num3", value)
 
     @property
+    @pulumi.getter(name="objSecretBool1")
+    def obj_secret_bool1(self) -> Optional[pulumi.Input['TsecretBool1Args']]:
+        return pulumi.get(self, "obj_secret_bool1")
+
+    @obj_secret_bool1.setter
+    def obj_secret_bool1(self, value: Optional[pulumi.Input['TsecretBool1Args']]):
+        pulumi.set(self, "obj_secret_bool1", value)
+
+    @property
+    @pulumi.getter(name="objSecretBool2")
+    def obj_secret_bool2(self) -> Optional[pulumi.Input['TsecretBool2Args']]:
+        return pulumi.get(self, "obj_secret_bool2")
+
+    @obj_secret_bool2.setter
+    def obj_secret_bool2(self, value: Optional[pulumi.Input['TsecretBool2Args']]):
+        pulumi.set(self, "obj_secret_bool2", value)
+
+    @property
+    @pulumi.getter(name="objSecretBool3")
+    def obj_secret_bool3(self) -> Optional[pulumi.Input['TsecretBool3Args']]:
+        return pulumi.get(self, "obj_secret_bool3")
+
+    @obj_secret_bool3.setter
+    def obj_secret_bool3(self, value: Optional[pulumi.Input['TsecretBool3Args']]):
+        pulumi.set(self, "obj_secret_bool3", value)
+
+    @property
+    @pulumi.getter(name="objSecretInt1")
+    def obj_secret_int1(self) -> Optional[pulumi.Input['TsecretInt1Args']]:
+        return pulumi.get(self, "obj_secret_int1")
+
+    @obj_secret_int1.setter
+    def obj_secret_int1(self, value: Optional[pulumi.Input['TsecretInt1Args']]):
+        pulumi.set(self, "obj_secret_int1", value)
+
+    @property
+    @pulumi.getter(name="objSecretInt2")
+    def obj_secret_int2(self) -> Optional[pulumi.Input['TsecretInt2Args']]:
+        return pulumi.get(self, "obj_secret_int2")
+
+    @obj_secret_int2.setter
+    def obj_secret_int2(self, value: Optional[pulumi.Input['TsecretInt2Args']]):
+        pulumi.set(self, "obj_secret_int2", value)
+
+    @property
+    @pulumi.getter(name="objSecretInt3")
+    def obj_secret_int3(self) -> Optional[pulumi.Input['TsecretInt3Args']]:
+        return pulumi.get(self, "obj_secret_int3")
+
+    @obj_secret_int3.setter
+    def obj_secret_int3(self, value: Optional[pulumi.Input['TsecretInt3Args']]):
+        pulumi.set(self, "obj_secret_int3", value)
+
+    @property
+    @pulumi.getter(name="objSecretNum1")
+    def obj_secret_num1(self) -> Optional[pulumi.Input['TsecretNum1Args']]:
+        return pulumi.get(self, "obj_secret_num1")
+
+    @obj_secret_num1.setter
+    def obj_secret_num1(self, value: Optional[pulumi.Input['TsecretNum1Args']]):
+        pulumi.set(self, "obj_secret_num1", value)
+
+    @property
+    @pulumi.getter(name="objSecretNum2")
+    def obj_secret_num2(self) -> Optional[pulumi.Input['TsecretNum2Args']]:
+        return pulumi.get(self, "obj_secret_num2")
+
+    @obj_secret_num2.setter
+    def obj_secret_num2(self, value: Optional[pulumi.Input['TsecretNum2Args']]):
+        pulumi.set(self, "obj_secret_num2", value)
+
+    @property
+    @pulumi.getter(name="objSecretNum3")
+    def obj_secret_num3(self) -> Optional[pulumi.Input['TsecretNum3Args']]:
+        return pulumi.get(self, "obj_secret_num3")
+
+    @obj_secret_num3.setter
+    def obj_secret_num3(self, value: Optional[pulumi.Input['TsecretNum3Args']]):
+        pulumi.set(self, "obj_secret_num3", value)
+
+    @property
+    @pulumi.getter(name="objSecretString1")
+    def obj_secret_string1(self) -> Optional[pulumi.Input['TsecretString1Args']]:
+        return pulumi.get(self, "obj_secret_string1")
+
+    @obj_secret_string1.setter
+    def obj_secret_string1(self, value: Optional[pulumi.Input['TsecretString1Args']]):
+        pulumi.set(self, "obj_secret_string1", value)
+
+    @property
+    @pulumi.getter(name="objSecretString2")
+    def obj_secret_string2(self) -> Optional[pulumi.Input['TsecretString2Args']]:
+        return pulumi.get(self, "obj_secret_string2")
+
+    @obj_secret_string2.setter
+    def obj_secret_string2(self, value: Optional[pulumi.Input['TsecretString2Args']]):
+        pulumi.set(self, "obj_secret_string2", value)
+
+    @property
+    @pulumi.getter(name="objSecretString3")
+    def obj_secret_string3(self) -> Optional[pulumi.Input['TsecretString3Args']]:
+        return pulumi.get(self, "obj_secret_string3")
+
+    @obj_secret_string3.setter
+    def obj_secret_string3(self, value: Optional[pulumi.Input['TsecretString3Args']]):
+        pulumi.set(self, "obj_secret_string3", value)
+
+    @property
     @pulumi.getter(name="objString1")
     def obj_string1(self) -> Optional[pulumi.Input['Tstring1Args']]:
         return pulumi.get(self, "obj_string1")
@@ -572,6 +1040,114 @@ class ProviderArgs:
     @obj_string3.setter
     def obj_string3(self, value: Optional[pulumi.Input['Tstring3Args']]):
         pulumi.set(self, "obj_string3", value)
+
+    @property
+    @pulumi.getter(name="secretBool1")
+    def secret_bool1(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_bool1")
+
+    @secret_bool1.setter
+    def secret_bool1(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_bool1", value)
+
+    @property
+    @pulumi.getter(name="secretBool2")
+    def secret_bool2(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_bool2")
+
+    @secret_bool2.setter
+    def secret_bool2(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_bool2", value)
+
+    @property
+    @pulumi.getter(name="secretBool3")
+    def secret_bool3(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_bool3")
+
+    @secret_bool3.setter
+    def secret_bool3(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_bool3", value)
+
+    @property
+    @pulumi.getter(name="secretInt1")
+    def secret_int1(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_int1")
+
+    @secret_int1.setter
+    def secret_int1(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_int1", value)
+
+    @property
+    @pulumi.getter(name="secretInt2")
+    def secret_int2(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_int2")
+
+    @secret_int2.setter
+    def secret_int2(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_int2", value)
+
+    @property
+    @pulumi.getter(name="secretInt3")
+    def secret_int3(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_int3")
+
+    @secret_int3.setter
+    def secret_int3(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_int3", value)
+
+    @property
+    @pulumi.getter(name="secretNum1")
+    def secret_num1(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_num1")
+
+    @secret_num1.setter
+    def secret_num1(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_num1", value)
+
+    @property
+    @pulumi.getter(name="secretNum2")
+    def secret_num2(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_num2")
+
+    @secret_num2.setter
+    def secret_num2(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_num2", value)
+
+    @property
+    @pulumi.getter(name="secretNum3")
+    def secret_num3(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_num3")
+
+    @secret_num3.setter
+    def secret_num3(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_num3", value)
+
+    @property
+    @pulumi.getter(name="secretString1")
+    def secret_string1(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_string1")
+
+    @secret_string1.setter
+    def secret_string1(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_string1", value)
+
+    @property
+    @pulumi.getter(name="secretString2")
+    def secret_string2(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_string2")
+
+    @secret_string2.setter
+    def secret_string2(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_string2", value)
+
+    @property
+    @pulumi.getter(name="secretString3")
+    def secret_string3(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_string3")
+
+    @secret_string3.setter
+    def secret_string3(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_string3", value)
 
     @property
     @pulumi.getter
@@ -621,6 +1197,18 @@ class Provider(pulumi.ProviderResource):
                  list_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_bool1: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool2: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool3: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_int1: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int2: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int3: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
@@ -633,6 +1221,18 @@ class Provider(pulumi.ProviderResource):
                  map_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_bool1: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool2: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool3: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_int1: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int2: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int3: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
@@ -648,9 +1248,33 @@ class Provider(pulumi.ProviderResource):
                  obj_num1: Optional[pulumi.Input[pulumi.InputType['Tnum1Args']]] = None,
                  obj_num2: Optional[pulumi.Input[pulumi.InputType['Tnum2Args']]] = None,
                  obj_num3: Optional[pulumi.Input[pulumi.InputType['Tnum3Args']]] = None,
+                 obj_secret_bool1: Optional[pulumi.Input[pulumi.InputType['TsecretBool1Args']]] = None,
+                 obj_secret_bool2: Optional[pulumi.Input[pulumi.InputType['TsecretBool2Args']]] = None,
+                 obj_secret_bool3: Optional[pulumi.Input[pulumi.InputType['TsecretBool3Args']]] = None,
+                 obj_secret_int1: Optional[pulumi.Input[pulumi.InputType['TsecretInt1Args']]] = None,
+                 obj_secret_int2: Optional[pulumi.Input[pulumi.InputType['TsecretInt2Args']]] = None,
+                 obj_secret_int3: Optional[pulumi.Input[pulumi.InputType['TsecretInt3Args']]] = None,
+                 obj_secret_num1: Optional[pulumi.Input[pulumi.InputType['TsecretNum1Args']]] = None,
+                 obj_secret_num2: Optional[pulumi.Input[pulumi.InputType['TsecretNum2Args']]] = None,
+                 obj_secret_num3: Optional[pulumi.Input[pulumi.InputType['TsecretNum3Args']]] = None,
+                 obj_secret_string1: Optional[pulumi.Input[pulumi.InputType['TsecretString1Args']]] = None,
+                 obj_secret_string2: Optional[pulumi.Input[pulumi.InputType['TsecretString2Args']]] = None,
+                 obj_secret_string3: Optional[pulumi.Input[pulumi.InputType['TsecretString3Args']]] = None,
                  obj_string1: Optional[pulumi.Input[pulumi.InputType['Tstring1Args']]] = None,
                  obj_string2: Optional[pulumi.Input[pulumi.InputType['Tstring2Args']]] = None,
                  obj_string3: Optional[pulumi.Input[pulumi.InputType['Tstring3Args']]] = None,
+                 secret_bool1: Optional[pulumi.Input[bool]] = None,
+                 secret_bool2: Optional[pulumi.Input[bool]] = None,
+                 secret_bool3: Optional[pulumi.Input[bool]] = None,
+                 secret_int1: Optional[pulumi.Input[int]] = None,
+                 secret_int2: Optional[pulumi.Input[int]] = None,
+                 secret_int3: Optional[pulumi.Input[int]] = None,
+                 secret_num1: Optional[pulumi.Input[float]] = None,
+                 secret_num2: Optional[pulumi.Input[float]] = None,
+                 secret_num3: Optional[pulumi.Input[float]] = None,
+                 secret_string1: Optional[pulumi.Input[str]] = None,
+                 secret_string2: Optional[pulumi.Input[str]] = None,
+                 secret_string3: Optional[pulumi.Input[str]] = None,
                  string1: Optional[pulumi.Input[str]] = None,
                  string2: Optional[pulumi.Input[str]] = None,
                  string3: Optional[pulumi.Input[str]] = None,
@@ -698,6 +1322,18 @@ class Provider(pulumi.ProviderResource):
                  list_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
                  list_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_bool1: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool2: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_bool3: Optional[pulumi.Input[Sequence[pulumi.Input[bool]]]] = None,
+                 list_secret_int1: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int2: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_int3: Optional[pulumi.Input[Sequence[pulumi.Input[int]]]] = None,
+                 list_secret_num1: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num2: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_num3: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 list_secret_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 list_secret_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string1: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string2: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  list_string3: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
@@ -710,6 +1346,18 @@ class Provider(pulumi.ProviderResource):
                  map_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
                  map_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_bool1: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool2: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_bool3: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 map_secret_int1: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int2: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_int3: Optional[pulumi.Input[Mapping[str, pulumi.Input[int]]]] = None,
+                 map_secret_num1: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num2: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_num3: Optional[pulumi.Input[Mapping[str, pulumi.Input[float]]]] = None,
+                 map_secret_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
+                 map_secret_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string1: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string2: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  map_string3: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
@@ -725,9 +1373,33 @@ class Provider(pulumi.ProviderResource):
                  obj_num1: Optional[pulumi.Input[pulumi.InputType['Tnum1Args']]] = None,
                  obj_num2: Optional[pulumi.Input[pulumi.InputType['Tnum2Args']]] = None,
                  obj_num3: Optional[pulumi.Input[pulumi.InputType['Tnum3Args']]] = None,
+                 obj_secret_bool1: Optional[pulumi.Input[pulumi.InputType['TsecretBool1Args']]] = None,
+                 obj_secret_bool2: Optional[pulumi.Input[pulumi.InputType['TsecretBool2Args']]] = None,
+                 obj_secret_bool3: Optional[pulumi.Input[pulumi.InputType['TsecretBool3Args']]] = None,
+                 obj_secret_int1: Optional[pulumi.Input[pulumi.InputType['TsecretInt1Args']]] = None,
+                 obj_secret_int2: Optional[pulumi.Input[pulumi.InputType['TsecretInt2Args']]] = None,
+                 obj_secret_int3: Optional[pulumi.Input[pulumi.InputType['TsecretInt3Args']]] = None,
+                 obj_secret_num1: Optional[pulumi.Input[pulumi.InputType['TsecretNum1Args']]] = None,
+                 obj_secret_num2: Optional[pulumi.Input[pulumi.InputType['TsecretNum2Args']]] = None,
+                 obj_secret_num3: Optional[pulumi.Input[pulumi.InputType['TsecretNum3Args']]] = None,
+                 obj_secret_string1: Optional[pulumi.Input[pulumi.InputType['TsecretString1Args']]] = None,
+                 obj_secret_string2: Optional[pulumi.Input[pulumi.InputType['TsecretString2Args']]] = None,
+                 obj_secret_string3: Optional[pulumi.Input[pulumi.InputType['TsecretString3Args']]] = None,
                  obj_string1: Optional[pulumi.Input[pulumi.InputType['Tstring1Args']]] = None,
                  obj_string2: Optional[pulumi.Input[pulumi.InputType['Tstring2Args']]] = None,
                  obj_string3: Optional[pulumi.Input[pulumi.InputType['Tstring3Args']]] = None,
+                 secret_bool1: Optional[pulumi.Input[bool]] = None,
+                 secret_bool2: Optional[pulumi.Input[bool]] = None,
+                 secret_bool3: Optional[pulumi.Input[bool]] = None,
+                 secret_int1: Optional[pulumi.Input[int]] = None,
+                 secret_int2: Optional[pulumi.Input[int]] = None,
+                 secret_int3: Optional[pulumi.Input[int]] = None,
+                 secret_num1: Optional[pulumi.Input[float]] = None,
+                 secret_num2: Optional[pulumi.Input[float]] = None,
+                 secret_num3: Optional[pulumi.Input[float]] = None,
+                 secret_string1: Optional[pulumi.Input[str]] = None,
+                 secret_string2: Optional[pulumi.Input[str]] = None,
+                 secret_string3: Optional[pulumi.Input[str]] = None,
                  string1: Optional[pulumi.Input[str]] = None,
                  string2: Optional[pulumi.Input[str]] = None,
                  string3: Optional[pulumi.Input[str]] = None,
@@ -755,6 +1427,18 @@ class Provider(pulumi.ProviderResource):
             __props__.__dict__["list_num1"] = pulumi.Output.from_input(list_num1).apply(pulumi.runtime.to_json) if list_num1 is not None else None
             __props__.__dict__["list_num2"] = pulumi.Output.from_input(list_num2).apply(pulumi.runtime.to_json) if list_num2 is not None else None
             __props__.__dict__["list_num3"] = pulumi.Output.from_input(list_num3).apply(pulumi.runtime.to_json) if list_num3 is not None else None
+            __props__.__dict__["list_secret_bool1"] = pulumi.Output.secret(list_secret_bool1).apply(pulumi.runtime.to_json) if list_secret_bool1 is not None else None
+            __props__.__dict__["list_secret_bool2"] = pulumi.Output.secret(list_secret_bool2).apply(pulumi.runtime.to_json) if list_secret_bool2 is not None else None
+            __props__.__dict__["list_secret_bool3"] = pulumi.Output.secret(list_secret_bool3).apply(pulumi.runtime.to_json) if list_secret_bool3 is not None else None
+            __props__.__dict__["list_secret_int1"] = pulumi.Output.secret(list_secret_int1).apply(pulumi.runtime.to_json) if list_secret_int1 is not None else None
+            __props__.__dict__["list_secret_int2"] = pulumi.Output.secret(list_secret_int2).apply(pulumi.runtime.to_json) if list_secret_int2 is not None else None
+            __props__.__dict__["list_secret_int3"] = pulumi.Output.secret(list_secret_int3).apply(pulumi.runtime.to_json) if list_secret_int3 is not None else None
+            __props__.__dict__["list_secret_num1"] = pulumi.Output.secret(list_secret_num1).apply(pulumi.runtime.to_json) if list_secret_num1 is not None else None
+            __props__.__dict__["list_secret_num2"] = pulumi.Output.secret(list_secret_num2).apply(pulumi.runtime.to_json) if list_secret_num2 is not None else None
+            __props__.__dict__["list_secret_num3"] = pulumi.Output.secret(list_secret_num3).apply(pulumi.runtime.to_json) if list_secret_num3 is not None else None
+            __props__.__dict__["list_secret_string1"] = pulumi.Output.secret(list_secret_string1).apply(pulumi.runtime.to_json) if list_secret_string1 is not None else None
+            __props__.__dict__["list_secret_string2"] = pulumi.Output.secret(list_secret_string2).apply(pulumi.runtime.to_json) if list_secret_string2 is not None else None
+            __props__.__dict__["list_secret_string3"] = pulumi.Output.secret(list_secret_string3).apply(pulumi.runtime.to_json) if list_secret_string3 is not None else None
             __props__.__dict__["list_string1"] = pulumi.Output.from_input(list_string1).apply(pulumi.runtime.to_json) if list_string1 is not None else None
             __props__.__dict__["list_string2"] = pulumi.Output.from_input(list_string2).apply(pulumi.runtime.to_json) if list_string2 is not None else None
             __props__.__dict__["list_string3"] = pulumi.Output.from_input(list_string3).apply(pulumi.runtime.to_json) if list_string3 is not None else None
@@ -767,6 +1451,18 @@ class Provider(pulumi.ProviderResource):
             __props__.__dict__["map_num1"] = pulumi.Output.from_input(map_num1).apply(pulumi.runtime.to_json) if map_num1 is not None else None
             __props__.__dict__["map_num2"] = pulumi.Output.from_input(map_num2).apply(pulumi.runtime.to_json) if map_num2 is not None else None
             __props__.__dict__["map_num3"] = pulumi.Output.from_input(map_num3).apply(pulumi.runtime.to_json) if map_num3 is not None else None
+            __props__.__dict__["map_secret_bool1"] = pulumi.Output.secret(map_secret_bool1).apply(pulumi.runtime.to_json) if map_secret_bool1 is not None else None
+            __props__.__dict__["map_secret_bool2"] = pulumi.Output.secret(map_secret_bool2).apply(pulumi.runtime.to_json) if map_secret_bool2 is not None else None
+            __props__.__dict__["map_secret_bool3"] = pulumi.Output.secret(map_secret_bool3).apply(pulumi.runtime.to_json) if map_secret_bool3 is not None else None
+            __props__.__dict__["map_secret_int1"] = pulumi.Output.secret(map_secret_int1).apply(pulumi.runtime.to_json) if map_secret_int1 is not None else None
+            __props__.__dict__["map_secret_int2"] = pulumi.Output.secret(map_secret_int2).apply(pulumi.runtime.to_json) if map_secret_int2 is not None else None
+            __props__.__dict__["map_secret_int3"] = pulumi.Output.secret(map_secret_int3).apply(pulumi.runtime.to_json) if map_secret_int3 is not None else None
+            __props__.__dict__["map_secret_num1"] = pulumi.Output.secret(map_secret_num1).apply(pulumi.runtime.to_json) if map_secret_num1 is not None else None
+            __props__.__dict__["map_secret_num2"] = pulumi.Output.secret(map_secret_num2).apply(pulumi.runtime.to_json) if map_secret_num2 is not None else None
+            __props__.__dict__["map_secret_num3"] = pulumi.Output.secret(map_secret_num3).apply(pulumi.runtime.to_json) if map_secret_num3 is not None else None
+            __props__.__dict__["map_secret_string1"] = pulumi.Output.secret(map_secret_string1).apply(pulumi.runtime.to_json) if map_secret_string1 is not None else None
+            __props__.__dict__["map_secret_string2"] = pulumi.Output.secret(map_secret_string2).apply(pulumi.runtime.to_json) if map_secret_string2 is not None else None
+            __props__.__dict__["map_secret_string3"] = pulumi.Output.secret(map_secret_string3).apply(pulumi.runtime.to_json) if map_secret_string3 is not None else None
             __props__.__dict__["map_string1"] = pulumi.Output.from_input(map_string1).apply(pulumi.runtime.to_json) if map_string1 is not None else None
             __props__.__dict__["map_string2"] = pulumi.Output.from_input(map_string2).apply(pulumi.runtime.to_json) if map_string2 is not None else None
             __props__.__dict__["map_string3"] = pulumi.Output.from_input(map_string3).apply(pulumi.runtime.to_json) if map_string3 is not None else None
@@ -782,17 +1478,58 @@ class Provider(pulumi.ProviderResource):
             __props__.__dict__["obj_num1"] = pulumi.Output.from_input(obj_num1).apply(pulumi.runtime.to_json) if obj_num1 is not None else None
             __props__.__dict__["obj_num2"] = pulumi.Output.from_input(obj_num2).apply(pulumi.runtime.to_json) if obj_num2 is not None else None
             __props__.__dict__["obj_num3"] = pulumi.Output.from_input(obj_num3).apply(pulumi.runtime.to_json) if obj_num3 is not None else None
+            __props__.__dict__["obj_secret_bool1"] = pulumi.Output.secret(obj_secret_bool1).apply(pulumi.runtime.to_json) if obj_secret_bool1 is not None else None
+            __props__.__dict__["obj_secret_bool2"] = pulumi.Output.secret(obj_secret_bool2).apply(pulumi.runtime.to_json) if obj_secret_bool2 is not None else None
+            __props__.__dict__["obj_secret_bool3"] = pulumi.Output.secret(obj_secret_bool3).apply(pulumi.runtime.to_json) if obj_secret_bool3 is not None else None
+            __props__.__dict__["obj_secret_int1"] = pulumi.Output.secret(obj_secret_int1).apply(pulumi.runtime.to_json) if obj_secret_int1 is not None else None
+            __props__.__dict__["obj_secret_int2"] = pulumi.Output.secret(obj_secret_int2).apply(pulumi.runtime.to_json) if obj_secret_int2 is not None else None
+            __props__.__dict__["obj_secret_int3"] = pulumi.Output.secret(obj_secret_int3).apply(pulumi.runtime.to_json) if obj_secret_int3 is not None else None
+            __props__.__dict__["obj_secret_num1"] = pulumi.Output.secret(obj_secret_num1).apply(pulumi.runtime.to_json) if obj_secret_num1 is not None else None
+            __props__.__dict__["obj_secret_num2"] = pulumi.Output.secret(obj_secret_num2).apply(pulumi.runtime.to_json) if obj_secret_num2 is not None else None
+            __props__.__dict__["obj_secret_num3"] = pulumi.Output.secret(obj_secret_num3).apply(pulumi.runtime.to_json) if obj_secret_num3 is not None else None
+            __props__.__dict__["obj_secret_string1"] = pulumi.Output.secret(obj_secret_string1).apply(pulumi.runtime.to_json) if obj_secret_string1 is not None else None
+            __props__.__dict__["obj_secret_string2"] = pulumi.Output.secret(obj_secret_string2).apply(pulumi.runtime.to_json) if obj_secret_string2 is not None else None
+            __props__.__dict__["obj_secret_string3"] = pulumi.Output.secret(obj_secret_string3).apply(pulumi.runtime.to_json) if obj_secret_string3 is not None else None
             __props__.__dict__["obj_string1"] = pulumi.Output.from_input(obj_string1).apply(pulumi.runtime.to_json) if obj_string1 is not None else None
             __props__.__dict__["obj_string2"] = pulumi.Output.from_input(obj_string2).apply(pulumi.runtime.to_json) if obj_string2 is not None else None
             __props__.__dict__["obj_string3"] = pulumi.Output.from_input(obj_string3).apply(pulumi.runtime.to_json) if obj_string3 is not None else None
+            __props__.__dict__["secret_bool1"] = pulumi.Output.secret(secret_bool1).apply(pulumi.runtime.to_json) if secret_bool1 is not None else None
+            __props__.__dict__["secret_bool2"] = pulumi.Output.secret(secret_bool2).apply(pulumi.runtime.to_json) if secret_bool2 is not None else None
+            __props__.__dict__["secret_bool3"] = pulumi.Output.secret(secret_bool3).apply(pulumi.runtime.to_json) if secret_bool3 is not None else None
+            __props__.__dict__["secret_int1"] = pulumi.Output.secret(secret_int1).apply(pulumi.runtime.to_json) if secret_int1 is not None else None
+            __props__.__dict__["secret_int2"] = pulumi.Output.secret(secret_int2).apply(pulumi.runtime.to_json) if secret_int2 is not None else None
+            __props__.__dict__["secret_int3"] = pulumi.Output.secret(secret_int3).apply(pulumi.runtime.to_json) if secret_int3 is not None else None
+            __props__.__dict__["secret_num1"] = pulumi.Output.secret(secret_num1).apply(pulumi.runtime.to_json) if secret_num1 is not None else None
+            __props__.__dict__["secret_num2"] = pulumi.Output.secret(secret_num2).apply(pulumi.runtime.to_json) if secret_num2 is not None else None
+            __props__.__dict__["secret_num3"] = pulumi.Output.secret(secret_num3).apply(pulumi.runtime.to_json) if secret_num3 is not None else None
+            __props__.__dict__["secret_string1"] = None if secret_string1 is None else pulumi.Output.secret(secret_string1)
+            __props__.__dict__["secret_string2"] = None if secret_string2 is None else pulumi.Output.secret(secret_string2)
+            __props__.__dict__["secret_string3"] = None if secret_string3 is None else pulumi.Output.secret(secret_string3)
             __props__.__dict__["string1"] = string1
             __props__.__dict__["string2"] = string2
             __props__.__dict__["string3"] = string3
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["secretString1", "secretString2", "secretString3"])
+        opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Provider, __self__).__init__(
             'config-grpc',
             resource_name,
             __props__,
             opts)
+
+    @property
+    @pulumi.getter(name="secretString1")
+    def secret_string1(self) -> pulumi.Output[Optional[str]]:
+        return pulumi.get(self, "secret_string1")
+
+    @property
+    @pulumi.getter(name="secretString2")
+    def secret_string2(self) -> pulumi.Output[Optional[str]]:
+        return pulumi.get(self, "secret_string2")
+
+    @property
+    @pulumi.getter(name="secretString3")
+    def secret_string3(self) -> pulumi.Output[Optional[str]]:
+        return pulumi.get(self, "secret_string3")
 
     @property
     @pulumi.getter

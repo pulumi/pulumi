@@ -77,6 +77,102 @@ export interface Tnum3Args {
     x?: pulumi.Input<number>;
 }
 
+export interface TsecretBool1 {
+    secretX?: boolean;
+}
+
+export interface TsecretBool1Args {
+    secretX?: pulumi.Input<boolean>;
+}
+
+export interface TsecretBool2 {
+    secretX?: boolean;
+}
+
+export interface TsecretBool2Args {
+    secretX?: pulumi.Input<boolean>;
+}
+
+export interface TsecretBool3 {
+    secretX?: boolean;
+}
+
+export interface TsecretBool3Args {
+    secretX?: pulumi.Input<boolean>;
+}
+
+export interface TsecretInt1 {
+    secretX?: number;
+}
+
+export interface TsecretInt1Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretInt2 {
+    secretX?: number;
+}
+
+export interface TsecretInt2Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretInt3 {
+    secretX?: number;
+}
+
+export interface TsecretInt3Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretNum1 {
+    secretX?: number;
+}
+
+export interface TsecretNum1Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretNum2 {
+    secretX?: number;
+}
+
+export interface TsecretNum2Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretNum3 {
+    secretX?: number;
+}
+
+export interface TsecretNum3Args {
+    secretX?: pulumi.Input<number>;
+}
+
+export interface TsecretString1 {
+    secretX?: string;
+}
+
+export interface TsecretString1Args {
+    secretX?: pulumi.Input<string>;
+}
+
+export interface TsecretString2 {
+    secretX?: string;
+}
+
+export interface TsecretString2Args {
+    secretX?: pulumi.Input<string>;
+}
+
+export interface TsecretString3 {
+    secretX?: string;
+}
+
+export interface TsecretString3Args {
+    secretX?: pulumi.Input<string>;
+}
+
 export interface Tstring1 {
     x?: string;
 }

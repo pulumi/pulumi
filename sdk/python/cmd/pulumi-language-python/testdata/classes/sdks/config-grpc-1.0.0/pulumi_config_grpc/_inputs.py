@@ -28,6 +28,30 @@ __all__ = [
     'Tnum2Args',
     'Tnum3',
     'Tnum3Args',
+    'TsecretBool1',
+    'TsecretBool1Args',
+    'TsecretBool2',
+    'TsecretBool2Args',
+    'TsecretBool3',
+    'TsecretBool3Args',
+    'TsecretInt1',
+    'TsecretInt1Args',
+    'TsecretInt2',
+    'TsecretInt2Args',
+    'TsecretInt3',
+    'TsecretInt3Args',
+    'TsecretNum1',
+    'TsecretNum1Args',
+    'TsecretNum2',
+    'TsecretNum2Args',
+    'TsecretNum3',
+    'TsecretNum3Args',
+    'TsecretString1',
+    'TsecretString1Args',
+    'TsecretString2',
+    'TsecretString2Args',
+    'TsecretString3',
+    'TsecretString3Args',
     'Tstring1',
     'Tstring1Args',
     'Tstring2',
@@ -340,6 +364,414 @@ class Tnum3Args:
     @x.setter
     def x(self, value: Optional[pulumi.Input[float]]):
         pulumi.set(self, "x", value)
+
+
+@pulumi.input_type
+class TsecretBool1:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretBool1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretBool2:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretBool2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretBool3:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretBool3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt1:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt2:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt3:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretInt3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum1:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum2:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum3:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretNum3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString1:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString2:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString3:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+@pulumi.input_type
+class TsecretString3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
 
 
 @pulumi.input_type

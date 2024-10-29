@@ -25,7 +25,7 @@ __all__ = [
 
 @pulumi.output_type
 class ToSecretResult:
-    def __init__(__self__, bool1=None, bool2=None, bool3=None, int1=None, int2=None, int3=None, list_bool1=None, list_bool2=None, list_bool3=None, list_int1=None, list_int2=None, list_int3=None, list_num1=None, list_num2=None, list_num3=None, list_string1=None, list_string2=None, list_string3=None, map_bool1=None, map_bool2=None, map_bool3=None, map_int1=None, map_int2=None, map_int3=None, map_num1=None, map_num2=None, map_num3=None, map_string1=None, map_string2=None, map_string3=None, num1=None, num2=None, num3=None, obj_bool1=None, obj_bool2=None, obj_bool3=None, obj_int1=None, obj_int2=None, obj_int3=None, obj_num1=None, obj_num2=None, obj_num3=None, obj_string1=None, obj_string2=None, obj_string3=None, string1=None, string2=None, string3=None):
+    def __init__(__self__, bool1=None, bool2=None, bool3=None, int1=None, int2=None, int3=None, list_bool1=None, list_bool2=None, list_bool3=None, list_int1=None, list_int2=None, list_int3=None, list_num1=None, list_num2=None, list_num3=None, list_secret_bool1=None, list_secret_bool2=None, list_secret_bool3=None, list_secret_int1=None, list_secret_int2=None, list_secret_int3=None, list_secret_num1=None, list_secret_num2=None, list_secret_num3=None, list_secret_string1=None, list_secret_string2=None, list_secret_string3=None, list_string1=None, list_string2=None, list_string3=None, map_bool1=None, map_bool2=None, map_bool3=None, map_int1=None, map_int2=None, map_int3=None, map_num1=None, map_num2=None, map_num3=None, map_secret_bool1=None, map_secret_bool2=None, map_secret_bool3=None, map_secret_int1=None, map_secret_int2=None, map_secret_int3=None, map_secret_num1=None, map_secret_num2=None, map_secret_num3=None, map_secret_string1=None, map_secret_string2=None, map_secret_string3=None, map_string1=None, map_string2=None, map_string3=None, num1=None, num2=None, num3=None, obj_bool1=None, obj_bool2=None, obj_bool3=None, obj_int1=None, obj_int2=None, obj_int3=None, obj_num1=None, obj_num2=None, obj_num3=None, obj_secret_bool1=None, obj_secret_bool2=None, obj_secret_bool3=None, obj_secret_int1=None, obj_secret_int2=None, obj_secret_int3=None, obj_secret_num1=None, obj_secret_num2=None, obj_secret_num3=None, obj_secret_string1=None, obj_secret_string2=None, obj_secret_string3=None, obj_string1=None, obj_string2=None, obj_string3=None, secret_bool1=None, secret_bool2=None, secret_bool3=None, secret_int1=None, secret_int2=None, secret_int3=None, secret_num1=None, secret_num2=None, secret_num3=None, secret_string1=None, secret_string2=None, secret_string3=None, string1=None, string2=None, string3=None):
         if bool1 and not isinstance(bool1, bool):
             raise TypeError("Expected argument 'bool1' to be a bool")
         pulumi.set(__self__, "bool1", bool1)
@@ -71,6 +71,42 @@ class ToSecretResult:
         if list_num3 and not isinstance(list_num3, list):
             raise TypeError("Expected argument 'list_num3' to be a list")
         pulumi.set(__self__, "list_num3", list_num3)
+        if list_secret_bool1 and not isinstance(list_secret_bool1, list):
+            raise TypeError("Expected argument 'list_secret_bool1' to be a list")
+        pulumi.set(__self__, "list_secret_bool1", list_secret_bool1)
+        if list_secret_bool2 and not isinstance(list_secret_bool2, list):
+            raise TypeError("Expected argument 'list_secret_bool2' to be a list")
+        pulumi.set(__self__, "list_secret_bool2", list_secret_bool2)
+        if list_secret_bool3 and not isinstance(list_secret_bool3, list):
+            raise TypeError("Expected argument 'list_secret_bool3' to be a list")
+        pulumi.set(__self__, "list_secret_bool3", list_secret_bool3)
+        if list_secret_int1 and not isinstance(list_secret_int1, list):
+            raise TypeError("Expected argument 'list_secret_int1' to be a list")
+        pulumi.set(__self__, "list_secret_int1", list_secret_int1)
+        if list_secret_int2 and not isinstance(list_secret_int2, list):
+            raise TypeError("Expected argument 'list_secret_int2' to be a list")
+        pulumi.set(__self__, "list_secret_int2", list_secret_int2)
+        if list_secret_int3 and not isinstance(list_secret_int3, list):
+            raise TypeError("Expected argument 'list_secret_int3' to be a list")
+        pulumi.set(__self__, "list_secret_int3", list_secret_int3)
+        if list_secret_num1 and not isinstance(list_secret_num1, list):
+            raise TypeError("Expected argument 'list_secret_num1' to be a list")
+        pulumi.set(__self__, "list_secret_num1", list_secret_num1)
+        if list_secret_num2 and not isinstance(list_secret_num2, list):
+            raise TypeError("Expected argument 'list_secret_num2' to be a list")
+        pulumi.set(__self__, "list_secret_num2", list_secret_num2)
+        if list_secret_num3 and not isinstance(list_secret_num3, list):
+            raise TypeError("Expected argument 'list_secret_num3' to be a list")
+        pulumi.set(__self__, "list_secret_num3", list_secret_num3)
+        if list_secret_string1 and not isinstance(list_secret_string1, list):
+            raise TypeError("Expected argument 'list_secret_string1' to be a list")
+        pulumi.set(__self__, "list_secret_string1", list_secret_string1)
+        if list_secret_string2 and not isinstance(list_secret_string2, list):
+            raise TypeError("Expected argument 'list_secret_string2' to be a list")
+        pulumi.set(__self__, "list_secret_string2", list_secret_string2)
+        if list_secret_string3 and not isinstance(list_secret_string3, list):
+            raise TypeError("Expected argument 'list_secret_string3' to be a list")
+        pulumi.set(__self__, "list_secret_string3", list_secret_string3)
         if list_string1 and not isinstance(list_string1, list):
             raise TypeError("Expected argument 'list_string1' to be a list")
         pulumi.set(__self__, "list_string1", list_string1)
@@ -107,6 +143,42 @@ class ToSecretResult:
         if map_num3 and not isinstance(map_num3, dict):
             raise TypeError("Expected argument 'map_num3' to be a dict")
         pulumi.set(__self__, "map_num3", map_num3)
+        if map_secret_bool1 and not isinstance(map_secret_bool1, dict):
+            raise TypeError("Expected argument 'map_secret_bool1' to be a dict")
+        pulumi.set(__self__, "map_secret_bool1", map_secret_bool1)
+        if map_secret_bool2 and not isinstance(map_secret_bool2, dict):
+            raise TypeError("Expected argument 'map_secret_bool2' to be a dict")
+        pulumi.set(__self__, "map_secret_bool2", map_secret_bool2)
+        if map_secret_bool3 and not isinstance(map_secret_bool3, dict):
+            raise TypeError("Expected argument 'map_secret_bool3' to be a dict")
+        pulumi.set(__self__, "map_secret_bool3", map_secret_bool3)
+        if map_secret_int1 and not isinstance(map_secret_int1, dict):
+            raise TypeError("Expected argument 'map_secret_int1' to be a dict")
+        pulumi.set(__self__, "map_secret_int1", map_secret_int1)
+        if map_secret_int2 and not isinstance(map_secret_int2, dict):
+            raise TypeError("Expected argument 'map_secret_int2' to be a dict")
+        pulumi.set(__self__, "map_secret_int2", map_secret_int2)
+        if map_secret_int3 and not isinstance(map_secret_int3, dict):
+            raise TypeError("Expected argument 'map_secret_int3' to be a dict")
+        pulumi.set(__self__, "map_secret_int3", map_secret_int3)
+        if map_secret_num1 and not isinstance(map_secret_num1, dict):
+            raise TypeError("Expected argument 'map_secret_num1' to be a dict")
+        pulumi.set(__self__, "map_secret_num1", map_secret_num1)
+        if map_secret_num2 and not isinstance(map_secret_num2, dict):
+            raise TypeError("Expected argument 'map_secret_num2' to be a dict")
+        pulumi.set(__self__, "map_secret_num2", map_secret_num2)
+        if map_secret_num3 and not isinstance(map_secret_num3, dict):
+            raise TypeError("Expected argument 'map_secret_num3' to be a dict")
+        pulumi.set(__self__, "map_secret_num3", map_secret_num3)
+        if map_secret_string1 and not isinstance(map_secret_string1, dict):
+            raise TypeError("Expected argument 'map_secret_string1' to be a dict")
+        pulumi.set(__self__, "map_secret_string1", map_secret_string1)
+        if map_secret_string2 and not isinstance(map_secret_string2, dict):
+            raise TypeError("Expected argument 'map_secret_string2' to be a dict")
+        pulumi.set(__self__, "map_secret_string2", map_secret_string2)
+        if map_secret_string3 and not isinstance(map_secret_string3, dict):
+            raise TypeError("Expected argument 'map_secret_string3' to be a dict")
+        pulumi.set(__self__, "map_secret_string3", map_secret_string3)
         if map_string1 and not isinstance(map_string1, dict):
             raise TypeError("Expected argument 'map_string1' to be a dict")
         pulumi.set(__self__, "map_string1", map_string1)
@@ -152,6 +224,42 @@ class ToSecretResult:
         if obj_num3 and not isinstance(obj_num3, dict):
             raise TypeError("Expected argument 'obj_num3' to be a dict")
         pulumi.set(__self__, "obj_num3", obj_num3)
+        if obj_secret_bool1 and not isinstance(obj_secret_bool1, dict):
+            raise TypeError("Expected argument 'obj_secret_bool1' to be a dict")
+        pulumi.set(__self__, "obj_secret_bool1", obj_secret_bool1)
+        if obj_secret_bool2 and not isinstance(obj_secret_bool2, dict):
+            raise TypeError("Expected argument 'obj_secret_bool2' to be a dict")
+        pulumi.set(__self__, "obj_secret_bool2", obj_secret_bool2)
+        if obj_secret_bool3 and not isinstance(obj_secret_bool3, dict):
+            raise TypeError("Expected argument 'obj_secret_bool3' to be a dict")
+        pulumi.set(__self__, "obj_secret_bool3", obj_secret_bool3)
+        if obj_secret_int1 and not isinstance(obj_secret_int1, dict):
+            raise TypeError("Expected argument 'obj_secret_int1' to be a dict")
+        pulumi.set(__self__, "obj_secret_int1", obj_secret_int1)
+        if obj_secret_int2 and not isinstance(obj_secret_int2, dict):
+            raise TypeError("Expected argument 'obj_secret_int2' to be a dict")
+        pulumi.set(__self__, "obj_secret_int2", obj_secret_int2)
+        if obj_secret_int3 and not isinstance(obj_secret_int3, dict):
+            raise TypeError("Expected argument 'obj_secret_int3' to be a dict")
+        pulumi.set(__self__, "obj_secret_int3", obj_secret_int3)
+        if obj_secret_num1 and not isinstance(obj_secret_num1, dict):
+            raise TypeError("Expected argument 'obj_secret_num1' to be a dict")
+        pulumi.set(__self__, "obj_secret_num1", obj_secret_num1)
+        if obj_secret_num2 and not isinstance(obj_secret_num2, dict):
+            raise TypeError("Expected argument 'obj_secret_num2' to be a dict")
+        pulumi.set(__self__, "obj_secret_num2", obj_secret_num2)
+        if obj_secret_num3 and not isinstance(obj_secret_num3, dict):
+            raise TypeError("Expected argument 'obj_secret_num3' to be a dict")
+        pulumi.set(__self__, "obj_secret_num3", obj_secret_num3)
+        if obj_secret_string1 and not isinstance(obj_secret_string1, dict):
+            raise TypeError("Expected argument 'obj_secret_string1' to be a dict")
+        pulumi.set(__self__, "obj_secret_string1", obj_secret_string1)
+        if obj_secret_string2 and not isinstance(obj_secret_string2, dict):
+            raise TypeError("Expected argument 'obj_secret_string2' to be a dict")
+        pulumi.set(__self__, "obj_secret_string2", obj_secret_string2)
+        if obj_secret_string3 and not isinstance(obj_secret_string3, dict):
+            raise TypeError("Expected argument 'obj_secret_string3' to be a dict")
+        pulumi.set(__self__, "obj_secret_string3", obj_secret_string3)
         if obj_string1 and not isinstance(obj_string1, dict):
             raise TypeError("Expected argument 'obj_string1' to be a dict")
         pulumi.set(__self__, "obj_string1", obj_string1)
@@ -161,6 +269,42 @@ class ToSecretResult:
         if obj_string3 and not isinstance(obj_string3, dict):
             raise TypeError("Expected argument 'obj_string3' to be a dict")
         pulumi.set(__self__, "obj_string3", obj_string3)
+        if secret_bool1 and not isinstance(secret_bool1, bool):
+            raise TypeError("Expected argument 'secret_bool1' to be a bool")
+        pulumi.set(__self__, "secret_bool1", secret_bool1)
+        if secret_bool2 and not isinstance(secret_bool2, bool):
+            raise TypeError("Expected argument 'secret_bool2' to be a bool")
+        pulumi.set(__self__, "secret_bool2", secret_bool2)
+        if secret_bool3 and not isinstance(secret_bool3, bool):
+            raise TypeError("Expected argument 'secret_bool3' to be a bool")
+        pulumi.set(__self__, "secret_bool3", secret_bool3)
+        if secret_int1 and not isinstance(secret_int1, int):
+            raise TypeError("Expected argument 'secret_int1' to be a int")
+        pulumi.set(__self__, "secret_int1", secret_int1)
+        if secret_int2 and not isinstance(secret_int2, int):
+            raise TypeError("Expected argument 'secret_int2' to be a int")
+        pulumi.set(__self__, "secret_int2", secret_int2)
+        if secret_int3 and not isinstance(secret_int3, int):
+            raise TypeError("Expected argument 'secret_int3' to be a int")
+        pulumi.set(__self__, "secret_int3", secret_int3)
+        if secret_num1 and not isinstance(secret_num1, float):
+            raise TypeError("Expected argument 'secret_num1' to be a float")
+        pulumi.set(__self__, "secret_num1", secret_num1)
+        if secret_num2 and not isinstance(secret_num2, float):
+            raise TypeError("Expected argument 'secret_num2' to be a float")
+        pulumi.set(__self__, "secret_num2", secret_num2)
+        if secret_num3 and not isinstance(secret_num3, float):
+            raise TypeError("Expected argument 'secret_num3' to be a float")
+        pulumi.set(__self__, "secret_num3", secret_num3)
+        if secret_string1 and not isinstance(secret_string1, str):
+            raise TypeError("Expected argument 'secret_string1' to be a str")
+        pulumi.set(__self__, "secret_string1", secret_string1)
+        if secret_string2 and not isinstance(secret_string2, str):
+            raise TypeError("Expected argument 'secret_string2' to be a str")
+        pulumi.set(__self__, "secret_string2", secret_string2)
+        if secret_string3 and not isinstance(secret_string3, str):
+            raise TypeError("Expected argument 'secret_string3' to be a str")
+        pulumi.set(__self__, "secret_string3", secret_string3)
         if string1 and not isinstance(string1, str):
             raise TypeError("Expected argument 'string1' to be a str")
         pulumi.set(__self__, "string1", string1)
@@ -247,6 +391,66 @@ class ToSecretResult:
         return pulumi.get(self, "list_num3")
 
     @property
+    @pulumi.getter(name="listSecretBool1")
+    def list_secret_bool1(self) -> Sequence[bool]:
+        return pulumi.get(self, "list_secret_bool1")
+
+    @property
+    @pulumi.getter(name="listSecretBool2")
+    def list_secret_bool2(self) -> Sequence[bool]:
+        return pulumi.get(self, "list_secret_bool2")
+
+    @property
+    @pulumi.getter(name="listSecretBool3")
+    def list_secret_bool3(self) -> Sequence[bool]:
+        return pulumi.get(self, "list_secret_bool3")
+
+    @property
+    @pulumi.getter(name="listSecretInt1")
+    def list_secret_int1(self) -> Sequence[int]:
+        return pulumi.get(self, "list_secret_int1")
+
+    @property
+    @pulumi.getter(name="listSecretInt2")
+    def list_secret_int2(self) -> Sequence[int]:
+        return pulumi.get(self, "list_secret_int2")
+
+    @property
+    @pulumi.getter(name="listSecretInt3")
+    def list_secret_int3(self) -> Sequence[int]:
+        return pulumi.get(self, "list_secret_int3")
+
+    @property
+    @pulumi.getter(name="listSecretNum1")
+    def list_secret_num1(self) -> Sequence[float]:
+        return pulumi.get(self, "list_secret_num1")
+
+    @property
+    @pulumi.getter(name="listSecretNum2")
+    def list_secret_num2(self) -> Sequence[float]:
+        return pulumi.get(self, "list_secret_num2")
+
+    @property
+    @pulumi.getter(name="listSecretNum3")
+    def list_secret_num3(self) -> Sequence[float]:
+        return pulumi.get(self, "list_secret_num3")
+
+    @property
+    @pulumi.getter(name="listSecretString1")
+    def list_secret_string1(self) -> Sequence[str]:
+        return pulumi.get(self, "list_secret_string1")
+
+    @property
+    @pulumi.getter(name="listSecretString2")
+    def list_secret_string2(self) -> Sequence[str]:
+        return pulumi.get(self, "list_secret_string2")
+
+    @property
+    @pulumi.getter(name="listSecretString3")
+    def list_secret_string3(self) -> Sequence[str]:
+        return pulumi.get(self, "list_secret_string3")
+
+    @property
     @pulumi.getter(name="listString1")
     def list_string1(self) -> Sequence[str]:
         return pulumi.get(self, "list_string1")
@@ -305,6 +509,66 @@ class ToSecretResult:
     @pulumi.getter(name="mapNum3")
     def map_num3(self) -> Mapping[str, float]:
         return pulumi.get(self, "map_num3")
+
+    @property
+    @pulumi.getter(name="mapSecretBool1")
+    def map_secret_bool1(self) -> Mapping[str, bool]:
+        return pulumi.get(self, "map_secret_bool1")
+
+    @property
+    @pulumi.getter(name="mapSecretBool2")
+    def map_secret_bool2(self) -> Mapping[str, bool]:
+        return pulumi.get(self, "map_secret_bool2")
+
+    @property
+    @pulumi.getter(name="mapSecretBool3")
+    def map_secret_bool3(self) -> Mapping[str, bool]:
+        return pulumi.get(self, "map_secret_bool3")
+
+    @property
+    @pulumi.getter(name="mapSecretInt1")
+    def map_secret_int1(self) -> Mapping[str, int]:
+        return pulumi.get(self, "map_secret_int1")
+
+    @property
+    @pulumi.getter(name="mapSecretInt2")
+    def map_secret_int2(self) -> Mapping[str, int]:
+        return pulumi.get(self, "map_secret_int2")
+
+    @property
+    @pulumi.getter(name="mapSecretInt3")
+    def map_secret_int3(self) -> Mapping[str, int]:
+        return pulumi.get(self, "map_secret_int3")
+
+    @property
+    @pulumi.getter(name="mapSecretNum1")
+    def map_secret_num1(self) -> Mapping[str, float]:
+        return pulumi.get(self, "map_secret_num1")
+
+    @property
+    @pulumi.getter(name="mapSecretNum2")
+    def map_secret_num2(self) -> Mapping[str, float]:
+        return pulumi.get(self, "map_secret_num2")
+
+    @property
+    @pulumi.getter(name="mapSecretNum3")
+    def map_secret_num3(self) -> Mapping[str, float]:
+        return pulumi.get(self, "map_secret_num3")
+
+    @property
+    @pulumi.getter(name="mapSecretString1")
+    def map_secret_string1(self) -> Mapping[str, str]:
+        return pulumi.get(self, "map_secret_string1")
+
+    @property
+    @pulumi.getter(name="mapSecretString2")
+    def map_secret_string2(self) -> Mapping[str, str]:
+        return pulumi.get(self, "map_secret_string2")
+
+    @property
+    @pulumi.getter(name="mapSecretString3")
+    def map_secret_string3(self) -> Mapping[str, str]:
+        return pulumi.get(self, "map_secret_string3")
 
     @property
     @pulumi.getter(name="mapString1")
@@ -382,6 +646,66 @@ class ToSecretResult:
         return pulumi.get(self, "obj_num3")
 
     @property
+    @pulumi.getter(name="objSecretBool1")
+    def obj_secret_bool1(self) -> 'outputs.TsecretBool1':
+        return pulumi.get(self, "obj_secret_bool1")
+
+    @property
+    @pulumi.getter(name="objSecretBool2")
+    def obj_secret_bool2(self) -> 'outputs.TsecretBool2':
+        return pulumi.get(self, "obj_secret_bool2")
+
+    @property
+    @pulumi.getter(name="objSecretBool3")
+    def obj_secret_bool3(self) -> 'outputs.TsecretBool3':
+        return pulumi.get(self, "obj_secret_bool3")
+
+    @property
+    @pulumi.getter(name="objSecretInt1")
+    def obj_secret_int1(self) -> 'outputs.TsecretInt1':
+        return pulumi.get(self, "obj_secret_int1")
+
+    @property
+    @pulumi.getter(name="objSecretInt2")
+    def obj_secret_int2(self) -> 'outputs.TsecretInt2':
+        return pulumi.get(self, "obj_secret_int2")
+
+    @property
+    @pulumi.getter(name="objSecretInt3")
+    def obj_secret_int3(self) -> 'outputs.TsecretInt3':
+        return pulumi.get(self, "obj_secret_int3")
+
+    @property
+    @pulumi.getter(name="objSecretNum1")
+    def obj_secret_num1(self) -> 'outputs.TsecretNum1':
+        return pulumi.get(self, "obj_secret_num1")
+
+    @property
+    @pulumi.getter(name="objSecretNum2")
+    def obj_secret_num2(self) -> 'outputs.TsecretNum2':
+        return pulumi.get(self, "obj_secret_num2")
+
+    @property
+    @pulumi.getter(name="objSecretNum3")
+    def obj_secret_num3(self) -> 'outputs.TsecretNum3':
+        return pulumi.get(self, "obj_secret_num3")
+
+    @property
+    @pulumi.getter(name="objSecretString1")
+    def obj_secret_string1(self) -> 'outputs.TsecretString1':
+        return pulumi.get(self, "obj_secret_string1")
+
+    @property
+    @pulumi.getter(name="objSecretString2")
+    def obj_secret_string2(self) -> 'outputs.TsecretString2':
+        return pulumi.get(self, "obj_secret_string2")
+
+    @property
+    @pulumi.getter(name="objSecretString3")
+    def obj_secret_string3(self) -> 'outputs.TsecretString3':
+        return pulumi.get(self, "obj_secret_string3")
+
+    @property
     @pulumi.getter(name="objString1")
     def obj_string1(self) -> 'outputs.Tstring1':
         return pulumi.get(self, "obj_string1")
@@ -395,6 +719,66 @@ class ToSecretResult:
     @pulumi.getter(name="objString3")
     def obj_string3(self) -> 'outputs.Tstring3':
         return pulumi.get(self, "obj_string3")
+
+    @property
+    @pulumi.getter(name="secretBool1")
+    def secret_bool1(self) -> bool:
+        return pulumi.get(self, "secret_bool1")
+
+    @property
+    @pulumi.getter(name="secretBool2")
+    def secret_bool2(self) -> bool:
+        return pulumi.get(self, "secret_bool2")
+
+    @property
+    @pulumi.getter(name="secretBool3")
+    def secret_bool3(self) -> bool:
+        return pulumi.get(self, "secret_bool3")
+
+    @property
+    @pulumi.getter(name="secretInt1")
+    def secret_int1(self) -> int:
+        return pulumi.get(self, "secret_int1")
+
+    @property
+    @pulumi.getter(name="secretInt2")
+    def secret_int2(self) -> int:
+        return pulumi.get(self, "secret_int2")
+
+    @property
+    @pulumi.getter(name="secretInt3")
+    def secret_int3(self) -> int:
+        return pulumi.get(self, "secret_int3")
+
+    @property
+    @pulumi.getter(name="secretNum1")
+    def secret_num1(self) -> float:
+        return pulumi.get(self, "secret_num1")
+
+    @property
+    @pulumi.getter(name="secretNum2")
+    def secret_num2(self) -> float:
+        return pulumi.get(self, "secret_num2")
+
+    @property
+    @pulumi.getter(name="secretNum3")
+    def secret_num3(self) -> float:
+        return pulumi.get(self, "secret_num3")
+
+    @property
+    @pulumi.getter(name="secretString1")
+    def secret_string1(self) -> str:
+        return pulumi.get(self, "secret_string1")
+
+    @property
+    @pulumi.getter(name="secretString2")
+    def secret_string2(self) -> str:
+        return pulumi.get(self, "secret_string2")
+
+    @property
+    @pulumi.getter(name="secretString3")
+    def secret_string3(self) -> str:
+        return pulumi.get(self, "secret_string3")
 
     @property
     @pulumi.getter
@@ -433,6 +817,18 @@ class AwaitableToSecretResult(ToSecretResult):
             list_num1=self.list_num1,
             list_num2=self.list_num2,
             list_num3=self.list_num3,
+            list_secret_bool1=self.list_secret_bool1,
+            list_secret_bool2=self.list_secret_bool2,
+            list_secret_bool3=self.list_secret_bool3,
+            list_secret_int1=self.list_secret_int1,
+            list_secret_int2=self.list_secret_int2,
+            list_secret_int3=self.list_secret_int3,
+            list_secret_num1=self.list_secret_num1,
+            list_secret_num2=self.list_secret_num2,
+            list_secret_num3=self.list_secret_num3,
+            list_secret_string1=self.list_secret_string1,
+            list_secret_string2=self.list_secret_string2,
+            list_secret_string3=self.list_secret_string3,
             list_string1=self.list_string1,
             list_string2=self.list_string2,
             list_string3=self.list_string3,
@@ -445,6 +841,18 @@ class AwaitableToSecretResult(ToSecretResult):
             map_num1=self.map_num1,
             map_num2=self.map_num2,
             map_num3=self.map_num3,
+            map_secret_bool1=self.map_secret_bool1,
+            map_secret_bool2=self.map_secret_bool2,
+            map_secret_bool3=self.map_secret_bool3,
+            map_secret_int1=self.map_secret_int1,
+            map_secret_int2=self.map_secret_int2,
+            map_secret_int3=self.map_secret_int3,
+            map_secret_num1=self.map_secret_num1,
+            map_secret_num2=self.map_secret_num2,
+            map_secret_num3=self.map_secret_num3,
+            map_secret_string1=self.map_secret_string1,
+            map_secret_string2=self.map_secret_string2,
+            map_secret_string3=self.map_secret_string3,
             map_string1=self.map_string1,
             map_string2=self.map_string2,
             map_string3=self.map_string3,
@@ -460,9 +868,33 @@ class AwaitableToSecretResult(ToSecretResult):
             obj_num1=self.obj_num1,
             obj_num2=self.obj_num2,
             obj_num3=self.obj_num3,
+            obj_secret_bool1=self.obj_secret_bool1,
+            obj_secret_bool2=self.obj_secret_bool2,
+            obj_secret_bool3=self.obj_secret_bool3,
+            obj_secret_int1=self.obj_secret_int1,
+            obj_secret_int2=self.obj_secret_int2,
+            obj_secret_int3=self.obj_secret_int3,
+            obj_secret_num1=self.obj_secret_num1,
+            obj_secret_num2=self.obj_secret_num2,
+            obj_secret_num3=self.obj_secret_num3,
+            obj_secret_string1=self.obj_secret_string1,
+            obj_secret_string2=self.obj_secret_string2,
+            obj_secret_string3=self.obj_secret_string3,
             obj_string1=self.obj_string1,
             obj_string2=self.obj_string2,
             obj_string3=self.obj_string3,
+            secret_bool1=self.secret_bool1,
+            secret_bool2=self.secret_bool2,
+            secret_bool3=self.secret_bool3,
+            secret_int1=self.secret_int1,
+            secret_int2=self.secret_int2,
+            secret_int3=self.secret_int3,
+            secret_num1=self.secret_num1,
+            secret_num2=self.secret_num2,
+            secret_num3=self.secret_num3,
+            secret_string1=self.secret_string1,
+            secret_string2=self.secret_string2,
+            secret_string3=self.secret_string3,
             string1=self.string1,
             string2=self.string2,
             string3=self.string3)
@@ -483,6 +915,18 @@ def to_secret(bool1: Optional[bool] = None,
               list_num1: Optional[Sequence[float]] = None,
               list_num2: Optional[Sequence[float]] = None,
               list_num3: Optional[Sequence[float]] = None,
+              list_secret_bool1: Optional[Sequence[bool]] = None,
+              list_secret_bool2: Optional[Sequence[bool]] = None,
+              list_secret_bool3: Optional[Sequence[bool]] = None,
+              list_secret_int1: Optional[Sequence[int]] = None,
+              list_secret_int2: Optional[Sequence[int]] = None,
+              list_secret_int3: Optional[Sequence[int]] = None,
+              list_secret_num1: Optional[Sequence[float]] = None,
+              list_secret_num2: Optional[Sequence[float]] = None,
+              list_secret_num3: Optional[Sequence[float]] = None,
+              list_secret_string1: Optional[Sequence[str]] = None,
+              list_secret_string2: Optional[Sequence[str]] = None,
+              list_secret_string3: Optional[Sequence[str]] = None,
               list_string1: Optional[Sequence[str]] = None,
               list_string2: Optional[Sequence[str]] = None,
               list_string3: Optional[Sequence[str]] = None,
@@ -495,6 +939,18 @@ def to_secret(bool1: Optional[bool] = None,
               map_num1: Optional[Mapping[str, float]] = None,
               map_num2: Optional[Mapping[str, float]] = None,
               map_num3: Optional[Mapping[str, float]] = None,
+              map_secret_bool1: Optional[Mapping[str, bool]] = None,
+              map_secret_bool2: Optional[Mapping[str, bool]] = None,
+              map_secret_bool3: Optional[Mapping[str, bool]] = None,
+              map_secret_int1: Optional[Mapping[str, int]] = None,
+              map_secret_int2: Optional[Mapping[str, int]] = None,
+              map_secret_int3: Optional[Mapping[str, int]] = None,
+              map_secret_num1: Optional[Mapping[str, float]] = None,
+              map_secret_num2: Optional[Mapping[str, float]] = None,
+              map_secret_num3: Optional[Mapping[str, float]] = None,
+              map_secret_string1: Optional[Mapping[str, str]] = None,
+              map_secret_string2: Optional[Mapping[str, str]] = None,
+              map_secret_string3: Optional[Mapping[str, str]] = None,
               map_string1: Optional[Mapping[str, str]] = None,
               map_string2: Optional[Mapping[str, str]] = None,
               map_string3: Optional[Mapping[str, str]] = None,
@@ -510,9 +966,33 @@ def to_secret(bool1: Optional[bool] = None,
               obj_num1: Optional[pulumi.InputType['Tnum1']] = None,
               obj_num2: Optional[pulumi.InputType['Tnum2']] = None,
               obj_num3: Optional[pulumi.InputType['Tnum3']] = None,
+              obj_secret_bool1: Optional[pulumi.InputType['TsecretBool1']] = None,
+              obj_secret_bool2: Optional[pulumi.InputType['TsecretBool2']] = None,
+              obj_secret_bool3: Optional[pulumi.InputType['TsecretBool3']] = None,
+              obj_secret_int1: Optional[pulumi.InputType['TsecretInt1']] = None,
+              obj_secret_int2: Optional[pulumi.InputType['TsecretInt2']] = None,
+              obj_secret_int3: Optional[pulumi.InputType['TsecretInt3']] = None,
+              obj_secret_num1: Optional[pulumi.InputType['TsecretNum1']] = None,
+              obj_secret_num2: Optional[pulumi.InputType['TsecretNum2']] = None,
+              obj_secret_num3: Optional[pulumi.InputType['TsecretNum3']] = None,
+              obj_secret_string1: Optional[pulumi.InputType['TsecretString1']] = None,
+              obj_secret_string2: Optional[pulumi.InputType['TsecretString2']] = None,
+              obj_secret_string3: Optional[pulumi.InputType['TsecretString3']] = None,
               obj_string1: Optional[pulumi.InputType['Tstring1']] = None,
               obj_string2: Optional[pulumi.InputType['Tstring2']] = None,
               obj_string3: Optional[pulumi.InputType['Tstring3']] = None,
+              secret_bool1: Optional[bool] = None,
+              secret_bool2: Optional[bool] = None,
+              secret_bool3: Optional[bool] = None,
+              secret_int1: Optional[int] = None,
+              secret_int2: Optional[int] = None,
+              secret_int3: Optional[int] = None,
+              secret_num1: Optional[float] = None,
+              secret_num2: Optional[float] = None,
+              secret_num3: Optional[float] = None,
+              secret_string1: Optional[str] = None,
+              secret_string2: Optional[str] = None,
+              secret_string3: Optional[str] = None,
               string1: Optional[str] = None,
               string2: Optional[str] = None,
               string3: Optional[str] = None,
@@ -536,6 +1016,18 @@ def to_secret(bool1: Optional[bool] = None,
     __args__['listNum1'] = list_num1
     __args__['listNum2'] = list_num2
     __args__['listNum3'] = list_num3
+    __args__['listSecretBool1'] = list_secret_bool1
+    __args__['listSecretBool2'] = list_secret_bool2
+    __args__['listSecretBool3'] = list_secret_bool3
+    __args__['listSecretInt1'] = list_secret_int1
+    __args__['listSecretInt2'] = list_secret_int2
+    __args__['listSecretInt3'] = list_secret_int3
+    __args__['listSecretNum1'] = list_secret_num1
+    __args__['listSecretNum2'] = list_secret_num2
+    __args__['listSecretNum3'] = list_secret_num3
+    __args__['listSecretString1'] = list_secret_string1
+    __args__['listSecretString2'] = list_secret_string2
+    __args__['listSecretString3'] = list_secret_string3
     __args__['listString1'] = list_string1
     __args__['listString2'] = list_string2
     __args__['listString3'] = list_string3
@@ -548,6 +1040,18 @@ def to_secret(bool1: Optional[bool] = None,
     __args__['mapNum1'] = map_num1
     __args__['mapNum2'] = map_num2
     __args__['mapNum3'] = map_num3
+    __args__['mapSecretBool1'] = map_secret_bool1
+    __args__['mapSecretBool2'] = map_secret_bool2
+    __args__['mapSecretBool3'] = map_secret_bool3
+    __args__['mapSecretInt1'] = map_secret_int1
+    __args__['mapSecretInt2'] = map_secret_int2
+    __args__['mapSecretInt3'] = map_secret_int3
+    __args__['mapSecretNum1'] = map_secret_num1
+    __args__['mapSecretNum2'] = map_secret_num2
+    __args__['mapSecretNum3'] = map_secret_num3
+    __args__['mapSecretString1'] = map_secret_string1
+    __args__['mapSecretString2'] = map_secret_string2
+    __args__['mapSecretString3'] = map_secret_string3
     __args__['mapString1'] = map_string1
     __args__['mapString2'] = map_string2
     __args__['mapString3'] = map_string3
@@ -563,9 +1067,33 @@ def to_secret(bool1: Optional[bool] = None,
     __args__['objNum1'] = obj_num1
     __args__['objNum2'] = obj_num2
     __args__['objNum3'] = obj_num3
+    __args__['objSecretBool1'] = obj_secret_bool1
+    __args__['objSecretBool2'] = obj_secret_bool2
+    __args__['objSecretBool3'] = obj_secret_bool3
+    __args__['objSecretInt1'] = obj_secret_int1
+    __args__['objSecretInt2'] = obj_secret_int2
+    __args__['objSecretInt3'] = obj_secret_int3
+    __args__['objSecretNum1'] = obj_secret_num1
+    __args__['objSecretNum2'] = obj_secret_num2
+    __args__['objSecretNum3'] = obj_secret_num3
+    __args__['objSecretString1'] = obj_secret_string1
+    __args__['objSecretString2'] = obj_secret_string2
+    __args__['objSecretString3'] = obj_secret_string3
     __args__['objString1'] = obj_string1
     __args__['objString2'] = obj_string2
     __args__['objString3'] = obj_string3
+    __args__['secretBool1'] = secret_bool1
+    __args__['secretBool2'] = secret_bool2
+    __args__['secretBool3'] = secret_bool3
+    __args__['secretInt1'] = secret_int1
+    __args__['secretInt2'] = secret_int2
+    __args__['secretInt3'] = secret_int3
+    __args__['secretNum1'] = secret_num1
+    __args__['secretNum2'] = secret_num2
+    __args__['secretNum3'] = secret_num3
+    __args__['secretString1'] = secret_string1
+    __args__['secretString2'] = secret_string2
+    __args__['secretString3'] = secret_string3
     __args__['string1'] = string1
     __args__['string2'] = string2
     __args__['string3'] = string3
@@ -588,6 +1116,18 @@ def to_secret(bool1: Optional[bool] = None,
         list_num1=pulumi.get(__ret__, 'list_num1'),
         list_num2=pulumi.get(__ret__, 'list_num2'),
         list_num3=pulumi.get(__ret__, 'list_num3'),
+        list_secret_bool1=pulumi.get(__ret__, 'list_secret_bool1'),
+        list_secret_bool2=pulumi.get(__ret__, 'list_secret_bool2'),
+        list_secret_bool3=pulumi.get(__ret__, 'list_secret_bool3'),
+        list_secret_int1=pulumi.get(__ret__, 'list_secret_int1'),
+        list_secret_int2=pulumi.get(__ret__, 'list_secret_int2'),
+        list_secret_int3=pulumi.get(__ret__, 'list_secret_int3'),
+        list_secret_num1=pulumi.get(__ret__, 'list_secret_num1'),
+        list_secret_num2=pulumi.get(__ret__, 'list_secret_num2'),
+        list_secret_num3=pulumi.get(__ret__, 'list_secret_num3'),
+        list_secret_string1=pulumi.get(__ret__, 'list_secret_string1'),
+        list_secret_string2=pulumi.get(__ret__, 'list_secret_string2'),
+        list_secret_string3=pulumi.get(__ret__, 'list_secret_string3'),
         list_string1=pulumi.get(__ret__, 'list_string1'),
         list_string2=pulumi.get(__ret__, 'list_string2'),
         list_string3=pulumi.get(__ret__, 'list_string3'),
@@ -600,6 +1140,18 @@ def to_secret(bool1: Optional[bool] = None,
         map_num1=pulumi.get(__ret__, 'map_num1'),
         map_num2=pulumi.get(__ret__, 'map_num2'),
         map_num3=pulumi.get(__ret__, 'map_num3'),
+        map_secret_bool1=pulumi.get(__ret__, 'map_secret_bool1'),
+        map_secret_bool2=pulumi.get(__ret__, 'map_secret_bool2'),
+        map_secret_bool3=pulumi.get(__ret__, 'map_secret_bool3'),
+        map_secret_int1=pulumi.get(__ret__, 'map_secret_int1'),
+        map_secret_int2=pulumi.get(__ret__, 'map_secret_int2'),
+        map_secret_int3=pulumi.get(__ret__, 'map_secret_int3'),
+        map_secret_num1=pulumi.get(__ret__, 'map_secret_num1'),
+        map_secret_num2=pulumi.get(__ret__, 'map_secret_num2'),
+        map_secret_num3=pulumi.get(__ret__, 'map_secret_num3'),
+        map_secret_string1=pulumi.get(__ret__, 'map_secret_string1'),
+        map_secret_string2=pulumi.get(__ret__, 'map_secret_string2'),
+        map_secret_string3=pulumi.get(__ret__, 'map_secret_string3'),
         map_string1=pulumi.get(__ret__, 'map_string1'),
         map_string2=pulumi.get(__ret__, 'map_string2'),
         map_string3=pulumi.get(__ret__, 'map_string3'),
@@ -615,9 +1167,33 @@ def to_secret(bool1: Optional[bool] = None,
         obj_num1=pulumi.get(__ret__, 'obj_num1'),
         obj_num2=pulumi.get(__ret__, 'obj_num2'),
         obj_num3=pulumi.get(__ret__, 'obj_num3'),
+        obj_secret_bool1=pulumi.get(__ret__, 'obj_secret_bool1'),
+        obj_secret_bool2=pulumi.get(__ret__, 'obj_secret_bool2'),
+        obj_secret_bool3=pulumi.get(__ret__, 'obj_secret_bool3'),
+        obj_secret_int1=pulumi.get(__ret__, 'obj_secret_int1'),
+        obj_secret_int2=pulumi.get(__ret__, 'obj_secret_int2'),
+        obj_secret_int3=pulumi.get(__ret__, 'obj_secret_int3'),
+        obj_secret_num1=pulumi.get(__ret__, 'obj_secret_num1'),
+        obj_secret_num2=pulumi.get(__ret__, 'obj_secret_num2'),
+        obj_secret_num3=pulumi.get(__ret__, 'obj_secret_num3'),
+        obj_secret_string1=pulumi.get(__ret__, 'obj_secret_string1'),
+        obj_secret_string2=pulumi.get(__ret__, 'obj_secret_string2'),
+        obj_secret_string3=pulumi.get(__ret__, 'obj_secret_string3'),
         obj_string1=pulumi.get(__ret__, 'obj_string1'),
         obj_string2=pulumi.get(__ret__, 'obj_string2'),
         obj_string3=pulumi.get(__ret__, 'obj_string3'),
+        secret_bool1=pulumi.get(__ret__, 'secret_bool1'),
+        secret_bool2=pulumi.get(__ret__, 'secret_bool2'),
+        secret_bool3=pulumi.get(__ret__, 'secret_bool3'),
+        secret_int1=pulumi.get(__ret__, 'secret_int1'),
+        secret_int2=pulumi.get(__ret__, 'secret_int2'),
+        secret_int3=pulumi.get(__ret__, 'secret_int3'),
+        secret_num1=pulumi.get(__ret__, 'secret_num1'),
+        secret_num2=pulumi.get(__ret__, 'secret_num2'),
+        secret_num3=pulumi.get(__ret__, 'secret_num3'),
+        secret_string1=pulumi.get(__ret__, 'secret_string1'),
+        secret_string2=pulumi.get(__ret__, 'secret_string2'),
+        secret_string3=pulumi.get(__ret__, 'secret_string3'),
         string1=pulumi.get(__ret__, 'string1'),
         string2=pulumi.get(__ret__, 'string2'),
         string3=pulumi.get(__ret__, 'string3'))
@@ -636,6 +1212,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
                      list_num1: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
                      list_num2: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
                      list_num3: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
+                     list_secret_bool1: Optional[pulumi.Input[Optional[Sequence[bool]]]] = None,
+                     list_secret_bool2: Optional[pulumi.Input[Optional[Sequence[bool]]]] = None,
+                     list_secret_bool3: Optional[pulumi.Input[Optional[Sequence[bool]]]] = None,
+                     list_secret_int1: Optional[pulumi.Input[Optional[Sequence[int]]]] = None,
+                     list_secret_int2: Optional[pulumi.Input[Optional[Sequence[int]]]] = None,
+                     list_secret_int3: Optional[pulumi.Input[Optional[Sequence[int]]]] = None,
+                     list_secret_num1: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
+                     list_secret_num2: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
+                     list_secret_num3: Optional[pulumi.Input[Optional[Sequence[float]]]] = None,
+                     list_secret_string1: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
+                     list_secret_string2: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
+                     list_secret_string3: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
                      list_string1: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
                      list_string2: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
                      list_string3: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
@@ -648,6 +1236,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
                      map_num1: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
                      map_num2: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
                      map_num3: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
+                     map_secret_bool1: Optional[pulumi.Input[Optional[Mapping[str, bool]]]] = None,
+                     map_secret_bool2: Optional[pulumi.Input[Optional[Mapping[str, bool]]]] = None,
+                     map_secret_bool3: Optional[pulumi.Input[Optional[Mapping[str, bool]]]] = None,
+                     map_secret_int1: Optional[pulumi.Input[Optional[Mapping[str, int]]]] = None,
+                     map_secret_int2: Optional[pulumi.Input[Optional[Mapping[str, int]]]] = None,
+                     map_secret_int3: Optional[pulumi.Input[Optional[Mapping[str, int]]]] = None,
+                     map_secret_num1: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
+                     map_secret_num2: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
+                     map_secret_num3: Optional[pulumi.Input[Optional[Mapping[str, float]]]] = None,
+                     map_secret_string1: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
+                     map_secret_string2: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
+                     map_secret_string3: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
                      map_string1: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
                      map_string2: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
                      map_string3: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
@@ -663,9 +1263,33 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
                      obj_num1: Optional[pulumi.Input[Optional[pulumi.InputType['Tnum1']]]] = None,
                      obj_num2: Optional[pulumi.Input[Optional[pulumi.InputType['Tnum2']]]] = None,
                      obj_num3: Optional[pulumi.Input[Optional[pulumi.InputType['Tnum3']]]] = None,
+                     obj_secret_bool1: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretBool1']]]] = None,
+                     obj_secret_bool2: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretBool2']]]] = None,
+                     obj_secret_bool3: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretBool3']]]] = None,
+                     obj_secret_int1: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretInt1']]]] = None,
+                     obj_secret_int2: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretInt2']]]] = None,
+                     obj_secret_int3: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretInt3']]]] = None,
+                     obj_secret_num1: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretNum1']]]] = None,
+                     obj_secret_num2: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretNum2']]]] = None,
+                     obj_secret_num3: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretNum3']]]] = None,
+                     obj_secret_string1: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretString1']]]] = None,
+                     obj_secret_string2: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretString2']]]] = None,
+                     obj_secret_string3: Optional[pulumi.Input[Optional[pulumi.InputType['TsecretString3']]]] = None,
                      obj_string1: Optional[pulumi.Input[Optional[pulumi.InputType['Tstring1']]]] = None,
                      obj_string2: Optional[pulumi.Input[Optional[pulumi.InputType['Tstring2']]]] = None,
                      obj_string3: Optional[pulumi.Input[Optional[pulumi.InputType['Tstring3']]]] = None,
+                     secret_bool1: Optional[pulumi.Input[Optional[bool]]] = None,
+                     secret_bool2: Optional[pulumi.Input[Optional[bool]]] = None,
+                     secret_bool3: Optional[pulumi.Input[Optional[bool]]] = None,
+                     secret_int1: Optional[pulumi.Input[Optional[int]]] = None,
+                     secret_int2: Optional[pulumi.Input[Optional[int]]] = None,
+                     secret_int3: Optional[pulumi.Input[Optional[int]]] = None,
+                     secret_num1: Optional[pulumi.Input[Optional[float]]] = None,
+                     secret_num2: Optional[pulumi.Input[Optional[float]]] = None,
+                     secret_num3: Optional[pulumi.Input[Optional[float]]] = None,
+                     secret_string1: Optional[pulumi.Input[Optional[str]]] = None,
+                     secret_string2: Optional[pulumi.Input[Optional[str]]] = None,
+                     secret_string3: Optional[pulumi.Input[Optional[str]]] = None,
                      string1: Optional[pulumi.Input[Optional[str]]] = None,
                      string2: Optional[pulumi.Input[Optional[str]]] = None,
                      string3: Optional[pulumi.Input[Optional[str]]] = None,
@@ -689,6 +1313,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
     __args__['listNum1'] = list_num1
     __args__['listNum2'] = list_num2
     __args__['listNum3'] = list_num3
+    __args__['listSecretBool1'] = list_secret_bool1
+    __args__['listSecretBool2'] = list_secret_bool2
+    __args__['listSecretBool3'] = list_secret_bool3
+    __args__['listSecretInt1'] = list_secret_int1
+    __args__['listSecretInt2'] = list_secret_int2
+    __args__['listSecretInt3'] = list_secret_int3
+    __args__['listSecretNum1'] = list_secret_num1
+    __args__['listSecretNum2'] = list_secret_num2
+    __args__['listSecretNum3'] = list_secret_num3
+    __args__['listSecretString1'] = list_secret_string1
+    __args__['listSecretString2'] = list_secret_string2
+    __args__['listSecretString3'] = list_secret_string3
     __args__['listString1'] = list_string1
     __args__['listString2'] = list_string2
     __args__['listString3'] = list_string3
@@ -701,6 +1337,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
     __args__['mapNum1'] = map_num1
     __args__['mapNum2'] = map_num2
     __args__['mapNum3'] = map_num3
+    __args__['mapSecretBool1'] = map_secret_bool1
+    __args__['mapSecretBool2'] = map_secret_bool2
+    __args__['mapSecretBool3'] = map_secret_bool3
+    __args__['mapSecretInt1'] = map_secret_int1
+    __args__['mapSecretInt2'] = map_secret_int2
+    __args__['mapSecretInt3'] = map_secret_int3
+    __args__['mapSecretNum1'] = map_secret_num1
+    __args__['mapSecretNum2'] = map_secret_num2
+    __args__['mapSecretNum3'] = map_secret_num3
+    __args__['mapSecretString1'] = map_secret_string1
+    __args__['mapSecretString2'] = map_secret_string2
+    __args__['mapSecretString3'] = map_secret_string3
     __args__['mapString1'] = map_string1
     __args__['mapString2'] = map_string2
     __args__['mapString3'] = map_string3
@@ -716,9 +1364,33 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
     __args__['objNum1'] = obj_num1
     __args__['objNum2'] = obj_num2
     __args__['objNum3'] = obj_num3
+    __args__['objSecretBool1'] = obj_secret_bool1
+    __args__['objSecretBool2'] = obj_secret_bool2
+    __args__['objSecretBool3'] = obj_secret_bool3
+    __args__['objSecretInt1'] = obj_secret_int1
+    __args__['objSecretInt2'] = obj_secret_int2
+    __args__['objSecretInt3'] = obj_secret_int3
+    __args__['objSecretNum1'] = obj_secret_num1
+    __args__['objSecretNum2'] = obj_secret_num2
+    __args__['objSecretNum3'] = obj_secret_num3
+    __args__['objSecretString1'] = obj_secret_string1
+    __args__['objSecretString2'] = obj_secret_string2
+    __args__['objSecretString3'] = obj_secret_string3
     __args__['objString1'] = obj_string1
     __args__['objString2'] = obj_string2
     __args__['objString3'] = obj_string3
+    __args__['secretBool1'] = secret_bool1
+    __args__['secretBool2'] = secret_bool2
+    __args__['secretBool3'] = secret_bool3
+    __args__['secretInt1'] = secret_int1
+    __args__['secretInt2'] = secret_int2
+    __args__['secretInt3'] = secret_int3
+    __args__['secretNum1'] = secret_num1
+    __args__['secretNum2'] = secret_num2
+    __args__['secretNum3'] = secret_num3
+    __args__['secretString1'] = secret_string1
+    __args__['secretString2'] = secret_string2
+    __args__['secretString3'] = secret_string3
     __args__['string1'] = string1
     __args__['string2'] = string2
     __args__['string3'] = string3
@@ -740,6 +1412,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
         list_num1=pulumi.get(__response__, 'list_num1'),
         list_num2=pulumi.get(__response__, 'list_num2'),
         list_num3=pulumi.get(__response__, 'list_num3'),
+        list_secret_bool1=pulumi.get(__response__, 'list_secret_bool1'),
+        list_secret_bool2=pulumi.get(__response__, 'list_secret_bool2'),
+        list_secret_bool3=pulumi.get(__response__, 'list_secret_bool3'),
+        list_secret_int1=pulumi.get(__response__, 'list_secret_int1'),
+        list_secret_int2=pulumi.get(__response__, 'list_secret_int2'),
+        list_secret_int3=pulumi.get(__response__, 'list_secret_int3'),
+        list_secret_num1=pulumi.get(__response__, 'list_secret_num1'),
+        list_secret_num2=pulumi.get(__response__, 'list_secret_num2'),
+        list_secret_num3=pulumi.get(__response__, 'list_secret_num3'),
+        list_secret_string1=pulumi.get(__response__, 'list_secret_string1'),
+        list_secret_string2=pulumi.get(__response__, 'list_secret_string2'),
+        list_secret_string3=pulumi.get(__response__, 'list_secret_string3'),
         list_string1=pulumi.get(__response__, 'list_string1'),
         list_string2=pulumi.get(__response__, 'list_string2'),
         list_string3=pulumi.get(__response__, 'list_string3'),
@@ -752,6 +1436,18 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
         map_num1=pulumi.get(__response__, 'map_num1'),
         map_num2=pulumi.get(__response__, 'map_num2'),
         map_num3=pulumi.get(__response__, 'map_num3'),
+        map_secret_bool1=pulumi.get(__response__, 'map_secret_bool1'),
+        map_secret_bool2=pulumi.get(__response__, 'map_secret_bool2'),
+        map_secret_bool3=pulumi.get(__response__, 'map_secret_bool3'),
+        map_secret_int1=pulumi.get(__response__, 'map_secret_int1'),
+        map_secret_int2=pulumi.get(__response__, 'map_secret_int2'),
+        map_secret_int3=pulumi.get(__response__, 'map_secret_int3'),
+        map_secret_num1=pulumi.get(__response__, 'map_secret_num1'),
+        map_secret_num2=pulumi.get(__response__, 'map_secret_num2'),
+        map_secret_num3=pulumi.get(__response__, 'map_secret_num3'),
+        map_secret_string1=pulumi.get(__response__, 'map_secret_string1'),
+        map_secret_string2=pulumi.get(__response__, 'map_secret_string2'),
+        map_secret_string3=pulumi.get(__response__, 'map_secret_string3'),
         map_string1=pulumi.get(__response__, 'map_string1'),
         map_string2=pulumi.get(__response__, 'map_string2'),
         map_string3=pulumi.get(__response__, 'map_string3'),
@@ -767,9 +1463,33 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
         obj_num1=pulumi.get(__response__, 'obj_num1'),
         obj_num2=pulumi.get(__response__, 'obj_num2'),
         obj_num3=pulumi.get(__response__, 'obj_num3'),
+        obj_secret_bool1=pulumi.get(__response__, 'obj_secret_bool1'),
+        obj_secret_bool2=pulumi.get(__response__, 'obj_secret_bool2'),
+        obj_secret_bool3=pulumi.get(__response__, 'obj_secret_bool3'),
+        obj_secret_int1=pulumi.get(__response__, 'obj_secret_int1'),
+        obj_secret_int2=pulumi.get(__response__, 'obj_secret_int2'),
+        obj_secret_int3=pulumi.get(__response__, 'obj_secret_int3'),
+        obj_secret_num1=pulumi.get(__response__, 'obj_secret_num1'),
+        obj_secret_num2=pulumi.get(__response__, 'obj_secret_num2'),
+        obj_secret_num3=pulumi.get(__response__, 'obj_secret_num3'),
+        obj_secret_string1=pulumi.get(__response__, 'obj_secret_string1'),
+        obj_secret_string2=pulumi.get(__response__, 'obj_secret_string2'),
+        obj_secret_string3=pulumi.get(__response__, 'obj_secret_string3'),
         obj_string1=pulumi.get(__response__, 'obj_string1'),
         obj_string2=pulumi.get(__response__, 'obj_string2'),
         obj_string3=pulumi.get(__response__, 'obj_string3'),
+        secret_bool1=pulumi.get(__response__, 'secret_bool1'),
+        secret_bool2=pulumi.get(__response__, 'secret_bool2'),
+        secret_bool3=pulumi.get(__response__, 'secret_bool3'),
+        secret_int1=pulumi.get(__response__, 'secret_int1'),
+        secret_int2=pulumi.get(__response__, 'secret_int2'),
+        secret_int3=pulumi.get(__response__, 'secret_int3'),
+        secret_num1=pulumi.get(__response__, 'secret_num1'),
+        secret_num2=pulumi.get(__response__, 'secret_num2'),
+        secret_num3=pulumi.get(__response__, 'secret_num3'),
+        secret_string1=pulumi.get(__response__, 'secret_string1'),
+        secret_string2=pulumi.get(__response__, 'secret_string2'),
+        secret_string3=pulumi.get(__response__, 'secret_string3'),
         string1=pulumi.get(__response__, 'string1'),
         string2=pulumi.get(__response__, 'string2'),
         string3=pulumi.get(__response__, 'string3')))

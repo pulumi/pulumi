@@ -1210,6 +1210,1602 @@ func (o Tnum3PtrOutput) X() pulumi.Float64PtrOutput {
 	}).(pulumi.Float64PtrOutput)
 }
 
+type TsecretBool1 struct {
+	SecretX *bool `pulumi:"secretX"`
+}
+
+// TsecretBool1Input is an input type that accepts TsecretBool1Args and TsecretBool1Output values.
+// You can construct a concrete instance of `TsecretBool1Input` via:
+//
+//	TsecretBool1Args{...}
+type TsecretBool1Input interface {
+	pulumi.Input
+
+	ToTsecretBool1Output() TsecretBool1Output
+	ToTsecretBool1OutputWithContext(context.Context) TsecretBool1Output
+}
+
+type TsecretBool1Args struct {
+	SecretX pulumi.BoolPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretBool1Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool1)(nil)).Elem()
+}
+
+func (i TsecretBool1Args) ToTsecretBool1Output() TsecretBool1Output {
+	return i.ToTsecretBool1OutputWithContext(context.Background())
+}
+
+func (i TsecretBool1Args) ToTsecretBool1OutputWithContext(ctx context.Context) TsecretBool1Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool1Output)
+}
+
+func (i TsecretBool1Args) ToTsecretBool1PtrOutput() TsecretBool1PtrOutput {
+	return i.ToTsecretBool1PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretBool1Args) ToTsecretBool1PtrOutputWithContext(ctx context.Context) TsecretBool1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool1Output).ToTsecretBool1PtrOutputWithContext(ctx)
+}
+
+// TsecretBool1PtrInput is an input type that accepts TsecretBool1Args, TsecretBool1Ptr and TsecretBool1PtrOutput values.
+// You can construct a concrete instance of `TsecretBool1PtrInput` via:
+//
+//	        TsecretBool1Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretBool1PtrInput interface {
+	pulumi.Input
+
+	ToTsecretBool1PtrOutput() TsecretBool1PtrOutput
+	ToTsecretBool1PtrOutputWithContext(context.Context) TsecretBool1PtrOutput
+}
+
+type tsecretBool1PtrType TsecretBool1Args
+
+func TsecretBool1Ptr(v *TsecretBool1Args) TsecretBool1PtrInput {
+	return (*tsecretBool1PtrType)(v)
+}
+
+func (*tsecretBool1PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool1)(nil)).Elem()
+}
+
+func (i *tsecretBool1PtrType) ToTsecretBool1PtrOutput() TsecretBool1PtrOutput {
+	return i.ToTsecretBool1PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretBool1PtrType) ToTsecretBool1PtrOutputWithContext(ctx context.Context) TsecretBool1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool1PtrOutput)
+}
+
+type TsecretBool1Output struct{ *pulumi.OutputState }
+
+func (TsecretBool1Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool1)(nil)).Elem()
+}
+
+func (o TsecretBool1Output) ToTsecretBool1Output() TsecretBool1Output {
+	return o
+}
+
+func (o TsecretBool1Output) ToTsecretBool1OutputWithContext(ctx context.Context) TsecretBool1Output {
+	return o
+}
+
+func (o TsecretBool1Output) ToTsecretBool1PtrOutput() TsecretBool1PtrOutput {
+	return o.ToTsecretBool1PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretBool1Output) ToTsecretBool1PtrOutputWithContext(ctx context.Context) TsecretBool1PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretBool1) *TsecretBool1 {
+		return &v
+	}).(TsecretBool1PtrOutput)
+}
+
+func (o TsecretBool1Output) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v TsecretBool1) *bool { return v.SecretX }).(pulumi.BoolPtrOutput)
+}
+
+type TsecretBool1PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretBool1PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool1)(nil)).Elem()
+}
+
+func (o TsecretBool1PtrOutput) ToTsecretBool1PtrOutput() TsecretBool1PtrOutput {
+	return o
+}
+
+func (o TsecretBool1PtrOutput) ToTsecretBool1PtrOutputWithContext(ctx context.Context) TsecretBool1PtrOutput {
+	return o
+}
+
+func (o TsecretBool1PtrOutput) Elem() TsecretBool1Output {
+	return o.ApplyT(func(v *TsecretBool1) TsecretBool1 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretBool1
+		return ret
+	}).(TsecretBool1Output)
+}
+
+func (o TsecretBool1PtrOutput) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *TsecretBool1) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.BoolPtrOutput)
+}
+
+type TsecretBool2 struct {
+	SecretX *bool `pulumi:"secretX"`
+}
+
+// TsecretBool2Input is an input type that accepts TsecretBool2Args and TsecretBool2Output values.
+// You can construct a concrete instance of `TsecretBool2Input` via:
+//
+//	TsecretBool2Args{...}
+type TsecretBool2Input interface {
+	pulumi.Input
+
+	ToTsecretBool2Output() TsecretBool2Output
+	ToTsecretBool2OutputWithContext(context.Context) TsecretBool2Output
+}
+
+type TsecretBool2Args struct {
+	SecretX pulumi.BoolPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretBool2Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool2)(nil)).Elem()
+}
+
+func (i TsecretBool2Args) ToTsecretBool2Output() TsecretBool2Output {
+	return i.ToTsecretBool2OutputWithContext(context.Background())
+}
+
+func (i TsecretBool2Args) ToTsecretBool2OutputWithContext(ctx context.Context) TsecretBool2Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool2Output)
+}
+
+func (i TsecretBool2Args) ToTsecretBool2PtrOutput() TsecretBool2PtrOutput {
+	return i.ToTsecretBool2PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretBool2Args) ToTsecretBool2PtrOutputWithContext(ctx context.Context) TsecretBool2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool2Output).ToTsecretBool2PtrOutputWithContext(ctx)
+}
+
+// TsecretBool2PtrInput is an input type that accepts TsecretBool2Args, TsecretBool2Ptr and TsecretBool2PtrOutput values.
+// You can construct a concrete instance of `TsecretBool2PtrInput` via:
+//
+//	        TsecretBool2Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretBool2PtrInput interface {
+	pulumi.Input
+
+	ToTsecretBool2PtrOutput() TsecretBool2PtrOutput
+	ToTsecretBool2PtrOutputWithContext(context.Context) TsecretBool2PtrOutput
+}
+
+type tsecretBool2PtrType TsecretBool2Args
+
+func TsecretBool2Ptr(v *TsecretBool2Args) TsecretBool2PtrInput {
+	return (*tsecretBool2PtrType)(v)
+}
+
+func (*tsecretBool2PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool2)(nil)).Elem()
+}
+
+func (i *tsecretBool2PtrType) ToTsecretBool2PtrOutput() TsecretBool2PtrOutput {
+	return i.ToTsecretBool2PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretBool2PtrType) ToTsecretBool2PtrOutputWithContext(ctx context.Context) TsecretBool2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool2PtrOutput)
+}
+
+type TsecretBool2Output struct{ *pulumi.OutputState }
+
+func (TsecretBool2Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool2)(nil)).Elem()
+}
+
+func (o TsecretBool2Output) ToTsecretBool2Output() TsecretBool2Output {
+	return o
+}
+
+func (o TsecretBool2Output) ToTsecretBool2OutputWithContext(ctx context.Context) TsecretBool2Output {
+	return o
+}
+
+func (o TsecretBool2Output) ToTsecretBool2PtrOutput() TsecretBool2PtrOutput {
+	return o.ToTsecretBool2PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretBool2Output) ToTsecretBool2PtrOutputWithContext(ctx context.Context) TsecretBool2PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretBool2) *TsecretBool2 {
+		return &v
+	}).(TsecretBool2PtrOutput)
+}
+
+func (o TsecretBool2Output) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v TsecretBool2) *bool { return v.SecretX }).(pulumi.BoolPtrOutput)
+}
+
+type TsecretBool2PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretBool2PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool2)(nil)).Elem()
+}
+
+func (o TsecretBool2PtrOutput) ToTsecretBool2PtrOutput() TsecretBool2PtrOutput {
+	return o
+}
+
+func (o TsecretBool2PtrOutput) ToTsecretBool2PtrOutputWithContext(ctx context.Context) TsecretBool2PtrOutput {
+	return o
+}
+
+func (o TsecretBool2PtrOutput) Elem() TsecretBool2Output {
+	return o.ApplyT(func(v *TsecretBool2) TsecretBool2 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretBool2
+		return ret
+	}).(TsecretBool2Output)
+}
+
+func (o TsecretBool2PtrOutput) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *TsecretBool2) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.BoolPtrOutput)
+}
+
+type TsecretBool3 struct {
+	SecretX *bool `pulumi:"secretX"`
+}
+
+// TsecretBool3Input is an input type that accepts TsecretBool3Args and TsecretBool3Output values.
+// You can construct a concrete instance of `TsecretBool3Input` via:
+//
+//	TsecretBool3Args{...}
+type TsecretBool3Input interface {
+	pulumi.Input
+
+	ToTsecretBool3Output() TsecretBool3Output
+	ToTsecretBool3OutputWithContext(context.Context) TsecretBool3Output
+}
+
+type TsecretBool3Args struct {
+	SecretX pulumi.BoolPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretBool3Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool3)(nil)).Elem()
+}
+
+func (i TsecretBool3Args) ToTsecretBool3Output() TsecretBool3Output {
+	return i.ToTsecretBool3OutputWithContext(context.Background())
+}
+
+func (i TsecretBool3Args) ToTsecretBool3OutputWithContext(ctx context.Context) TsecretBool3Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool3Output)
+}
+
+func (i TsecretBool3Args) ToTsecretBool3PtrOutput() TsecretBool3PtrOutput {
+	return i.ToTsecretBool3PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretBool3Args) ToTsecretBool3PtrOutputWithContext(ctx context.Context) TsecretBool3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool3Output).ToTsecretBool3PtrOutputWithContext(ctx)
+}
+
+// TsecretBool3PtrInput is an input type that accepts TsecretBool3Args, TsecretBool3Ptr and TsecretBool3PtrOutput values.
+// You can construct a concrete instance of `TsecretBool3PtrInput` via:
+//
+//	        TsecretBool3Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretBool3PtrInput interface {
+	pulumi.Input
+
+	ToTsecretBool3PtrOutput() TsecretBool3PtrOutput
+	ToTsecretBool3PtrOutputWithContext(context.Context) TsecretBool3PtrOutput
+}
+
+type tsecretBool3PtrType TsecretBool3Args
+
+func TsecretBool3Ptr(v *TsecretBool3Args) TsecretBool3PtrInput {
+	return (*tsecretBool3PtrType)(v)
+}
+
+func (*tsecretBool3PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool3)(nil)).Elem()
+}
+
+func (i *tsecretBool3PtrType) ToTsecretBool3PtrOutput() TsecretBool3PtrOutput {
+	return i.ToTsecretBool3PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretBool3PtrType) ToTsecretBool3PtrOutputWithContext(ctx context.Context) TsecretBool3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretBool3PtrOutput)
+}
+
+type TsecretBool3Output struct{ *pulumi.OutputState }
+
+func (TsecretBool3Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretBool3)(nil)).Elem()
+}
+
+func (o TsecretBool3Output) ToTsecretBool3Output() TsecretBool3Output {
+	return o
+}
+
+func (o TsecretBool3Output) ToTsecretBool3OutputWithContext(ctx context.Context) TsecretBool3Output {
+	return o
+}
+
+func (o TsecretBool3Output) ToTsecretBool3PtrOutput() TsecretBool3PtrOutput {
+	return o.ToTsecretBool3PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretBool3Output) ToTsecretBool3PtrOutputWithContext(ctx context.Context) TsecretBool3PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretBool3) *TsecretBool3 {
+		return &v
+	}).(TsecretBool3PtrOutput)
+}
+
+func (o TsecretBool3Output) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v TsecretBool3) *bool { return v.SecretX }).(pulumi.BoolPtrOutput)
+}
+
+type TsecretBool3PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretBool3PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretBool3)(nil)).Elem()
+}
+
+func (o TsecretBool3PtrOutput) ToTsecretBool3PtrOutput() TsecretBool3PtrOutput {
+	return o
+}
+
+func (o TsecretBool3PtrOutput) ToTsecretBool3PtrOutputWithContext(ctx context.Context) TsecretBool3PtrOutput {
+	return o
+}
+
+func (o TsecretBool3PtrOutput) Elem() TsecretBool3Output {
+	return o.ApplyT(func(v *TsecretBool3) TsecretBool3 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretBool3
+		return ret
+	}).(TsecretBool3Output)
+}
+
+func (o TsecretBool3PtrOutput) SecretX() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *TsecretBool3) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.BoolPtrOutput)
+}
+
+type TsecretInt1 struct {
+	SecretX *int `pulumi:"secretX"`
+}
+
+// TsecretInt1Input is an input type that accepts TsecretInt1Args and TsecretInt1Output values.
+// You can construct a concrete instance of `TsecretInt1Input` via:
+//
+//	TsecretInt1Args{...}
+type TsecretInt1Input interface {
+	pulumi.Input
+
+	ToTsecretInt1Output() TsecretInt1Output
+	ToTsecretInt1OutputWithContext(context.Context) TsecretInt1Output
+}
+
+type TsecretInt1Args struct {
+	SecretX pulumi.IntPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretInt1Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt1)(nil)).Elem()
+}
+
+func (i TsecretInt1Args) ToTsecretInt1Output() TsecretInt1Output {
+	return i.ToTsecretInt1OutputWithContext(context.Background())
+}
+
+func (i TsecretInt1Args) ToTsecretInt1OutputWithContext(ctx context.Context) TsecretInt1Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt1Output)
+}
+
+func (i TsecretInt1Args) ToTsecretInt1PtrOutput() TsecretInt1PtrOutput {
+	return i.ToTsecretInt1PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretInt1Args) ToTsecretInt1PtrOutputWithContext(ctx context.Context) TsecretInt1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt1Output).ToTsecretInt1PtrOutputWithContext(ctx)
+}
+
+// TsecretInt1PtrInput is an input type that accepts TsecretInt1Args, TsecretInt1Ptr and TsecretInt1PtrOutput values.
+// You can construct a concrete instance of `TsecretInt1PtrInput` via:
+//
+//	        TsecretInt1Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretInt1PtrInput interface {
+	pulumi.Input
+
+	ToTsecretInt1PtrOutput() TsecretInt1PtrOutput
+	ToTsecretInt1PtrOutputWithContext(context.Context) TsecretInt1PtrOutput
+}
+
+type tsecretInt1PtrType TsecretInt1Args
+
+func TsecretInt1Ptr(v *TsecretInt1Args) TsecretInt1PtrInput {
+	return (*tsecretInt1PtrType)(v)
+}
+
+func (*tsecretInt1PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt1)(nil)).Elem()
+}
+
+func (i *tsecretInt1PtrType) ToTsecretInt1PtrOutput() TsecretInt1PtrOutput {
+	return i.ToTsecretInt1PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretInt1PtrType) ToTsecretInt1PtrOutputWithContext(ctx context.Context) TsecretInt1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt1PtrOutput)
+}
+
+type TsecretInt1Output struct{ *pulumi.OutputState }
+
+func (TsecretInt1Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt1)(nil)).Elem()
+}
+
+func (o TsecretInt1Output) ToTsecretInt1Output() TsecretInt1Output {
+	return o
+}
+
+func (o TsecretInt1Output) ToTsecretInt1OutputWithContext(ctx context.Context) TsecretInt1Output {
+	return o
+}
+
+func (o TsecretInt1Output) ToTsecretInt1PtrOutput() TsecretInt1PtrOutput {
+	return o.ToTsecretInt1PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretInt1Output) ToTsecretInt1PtrOutputWithContext(ctx context.Context) TsecretInt1PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretInt1) *TsecretInt1 {
+		return &v
+	}).(TsecretInt1PtrOutput)
+}
+
+func (o TsecretInt1Output) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TsecretInt1) *int { return v.SecretX }).(pulumi.IntPtrOutput)
+}
+
+type TsecretInt1PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretInt1PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt1)(nil)).Elem()
+}
+
+func (o TsecretInt1PtrOutput) ToTsecretInt1PtrOutput() TsecretInt1PtrOutput {
+	return o
+}
+
+func (o TsecretInt1PtrOutput) ToTsecretInt1PtrOutputWithContext(ctx context.Context) TsecretInt1PtrOutput {
+	return o
+}
+
+func (o TsecretInt1PtrOutput) Elem() TsecretInt1Output {
+	return o.ApplyT(func(v *TsecretInt1) TsecretInt1 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretInt1
+		return ret
+	}).(TsecretInt1Output)
+}
+
+func (o TsecretInt1PtrOutput) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *TsecretInt1) *int {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.IntPtrOutput)
+}
+
+type TsecretInt2 struct {
+	SecretX *int `pulumi:"secretX"`
+}
+
+// TsecretInt2Input is an input type that accepts TsecretInt2Args and TsecretInt2Output values.
+// You can construct a concrete instance of `TsecretInt2Input` via:
+//
+//	TsecretInt2Args{...}
+type TsecretInt2Input interface {
+	pulumi.Input
+
+	ToTsecretInt2Output() TsecretInt2Output
+	ToTsecretInt2OutputWithContext(context.Context) TsecretInt2Output
+}
+
+type TsecretInt2Args struct {
+	SecretX pulumi.IntPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretInt2Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt2)(nil)).Elem()
+}
+
+func (i TsecretInt2Args) ToTsecretInt2Output() TsecretInt2Output {
+	return i.ToTsecretInt2OutputWithContext(context.Background())
+}
+
+func (i TsecretInt2Args) ToTsecretInt2OutputWithContext(ctx context.Context) TsecretInt2Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt2Output)
+}
+
+func (i TsecretInt2Args) ToTsecretInt2PtrOutput() TsecretInt2PtrOutput {
+	return i.ToTsecretInt2PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretInt2Args) ToTsecretInt2PtrOutputWithContext(ctx context.Context) TsecretInt2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt2Output).ToTsecretInt2PtrOutputWithContext(ctx)
+}
+
+// TsecretInt2PtrInput is an input type that accepts TsecretInt2Args, TsecretInt2Ptr and TsecretInt2PtrOutput values.
+// You can construct a concrete instance of `TsecretInt2PtrInput` via:
+//
+//	        TsecretInt2Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretInt2PtrInput interface {
+	pulumi.Input
+
+	ToTsecretInt2PtrOutput() TsecretInt2PtrOutput
+	ToTsecretInt2PtrOutputWithContext(context.Context) TsecretInt2PtrOutput
+}
+
+type tsecretInt2PtrType TsecretInt2Args
+
+func TsecretInt2Ptr(v *TsecretInt2Args) TsecretInt2PtrInput {
+	return (*tsecretInt2PtrType)(v)
+}
+
+func (*tsecretInt2PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt2)(nil)).Elem()
+}
+
+func (i *tsecretInt2PtrType) ToTsecretInt2PtrOutput() TsecretInt2PtrOutput {
+	return i.ToTsecretInt2PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretInt2PtrType) ToTsecretInt2PtrOutputWithContext(ctx context.Context) TsecretInt2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt2PtrOutput)
+}
+
+type TsecretInt2Output struct{ *pulumi.OutputState }
+
+func (TsecretInt2Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt2)(nil)).Elem()
+}
+
+func (o TsecretInt2Output) ToTsecretInt2Output() TsecretInt2Output {
+	return o
+}
+
+func (o TsecretInt2Output) ToTsecretInt2OutputWithContext(ctx context.Context) TsecretInt2Output {
+	return o
+}
+
+func (o TsecretInt2Output) ToTsecretInt2PtrOutput() TsecretInt2PtrOutput {
+	return o.ToTsecretInt2PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretInt2Output) ToTsecretInt2PtrOutputWithContext(ctx context.Context) TsecretInt2PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretInt2) *TsecretInt2 {
+		return &v
+	}).(TsecretInt2PtrOutput)
+}
+
+func (o TsecretInt2Output) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TsecretInt2) *int { return v.SecretX }).(pulumi.IntPtrOutput)
+}
+
+type TsecretInt2PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretInt2PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt2)(nil)).Elem()
+}
+
+func (o TsecretInt2PtrOutput) ToTsecretInt2PtrOutput() TsecretInt2PtrOutput {
+	return o
+}
+
+func (o TsecretInt2PtrOutput) ToTsecretInt2PtrOutputWithContext(ctx context.Context) TsecretInt2PtrOutput {
+	return o
+}
+
+func (o TsecretInt2PtrOutput) Elem() TsecretInt2Output {
+	return o.ApplyT(func(v *TsecretInt2) TsecretInt2 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretInt2
+		return ret
+	}).(TsecretInt2Output)
+}
+
+func (o TsecretInt2PtrOutput) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *TsecretInt2) *int {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.IntPtrOutput)
+}
+
+type TsecretInt3 struct {
+	SecretX *int `pulumi:"secretX"`
+}
+
+// TsecretInt3Input is an input type that accepts TsecretInt3Args and TsecretInt3Output values.
+// You can construct a concrete instance of `TsecretInt3Input` via:
+//
+//	TsecretInt3Args{...}
+type TsecretInt3Input interface {
+	pulumi.Input
+
+	ToTsecretInt3Output() TsecretInt3Output
+	ToTsecretInt3OutputWithContext(context.Context) TsecretInt3Output
+}
+
+type TsecretInt3Args struct {
+	SecretX pulumi.IntPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretInt3Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt3)(nil)).Elem()
+}
+
+func (i TsecretInt3Args) ToTsecretInt3Output() TsecretInt3Output {
+	return i.ToTsecretInt3OutputWithContext(context.Background())
+}
+
+func (i TsecretInt3Args) ToTsecretInt3OutputWithContext(ctx context.Context) TsecretInt3Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt3Output)
+}
+
+func (i TsecretInt3Args) ToTsecretInt3PtrOutput() TsecretInt3PtrOutput {
+	return i.ToTsecretInt3PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretInt3Args) ToTsecretInt3PtrOutputWithContext(ctx context.Context) TsecretInt3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt3Output).ToTsecretInt3PtrOutputWithContext(ctx)
+}
+
+// TsecretInt3PtrInput is an input type that accepts TsecretInt3Args, TsecretInt3Ptr and TsecretInt3PtrOutput values.
+// You can construct a concrete instance of `TsecretInt3PtrInput` via:
+//
+//	        TsecretInt3Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretInt3PtrInput interface {
+	pulumi.Input
+
+	ToTsecretInt3PtrOutput() TsecretInt3PtrOutput
+	ToTsecretInt3PtrOutputWithContext(context.Context) TsecretInt3PtrOutput
+}
+
+type tsecretInt3PtrType TsecretInt3Args
+
+func TsecretInt3Ptr(v *TsecretInt3Args) TsecretInt3PtrInput {
+	return (*tsecretInt3PtrType)(v)
+}
+
+func (*tsecretInt3PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt3)(nil)).Elem()
+}
+
+func (i *tsecretInt3PtrType) ToTsecretInt3PtrOutput() TsecretInt3PtrOutput {
+	return i.ToTsecretInt3PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretInt3PtrType) ToTsecretInt3PtrOutputWithContext(ctx context.Context) TsecretInt3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretInt3PtrOutput)
+}
+
+type TsecretInt3Output struct{ *pulumi.OutputState }
+
+func (TsecretInt3Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretInt3)(nil)).Elem()
+}
+
+func (o TsecretInt3Output) ToTsecretInt3Output() TsecretInt3Output {
+	return o
+}
+
+func (o TsecretInt3Output) ToTsecretInt3OutputWithContext(ctx context.Context) TsecretInt3Output {
+	return o
+}
+
+func (o TsecretInt3Output) ToTsecretInt3PtrOutput() TsecretInt3PtrOutput {
+	return o.ToTsecretInt3PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretInt3Output) ToTsecretInt3PtrOutputWithContext(ctx context.Context) TsecretInt3PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretInt3) *TsecretInt3 {
+		return &v
+	}).(TsecretInt3PtrOutput)
+}
+
+func (o TsecretInt3Output) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TsecretInt3) *int { return v.SecretX }).(pulumi.IntPtrOutput)
+}
+
+type TsecretInt3PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretInt3PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretInt3)(nil)).Elem()
+}
+
+func (o TsecretInt3PtrOutput) ToTsecretInt3PtrOutput() TsecretInt3PtrOutput {
+	return o
+}
+
+func (o TsecretInt3PtrOutput) ToTsecretInt3PtrOutputWithContext(ctx context.Context) TsecretInt3PtrOutput {
+	return o
+}
+
+func (o TsecretInt3PtrOutput) Elem() TsecretInt3Output {
+	return o.ApplyT(func(v *TsecretInt3) TsecretInt3 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretInt3
+		return ret
+	}).(TsecretInt3Output)
+}
+
+func (o TsecretInt3PtrOutput) SecretX() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *TsecretInt3) *int {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.IntPtrOutput)
+}
+
+type TsecretNum1 struct {
+	SecretX *float64 `pulumi:"secretX"`
+}
+
+// TsecretNum1Input is an input type that accepts TsecretNum1Args and TsecretNum1Output values.
+// You can construct a concrete instance of `TsecretNum1Input` via:
+//
+//	TsecretNum1Args{...}
+type TsecretNum1Input interface {
+	pulumi.Input
+
+	ToTsecretNum1Output() TsecretNum1Output
+	ToTsecretNum1OutputWithContext(context.Context) TsecretNum1Output
+}
+
+type TsecretNum1Args struct {
+	SecretX pulumi.Float64PtrInput `pulumi:"secretX"`
+}
+
+func (TsecretNum1Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum1)(nil)).Elem()
+}
+
+func (i TsecretNum1Args) ToTsecretNum1Output() TsecretNum1Output {
+	return i.ToTsecretNum1OutputWithContext(context.Background())
+}
+
+func (i TsecretNum1Args) ToTsecretNum1OutputWithContext(ctx context.Context) TsecretNum1Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum1Output)
+}
+
+func (i TsecretNum1Args) ToTsecretNum1PtrOutput() TsecretNum1PtrOutput {
+	return i.ToTsecretNum1PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretNum1Args) ToTsecretNum1PtrOutputWithContext(ctx context.Context) TsecretNum1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum1Output).ToTsecretNum1PtrOutputWithContext(ctx)
+}
+
+// TsecretNum1PtrInput is an input type that accepts TsecretNum1Args, TsecretNum1Ptr and TsecretNum1PtrOutput values.
+// You can construct a concrete instance of `TsecretNum1PtrInput` via:
+//
+//	        TsecretNum1Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretNum1PtrInput interface {
+	pulumi.Input
+
+	ToTsecretNum1PtrOutput() TsecretNum1PtrOutput
+	ToTsecretNum1PtrOutputWithContext(context.Context) TsecretNum1PtrOutput
+}
+
+type tsecretNum1PtrType TsecretNum1Args
+
+func TsecretNum1Ptr(v *TsecretNum1Args) TsecretNum1PtrInput {
+	return (*tsecretNum1PtrType)(v)
+}
+
+func (*tsecretNum1PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum1)(nil)).Elem()
+}
+
+func (i *tsecretNum1PtrType) ToTsecretNum1PtrOutput() TsecretNum1PtrOutput {
+	return i.ToTsecretNum1PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretNum1PtrType) ToTsecretNum1PtrOutputWithContext(ctx context.Context) TsecretNum1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum1PtrOutput)
+}
+
+type TsecretNum1Output struct{ *pulumi.OutputState }
+
+func (TsecretNum1Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum1)(nil)).Elem()
+}
+
+func (o TsecretNum1Output) ToTsecretNum1Output() TsecretNum1Output {
+	return o
+}
+
+func (o TsecretNum1Output) ToTsecretNum1OutputWithContext(ctx context.Context) TsecretNum1Output {
+	return o
+}
+
+func (o TsecretNum1Output) ToTsecretNum1PtrOutput() TsecretNum1PtrOutput {
+	return o.ToTsecretNum1PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretNum1Output) ToTsecretNum1PtrOutputWithContext(ctx context.Context) TsecretNum1PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretNum1) *TsecretNum1 {
+		return &v
+	}).(TsecretNum1PtrOutput)
+}
+
+func (o TsecretNum1Output) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v TsecretNum1) *float64 { return v.SecretX }).(pulumi.Float64PtrOutput)
+}
+
+type TsecretNum1PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretNum1PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum1)(nil)).Elem()
+}
+
+func (o TsecretNum1PtrOutput) ToTsecretNum1PtrOutput() TsecretNum1PtrOutput {
+	return o
+}
+
+func (o TsecretNum1PtrOutput) ToTsecretNum1PtrOutputWithContext(ctx context.Context) TsecretNum1PtrOutput {
+	return o
+}
+
+func (o TsecretNum1PtrOutput) Elem() TsecretNum1Output {
+	return o.ApplyT(func(v *TsecretNum1) TsecretNum1 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretNum1
+		return ret
+	}).(TsecretNum1Output)
+}
+
+func (o TsecretNum1PtrOutput) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *TsecretNum1) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.Float64PtrOutput)
+}
+
+type TsecretNum2 struct {
+	SecretX *float64 `pulumi:"secretX"`
+}
+
+// TsecretNum2Input is an input type that accepts TsecretNum2Args and TsecretNum2Output values.
+// You can construct a concrete instance of `TsecretNum2Input` via:
+//
+//	TsecretNum2Args{...}
+type TsecretNum2Input interface {
+	pulumi.Input
+
+	ToTsecretNum2Output() TsecretNum2Output
+	ToTsecretNum2OutputWithContext(context.Context) TsecretNum2Output
+}
+
+type TsecretNum2Args struct {
+	SecretX pulumi.Float64PtrInput `pulumi:"secretX"`
+}
+
+func (TsecretNum2Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum2)(nil)).Elem()
+}
+
+func (i TsecretNum2Args) ToTsecretNum2Output() TsecretNum2Output {
+	return i.ToTsecretNum2OutputWithContext(context.Background())
+}
+
+func (i TsecretNum2Args) ToTsecretNum2OutputWithContext(ctx context.Context) TsecretNum2Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum2Output)
+}
+
+func (i TsecretNum2Args) ToTsecretNum2PtrOutput() TsecretNum2PtrOutput {
+	return i.ToTsecretNum2PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretNum2Args) ToTsecretNum2PtrOutputWithContext(ctx context.Context) TsecretNum2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum2Output).ToTsecretNum2PtrOutputWithContext(ctx)
+}
+
+// TsecretNum2PtrInput is an input type that accepts TsecretNum2Args, TsecretNum2Ptr and TsecretNum2PtrOutput values.
+// You can construct a concrete instance of `TsecretNum2PtrInput` via:
+//
+//	        TsecretNum2Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretNum2PtrInput interface {
+	pulumi.Input
+
+	ToTsecretNum2PtrOutput() TsecretNum2PtrOutput
+	ToTsecretNum2PtrOutputWithContext(context.Context) TsecretNum2PtrOutput
+}
+
+type tsecretNum2PtrType TsecretNum2Args
+
+func TsecretNum2Ptr(v *TsecretNum2Args) TsecretNum2PtrInput {
+	return (*tsecretNum2PtrType)(v)
+}
+
+func (*tsecretNum2PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum2)(nil)).Elem()
+}
+
+func (i *tsecretNum2PtrType) ToTsecretNum2PtrOutput() TsecretNum2PtrOutput {
+	return i.ToTsecretNum2PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretNum2PtrType) ToTsecretNum2PtrOutputWithContext(ctx context.Context) TsecretNum2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum2PtrOutput)
+}
+
+type TsecretNum2Output struct{ *pulumi.OutputState }
+
+func (TsecretNum2Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum2)(nil)).Elem()
+}
+
+func (o TsecretNum2Output) ToTsecretNum2Output() TsecretNum2Output {
+	return o
+}
+
+func (o TsecretNum2Output) ToTsecretNum2OutputWithContext(ctx context.Context) TsecretNum2Output {
+	return o
+}
+
+func (o TsecretNum2Output) ToTsecretNum2PtrOutput() TsecretNum2PtrOutput {
+	return o.ToTsecretNum2PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretNum2Output) ToTsecretNum2PtrOutputWithContext(ctx context.Context) TsecretNum2PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretNum2) *TsecretNum2 {
+		return &v
+	}).(TsecretNum2PtrOutput)
+}
+
+func (o TsecretNum2Output) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v TsecretNum2) *float64 { return v.SecretX }).(pulumi.Float64PtrOutput)
+}
+
+type TsecretNum2PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretNum2PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum2)(nil)).Elem()
+}
+
+func (o TsecretNum2PtrOutput) ToTsecretNum2PtrOutput() TsecretNum2PtrOutput {
+	return o
+}
+
+func (o TsecretNum2PtrOutput) ToTsecretNum2PtrOutputWithContext(ctx context.Context) TsecretNum2PtrOutput {
+	return o
+}
+
+func (o TsecretNum2PtrOutput) Elem() TsecretNum2Output {
+	return o.ApplyT(func(v *TsecretNum2) TsecretNum2 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretNum2
+		return ret
+	}).(TsecretNum2Output)
+}
+
+func (o TsecretNum2PtrOutput) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *TsecretNum2) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.Float64PtrOutput)
+}
+
+type TsecretNum3 struct {
+	SecretX *float64 `pulumi:"secretX"`
+}
+
+// TsecretNum3Input is an input type that accepts TsecretNum3Args and TsecretNum3Output values.
+// You can construct a concrete instance of `TsecretNum3Input` via:
+//
+//	TsecretNum3Args{...}
+type TsecretNum3Input interface {
+	pulumi.Input
+
+	ToTsecretNum3Output() TsecretNum3Output
+	ToTsecretNum3OutputWithContext(context.Context) TsecretNum3Output
+}
+
+type TsecretNum3Args struct {
+	SecretX pulumi.Float64PtrInput `pulumi:"secretX"`
+}
+
+func (TsecretNum3Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum3)(nil)).Elem()
+}
+
+func (i TsecretNum3Args) ToTsecretNum3Output() TsecretNum3Output {
+	return i.ToTsecretNum3OutputWithContext(context.Background())
+}
+
+func (i TsecretNum3Args) ToTsecretNum3OutputWithContext(ctx context.Context) TsecretNum3Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum3Output)
+}
+
+func (i TsecretNum3Args) ToTsecretNum3PtrOutput() TsecretNum3PtrOutput {
+	return i.ToTsecretNum3PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretNum3Args) ToTsecretNum3PtrOutputWithContext(ctx context.Context) TsecretNum3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum3Output).ToTsecretNum3PtrOutputWithContext(ctx)
+}
+
+// TsecretNum3PtrInput is an input type that accepts TsecretNum3Args, TsecretNum3Ptr and TsecretNum3PtrOutput values.
+// You can construct a concrete instance of `TsecretNum3PtrInput` via:
+//
+//	        TsecretNum3Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretNum3PtrInput interface {
+	pulumi.Input
+
+	ToTsecretNum3PtrOutput() TsecretNum3PtrOutput
+	ToTsecretNum3PtrOutputWithContext(context.Context) TsecretNum3PtrOutput
+}
+
+type tsecretNum3PtrType TsecretNum3Args
+
+func TsecretNum3Ptr(v *TsecretNum3Args) TsecretNum3PtrInput {
+	return (*tsecretNum3PtrType)(v)
+}
+
+func (*tsecretNum3PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum3)(nil)).Elem()
+}
+
+func (i *tsecretNum3PtrType) ToTsecretNum3PtrOutput() TsecretNum3PtrOutput {
+	return i.ToTsecretNum3PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretNum3PtrType) ToTsecretNum3PtrOutputWithContext(ctx context.Context) TsecretNum3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretNum3PtrOutput)
+}
+
+type TsecretNum3Output struct{ *pulumi.OutputState }
+
+func (TsecretNum3Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretNum3)(nil)).Elem()
+}
+
+func (o TsecretNum3Output) ToTsecretNum3Output() TsecretNum3Output {
+	return o
+}
+
+func (o TsecretNum3Output) ToTsecretNum3OutputWithContext(ctx context.Context) TsecretNum3Output {
+	return o
+}
+
+func (o TsecretNum3Output) ToTsecretNum3PtrOutput() TsecretNum3PtrOutput {
+	return o.ToTsecretNum3PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretNum3Output) ToTsecretNum3PtrOutputWithContext(ctx context.Context) TsecretNum3PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretNum3) *TsecretNum3 {
+		return &v
+	}).(TsecretNum3PtrOutput)
+}
+
+func (o TsecretNum3Output) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v TsecretNum3) *float64 { return v.SecretX }).(pulumi.Float64PtrOutput)
+}
+
+type TsecretNum3PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretNum3PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretNum3)(nil)).Elem()
+}
+
+func (o TsecretNum3PtrOutput) ToTsecretNum3PtrOutput() TsecretNum3PtrOutput {
+	return o
+}
+
+func (o TsecretNum3PtrOutput) ToTsecretNum3PtrOutputWithContext(ctx context.Context) TsecretNum3PtrOutput {
+	return o
+}
+
+func (o TsecretNum3PtrOutput) Elem() TsecretNum3Output {
+	return o.ApplyT(func(v *TsecretNum3) TsecretNum3 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretNum3
+		return ret
+	}).(TsecretNum3Output)
+}
+
+func (o TsecretNum3PtrOutput) SecretX() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *TsecretNum3) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.Float64PtrOutput)
+}
+
+type TsecretString1 struct {
+	SecretX *string `pulumi:"secretX"`
+}
+
+// TsecretString1Input is an input type that accepts TsecretString1Args and TsecretString1Output values.
+// You can construct a concrete instance of `TsecretString1Input` via:
+//
+//	TsecretString1Args{...}
+type TsecretString1Input interface {
+	pulumi.Input
+
+	ToTsecretString1Output() TsecretString1Output
+	ToTsecretString1OutputWithContext(context.Context) TsecretString1Output
+}
+
+type TsecretString1Args struct {
+	SecretX pulumi.StringPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretString1Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString1)(nil)).Elem()
+}
+
+func (i TsecretString1Args) ToTsecretString1Output() TsecretString1Output {
+	return i.ToTsecretString1OutputWithContext(context.Background())
+}
+
+func (i TsecretString1Args) ToTsecretString1OutputWithContext(ctx context.Context) TsecretString1Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString1Output)
+}
+
+func (i TsecretString1Args) ToTsecretString1PtrOutput() TsecretString1PtrOutput {
+	return i.ToTsecretString1PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretString1Args) ToTsecretString1PtrOutputWithContext(ctx context.Context) TsecretString1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString1Output).ToTsecretString1PtrOutputWithContext(ctx)
+}
+
+// TsecretString1PtrInput is an input type that accepts TsecretString1Args, TsecretString1Ptr and TsecretString1PtrOutput values.
+// You can construct a concrete instance of `TsecretString1PtrInput` via:
+//
+//	        TsecretString1Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretString1PtrInput interface {
+	pulumi.Input
+
+	ToTsecretString1PtrOutput() TsecretString1PtrOutput
+	ToTsecretString1PtrOutputWithContext(context.Context) TsecretString1PtrOutput
+}
+
+type tsecretString1PtrType TsecretString1Args
+
+func TsecretString1Ptr(v *TsecretString1Args) TsecretString1PtrInput {
+	return (*tsecretString1PtrType)(v)
+}
+
+func (*tsecretString1PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString1)(nil)).Elem()
+}
+
+func (i *tsecretString1PtrType) ToTsecretString1PtrOutput() TsecretString1PtrOutput {
+	return i.ToTsecretString1PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretString1PtrType) ToTsecretString1PtrOutputWithContext(ctx context.Context) TsecretString1PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString1PtrOutput)
+}
+
+type TsecretString1Output struct{ *pulumi.OutputState }
+
+func (TsecretString1Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString1)(nil)).Elem()
+}
+
+func (o TsecretString1Output) ToTsecretString1Output() TsecretString1Output {
+	return o
+}
+
+func (o TsecretString1Output) ToTsecretString1OutputWithContext(ctx context.Context) TsecretString1Output {
+	return o
+}
+
+func (o TsecretString1Output) ToTsecretString1PtrOutput() TsecretString1PtrOutput {
+	return o.ToTsecretString1PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretString1Output) ToTsecretString1PtrOutputWithContext(ctx context.Context) TsecretString1PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretString1) *TsecretString1 {
+		return &v
+	}).(TsecretString1PtrOutput)
+}
+
+func (o TsecretString1Output) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TsecretString1) *string { return v.SecretX }).(pulumi.StringPtrOutput)
+}
+
+type TsecretString1PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretString1PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString1)(nil)).Elem()
+}
+
+func (o TsecretString1PtrOutput) ToTsecretString1PtrOutput() TsecretString1PtrOutput {
+	return o
+}
+
+func (o TsecretString1PtrOutput) ToTsecretString1PtrOutputWithContext(ctx context.Context) TsecretString1PtrOutput {
+	return o
+}
+
+func (o TsecretString1PtrOutput) Elem() TsecretString1Output {
+	return o.ApplyT(func(v *TsecretString1) TsecretString1 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretString1
+		return ret
+	}).(TsecretString1Output)
+}
+
+func (o TsecretString1PtrOutput) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TsecretString1) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.StringPtrOutput)
+}
+
+type TsecretString2 struct {
+	SecretX *string `pulumi:"secretX"`
+}
+
+// TsecretString2Input is an input type that accepts TsecretString2Args and TsecretString2Output values.
+// You can construct a concrete instance of `TsecretString2Input` via:
+//
+//	TsecretString2Args{...}
+type TsecretString2Input interface {
+	pulumi.Input
+
+	ToTsecretString2Output() TsecretString2Output
+	ToTsecretString2OutputWithContext(context.Context) TsecretString2Output
+}
+
+type TsecretString2Args struct {
+	SecretX pulumi.StringPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretString2Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString2)(nil)).Elem()
+}
+
+func (i TsecretString2Args) ToTsecretString2Output() TsecretString2Output {
+	return i.ToTsecretString2OutputWithContext(context.Background())
+}
+
+func (i TsecretString2Args) ToTsecretString2OutputWithContext(ctx context.Context) TsecretString2Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString2Output)
+}
+
+func (i TsecretString2Args) ToTsecretString2PtrOutput() TsecretString2PtrOutput {
+	return i.ToTsecretString2PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretString2Args) ToTsecretString2PtrOutputWithContext(ctx context.Context) TsecretString2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString2Output).ToTsecretString2PtrOutputWithContext(ctx)
+}
+
+// TsecretString2PtrInput is an input type that accepts TsecretString2Args, TsecretString2Ptr and TsecretString2PtrOutput values.
+// You can construct a concrete instance of `TsecretString2PtrInput` via:
+//
+//	        TsecretString2Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretString2PtrInput interface {
+	pulumi.Input
+
+	ToTsecretString2PtrOutput() TsecretString2PtrOutput
+	ToTsecretString2PtrOutputWithContext(context.Context) TsecretString2PtrOutput
+}
+
+type tsecretString2PtrType TsecretString2Args
+
+func TsecretString2Ptr(v *TsecretString2Args) TsecretString2PtrInput {
+	return (*tsecretString2PtrType)(v)
+}
+
+func (*tsecretString2PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString2)(nil)).Elem()
+}
+
+func (i *tsecretString2PtrType) ToTsecretString2PtrOutput() TsecretString2PtrOutput {
+	return i.ToTsecretString2PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretString2PtrType) ToTsecretString2PtrOutputWithContext(ctx context.Context) TsecretString2PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString2PtrOutput)
+}
+
+type TsecretString2Output struct{ *pulumi.OutputState }
+
+func (TsecretString2Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString2)(nil)).Elem()
+}
+
+func (o TsecretString2Output) ToTsecretString2Output() TsecretString2Output {
+	return o
+}
+
+func (o TsecretString2Output) ToTsecretString2OutputWithContext(ctx context.Context) TsecretString2Output {
+	return o
+}
+
+func (o TsecretString2Output) ToTsecretString2PtrOutput() TsecretString2PtrOutput {
+	return o.ToTsecretString2PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretString2Output) ToTsecretString2PtrOutputWithContext(ctx context.Context) TsecretString2PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretString2) *TsecretString2 {
+		return &v
+	}).(TsecretString2PtrOutput)
+}
+
+func (o TsecretString2Output) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TsecretString2) *string { return v.SecretX }).(pulumi.StringPtrOutput)
+}
+
+type TsecretString2PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretString2PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString2)(nil)).Elem()
+}
+
+func (o TsecretString2PtrOutput) ToTsecretString2PtrOutput() TsecretString2PtrOutput {
+	return o
+}
+
+func (o TsecretString2PtrOutput) ToTsecretString2PtrOutputWithContext(ctx context.Context) TsecretString2PtrOutput {
+	return o
+}
+
+func (o TsecretString2PtrOutput) Elem() TsecretString2Output {
+	return o.ApplyT(func(v *TsecretString2) TsecretString2 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretString2
+		return ret
+	}).(TsecretString2Output)
+}
+
+func (o TsecretString2PtrOutput) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TsecretString2) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.StringPtrOutput)
+}
+
+type TsecretString3 struct {
+	SecretX *string `pulumi:"secretX"`
+}
+
+// TsecretString3Input is an input type that accepts TsecretString3Args and TsecretString3Output values.
+// You can construct a concrete instance of `TsecretString3Input` via:
+//
+//	TsecretString3Args{...}
+type TsecretString3Input interface {
+	pulumi.Input
+
+	ToTsecretString3Output() TsecretString3Output
+	ToTsecretString3OutputWithContext(context.Context) TsecretString3Output
+}
+
+type TsecretString3Args struct {
+	SecretX pulumi.StringPtrInput `pulumi:"secretX"`
+}
+
+func (TsecretString3Args) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString3)(nil)).Elem()
+}
+
+func (i TsecretString3Args) ToTsecretString3Output() TsecretString3Output {
+	return i.ToTsecretString3OutputWithContext(context.Background())
+}
+
+func (i TsecretString3Args) ToTsecretString3OutputWithContext(ctx context.Context) TsecretString3Output {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString3Output)
+}
+
+func (i TsecretString3Args) ToTsecretString3PtrOutput() TsecretString3PtrOutput {
+	return i.ToTsecretString3PtrOutputWithContext(context.Background())
+}
+
+func (i TsecretString3Args) ToTsecretString3PtrOutputWithContext(ctx context.Context) TsecretString3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString3Output).ToTsecretString3PtrOutputWithContext(ctx)
+}
+
+// TsecretString3PtrInput is an input type that accepts TsecretString3Args, TsecretString3Ptr and TsecretString3PtrOutput values.
+// You can construct a concrete instance of `TsecretString3PtrInput` via:
+//
+//	        TsecretString3Args{...}
+//
+//	or:
+//
+//	        nil
+type TsecretString3PtrInput interface {
+	pulumi.Input
+
+	ToTsecretString3PtrOutput() TsecretString3PtrOutput
+	ToTsecretString3PtrOutputWithContext(context.Context) TsecretString3PtrOutput
+}
+
+type tsecretString3PtrType TsecretString3Args
+
+func TsecretString3Ptr(v *TsecretString3Args) TsecretString3PtrInput {
+	return (*tsecretString3PtrType)(v)
+}
+
+func (*tsecretString3PtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString3)(nil)).Elem()
+}
+
+func (i *tsecretString3PtrType) ToTsecretString3PtrOutput() TsecretString3PtrOutput {
+	return i.ToTsecretString3PtrOutputWithContext(context.Background())
+}
+
+func (i *tsecretString3PtrType) ToTsecretString3PtrOutputWithContext(ctx context.Context) TsecretString3PtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TsecretString3PtrOutput)
+}
+
+type TsecretString3Output struct{ *pulumi.OutputState }
+
+func (TsecretString3Output) ElementType() reflect.Type {
+	return reflect.TypeOf((*TsecretString3)(nil)).Elem()
+}
+
+func (o TsecretString3Output) ToTsecretString3Output() TsecretString3Output {
+	return o
+}
+
+func (o TsecretString3Output) ToTsecretString3OutputWithContext(ctx context.Context) TsecretString3Output {
+	return o
+}
+
+func (o TsecretString3Output) ToTsecretString3PtrOutput() TsecretString3PtrOutput {
+	return o.ToTsecretString3PtrOutputWithContext(context.Background())
+}
+
+func (o TsecretString3Output) ToTsecretString3PtrOutputWithContext(ctx context.Context) TsecretString3PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TsecretString3) *TsecretString3 {
+		return &v
+	}).(TsecretString3PtrOutput)
+}
+
+func (o TsecretString3Output) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TsecretString3) *string { return v.SecretX }).(pulumi.StringPtrOutput)
+}
+
+type TsecretString3PtrOutput struct{ *pulumi.OutputState }
+
+func (TsecretString3PtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TsecretString3)(nil)).Elem()
+}
+
+func (o TsecretString3PtrOutput) ToTsecretString3PtrOutput() TsecretString3PtrOutput {
+	return o
+}
+
+func (o TsecretString3PtrOutput) ToTsecretString3PtrOutputWithContext(ctx context.Context) TsecretString3PtrOutput {
+	return o
+}
+
+func (o TsecretString3PtrOutput) Elem() TsecretString3Output {
+	return o.ApplyT(func(v *TsecretString3) TsecretString3 {
+		if v != nil {
+			return *v
+		}
+		var ret TsecretString3
+		return ret
+	}).(TsecretString3Output)
+}
+
+func (o TsecretString3PtrOutput) SecretX() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TsecretString3) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SecretX
+	}).(pulumi.StringPtrOutput)
+}
+
 type Tstring1 struct {
 	X *string `pulumi:"x"`
 }
@@ -1628,6 +3224,30 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*Tnum2PtrInput)(nil)).Elem(), Tnum2Args{})
 	pulumi.RegisterInputType(reflect.TypeOf((*Tnum3Input)(nil)).Elem(), Tnum3Args{})
 	pulumi.RegisterInputType(reflect.TypeOf((*Tnum3PtrInput)(nil)).Elem(), Tnum3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool1Input)(nil)).Elem(), TsecretBool1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool1PtrInput)(nil)).Elem(), TsecretBool1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool2Input)(nil)).Elem(), TsecretBool2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool2PtrInput)(nil)).Elem(), TsecretBool2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool3Input)(nil)).Elem(), TsecretBool3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretBool3PtrInput)(nil)).Elem(), TsecretBool3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt1Input)(nil)).Elem(), TsecretInt1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt1PtrInput)(nil)).Elem(), TsecretInt1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt2Input)(nil)).Elem(), TsecretInt2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt2PtrInput)(nil)).Elem(), TsecretInt2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt3Input)(nil)).Elem(), TsecretInt3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretInt3PtrInput)(nil)).Elem(), TsecretInt3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum1Input)(nil)).Elem(), TsecretNum1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum1PtrInput)(nil)).Elem(), TsecretNum1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum2Input)(nil)).Elem(), TsecretNum2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum2PtrInput)(nil)).Elem(), TsecretNum2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum3Input)(nil)).Elem(), TsecretNum3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretNum3PtrInput)(nil)).Elem(), TsecretNum3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString1Input)(nil)).Elem(), TsecretString1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString1PtrInput)(nil)).Elem(), TsecretString1Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString2Input)(nil)).Elem(), TsecretString2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString2PtrInput)(nil)).Elem(), TsecretString2Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString3Input)(nil)).Elem(), TsecretString3Args{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TsecretString3PtrInput)(nil)).Elem(), TsecretString3Args{})
 	pulumi.RegisterInputType(reflect.TypeOf((*Tstring1Input)(nil)).Elem(), Tstring1Args{})
 	pulumi.RegisterInputType(reflect.TypeOf((*Tstring1PtrInput)(nil)).Elem(), Tstring1Args{})
 	pulumi.RegisterInputType(reflect.TypeOf((*Tstring2Input)(nil)).Elem(), Tstring2Args{})
@@ -1652,6 +3272,30 @@ func init() {
 	pulumi.RegisterOutputType(Tnum2PtrOutput{})
 	pulumi.RegisterOutputType(Tnum3Output{})
 	pulumi.RegisterOutputType(Tnum3PtrOutput{})
+	pulumi.RegisterOutputType(TsecretBool1Output{})
+	pulumi.RegisterOutputType(TsecretBool1PtrOutput{})
+	pulumi.RegisterOutputType(TsecretBool2Output{})
+	pulumi.RegisterOutputType(TsecretBool2PtrOutput{})
+	pulumi.RegisterOutputType(TsecretBool3Output{})
+	pulumi.RegisterOutputType(TsecretBool3PtrOutput{})
+	pulumi.RegisterOutputType(TsecretInt1Output{})
+	pulumi.RegisterOutputType(TsecretInt1PtrOutput{})
+	pulumi.RegisterOutputType(TsecretInt2Output{})
+	pulumi.RegisterOutputType(TsecretInt2PtrOutput{})
+	pulumi.RegisterOutputType(TsecretInt3Output{})
+	pulumi.RegisterOutputType(TsecretInt3PtrOutput{})
+	pulumi.RegisterOutputType(TsecretNum1Output{})
+	pulumi.RegisterOutputType(TsecretNum1PtrOutput{})
+	pulumi.RegisterOutputType(TsecretNum2Output{})
+	pulumi.RegisterOutputType(TsecretNum2PtrOutput{})
+	pulumi.RegisterOutputType(TsecretNum3Output{})
+	pulumi.RegisterOutputType(TsecretNum3PtrOutput{})
+	pulumi.RegisterOutputType(TsecretString1Output{})
+	pulumi.RegisterOutputType(TsecretString1PtrOutput{})
+	pulumi.RegisterOutputType(TsecretString2Output{})
+	pulumi.RegisterOutputType(TsecretString2PtrOutput{})
+	pulumi.RegisterOutputType(TsecretString3Output{})
+	pulumi.RegisterOutputType(TsecretString3PtrOutput{})
 	pulumi.RegisterOutputType(Tstring1Output{})
 	pulumi.RegisterOutputType(Tstring1PtrOutput{})
 	pulumi.RegisterOutputType(Tstring2Output{})
