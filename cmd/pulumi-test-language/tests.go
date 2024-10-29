@@ -1056,6 +1056,17 @@ var languageTests = map[string]languageTest{
 						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
 
 					// TODO objSecretString1
+
+					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
+					v := c.GetVariables()
+					assert.Equal(l, "SECRET", v["config-grpc:config:secretString1"], "secretString1")
+					assert.JSONEq(l, "16", v["config-grpc:config:secretInt1"], "secretInt1")
+					assert.JSONEq(l, "123456.7890", v["config-grpc:config:secretNum1"], "secretNum1")
+					assert.JSONEq(l, "true", v["config-grpc:config:secretBool1"], "secretBool1")
+					assert.JSONEq(l, `["SECRET", "SECRET2"]`, v["config-grpc:config:listSecretString1"], "listSecretString1")
+					assert.JSONEq(l, `{"key1":"SECRET","key2":"SECRET2"}`, v["config-grpc:config:mapSecretString1"], "mapSecretString1")
+
+					// TODO objSecretString1
 				},
 			},
 		},
