@@ -998,7 +998,8 @@ var languageTests = map[string]languageTest{
 					// Verify the CheckConfig request received by the provider.
 					r := g.CheckConfigReq("config")
 
-					// CheckConfig request gets the secrets in the plain, suspect.
+					// CheckConfig request gets the secrets in the plain. This is suspect, probably
+					// has to do with secret negotiation happening later in the gRPC provider cycle.
 					assert.Equal(l, "SECRET",
 						r.News.Fields["secretString1"].AsInterface(), "secretString1")
 
@@ -1024,6 +1025,37 @@ var languageTests = map[string]languageTest{
 					//
 					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
 					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
+
+					// Now verify the Configure request.
+					c := g.ConfigureReq("config")
+
+					// All the fields are coming in as secret-wrapped fields into Configure.
+					assert.Equal(l, secret("SECRET"),
+						c.Args.Fields["secretString1"].AsInterface(), "secretString1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(16)), float64(16),
+						c.Args.Fields["secretInt1"].AsInterface(), "secretInt1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(123456.7890)), float64(123456.7890),
+						c.Args.Fields["secretNum1"].AsInterface(), "secretNum1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(true), true,
+						c.Args.Fields["secretBool1"].AsInterface(), "secretBool1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret([]any{"SECRET", "SECRET2"}),
+						[]any{"SECRET", "SECRET2"},
+						c.Args.Fields["listSecretString1"].AsInterface(), "listSecretString1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(map[string]any{"key1": "SECRET", "key2": "SECRET2"}),
+						map[string]any{"key1": "SECRET", "key2": "SECRET2"},
+						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
+
+					// TODO objSecretString1
 				},
 			},
 		},
