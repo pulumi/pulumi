@@ -485,10 +485,9 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	p.Run(t, snap1)
 }
 
-// Tests that "skipped creates", which are creates that are not performed
-// because they are not targeted, are handled correctly when a targeted resource
-// depends on a resource whose creation was skipped.
-func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testing.T) {
+// Tests that "skipped creates", which are creates that are not performed because they are not targeted, are handled
+// correctly when a targeted resource that has changed inputs depends on a resource whose creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
@@ -556,6 +555,75 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	})
 
 	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, afterLoaders...)
+
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
+		T:     t,
+		HostF: afterHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**b**"}),
+		},
+	}, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "untargeted create")
+}
+
+// Tests that "skipped creates", which are creates that are not performed because they are not targeted, are handled
+// correctly when a targeted resource that has changed dependencies (but not inputs) depends on a resource whose
+// creation was skipped.
+func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUnchangedTarget(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Act.
+
+	// Operation 1 -- create a resource, B.
+
+	beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true)
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
+		T:     t,
+		HostF: beforeHostF,
+	}, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	// Operation 2 -- register a resource A, and modify B to depend on it. Target
+	// B, but not A. This should fail because A's create will be skipped, meaning
+	// that B's dependency cannot be satisfied.
+	afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
 		T:     t,
