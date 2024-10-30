@@ -1,8 +1,8 @@
 import pulumi
-import pulumi_config_grpc as config_grpc
+import pulumi_config_grpc_no_jsonenc as config_grpc_no_jsonenc
 
 # Cover interesting schema shapes.
-config_grpc_provider = config_grpc.Provider("config_grpc_provider",
+config_grpc_provider = config_grpc_no_jsonenc.Provider("config_grpc_provider",
     string1="",
     string2="x",
     string3="{}",
@@ -37,4 +37,4 @@ config_grpc_provider = config_grpc.Provider("config_grpc_provider",
     obj_int1={
         "x": 42,
     })
-config = config_grpc.ConfigFetcher("config", opts = pulumi.ResourceOptions(provider=config_grpc_provider))
+config = config_grpc_no_jsonenc.ConfigFetcher("config", opts = pulumi.ResourceOptions(provider=config_grpc_provider))

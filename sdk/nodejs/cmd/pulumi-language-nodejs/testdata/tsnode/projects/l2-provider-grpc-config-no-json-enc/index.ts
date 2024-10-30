@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as config_grpc from "@pulumi/config-grpc";
+import * as config_grpc_no_jsonenc from "@pulumi/config-grpc-no-jsonenc";
 
 // Cover interesting schema shapes.
-const config_grpc_provider = new config_grpc.Provider("config_grpc_provider", {
+const config_grpc_provider = new config_grpc_no_jsonenc.Provider("config_grpc_provider", {
     string1: "",
     string2: "x",
     string3: "{}",
@@ -38,6 +38,6 @@ const config_grpc_provider = new config_grpc.Provider("config_grpc_provider", {
         x: 42,
     },
 });
-const config = new config_grpc.ConfigFetcher("config", {}, {
+const config = new config_grpc_no_jsonenc.ConfigFetcher("config", {}, {
     provider: config_grpc_provider,
 });
