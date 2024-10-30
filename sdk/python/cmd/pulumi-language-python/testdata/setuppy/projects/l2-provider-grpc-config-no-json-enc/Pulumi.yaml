@@ -1,0 +1,6 @@
+name: l2-provider-grpc-config-no-json-enc
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv

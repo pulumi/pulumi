@@ -1,0 +1,2 @@
+name: l2-provider-grpc-config-secret-no-json-enc
+runtime: go
