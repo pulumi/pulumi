@@ -24,6 +24,7 @@ import (
 	"hash"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,6 +38,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
@@ -335,6 +339,91 @@ func (source *gitlabSource) Download(
 
 func (source *gitlabSource) URL() string {
 	return fmt.Sprintf("gitlab://%s/%s", source.host, source.project)
+}
+
+// s3Source can download a plugin from an S3 bucket.
+type s3Source struct {
+	name   string
+	bucket string
+	prefix string
+
+	kind     apitype.PluginKind
+	s3Client *s3.Client
+}
+
+// Creates a new s3 source
+func newS3Source(url *url.URL, name string, kind apitype.PluginKind) (*s3Source, error) {
+	contract.Requiref(url.Scheme == "s3", "url", `scheme must be "s3", was %q`, url.Scheme)
+
+	bucket := url.Host
+	prefix := strings.Trim(url.Path, "/")
+
+	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("cannot load AWS SDK config: %w", err)
+	}
+
+	return &s3Source{
+		name:   name,
+		bucket: bucket,
+		prefix: prefix,
+
+		kind:     kind,
+		s3Client: s3.NewFromConfig(sdkConfig),
+	}, nil
+}
+
+func (source *s3Source) GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	objectKey := source.objectKeyWithPrefix("latest")
+
+	latest_response, err := source.s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(source.bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cannot get object %v:%v: %w", source.bucket, objectKey, err)
+	}
+
+	defer latest_response.Body.Close()
+	latest_version, err := ioutil.ReadAll(latest_response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read object %v:%v: %w", source.bucket, objectKey, err)
+	}
+
+	version, err := semver.Parse(strings.TrimSpace(string(latest_version)))
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse version %v: %w", string(latest_version), err)
+	}
+
+	return &version, nil
+}
+
+func (source *s3Source) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
+	objectKey := source.objectKeyWithPrefix(assetName)
+	asset_response, err := source.s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(source.bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return nil, -1, fmt.Errorf("cannot get object %v:%v: %w", source.bucket, objectKey, err)
+	}
+
+	return asset_response.Body, *asset_response.ContentLength, nil
+}
+
+func (source *s3Source) URL() string {
+	return fmt.Sprintf("s3://%s/%s/", source.bucket, source.prefix)
+}
+
+func (source *s3Source) objectKeyWithPrefix(key string) string {
+	if source.prefix != "" {
+		return fmt.Sprintf("%s/%s", source.prefix, key)
+	}
+	return key
 }
 
 // githubSource can download a plugin from github releases
@@ -963,6 +1052,8 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 		return newGitlabSource(url, name, kind)
 	case "http", "https":
 		return newHTTPSource(name, kind, url), nil
+	case "s3":
+		return newS3Source(url, name, kind)
 	default:
 		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}
