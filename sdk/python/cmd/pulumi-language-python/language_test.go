@@ -240,9 +240,6 @@ func TestLanguage(t *testing.T) {
 		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
 			tt := tt
-			if tt != "l2-parameterized-resource" {
-				continue
-			}
 
 			t.Run(tt, func(t *testing.T) {
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{

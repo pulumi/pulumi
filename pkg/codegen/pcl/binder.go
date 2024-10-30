@@ -17,6 +17,7 @@ package pcl
 import (
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -454,6 +455,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	return diagnostics, nil
 }
 
+// evaluateLiteralExpr evaluates a syntax expression to a string if it is a literal string expression.
 func evaluateLiteralExpr(expr hclsyntax.Expression) (string, error) {
 	switch expr := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
@@ -566,6 +568,10 @@ func readParameterizationDescriptor(
 //	  }
 //	}
 //
+// Notes:
+//   - parameterization block is optional.
+//   - the value of the parameterization is base64-encoded string because we want to specify binary data in PCL form
+//
 // These package descriptors allow the binder loader to load package schema information from a package source.
 func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescriptor, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
@@ -621,35 +627,19 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 						}
 						packageDescriptor.Version = &parsedVersion
 					case "baseProviderDownloadUrl":
-						downloadURL, err := evaluateLiteralExpr(attribute.Expr)
+						downloadURLValue, err := evaluateLiteralExpr(attribute.Expr)
 						if err != nil {
 							diagnostics = append(diagnostics,
 								errorf(attribute.Range(), "invalid download URL for %q: %v", packageName, err))
 							continue
 						}
-						packageDescriptor.DownloadURL = downloadURL
-					case "parameterization":
-						// expect an object expression
-						switch parameterizationAttr := attribute.Expr.(type) {
-						case *hclsyntax.ObjectConsExpr:
-							attributes := map[string]hclsyntax.Expression{}
-							for _, item := range parameterizationAttr.Items {
-								key, err := evaluateLiteralExpr(item.KeyExpr)
-								if err != nil {
-									diagnostics = append(diagnostics,
-										errorf(item.KeyExpr.Range(), "invalid key for parameterization of %q: %v", packageName, err))
-									continue
-								}
-								attributes[key] = item.ValueExpr
-							}
-							descriptor, diag := readParameterizationDescriptor(packageName, attributes)
-							if diag != nil {
-								diagnostics = append(diagnostics, diag)
-								continue
-							}
 
-							packageDescriptor.Parameterization = descriptor
+						if _, err := url.ParseRequestURI(downloadURLValue); err != nil {
+							diagnostics = append(diagnostics,
+								errorf(attribute.Range(), "invalid download URL for %q: %v", packageName, err))
+							continue
 						}
+						packageDescriptor.DownloadURL = downloadURLValue
 					}
 				}
 				for _, block := range node.Body.Blocks {

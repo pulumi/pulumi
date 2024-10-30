@@ -1272,7 +1272,7 @@ var languageTests = map[string]languageTest{
 					require.Equal(l,
 						resource.NewStringProperty("HelloWorld"),
 						stack.Outputs["parameterValue"],
-						"expected large string stack output")
+						"parameter value should be correct")
 				},
 			},
 		},
