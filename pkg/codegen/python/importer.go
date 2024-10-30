@@ -65,6 +65,16 @@ type PackageInfo struct {
 	// - "classes": Args classes only
 	// - "classes-and-dicts" (default): TypedDicts side-by-side with Args classes.
 	InputTypes string `json:"inputTypes,omitempty"`
+
+	// Do not apply JSON encoding to provider configuration properties.
+	//
+	// Historically used JSON encoding to pass complex data to the provider as strings, and the Python SDK was
+	// responsible for performing this encoding. This is no longer necessary for newer providers, and setting this
+	// flag to true will generate Python SDKs that pass the complex configuration data directly.
+	//
+	// This flag only affects properties of type other than string, that is boolean, numeric or object-typed
+	// properties with nested sub-properties.
+	DoNotJSONEncodeProviderConfiguration bool `json:"doNotJSONEncodeProviderConfiguration,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
