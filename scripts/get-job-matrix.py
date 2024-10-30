@@ -117,6 +117,10 @@ MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
 ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 
+# When updating the minumum and current versions, consider also updating the
+# versions in the the pulumi-docker-containers repo by updating the file
+# https://github.com/pulumi/pulumi-docker-containers/blob/main/.github/scripts/matrix/versions.py
+
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
@@ -131,7 +135,7 @@ CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
     "go": "1.23.x",
-    "nodejs": "22.x",
+    "nodejs": "23.x",
     "python": "3.13.x",
 }
 
