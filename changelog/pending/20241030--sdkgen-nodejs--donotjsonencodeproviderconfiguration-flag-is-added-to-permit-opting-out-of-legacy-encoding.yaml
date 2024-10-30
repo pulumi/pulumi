@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/nodejs
+  description: DoNotJSONEncodeProviderConfiguration flag is added to permit opting out of legacy encoding.
