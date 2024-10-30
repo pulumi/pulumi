@@ -47,7 +47,7 @@ export interface ListStorageAccountKeysResult {
  * The response from the ListKeys operation.
  * API Version: 2021-02-01.
  */
-export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
+export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<ListStorageAccountKeysResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::listStorageAccountKeys", {
         "accountName": args.accountName,

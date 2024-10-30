@@ -1259,7 +1259,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
 	}
 
-	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): %s {\n", returnType)
+	invokeOptionsType := "pulumi.InvokeOptions"
+	if !plain {
+		invokeOptionsType = "pulumi.InvokeOptionsOutput"
+	}
+	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}

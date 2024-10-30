@@ -28,7 +28,7 @@ export interface AbsResult {
  * Returns the absolute value of a given float.
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
-export function absOutput(args: AbsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<AbsResult> {
+export function absOutput(args: AbsOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<AbsResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("std:index:Abs", {
         "a": args.a,

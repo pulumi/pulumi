@@ -57,7 +57,7 @@ export interface ListProductFamiliesResult {
  * The list of product families.
  * API Version: 2020-12-01-preview.
  */
-export function listProductFamiliesOutput(args: ListProductFamiliesOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListProductFamiliesResult> {
+export function listProductFamiliesOutput(args: ListProductFamiliesOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<ListProductFamiliesResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("myedgeorder::listProductFamilies", {
         "customerSubscriptionDetails": args.customerSubscriptionDetails,

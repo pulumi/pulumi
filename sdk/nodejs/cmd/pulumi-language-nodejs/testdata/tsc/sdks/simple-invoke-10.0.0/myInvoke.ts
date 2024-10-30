@@ -18,7 +18,7 @@ export interface MyInvokeArgs {
 export interface MyInvokeResult {
     readonly result: string;
 }
-export function myInvokeOutput(args: MyInvokeOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<MyInvokeResult> {
+export function myInvokeOutput(args: MyInvokeOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<MyInvokeResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("simple-invoke:index:myInvoke", {
         "value": args.value,

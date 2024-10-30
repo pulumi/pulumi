@@ -52,7 +52,7 @@ export interface ListConfigurationsResult {
  * The list of configurations.
  * API Version: 2020-12-01-preview.
  */
-export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListConfigurationsResult> {
+export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<ListConfigurationsResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("myedgeorder::listConfigurations", {
         "configurationFilters": args.configurationFilters,
