@@ -1,5 +1,5 @@
 # Cover interesting schema shapes.
-resource "config_grpc_provider" "pulumi:providers:config-grpc" {
+resource "config_grpc_provider" "pulumi:providers:config-grpc-no-jsonenc" {
 
     string1 = ""
     string2 = "x"
@@ -38,7 +38,7 @@ resource "config_grpc_provider" "pulumi:providers:config-grpc" {
     }
 }
 
-resource "config" "config-grpc:index:ConfigFetcher" {
+resource "config" "config-grpc-no-jsonenc:index:ConfigFetcher" {
   options {
     provider = config_grpc_provider
   }

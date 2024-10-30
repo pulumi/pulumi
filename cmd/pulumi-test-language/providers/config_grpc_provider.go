@@ -51,6 +51,10 @@ type ConfigGrpcProvider struct {
 	plugin.UnimplementedProvider
 	lastCheckConfigRequest RPCRequest
 	lastConfigureRequest   RPCRequest
+
+	// Do not apply legacy JSON encoding to provider configuration. This flag propagates to all the affected
+	// languages to configure their SDK generators accordingly.
+	DoNotJSONEncodeProviderConfiguration bool
 }
 
 var (
@@ -58,7 +62,10 @@ var (
 	_ ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
 )
 
-func (*ConfigGrpcProvider) Pkg() tokens.Package {
+func (p *ConfigGrpcProvider) Pkg() tokens.Package {
+	if p.DoNotJSONEncodeProviderConfiguration {
+		return "config-grpc-no-jsonenc"
+	}
 	return "config-grpc"
 }
 
@@ -159,6 +166,34 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		Variables: p.generateSchema(types, 1, 3),
 	}
 
+	languageConfig := map[string]any{
+		"nodejs": map[string]any{"respectSchemaVersion": true},
+	}
+
+	if p.DoNotJSONEncodeProviderConfiguration {
+		languageConfig = map[string]any{
+			"nodejs": map[string]any{
+				"respectSchemaVersion":                 true,
+				"doNotJSONEncodeProviderConfiguration": true,
+			},
+			"python": map[string]any{
+				"respectSchemaVersion":                 true,
+				"doNotJSONEncodeProviderConfiguration": true,
+			},
+			"dotnet": map[string]any{
+				"respectSchemaVersion":                 true,
+				"doNotJSONEncodeProviderConfiguration": true,
+			},
+		}
+	}
+
+	marshalledLanguageConfig := map[string]pschema.RawMessage{}
+	for k, v := range languageConfig {
+		raw, err := json.Marshal(v)
+		contract.AssertNoErrorf(err, "json.Marshal failed unexpectedly")
+		marshalledLanguageConfig[k] = raw
+	}
+
 	schema := pschema.PackageSpec{
 		Name:    string(p.Pkg()),
 		Version: p.version(),
@@ -183,9 +218,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 			},
 		},
 		Functions: map[string]pschema.FunctionSpec{},
-		Language: map[string]pschema.RawMessage{
-			"nodejs": []byte(`{"respectSchemaVersion": true}`),
-		},
+		Language:  marshalledLanguageConfig,
 	}
 
 	toSecretSchema := p.generateSchema(types, 1, 3)
