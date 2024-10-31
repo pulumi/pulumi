@@ -53,3 +53,16 @@ on them. The strategy we employ is thus as follows:
   the operation completes successfully or not. If an invalid snapshot is
   produced, the test fails and the reproducing combination of snapshot, program,
   providers and plan is returned for debugging.
+
+In the event that a failing test case is found, the reproducing fixture will be
+pretty printed to the screen and code for a reproducing test case will be
+written to a file to aid in debugging. See
+[fixture.go](gh-file:pulumi#pkg/engine/lifecycletest/fuzzing/fixture.go) and
+[reprogen.go](gh-file:pulumi#pkg/engine/lifecycletest/fuzzing/reprogen.go) for
+more details.
+
+:::{note}
+By default, reproduction test files will be written to a temporary directory. A
+specific directory can be configured using the
+`PULUMI_LIFECYCLE_TEST_FUZZING_REPRO_DIR` environment variable.
+:::
