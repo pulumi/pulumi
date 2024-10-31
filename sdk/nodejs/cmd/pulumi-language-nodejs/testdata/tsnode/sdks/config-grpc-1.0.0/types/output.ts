@@ -41,6 +41,54 @@ export interface Tnum3 {
     x?: number;
 }
 
+export interface TsecretBool1 {
+    secretX?: boolean;
+}
+
+export interface TsecretBool2 {
+    secretX?: boolean;
+}
+
+export interface TsecretBool3 {
+    secretX?: boolean;
+}
+
+export interface TsecretInt1 {
+    secretX?: number;
+}
+
+export interface TsecretInt2 {
+    secretX?: number;
+}
+
+export interface TsecretInt3 {
+    secretX?: number;
+}
+
+export interface TsecretNum1 {
+    secretX?: number;
+}
+
+export interface TsecretNum2 {
+    secretX?: number;
+}
+
+export interface TsecretNum3 {
+    secretX?: number;
+}
+
+export interface TsecretString1 {
+    secretX?: string;
+}
+
+export interface TsecretString2 {
+    secretX?: string;
+}
+
+export interface TsecretString3 {
+    secretX?: string;
+}
+
 export interface Tstring1 {
     x?: string;
 }

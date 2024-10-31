@@ -129,6 +129,102 @@ Object.defineProperty(exports, "listNum3", {
     enumerable: true,
 });
 
+export declare const listSecretBool1: boolean[] | undefined;
+Object.defineProperty(exports, "listSecretBool1", {
+    get() {
+        return __config.getObject<boolean[]>("listSecretBool1");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretBool2: boolean[] | undefined;
+Object.defineProperty(exports, "listSecretBool2", {
+    get() {
+        return __config.getObject<boolean[]>("listSecretBool2");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretBool3: boolean[] | undefined;
+Object.defineProperty(exports, "listSecretBool3", {
+    get() {
+        return __config.getObject<boolean[]>("listSecretBool3");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretInt1: number[] | undefined;
+Object.defineProperty(exports, "listSecretInt1", {
+    get() {
+        return __config.getObject<number[]>("listSecretInt1");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretInt2: number[] | undefined;
+Object.defineProperty(exports, "listSecretInt2", {
+    get() {
+        return __config.getObject<number[]>("listSecretInt2");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretInt3: number[] | undefined;
+Object.defineProperty(exports, "listSecretInt3", {
+    get() {
+        return __config.getObject<number[]>("listSecretInt3");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretNum1: number[] | undefined;
+Object.defineProperty(exports, "listSecretNum1", {
+    get() {
+        return __config.getObject<number[]>("listSecretNum1");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretNum2: number[] | undefined;
+Object.defineProperty(exports, "listSecretNum2", {
+    get() {
+        return __config.getObject<number[]>("listSecretNum2");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretNum3: number[] | undefined;
+Object.defineProperty(exports, "listSecretNum3", {
+    get() {
+        return __config.getObject<number[]>("listSecretNum3");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretString1: string[] | undefined;
+Object.defineProperty(exports, "listSecretString1", {
+    get() {
+        return __config.getObject<string[]>("listSecretString1");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretString2: string[] | undefined;
+Object.defineProperty(exports, "listSecretString2", {
+    get() {
+        return __config.getObject<string[]>("listSecretString2");
+    },
+    enumerable: true,
+});
+
+export declare const listSecretString3: string[] | undefined;
+Object.defineProperty(exports, "listSecretString3", {
+    get() {
+        return __config.getObject<string[]>("listSecretString3");
+    },
+    enumerable: true,
+});
+
 export declare const listString1: string[] | undefined;
 Object.defineProperty(exports, "listString1", {
     get() {
@@ -221,6 +317,102 @@ export declare const mapNum3: {[key: string]: number} | undefined;
 Object.defineProperty(exports, "mapNum3", {
     get() {
         return __config.getObject<{[key: string]: number}>("mapNum3");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretBool1: {[key: string]: boolean} | undefined;
+Object.defineProperty(exports, "mapSecretBool1", {
+    get() {
+        return __config.getObject<{[key: string]: boolean}>("mapSecretBool1");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretBool2: {[key: string]: boolean} | undefined;
+Object.defineProperty(exports, "mapSecretBool2", {
+    get() {
+        return __config.getObject<{[key: string]: boolean}>("mapSecretBool2");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretBool3: {[key: string]: boolean} | undefined;
+Object.defineProperty(exports, "mapSecretBool3", {
+    get() {
+        return __config.getObject<{[key: string]: boolean}>("mapSecretBool3");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretInt1: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretInt1", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretInt1");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretInt2: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretInt2", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretInt2");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretInt3: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretInt3", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretInt3");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretNum1: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretNum1", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretNum1");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretNum2: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretNum2", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretNum2");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretNum3: {[key: string]: number} | undefined;
+Object.defineProperty(exports, "mapSecretNum3", {
+    get() {
+        return __config.getObject<{[key: string]: number}>("mapSecretNum3");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretString1: {[key: string]: string} | undefined;
+Object.defineProperty(exports, "mapSecretString1", {
+    get() {
+        return __config.getObject<{[key: string]: string}>("mapSecretString1");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretString2: {[key: string]: string} | undefined;
+Object.defineProperty(exports, "mapSecretString2", {
+    get() {
+        return __config.getObject<{[key: string]: string}>("mapSecretString2");
+    },
+    enumerable: true,
+});
+
+export declare const mapSecretString3: {[key: string]: string} | undefined;
+Object.defineProperty(exports, "mapSecretString3", {
+    get() {
+        return __config.getObject<{[key: string]: string}>("mapSecretString3");
     },
     enumerable: true,
 });
@@ -345,6 +537,102 @@ Object.defineProperty(exports, "objNum3", {
     enumerable: true,
 });
 
+export declare const objSecretBool1: outputs.TsecretBool1 | undefined;
+Object.defineProperty(exports, "objSecretBool1", {
+    get() {
+        return __config.getObject<outputs.TsecretBool1>("objSecretBool1");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretBool2: outputs.TsecretBool2 | undefined;
+Object.defineProperty(exports, "objSecretBool2", {
+    get() {
+        return __config.getObject<outputs.TsecretBool2>("objSecretBool2");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretBool3: outputs.TsecretBool3 | undefined;
+Object.defineProperty(exports, "objSecretBool3", {
+    get() {
+        return __config.getObject<outputs.TsecretBool3>("objSecretBool3");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretInt1: outputs.TsecretInt1 | undefined;
+Object.defineProperty(exports, "objSecretInt1", {
+    get() {
+        return __config.getObject<outputs.TsecretInt1>("objSecretInt1");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretInt2: outputs.TsecretInt2 | undefined;
+Object.defineProperty(exports, "objSecretInt2", {
+    get() {
+        return __config.getObject<outputs.TsecretInt2>("objSecretInt2");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretInt3: outputs.TsecretInt3 | undefined;
+Object.defineProperty(exports, "objSecretInt3", {
+    get() {
+        return __config.getObject<outputs.TsecretInt3>("objSecretInt3");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretNum1: outputs.TsecretNum1 | undefined;
+Object.defineProperty(exports, "objSecretNum1", {
+    get() {
+        return __config.getObject<outputs.TsecretNum1>("objSecretNum1");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretNum2: outputs.TsecretNum2 | undefined;
+Object.defineProperty(exports, "objSecretNum2", {
+    get() {
+        return __config.getObject<outputs.TsecretNum2>("objSecretNum2");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretNum3: outputs.TsecretNum3 | undefined;
+Object.defineProperty(exports, "objSecretNum3", {
+    get() {
+        return __config.getObject<outputs.TsecretNum3>("objSecretNum3");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretString1: outputs.TsecretString1 | undefined;
+Object.defineProperty(exports, "objSecretString1", {
+    get() {
+        return __config.getObject<outputs.TsecretString1>("objSecretString1");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretString2: outputs.TsecretString2 | undefined;
+Object.defineProperty(exports, "objSecretString2", {
+    get() {
+        return __config.getObject<outputs.TsecretString2>("objSecretString2");
+    },
+    enumerable: true,
+});
+
+export declare const objSecretString3: outputs.TsecretString3 | undefined;
+Object.defineProperty(exports, "objSecretString3", {
+    get() {
+        return __config.getObject<outputs.TsecretString3>("objSecretString3");
+    },
+    enumerable: true,
+});
+
 export declare const objString1: outputs.Tstring1 | undefined;
 Object.defineProperty(exports, "objString1", {
     get() {
@@ -365,6 +653,102 @@ export declare const objString3: outputs.Tstring3 | undefined;
 Object.defineProperty(exports, "objString3", {
     get() {
         return __config.getObject<outputs.Tstring3>("objString3");
+    },
+    enumerable: true,
+});
+
+export declare const secretBool1: boolean | undefined;
+Object.defineProperty(exports, "secretBool1", {
+    get() {
+        return __config.getObject<boolean>("secretBool1");
+    },
+    enumerable: true,
+});
+
+export declare const secretBool2: boolean | undefined;
+Object.defineProperty(exports, "secretBool2", {
+    get() {
+        return __config.getObject<boolean>("secretBool2");
+    },
+    enumerable: true,
+});
+
+export declare const secretBool3: boolean | undefined;
+Object.defineProperty(exports, "secretBool3", {
+    get() {
+        return __config.getObject<boolean>("secretBool3");
+    },
+    enumerable: true,
+});
+
+export declare const secretInt1: number | undefined;
+Object.defineProperty(exports, "secretInt1", {
+    get() {
+        return __config.getObject<number>("secretInt1");
+    },
+    enumerable: true,
+});
+
+export declare const secretInt2: number | undefined;
+Object.defineProperty(exports, "secretInt2", {
+    get() {
+        return __config.getObject<number>("secretInt2");
+    },
+    enumerable: true,
+});
+
+export declare const secretInt3: number | undefined;
+Object.defineProperty(exports, "secretInt3", {
+    get() {
+        return __config.getObject<number>("secretInt3");
+    },
+    enumerable: true,
+});
+
+export declare const secretNum1: number | undefined;
+Object.defineProperty(exports, "secretNum1", {
+    get() {
+        return __config.getObject<number>("secretNum1");
+    },
+    enumerable: true,
+});
+
+export declare const secretNum2: number | undefined;
+Object.defineProperty(exports, "secretNum2", {
+    get() {
+        return __config.getObject<number>("secretNum2");
+    },
+    enumerable: true,
+});
+
+export declare const secretNum3: number | undefined;
+Object.defineProperty(exports, "secretNum3", {
+    get() {
+        return __config.getObject<number>("secretNum3");
+    },
+    enumerable: true,
+});
+
+export declare const secretString1: string | undefined;
+Object.defineProperty(exports, "secretString1", {
+    get() {
+        return __config.get("secretString1");
+    },
+    enumerable: true,
+});
+
+export declare const secretString2: string | undefined;
+Object.defineProperty(exports, "secretString2", {
+    get() {
+        return __config.get("secretString2");
+    },
+    enumerable: true,
+});
+
+export declare const secretString3: string | undefined;
+Object.defineProperty(exports, "secretString3", {
+    get() {
+        return __config.get("secretString3");
     },
     enumerable: true,
 });

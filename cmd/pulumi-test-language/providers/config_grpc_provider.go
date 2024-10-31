@@ -73,7 +73,12 @@ func (p *ConfigGrpcProvider) generateSchema(
 ) map[string]pschema.PropertySpec {
 	spec := map[string]pschema.PropertySpec{}
 	for n := minN; n <= maxN; n++ {
-		p.populateSchema(types, n, spec)
+		prefix := "secret"
+		markPropertiesAsSecret := true
+		p.populateSchema(types, n, spec, prefix, markPropertiesAsSecret)
+		prefix = ""
+		markPropertiesAsSecret = false
+		p.populateSchema(types, n, spec, prefix, markPropertiesAsSecret)
 	}
 	return spec
 }
@@ -82,44 +87,66 @@ func (p *ConfigGrpcProvider) populateSchema(
 	types map[string]pschema.ComplexTypeSpec,
 	n int,
 	spec map[string]pschema.PropertySpec,
+	prefix string,
+	markPropertiesAsSecret bool,
 ) {
+	titleCase := func(s string) string {
+		return strings.ToUpper(s[0:1]) + s[1:]
+	}
+
+	withPrefix := func(prefix, s string) string {
+		if prefix == "" {
+			return s
+		}
+		return prefix + titleCase(s)
+	}
+
 	for name, t := range map[string]string{
-		"string": "string",
-		"bool":   "boolean",
-		"int":    "integer",
-		"num":    "number",
+		withPrefix(prefix, "string"): "string",
+		withPrefix(prefix, "bool"):   "boolean",
+		withPrefix(prefix, "int"):    "integer",
+		withPrefix(prefix, "num"):    "number",
 	} {
 		ts := pschema.TypeSpec{Type: t}
 		c := name
 		if n != 0 {
 			c = fmt.Sprintf("%s%d", c, n)
 		}
-		cUpper := strings.ToUpper(c[0:1]) + c[1:]
-		spec[c] = pschema.PropertySpec{TypeSpec: ts}
-		spec["list"+cUpper] = pschema.PropertySpec{
+
+		spec[c] = pschema.PropertySpec{
+			TypeSpec: ts,
+			Secret:   markPropertiesAsSecret,
+		}
+		spec[withPrefix("list", c)] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Type:  "array",
 				Items: &ts,
 			},
+			Secret: markPropertiesAsSecret,
 		}
-		spec["map"+cUpper] = pschema.PropertySpec{
+		spec[withPrefix("map", c)] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Type:                 "object",
 				AdditionalProperties: &ts,
 			},
+			Secret: markPropertiesAsSecret,
 		}
 		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
 		typeRef := "#/types/" + typeToken
-		spec["obj"+cUpper] = pschema.PropertySpec{
+		spec[withPrefix("obj", c)] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
 				Ref: typeRef,
 			},
+			Secret: markPropertiesAsSecret,
 		}
 		types[typeToken] = pschema.ComplexTypeSpec{
 			ObjectTypeSpec: pschema.ObjectTypeSpec{
 				Type: "object",
 				Properties: map[string]pschema.PropertySpec{
-					"x": {TypeSpec: ts},
+					withPrefix(prefix, "x"): {
+						TypeSpec: ts,
+						Secret:   markPropertiesAsSecret,
+					},
 				},
 			},
 		}
