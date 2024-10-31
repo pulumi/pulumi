@@ -1480,11 +1480,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 
+		handledSecret := false
+
+		// Legacy provider handling.
+		//
 		// If this resource is a provider then, regardless of the schema of the underlying provider
 		// type, we must project all properties as strings. For all properties that are not strings,
 		// we'll marshal them to JSON and use the JSON string as a string input.
-		handledSecret := false
-		if res.IsProvider && !isStringType(prop.Type) {
+		if res.IsProvider && !isStringType(prop.Type) && !mod.getPackageInfo().DoNotJSONEncodeProviderConfiguration {
 			if prop.Secret {
 				arg = fmt.Sprintf("pulumi.Output.secret(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 				handledSecret = true
@@ -1492,6 +1495,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 				arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 			}
 		}
+
 		name := PyName(prop.Name)
 		if prop.Secret && !handledSecret {
 			fmt.Fprintf(w, "            __props__.__dict__[%[1]q] = None if %[2]s is None else pulumi.Output.secret(%[2]s)\n", name, arg)
@@ -2893,6 +2897,23 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	fmt.Fprintf(w, "\n")
 	return nil
+}
+
+// Gets the Python-specific settings (PackageInfo) associated with the current module being generated. Note that foreign
+// type references may have different package definitions associated with them. If none are found, returns the default
+// empty settings.
+func (mod *modContext) getPackageInfo() PackageInfo {
+	pkg := mod.pkg
+	p, err := pkg.Definition()
+	contract.AssertNoErrorf(err, "error loading definition for package %q", pkg.Name())
+	contract.AssertNoErrorf(p.ImportLanguages(map[string]schema.Language{"python": Importer}),
+		"error importing python language plugin for package %q", pkg.Name())
+	if v, ok := p.Language["python"]; ok {
+		if vv, ok := v.(PackageInfo); ok {
+			return vv
+		}
+	}
+	return PackageInfo{}
 }
 
 func getPrimitiveValue(value interface{}) (string, error) {

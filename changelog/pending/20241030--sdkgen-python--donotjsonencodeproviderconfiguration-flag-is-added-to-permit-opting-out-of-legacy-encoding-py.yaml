@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: DoNotJSONEncodeProviderConfiguration flag is added to permit opting out of legacy encoding.
