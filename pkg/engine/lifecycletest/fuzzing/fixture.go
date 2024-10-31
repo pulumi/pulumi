@@ -15,6 +15,10 @@
 package fuzzing
 
 import (
+	"fmt"
+	"os"
+	"regexp"
+
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -81,20 +85,39 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		project := p.GetProject()
 
 		failWithSIE := func(err error) {
+			// Try to generate code for a reproducing test. If we fail, we'll still report the snapshot integrity error and
+			// just inform the user that we couldn't write a reproduction for some reason.
+			reproTest := GenerateReproTest(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+			reproFile, reproErr := writeReproTest(reproTest)
+
+			var reproMessage string
+			if reproErr != nil {
+				reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+			} else {
+				reproMessage = "Reproduction test case was written to " + reproFile
+			}
+
+			// To aid in debugging further, we'll color any URNs in the snapshot integrity error message using a regular
+			// expression. This is probably not perfect, but in practice it's really helpful.
+			coloredErr := urnPattern.ReplaceAllStringFunc(err.Error(), Colored)
+
 			assert.Failf(
 				t,
 				"Encountered a snapshot integrity error",
-				`Error: %v
+				`Error: %s
 %s
 %s
 %s
 %s
-`,
-				err,
+
+%s
+	`,
+				coloredErr,
 				snapSpec.Pretty(""),
 				progSpec.Pretty(""),
 				provSpec.Pretty(""),
 				planSpec.Pretty(""),
+				reproMessage,
 			)
 		}
 
@@ -115,4 +138,38 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
 		assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
 	}
+}
+
+// A regular expression pattern for matching URNs in error messages without slurping characters that might appear after
+// them such as commas, periods, or quotation marks.
+var urnPattern = regexp.MustCompile(`urn:pulumi:[^:]+::[^:]+::[^\s,.'"]+`)
+
+// writeReproTest writes the given string to a file in the directory specified by
+// PULUMI_LIFECYCLE_TEST_FUZZING_REPRO_DIR (which will be created if it does not exist), or to a temporary directory if
+// that environment variable is not set. Returns the path to the file written, or an error if one occurred at any point
+// during directory creation or the write.
+func writeReproTest(reproTest string) (string, error) {
+	reproDir := os.Getenv("PULUMI_LIFECYCLE_TEST_FUZZING_REPRO_DIR")
+	if reproDir != "" {
+		mkdirErr := os.MkdirAll(reproDir, 0o700)
+		if mkdirErr != nil {
+			return "", mkdirErr
+		}
+	}
+
+	reproFile, reproFileErr := os.CreateTemp(reproDir, "fuzzing_repro_test_*.go")
+	if reproFileErr != nil {
+		return "", reproFileErr
+	}
+
+	n, writeErr := reproFile.WriteString(reproTest)
+	if writeErr != nil {
+		return "", writeErr
+	}
+
+	if n != len(reproTest) {
+		return "", fmt.Errorf("wrote %d bytes to %s, expected %d", n, reproFile.Name(), len(reproTest))
+	}
+
+	return reproFile.Name(), nil
 }
