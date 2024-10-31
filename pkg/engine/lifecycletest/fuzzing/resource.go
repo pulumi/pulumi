@@ -42,9 +42,11 @@ type ResourceSpec struct {
 	PendingReplacement   bool
 	RetainOnDelete       bool
 	Provider             string
+	Parent               resource.URN
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
 	// and identifying the causes of snapshot integrity issues.
@@ -67,13 +69,19 @@ func AddTag[T ~string](r *ResourceSpec, tag T) {
 
 // URN returns the URN of this ResourceSpec.
 func (r *ResourceSpec) URN() resource.URN {
-	return resource.NewURN(r.Stack, r.Project, "", r.Type, r.Name)
+	var parentType tokens.Type
+	if r.Parent != "" {
+		parentType = r.Parent.Type()
+	}
+
+	return resource.NewURN(r.Stack, r.Project, parentType, r.Type, r.Name)
 }
 
 // Copy returns a deep copy of this ResourceSpec.
 func (r *ResourceSpec) Copy() *ResourceSpec {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
+	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 	tags := copystructure.Must(copystructure.Copy(r.Tags)).(map[string]bool)
 
 	return &ResourceSpec{
@@ -87,10 +95,12 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 		Protect:              r.Protect,
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
+		Parent:               r.Parent,
 		Provider:             r.Provider,
 		Dependencies:         deps,
 		PropertyDependencies: propDeps,
 		DeletedWith:          r.DeletedWith,
+		Aliases:              aliases,
 		Tags:                 tags,
 	}
 }
@@ -99,6 +109,7 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 func (r *ResourceSpec) AsResource() *resource.State {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
+	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
 	tags := maps.Keys(r.Tags)
 	slices.Sort(tags)
@@ -113,9 +124,11 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
+		Parent:               r.Parent,
 		Dependencies:         deps,
 		PropertyDependencies: propDeps,
 		DeletedWith:          r.DeletedWith,
+		Aliases:              aliases,
 		SourcePosition:       strings.Join(tags, ", "),
 	}
 
@@ -178,6 +191,11 @@ func (r *ResourceSpec) Pretty(indent string) string {
 		}
 	}
 
+	var parent string
+	if r.Parent != "" {
+		parent = fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent))
+	}
+
 	var deps string
 	if len(r.Dependencies) > 0 {
 		deps = fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies))
@@ -202,10 +220,18 @@ func (r *ResourceSpec) Pretty(indent string) string {
 		deletedWith = fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith))
 	}
 
+	var aliases string
+	if len(r.Aliases) > 0 {
+		aliases = fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases))
+		for _, a := range r.Aliases {
+			aliases += fmt.Sprintf("\n%s    %s", indent, Colored(a))
+		}
+	}
+
 	rendered := fmt.Sprintf(`%[1]s%[2]s [%[3]s%[4]s%[5]s]%[6]s
 %[1]s  Protect:             %[7]v
 %[1]s  Pending replacement: %[8]v
-%[1]s  Retain on delete:    %[9]v%[10]s%[11]s%[12]s%[13]s`,
+%[1]s  Retain on delete:    %[9]v%[10]s%[11]s%[12]s%[13]s%[14]s%[15]s`,
 		indent,
 
 		Colored(r.URN()),
@@ -220,9 +246,11 @@ func (r *ResourceSpec) Pretty(indent string) string {
 		r.RetainOnDelete,
 
 		provider,
+		parent,
 		deps,
 		propDeps,
 		deletedWith,
+		aliases,
 	)
 
 	return rendered
@@ -251,7 +279,7 @@ var GeneratedProviderType = rapid.Custom(func(t *rapid.T) tokens.Type {
 //
 //	GeneratedResourceName.Draw(t, "ResourceName") = "res-<random>"
 var GeneratedResourceName = rapid.Custom(func(t *rapid.T) string {
-	name := rapid.StringMatching("^res-[a-z][A-Za-z0-9]{11}$").Draw(t, "ResourceName")
+	name := rapid.StringMatching("^res-[a-z][A-Za-z0-9]{3}$").Draw(t, "ResourceName")
 	return name
 })
 
@@ -325,6 +353,8 @@ func GeneratedProviderResourceSpec(
 			Dependencies:         []resource.URN{},
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 
+			Aliases: []resource.URN{},
+
 			Tags: map[string]bool{},
 		}
 
@@ -366,6 +396,8 @@ func GeneratedResourceSpec(
 			Provider:             fmt.Sprintf("%s::%s", provider.URN(), provider.ID),
 			Dependencies:         []resource.URN{},
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
+
+			Aliases: []resource.URN{},
 
 			Tags: map[string]bool{},
 		}
