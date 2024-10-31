@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"math"
@@ -28,9 +29,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
@@ -892,6 +895,13 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{}", v["config-grpc:config:objString1"], "objString1")
 					assert.JSONEq(l, "{\"x\":\"x-value\"}", v["config-grpc:config:objString2"], "objString2")
 					assert.JSONEq(l, "{\"x\":42}", v["config-grpc:config:objInt1"], "objInt1")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
 				},
 			},
 		},
@@ -980,6 +990,13 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "[\"VALUE\",\"SECRET\"]", v["config-grpc:config:listString2"], "listString2")
 					assert.JSONEq(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["config-grpc:config:mapString2"], "mapString2")
 					assert.JSONEq(l, "{\"x\":\"SECRET\"}", v["config-grpc:config:objString2"], "objString2")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
 				},
 			},
 		},
@@ -1070,6 +1087,13 @@ var languageTests = map[string]languageTest{
 					// 	r.Args.Fields["objSecretString1"].AsInterface(), "objSecretString1")
 					// assert.JSONEq(l, `{"secretX":"SECRET"}`,
 					// 	v["config-grpc:config:objectSecretString1"], "objSecretString1")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
 				},
 			},
 		},
@@ -1560,5 +1584,40 @@ func secret(x any) any {
 	return map[string]any{
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		"value":                            x,
+	}
+}
+
+type assertNoSecretLeaksOpts struct {
+	IgnoreResourceTypes []tokens.Type
+	Secrets             []string
+}
+
+func (opts *assertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
+	for _, t := range opts.IgnoreResourceTypes {
+		if ty == t {
+			return true
+		}
+	}
+	return false
+}
+
+func assertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts assertNoSecretLeaksOpts) {
+	// Remove states for resources with types in opts.IgnoreResourceTypes from the snap to exclude these states from
+	// the secret leak checks.
+	var filteredResourceStates []*resource.State
+	for _, r := range snap.Resources {
+		if !opts.isIgnored(r.Type) {
+			filteredResourceStates = append(filteredResourceStates, r)
+		}
+	}
+	snap.Resources = filteredResourceStates
+
+	// Ensure that secrets do not leak to the state.
+	deployment, err := stack.SerializeDeployment(context.Background(), snap, false /*showSecrets*/)
+	require.NoError(l, err)
+	bytes, err := json.MarshalIndent(deployment, "", "  ")
+	require.NoError(l, err)
+	for _, s := range opts.Secrets {
+		require.NotContainsf(l, string(bytes), s, "Detected a secret leak in state: %s", s)
 	}
 }
