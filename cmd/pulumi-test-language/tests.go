@@ -998,8 +998,9 @@ var languageTests = map[string]languageTest{
 					// Verify the CheckConfig request received by the provider.
 					r := g.CheckConfigReq("config")
 
-					// CheckConfig request gets the secrets in the plain. This is suspect, probably
-					// has to do with secret negotiation happening later in the gRPC provider cycle.
+					// TODO[pulumi/pulumi#16876]: CheckConfig request gets the secrets in the plain.
+					// This is suspect, probably has to do with secret negotiation happening later
+					// in the gRPC provider cycle.
 					assert.Equal(l, "SECRET",
 						r.News.Fields["secretString1"].AsInterface(), "secretString1")
 
@@ -1017,14 +1018,6 @@ var languageTests = map[string]languageTest{
 
 					assertEqualOrJSONEncoded(l, map[string]any{"key1": "SECRET", "key2": "SECRET2"},
 						r.News.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
-
-					// TODO Languages do not agree on the object property casing sent to CheckConfig.
-					//
-					// Node and Go send "secretX".
-					// Python sends "secret_x" though.
-					//
-					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
-					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
 
 					// Now verify the Configure request.
 					c := g.ConfigureReq("config")
@@ -1055,8 +1048,6 @@ var languageTests = map[string]languageTest{
 						map[string]any{"key1": "SECRET", "key2": "SECRET2"},
 						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
 
-					// TODO objSecretString1
-
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
 					v := c.GetVariables()
 					assert.Equal(l, "SECRET", v["config-grpc:config:secretString1"], "secretString1")
@@ -1068,7 +1059,17 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, `{"key1":"SECRET","key2":"SECRET2"}`,
 						v["config-grpc:config:mapSecretString1"], "mapSecretString1")
 
-					// TODO objSecretString1
+					// TODO[pulumi/pulumi#17652] Languages do not agree on the object property
+					// casing sent to CheckConfig, Node and Go send "secretX", Python sends
+					// "secret_x" though.
+					//
+					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
+					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
+					// assertEqualOrJSONEncodedSecret(l,
+					//      map[string]any{"secretX": secret("SECRET")}, map[string]any{"secretX": "SECRET"},
+					// 	r.Args.Fields["objSecretString1"].AsInterface(), "objSecretString1")
+					// assert.JSONEq(l, `{"secretX":"SECRET"}`,
+					// 	v["config-grpc:config:objectSecretString1"], "objSecretString1")
 				},
 			},
 		},
