@@ -1,5 +1,5 @@
 # This provider covers scenarios where configuration properties are marked as secret in the schema.
-resource "config_grpc_provider" "pulumi:providers:config-grpc" {
+resource "config_grpc_provider" "pulumi:providers:config-grpc-no-jsonenc" {
     secretString1 = "SECRET"
     secretInt1 = 16
     secretNum1 = 123456.7890
@@ -10,7 +10,7 @@ resource "config_grpc_provider" "pulumi:providers:config-grpc" {
     objSecretString1 = { secretX = "SECRET" }
 }
 
-resource "config" "config-grpc:index:ConfigFetcher" {
+resource "config" "config-grpc-no-jsonenc:index:ConfigFetcher" {
   options {
     provider = config_grpc_provider
   }

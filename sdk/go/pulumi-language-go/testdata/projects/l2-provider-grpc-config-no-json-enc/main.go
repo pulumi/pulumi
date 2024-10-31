@@ -1,14 +1,14 @@
 package main
 
 import (
-	"example.com/pulumi-config-grpc/sdk/go/configgrpc"
+	"example.com/pulumi-config-grpc-no-jsonenc/sdk/go/configgrpcnojsonenc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// Cover interesting schema shapes.
-		config_grpc_provider, err := configgrpc.NewProvider(ctx, "config_grpc_provider", &configgrpc.ProviderArgs{
+		config_grpc_provider, err := configgrpcnojsonenc.NewProvider(ctx, "config_grpc_provider", &configgrpcnojsonenc.ProviderArgs{
 			String1:     pulumi.String(""),
 			String2:     pulumi.String("x"),
 			String3:     pulumi.String("{}"),
@@ -36,18 +36,18 @@ func main() {
 				"key1": pulumi.Int(0),
 				"key2": pulumi.Int(42),
 			},
-			ObjString1: &configgrpc.Tstring1Args{},
-			ObjString2: &configgrpc.Tstring2Args{
+			ObjString1: &configgrpcnojsonenc.Tstring1Args{},
+			ObjString2: &configgrpcnojsonenc.Tstring2Args{
 				X: pulumi.String("x-value"),
 			},
-			ObjInt1: &configgrpc.Tint1Args{
+			ObjInt1: &configgrpcnojsonenc.Tint1Args{
 				X: pulumi.Int(42),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		_, err = configgrpc.NewConfigFetcher(ctx, "config", nil, pulumi.Provider(config_grpc_provider))
+		_, err = configgrpcnojsonenc.NewConfigFetcher(ctx, "config", nil, pulumi.Provider(config_grpc_provider))
 		if err != nil {
 			return err
 		}
