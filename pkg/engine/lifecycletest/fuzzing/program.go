@@ -39,20 +39,91 @@ type ProgramSpec struct {
 // Returns a new LanguageRuntimeFactory that will register the resources specified in this ProgramSpec when executed.
 func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.LanguageRuntimeFactory {
 	return deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// We want to emuluate an actual lifecycle test as much as possible here. Consequently, rather than "hardcoding"
+		// URNs from the ResourceSpecs, we'll map those URNs to the actual RegisterResourceResponses we get from the
+		// resource monitor and use those to refer to resources in subsequent registrations. This is particularly important
+		// in the presence of targeted operations. Consider the following ResourceSpec for a resource named res2:
+		//
+		//  ResourceSpec{
+		//    Type: "pkgA:modA:typeA",
+		//    Name: "res2",
+		//    Parent: "urn:pulumi:stack::project::pkgA:modA:typeA::res1",
+		//    AliasURNs: []resource.URN{"urn:pulumi:stack::project::pkgA:modA:typeA::res2"},
+		//  }
+		//
+		// res2 has been updated to add a parent, res1, which previously it did not have. Its new URN,
+		// urn:pulumi:stack::project::pkgA:modA:typeA$pkgA:modA:typeA::res2, will include res1's type. Its old URN,
+		// urn:pulumi:stack::project::pkgA:modA:typeA::res2, with just res2's type, has been added as an alias. When we
+		// register res2, we will receive a different URN back based on whether we target it or not:
+		//
+		// * If we target it, we'll get the new URN, since the alias will find the old state, which will then be updated to
+		//   add the parent.
+		//
+		// * If we don't target it, we'll get the old URN, since the alias will find the old state and we'll emit a SameStep
+		//   with that state.
+		//
+		// Hardcoding the URN from the ResourceSpec would cause us to generate bad programs in the second case.
+		actuals := map[resource.URN]*deploytest.RegisterResourceResponse{}
+		rewriteProviderRef := func(oldRef string) string {
+			if oldRef == "" {
+				return ""
+			}
+
+			parsed, err := providers.ParseReference(oldRef)
+			require.NoError(t, err)
+
+			res, hasRes := actuals[parsed.URN()]
+			if !hasRes {
+				return oldRef
+			}
+
+			newRef, err := providers.NewReference(res.URN, res.ID)
+			require.NoError(t, err)
+
+			return newRef.String()
+		}
+
+		rewriteURN := func(oldURN resource.URN) resource.URN {
+			if res, hasRes := actuals[oldURN]; hasRes {
+				return res.URN
+			}
+
+			return oldURN
+		}
+
 		for _, r := range ps.ResourceRegistrations {
 			opts := deploytest.ResourceOptions{
 				Protect:        r.Protect,
-				Dependencies:   r.Dependencies,
-				PropertyDeps:   r.PropertyDependencies,
 				RetainOnDelete: r.RetainOnDelete,
-				DeletedWith:    r.DeletedWith,
+				Parent:         rewriteURN(r.Parent),
+				Provider:       rewriteProviderRef(r.Provider),
+				DeletedWith:    rewriteURN(r.DeletedWith),
+
+				// We explicitly *don't* want to rewrite aliases since they are not dependencies and refer to (we expect)
+				// resources in the state, not the program we are running.
+				AliasURNs: r.Aliases,
 			}
 
-			_, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
-			if err != nil {
-				require.NoError(t, err)
+			deps := make([]resource.URN, len(r.Dependencies))
+			for i, dep := range r.Dependencies {
+				deps[i] = rewriteURN(dep)
 			}
+
+			propDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, deps := range r.PropertyDependencies {
+				propDeps[k] = make([]resource.URN, len(deps))
+				for i, dep := range deps {
+					propDeps[k][i] = rewriteURN(dep)
+				}
+			}
+
+			opts.Dependencies = deps
+			opts.PropertyDeps = propDeps
+
+			res, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
 			require.NoError(t, err)
+
+			actuals[r.URN()] = res
 		}
 
 		return nil
@@ -118,6 +189,7 @@ type ProgramSpecOptions struct {
 	InsertResourceOpts   ResourceSpecOptions
 	UpdateProtect        *rapid.Generator[bool]
 	UpdateRetainOnDelete *rapid.Generator[bool]
+	AddAliases           *rapid.Generator[bool]
 	AppendCount          *rapid.Generator[int]
 	AppendResourceOpts   ResourceSpecOptions
 }
@@ -152,6 +224,9 @@ func (pso ProgramSpecOptions) With(overrides ProgramSpecOptions) ProgramSpecOpti
 	if overrides.UpdateRetainOnDelete != nil {
 		pso.UpdateRetainOnDelete = overrides.UpdateRetainOnDelete
 	}
+	if overrides.AddAliases != nil {
+		pso.AddAliases = overrides.AddAliases
+	}
 	if overrides.AppendCount != nil {
 		pso.AppendCount = overrides.AppendCount
 	}
@@ -169,6 +244,7 @@ var defaultProgramSpecOptions = ProgramSpecOptions{
 	InsertResourceOpts:   defaultResourceSpecOptions,
 	UpdateProtect:        rapid.Bool(),
 	UpdateRetainOnDelete: rapid.Bool(),
+	AddAliases:           rapid.Bool(),
 	AppendCount:          rapid.IntRange(0, 2),
 	AppendResourceOpts:   defaultResourceSpecOptions,
 }
@@ -192,7 +268,80 @@ func GeneratedProgramSpec(
 
 	return rapid.Custom(func(t *rapid.T) *ProgramSpec {
 		drops := []*ResourceSpec{}
+
+		// Whenever we copy a resource from the snapshot, we need to ensure that its dependencies have been updated to take
+		// deletions/drops into account. The dropped and rewritten maps and the updateDependencies function take care of
+		// this.
+		//
+		// While in many cases updating is just a case of removing references to dropped resources, we may also need to
+		// *rewrite* references whenever parent/child relationships change. This is because a resource's URN changes
+		// whenever its parent changes.
+		//
+		// When a URN changes due to parent/child changes, we'll consult the AddAliases generator to decide whether to drop
+		// the old URN, or add an alias to the new resource pointing to it. Based on this, subsequent resources that refer
+		// to the old URN will either have their references pruned or updated to the new URN.
+
 		dropped := map[resource.URN]bool{}
+		rewritten := map[resource.URN]resource.URN{}
+
+		updateDependencies := func(r *ResourceSpec) {
+			deps := []resource.URN{}
+			propDeps := map[resource.PropertyKey][]resource.URN{}
+
+			// We'll start with parents first. If our parent was dropped, we'll need to remove them from our parent reference.
+			// If they were rewritten, we'll update the reference to point to the new URN.
+			oldURN := r.URN()
+			if dropped[r.Parent] {
+				r.Parent = ""
+			} else if newParent, hasNewParent := rewritten[r.Parent]; hasNewParent {
+				r.Parent = newParent
+			}
+
+			// If our URN changed (e.g. because our parent changed), we'll consult the AddAliases generator to decide whether
+			// to drop the old URN or add an alias to the new resource pointing to it.
+			if oldURN != r.URN() {
+				shouldAlias := pso.AddAliases.Draw(t, "ProgramSpec.PrunedResource.AddAliases")
+				if shouldAlias {
+					r.Aliases = []resource.URN{oldURN}
+					rewritten[oldURN] = r.URN()
+				} else {
+					dropped[oldURN] = true
+				}
+			}
+
+			// Updating dependencies, property dependencies and deleted-with relationships is simpler, since these don't
+			// affect our URN.
+			for _, dep := range r.Dependencies {
+				if dropped[dep] {
+					continue
+				} else if newDep, hasNewDep := rewritten[dep]; hasNewDep {
+					deps = append(deps, newDep)
+				} else {
+					deps = append(deps, dep)
+				}
+			}
+
+			for k, deps := range r.PropertyDependencies {
+				for _, dep := range deps {
+					if dropped[dep] {
+						continue
+					} else if newDep, hasNewDep := rewritten[dep]; hasNewDep {
+						propDeps[k] = append(propDeps[k], newDep)
+					} else {
+						propDeps[k] = append(propDeps[k], dep)
+					}
+				}
+			}
+
+			if dropped[r.DeletedWith] {
+				r.DeletedWith = ""
+			} else if newDep, hasNewDep := rewritten[r.DeletedWith]; hasNewDep {
+				r.DeletedWith = newDep
+			}
+
+			r.Dependencies = deps
+			r.PropertyDependencies = propDeps
+		}
 
 		newSS := &SnapshotSpec{}
 
@@ -215,14 +364,22 @@ func GeneratedProgramSpec(
 		}
 
 		for i := 0; i < len(ss.Resources); {
+			if ss.Resources[i].Delete {
+				i++
+				continue
+			}
+
 			action := pso.Action.Draw(t, fmt.Sprintf("ProgramSpec.Action[%d]", i))
-			if action == ProgramSpecDelete || ss.Resources[i].Delete {
+			if action == ProgramSpecDelete {
 				r := ss.Resources[i].Copy()
 				if providers.IsProviderType(r.Type) {
 					AddTag(r, CopiedProgramResource)
+					updateDependencies(r)
+
 					newSS.AddResource(r)
 				} else {
 					AddTag(r, DroppedProgramResource)
+
 					drops = append(drops, r)
 					dropped[r.URN()] = true
 				}
@@ -255,45 +412,24 @@ func GeneratedProgramSpec(
 					)
 				}
 
-				r.Dependencies = rds.Dependencies
-				r.PropertyDependencies = rds.PropertyDependencies
-				r.DeletedWith = rds.DeletedWith
+				oldURN := r.URN()
+				rds.ApplyTo(r)
+				if oldURN != r.URN() {
+					shouldAlias := pso.AddAliases.Draw(t, fmt.Sprintf("ProgramSpec.UpdatedResource[%d].AddAliases", i))
+					if shouldAlias {
+						r.Aliases = []resource.URN{oldURN}
+						rewritten[oldURN] = r.URN()
+					} else {
+						dropped[oldURN] = true
+					}
+				}
 
 				newSS.AddResource(r)
 				i++
 			} else {
 				r := ss.Resources[i].Copy()
 				AddTag(r, CopiedProgramResource)
-
-				// If we copy a resource from the snapshot, we need to ensure that its dependencies have been updated to take
-				// deletions/drops into account.
-				deps := []resource.URN{}
-				propDeps := map[resource.PropertyKey][]resource.URN{}
-
-				for _, dep := range r.Dependencies {
-					if dropped[dep] {
-						continue
-					}
-
-					deps = append(deps, dep)
-				}
-
-				for k, deps := range r.PropertyDependencies {
-					for _, dep := range deps {
-						if dropped[dep] {
-							continue
-						}
-
-						propDeps[k] = append(propDeps[k], dep)
-					}
-				}
-
-				if dropped[r.DeletedWith] {
-					r.DeletedWith = ""
-				}
-
-				r.Dependencies = deps
-				r.PropertyDependencies = propDeps
+				updateDependencies(r)
 
 				newSS.AddResource(r)
 				i++

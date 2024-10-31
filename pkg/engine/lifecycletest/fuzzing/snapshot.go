@@ -80,9 +80,18 @@ func (s *SnapshotSpec) Pretty(indent string) string {
 
 // A ResourceDependenciesSpec specifies the dependencies of a resource in a snapshot.
 type ResourceDependenciesSpec struct {
+	Parent               resource.URN
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+}
+
+// ApplyTo applies the dependencies specified in this ResourceDependenciesSpec to the given ResourceSpec.
+func (rds *ResourceDependenciesSpec) ApplyTo(r *ResourceSpec) {
+	r.Parent = rds.Parent
+	r.Dependencies = rds.Dependencies
+	r.PropertyDependencies = rds.PropertyDependencies
+	r.DeletedWith = rds.DeletedWith
 }
 
 // Given a SnapshotSpec and ResourceSpec, returns a rapid.Generator that yields random (valid) sets of dependencies for
@@ -120,8 +129,7 @@ func GeneratedResourceDependencies(
 			depType := rapid.SampledFrom(stateDependencyTypes).Draw(t, "SnapshotDependencies.DependencyType")
 			switch depType {
 			case resource.ResourceParent:
-				// For now we don't support parents.
-				continue
+				rds.Parent = sr.URN()
 			case resource.ResourceDependency:
 				if seenDeps[sr.URN()] {
 					continue
@@ -165,6 +173,7 @@ func GeneratedResourceDependencies(
 
 var stateDependencyTypes = []resource.StateDependencyType{
 	"",
+	resource.ResourceParent,
 	resource.ResourceDependency,
 	resource.ResourcePropertyDependency,
 	resource.ResourceDeletedWith,
@@ -265,9 +274,7 @@ func generatedNewResourceSpec(
 		r := GeneratedResourceSpec(sso, rso, ss.Providers).Draw(t, "NewResourceSpec.Base")
 		rds := GeneratedResourceDependencies(ss, r, includeAll).Draw(t, "NewResourceSpec.Dependencies")
 
-		r.Dependencies = rds.Dependencies
-		r.PropertyDependencies = rds.PropertyDependencies
-		r.DeletedWith = rds.DeletedWith
+		rds.ApplyTo(r)
 
 		return r
 	})
@@ -296,9 +303,7 @@ func generatedOldResourceSpec(
 		r.Protect = rapid.Bool().Draw(t, "OldResourceSpec.Protect")
 		r.RetainOnDelete = rapid.Bool().Draw(t, "OldResourceSpec.RetainOnDelete")
 
-		r.Dependencies = rds.Dependencies
-		r.PropertyDependencies = rds.PropertyDependencies
-		r.DeletedWith = rds.DeletedWith
+		rds.ApplyTo(r)
 
 		return r
 	})
@@ -309,9 +314,7 @@ func generatedProviderResourceSpec(ss *SnapshotSpec, sso StackSpecOptions) *rapi
 		r := GeneratedProviderResourceSpec(sso).Draw(t, "ProviderResourceSpec.Base")
 		rds := GeneratedResourceDependencies(ss, r, includeAll).Draw(t, "ProviderResourceSpec.Dependencies")
 
-		r.Dependencies = rds.Dependencies
-		r.PropertyDependencies = rds.PropertyDependencies
-		r.DeletedWith = rds.DeletedWith
+		rds.ApplyTo(r)
 
 		return r
 	})
