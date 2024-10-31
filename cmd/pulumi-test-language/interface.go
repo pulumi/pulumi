@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -176,11 +177,17 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 	spec.Meta.SupportPack = true
 
-	// Set the LanguageInfo field if given
-	if l.languageInfo != "" {
-		// We don't expect the language field to be set in the core providers, they should be language agnostic
-		spec.Language = map[string]schema.RawMessage{
-			l.language: schema.RawMessage(l.languageInfo),
+	// Merge the LanguageInfo from the loader with the one defined in the provider. Fail on conflicts.
+	if languageMap, ok := l.parseLanguageMap(); ok {
+		var conflicts []string
+		conflict := func(path string, a, b any) {
+			c := fmt.Sprintf("Language setting conflict at %s.\n  Provider: %v\n  Test: %v\n",
+				path, a, b)
+			conflicts = append(conflicts, c)
+		}
+		spec.Language = l.mergeLanguageMaps(spec.Language, languageMap, conflict)
+		if len(conflicts) > 0 {
+			return nil, fmt.Errorf("%s", strings.Join(conflicts, "\n\n"))
 		}
 	}
 
@@ -190,6 +197,74 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	return p, nil
+}
+
+// Parse l.languageInfo from a string to a normal form.
+func (l *providerLoader) parseLanguageMap() (map[string]schema.RawMessage, bool) {
+	if l.languageInfo == "" {
+		return nil, false
+	}
+	return map[string]schema.RawMessage{
+		l.language: schema.RawMessage(l.languageInfo),
+	}, true
+}
+
+func (l *providerLoader) normalizeLanguageMap(im map[string]schema.RawMessage) map[string]any {
+	r := map[string]any{}
+	for k, v := range im {
+		var value any
+		err := json.Unmarshal(v, &value)
+		contract.AssertNoErrorf(err, "json.Unmarshal failed to decode language settings")
+		r[k] = value
+	}
+	return r
+}
+
+func (l *providerLoader) denormalizeLanguageMap(im map[string]any) map[string]schema.RawMessage {
+	r := map[string]schema.RawMessage{}
+	for k, v := range im {
+		value, err := json.Marshal(v)
+		contract.AssertNoErrorf(err, "json.Marshal failed to encode language settings")
+		r[k] = value
+	}
+	return r
+}
+
+func (l *providerLoader) mergeMaps(
+	path string,
+	a, b map[string]any,
+	conflict func(path string, a, b any),
+) map[string]any {
+	r := map[string]any{}
+	for k, v := range a {
+		r[k] = v
+	}
+	for k, v := range b {
+		if old, ok := r[k]; ok {
+			if !reflect.DeepEqual(old, v) {
+				oldMap, oldIsMap := old.(map[string]any)
+				newMap, newIsMap := v.(map[string]any)
+				if oldIsMap && newIsMap {
+					r[k] = l.mergeMaps(path+"."+k, oldMap, newMap, conflict)
+				} else {
+					conflict(path, old, v)
+				}
+			}
+		} else {
+			r[k] = v
+		}
+	}
+	return r
+}
+
+// Merge the LanguageInfo field if given. Emit conflict information if the settings in languageInfo conflict with
+// settings on the provider itself.
+func (l *providerLoader) mergeLanguageMaps(
+	a, b map[string]schema.RawMessage,
+	conflict func(path string, a, b any),
+) map[string]schema.RawMessage {
+	m := l.mergeMaps("", l.normalizeLanguageMap(a), l.normalizeLanguageMap(b), conflict)
+	return l.denormalizeLanguageMap(m)
 }
 
 func (l *providerLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
