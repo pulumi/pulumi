@@ -153,6 +153,9 @@ type modContext struct {
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
 
+	// Do not apply legacy JSON encoding for provider configuration.
+	doNotJSONEncodeProviderConfiguration bool
+
 	// The root namespace to use, if any.
 	rootNamespace    string
 	parameterization *schema.Parameterization
@@ -534,7 +537,7 @@ func (pt *plainType) genInputPropertyAttribute(w io.Writer, indent string, prop 
 	if prop.IsRequired() {
 		attributeArgs = ", required: true"
 	}
-	if pt.res != nil && pt.res.IsProvider {
+	if pt.res != nil && pt.res.IsProvider && !pt.mod.doNotJSONEncodeProviderConfiguration {
 		json := true
 		typ := codegen.UnwrapType(prop.Type)
 		if typ == schema.StringType {
@@ -922,7 +925,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		propertyType := mod.typeString(typ, "Outputs", false, false, false)
 
 		// Workaround the fact that provider inputs come back as strings.
-		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) {
+		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) && !mod.doNotJSONEncodeProviderConfiguration {
 			propertyType = "string"
 			if !prop.IsRequired() {
 				propertyType += "?"
@@ -2454,6 +2457,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				dictionaryConstructors:       info.DictionaryConstructors,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 				parameterization:             pkg.Parameterization,
+
+				// Copy legacy JSON encoding settings.
+				doNotJSONEncodeProviderConfiguration: info.DoNotJSONEncodeProviderConfiguration,
 			}
 
 			if modName != "" {
