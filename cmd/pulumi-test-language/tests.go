@@ -897,6 +897,8 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{\"x\":42}", v["config-grpc:config:objInt1"], "objInt1")
 
 					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
 						Secrets:             []string{"SECRET", "SECRET2"},
 					})
@@ -990,6 +992,8 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{\"x\":\"SECRET\"}", v["config-grpc:config:objString2"], "objString2")
 
 					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
 						Secrets:             []string{"SECRET", "SECRET2"},
 					})
@@ -1085,6 +1089,8 @@ var languageTests = map[string]languageTest{
 					// 	v["config-grpc:config:objectSecretString1"], "objSecretString1")
 
 					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
 						Secrets:             []string{"SECRET", "SECRET2"},
 					})
@@ -1586,17 +1592,21 @@ type assertNoSecretLeaksOpts struct {
 	Secrets             []string
 }
 
+func (opts *assertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
+	for _, t := range opts.IgnoreResourceTypes {
+		if ty == t {
+			return true
+		}
+	}
+	return false
+}
+
 func assertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts assertNoSecretLeaksOpts) {
-	// Remove ConfigFetcher from snap to exclude it from secret leak checks.
+	// Remove states for resources with types in opts.IgnoreResourceTypes from the snap to exclude these states from
+	// the secret leak checks.
 	var filteredResourceStates []*resource.State
 	for _, r := range snap.Resources {
-		skip := false
-		for _, t := range opts.IgnoreResourceTypes {
-			if r.Type == t {
-				skip = true
-			}
-		}
-		if !skip {
+		if !opts.isIgnored(r.Type) {
 			filteredResourceStates = append(filteredResourceStates, r)
 		}
 	}
