@@ -59,6 +59,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	mapset "github.com/deckarep/golang-set/v2"
+
+	"github.com/ryboe/q"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
@@ -425,6 +427,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
 	inputs, err := d.config.GetPackageConfig(req.Package())
+
+	q.Q("d.config.GetPackageConfig", req.Package(), "==>", inputs)
 	if err != nil {
 		return nil, nil, err
 	}

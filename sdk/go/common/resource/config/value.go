@@ -16,6 +16,8 @@ package config
 
 import (
 	"context"
+	//"fmt"
+	"github.com/ryboe/q"
 )
 
 // Value is a single config value.
@@ -127,7 +129,12 @@ func (c Value) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.MarshalJSON()
+	res, err := obj.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	q.Q("Value.MarshalJSON", string(res))
+	return res, nil
 }
 
 func (c *Value) UnmarshalJSON(b []byte) (err error) {

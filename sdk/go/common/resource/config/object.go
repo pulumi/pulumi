@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/ryboe/q"
 )
 
 var errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
@@ -409,7 +410,12 @@ func (c *object) UnmarshalString(text string, secure, object bool) error {
 }
 
 func (c object) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.marshalObject())
+	res, err := json.Marshal(c.marshalObject())
+	if err != nil {
+		return nil, err
+	}
+	q.Q("object.MarshalJSON()", string(res))
+	return res, nil
 }
 
 func (c *object) UnmarshalJSON(b []byte) error {

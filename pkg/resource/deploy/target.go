@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/ryboe/q"
 )
 
 // Target represents information about a deployment target.
@@ -37,6 +38,8 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 	}
 
 	for k, c := range t.Config {
+		q.Q("GetPackageConfig processing key", k)
+		q.Q("GetPackageConfig processing value", c)
 		if tokens.Package(k.Namespace()) != pkg {
 			continue
 		}
@@ -46,6 +49,7 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 			return nil, err
 		}
 
+		// This is the culprit.
 		propertyValue := resource.NewStringProperty(v)
 		if c.Secure() {
 			propertyValue = resource.MakeSecret(propertyValue)

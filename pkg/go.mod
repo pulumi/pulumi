@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.21
+go 1.23.0
+
+toolchain go1.23.1
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
@@ -96,6 +98,7 @@ require (
 	github.com/pulumi/esc v0.10.0
 	github.com/pulumi/pulumi-java/pkg v0.16.1
 	github.com/pulumi/pulumi-yaml v1.11.2
+	github.com/ryboe/q v1.0.23
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
@@ -197,6 +200,8 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
