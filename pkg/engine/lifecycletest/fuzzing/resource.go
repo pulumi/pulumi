@@ -71,7 +71,7 @@ func AddTag[T ~string](r *ResourceSpec, tag T) {
 func (r *ResourceSpec) URN() resource.URN {
 	var parentType tokens.Type
 	if r.Parent != "" {
-		parentType = r.Parent.Type()
+		parentType = r.Parent.QualifiedType()
 	}
 
 	return resource.NewURN(r.Stack, r.Project, parentType, r.Type, r.Name)
