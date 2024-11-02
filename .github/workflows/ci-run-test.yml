@@ -313,7 +313,7 @@ jobs:
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
 
-        # /end integration and performacne test steps
+        # /end integration and performance test steps
       - name: Verify Pulumi Version
         run: |
           command -v pulumi || echo "no pulumi"
