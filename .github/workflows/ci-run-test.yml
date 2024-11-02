@@ -252,11 +252,17 @@ jobs:
           tag: v0.0.7
           cache: enable
       - name: Generate artifact name
+        if: ${{ inputs.is-integration-test }}
         id: goenv
         shell: bash
         run: |
-          echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)${{ inputs.is-performance-test && '-perf' }}" >> "${GITHUB_OUTPUT}"
-
+          echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)" >> "${GITHUB_OUTPUT}"
+      - name: Generate artifact name
+        if: ${{ inputs.is-performance-test }}
+        id: goenv
+        shell: bash
+        run: |
+          echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)-perf" >> "${GITHUB_OUTPUT}"
       # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
       # Pulumi install, and integration tests must only test the version built by CI.
       - name: Remove Pre-installed Pulumi
