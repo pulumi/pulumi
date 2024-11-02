@@ -1,3 +1,10 @@
+# This workflow runs performance tests to ensure we do not introduce performance regressions.
+# This runs for every PR, as well as on every merge to the master branch.
+#
+# The Pulumi CLI binaries used in this workflow are built without race detection
+# or coverage instrumentation to ensure that the performance tests are not
+# affected by these flags.
+
 name: Performance Gate
 
 permissions:
@@ -38,9 +45,6 @@ on:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
         description: "Pulumi access token, required to run tests against the service"
-      CODECOV_TOKEN:
-        required: false
-        description: "CodeCov token, required to publish CodeCov coverage data"
       AZURE_TENANT_ID:
         required: false
         description: "Azure tenant ID, required to run tests against Azure"
@@ -130,10 +134,11 @@ jobs:
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
-      artifact-suffix: '-perf'
-      # For performance tests, we do not want coverage or race detection enabled
+      # For performance tests, we do not want coverage or race detection enabled.
       enable-coverage: false
       enable-race-detection: false
+      # Suffix the artifacts so they do not clash with those of the main build.
+      artifact-suffix: '-perf'
     secrets: inherit
 
   performance-test:
