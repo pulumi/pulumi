@@ -19,7 +19,7 @@ on:
         default: minimum current
         description: Version sets on which to run integration tests
         type: string
-      peformance-test-platforms:
+      performance-test-platforms:
         required: false
         default: ubuntu-latest
         description: Platforms on which to run performance tests, as a space delimited list
