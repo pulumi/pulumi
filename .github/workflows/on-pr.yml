@@ -99,7 +99,7 @@ jobs:
     name: Performance Gate
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
-    uses: ./.github/workflows/ci-performacne-gate.yml
+    uses: ./.github/workflows/ci-performance-gate.yml
     permissions:
       contents: read
     with:
