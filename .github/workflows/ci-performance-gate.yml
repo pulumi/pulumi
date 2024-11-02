@@ -29,6 +29,11 @@ on:
         default: false
         description: "Fail all workflows whenever one of them fails"
         type: boolean
+      test-retries:
+        required: false
+        default: 0
+        description: "Retry tests n times if there are failures"
+        type: number
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
