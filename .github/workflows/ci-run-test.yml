@@ -279,7 +279,7 @@ jobs:
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         uses: actions/download-artifact@v4
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}${{ inputs.is-performance-test && '-perf'}}
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
