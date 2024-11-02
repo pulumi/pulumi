@@ -32,6 +32,11 @@ on:
         required: false
         default: false
         type: boolean
+      is-performance-test:
+        description: Whether to download and install build artifacts for performance tests
+        required: false
+        default: false
+        type: boolean
       enable-coverage:
         description: "Collects coverage stats; requires cov-enabled builds"
         default: false
@@ -269,15 +274,21 @@ jobs:
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
 
-      # Integration test only steps:
+      # Integration and performacne test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v4
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
+      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
+        if: ${{ inputs.is-performance-test }}
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
+          path: artifacts/cli
       - name: Install Pulumi Go Binaries
-        if: ${{ inputs.is-integration-test }}
+        if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
           echo "Checking contents of $PWD/artifacts/cli"
           find "$PWD/artifacts/cli"
@@ -303,7 +314,7 @@ jobs:
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
 
-        # /end integration test steps
+        # /end integration and performacne test steps
       - name: Verify Pulumi Version
         run: |
           command -v pulumi || echo "no pulumi"

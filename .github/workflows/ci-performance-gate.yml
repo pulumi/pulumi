@@ -125,6 +125,7 @@ jobs:
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
+      artifact-suffix: '-perf'
       # For performance tests, we do not want coverage or race detection enabled
       enable-coverage: false
       enable-race-detection: false
@@ -156,10 +157,9 @@ jobs:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
       platform: ${{ matrix.platform }}
-
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true
+      is-performance-test: true
       enable-coverage: false
       test-retries: ${{ inputs.test-retries }}
       version-set: ${{ toJson(matrix.version-set) }}
