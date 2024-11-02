@@ -257,6 +257,7 @@ jobs:
         shell: bash
         run: |
           echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)" >> "${GITHUB_OUTPUT}"
+
       # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
       # Pulumi install, and integration tests must only test the version built by CI.
       - name: Remove Pre-installed Pulumi
@@ -273,6 +274,7 @@ jobs:
             echo "Deleting Pulumi"
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
+
       # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
