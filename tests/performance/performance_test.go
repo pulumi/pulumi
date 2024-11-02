@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
+// TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
+
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfEmptyUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
@@ -34,7 +36,7 @@ func TestPerfEmptyUpdate(t *testing.T) {
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		NoParallel: true,
-		Dir:        "empty",
+		Dir:        filepath.Join("python", "empty"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -54,7 +56,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		NoParallel: true,
-		Dir:        "component",
+		Dir:        filepath.Join("python", "component"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -77,7 +79,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		NoParallel: true,
-		Dir:        "parents",
+		Dir:        filepath.Join("python", "parents"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
