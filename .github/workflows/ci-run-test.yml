@@ -281,7 +281,7 @@ jobs:
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
-      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
+      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}-perf
         if: ${{ inputs.is-performance-test }}
         uses: actions/download-artifact@v4
         with:
