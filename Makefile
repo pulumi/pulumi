@@ -144,7 +144,7 @@ test_integration_subpkgs:
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
 
 test_performance:
-	@cd tests && go test -count=1 -tags=all -timeout 1h -parallel=1 $(PERFORMANCE_PKG)
+	@cd tests && go test -count=1 -tags=all -timeout 1h -parallel=1 -v $(PERFORMANCE_PKG)
 
 # Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
 .PHONY: gotestsum/%
