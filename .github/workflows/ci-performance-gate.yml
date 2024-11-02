@@ -1,5 +1,6 @@
-# This workflow runs performance tests to ensure we do not introduce performance regressions.
-# This runs for every PR, as well as on every merge to the master branch.
+# This workflow runs performance tests to ensure we do not introduce performance
+# regressions. This runs for every PR, as well as on every merge to the master
+# branch.
 #
 # The Pulumi CLI binaries used in this workflow are built without race detection
 # or coverage instrumentation to ensure that the performance tests are not
