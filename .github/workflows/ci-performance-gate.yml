@@ -131,23 +131,11 @@ jobs:
       enable-race-detection: false
     secrets: inherit
 
-  build-sdks:
-    name: Build SDKs
-    needs: [matrix]
-    uses: ./.github/workflows/ci-build-sdks.yml
-    strategy:
-      fail-fast: ${{ inputs.fail-fast }}
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
-    secrets: inherit
-
   performance-test:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name.
     name: Performance Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
+    needs: [matrix, build-binaries]
     if: ${{ needs.matrix.outputs.performance-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
