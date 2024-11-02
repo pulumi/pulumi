@@ -274,12 +274,12 @@ jobs:
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
 
-      # Integration and performacne test only steps:
+      # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
-        if: ${{ inputs.is-integration-test }}
+        if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         uses: actions/download-artifact@v4
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}${{ inputs.is-performance-test && '-perf'}}
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
