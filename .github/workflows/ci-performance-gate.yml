@@ -141,7 +141,6 @@ jobs:
     # appearing in the rendered title of the job name.
     name: Performance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries]
-    # if: ${{ needs.matrix.outputs.performance-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.performance-test-matrix) }}

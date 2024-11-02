@@ -255,7 +255,7 @@ jobs:
         id: goenv
         shell: bash
         run: |
-          echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)" >> "${GITHUB_OUTPUT}"
+          echo "CLI-TARGET=$(go env GOOS)-$(go env GOARCH)${{ inputs.is-performance-test && '-perf' }}" >> "${GITHUB_OUTPUT}"
 
       # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
       # Pulumi install, and integration tests must only test the version built by CI.
@@ -280,12 +280,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
-          path: artifacts/cli
-      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}-perf
-        if: ${{ inputs.is-performance-test }}
-        uses: actions/download-artifact@v4
-        with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
