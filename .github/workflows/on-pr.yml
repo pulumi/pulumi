@@ -95,6 +95,20 @@ jobs:
       enable-coverage: false
     secrets: inherit
 
+  perform-gate:
+    name: Performance Gate
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [info, inspect]
+    uses: ./.github/workflows/ci-performacne-gate.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      test-version-sets: 'minimum current'
+      performance-test-platforms: ubuntu-latest
+    secrets: inherit
+
   prepare-release:
     name: prepare
     if: >- # No newlines or trailing newline.

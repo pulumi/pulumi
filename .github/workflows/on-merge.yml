@@ -47,6 +47,8 @@ jobs:
       acceptance-test-platforms: 'macos-latest'
     secrets: inherit
 
+  # TODO: add perform-gate here
+
   prepare-release:
     name: prepare
     needs: [info, ci]
