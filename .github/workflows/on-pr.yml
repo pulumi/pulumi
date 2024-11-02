@@ -95,7 +95,7 @@ jobs:
       enable-coverage: false
     secrets: inherit
 
-  perform-gate:
+  performance-gate:
     name: Performance Gate
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
@@ -133,7 +133,7 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    needs: [ci]
+    needs: [ci, performance-gate]
     if: always()
     runs-on: ubuntu-latest
     steps:
