@@ -14,7 +14,7 @@ on:
       - "sdk/.version"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 # The jobs in this workflow are only run on branches. The `on-community-pr.yml` job provides
@@ -67,7 +67,7 @@ jobs:
       # To sign artifacts.
       id-token: write
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
       # codegen tests take quite a while to run.
