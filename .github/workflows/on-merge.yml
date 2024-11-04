@@ -49,7 +49,6 @@ jobs:
 
   performance-gate:
     name: Performance Gate
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info]
     uses: ./.github/workflows/ci-performance-gate.yml
     strategy:
