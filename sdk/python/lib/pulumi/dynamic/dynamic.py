@@ -32,11 +32,24 @@ import pulumi
 
 from .. import CustomResource, ResourceOptions
 from ..runtime._serialization import _serialize
+from .config import Config
 
 if TYPE_CHECKING:
     from ..output import Inputs, Output
 
 PROVIDER_KEY = "__provider"
+
+
+class ConfigureRequest:
+    """
+    ConfigureRequest is the shape of the configuration data passed to a
+    provider's configure method.
+    """
+
+    config: Config
+
+    def __init__(self, config: Config):
+        self.config = config
 
 
 class CheckResult:
@@ -238,6 +251,12 @@ class ResourceProvider:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
+        """
+
+    def configure(self, req: ConfigureRequest) -> None:
+        """
+        Configure sets up the resource provider. Use this to initialize the
+        provider and store configuration.
         """
 
     def __init__(self) -> None:

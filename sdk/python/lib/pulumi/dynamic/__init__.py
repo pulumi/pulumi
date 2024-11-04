@@ -18,6 +18,7 @@ Dynamic Providers for Python.
 
 # Make all module members inside of this package available as package members.
 from .dynamic import (
+    ConfigureRequest,
     CheckResult,
     CheckFailure,
     DiffResult,
@@ -28,7 +29,12 @@ from .dynamic import (
     ResourceProvider,
 )
 
+from .config import (
+    Config,
+)
+
 __all__ = [
+    "ConfigureRequest",
     "CheckResult",
     "CheckFailure",
     "DiffResult",
@@ -37,4 +43,5 @@ __all__ = [
     "UpdateResult",
     "Resource",
     "ResourceProvider",
+    "Config",
 ]
