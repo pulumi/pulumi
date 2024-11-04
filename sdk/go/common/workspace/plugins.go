@@ -447,21 +447,18 @@ func (source *githubSource) getHTTPResponse(
 		return resp, length, nil
 	}
 
-	// Wrap 403 rate limit errors with a more helpful message.
+	// Wrap 403 rate limit errors with a more helpful message later. This is a rate limiting error only
+	// if x-ratelimit-remaining is 0.
+	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
 	var downErr *downloadError
-	if !errors.As(err, &downErr) || downErr.code != 403 {
-		// If we see a 401 error and were using a token we'll disable that token and try again
-		if downErr != nil && downErr.code == 401 && source.token != "" {
+	if !errors.As(err, &downErr) || downErr.code != 403 || downErr.header.Get("x-ratelimit-remaining") != "0" {
+		// If we see a 401 error and we're using a token we'll disable that token and try again
+		fmt.Println(err, downErr)
+		if downErr != nil && (downErr.code == 401 || downErr.code == 403) && source.token != "" {
 			source.token = ""
 			source.tokenDisabled = true
 			return source.getHTTPResponse(getHTTPResponse, url, accept)
 		}
-		return nil, -1, err
-	}
-
-	// This is a rate limiting error only if x-ratelimit-remaining is 0.
-	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
-	if downErr.header.Get("x-ratelimit-remaining") != "0" {
 		return nil, -1, err
 	}
 
