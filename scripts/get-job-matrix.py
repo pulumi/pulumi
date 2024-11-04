@@ -31,6 +31,7 @@ class JobKind(str, Enum):
     INTEGRATION_TEST = "integration-test"
     ACCEPTANCE_TEST = "acceptance-test"
     UNIT_TEST = "unit-test"
+    PERFORMANCE_TEST = "performance-test"
     ALL_TEST = "all-test"
 
 
@@ -64,13 +65,20 @@ INTEGRATION_TEST_PACKAGES = {
     # And the entirety of the 'tests' module
 }
 
+PERFORMANCE_TEST_PACKAGES = {
+    "github.com/pulumi/pulumi/tests/performance",
+}
 
 def is_unit_test(pkg: str) -> bool:
     """Checks if the package is a unit test"""
     return not (
         pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
+        or pkg in PERFORMANCE_TEST_PACKAGES
     )
+
+def is_performance_test(pkg: str) -> bool:
+    return pkg in PERFORMANCE_TEST_PACKAGES
 
 # Keep this in sync with filters defined in .github/workflows/on-pr.yml.
 CODEGEN_TEST_PACKAGES = {
@@ -112,6 +120,10 @@ MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
+]
+
+MAKEFILE_PERFORMANCE_TESTS: List[MakefileTest] = [
+    {"name": "performance tests", "run": "./scripts/retry make test_performance", "eta": 10},
 ]
 
 ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
@@ -389,6 +401,8 @@ def get_matrix(
         makefile_tests = MAKEFILE_UNIT_TESTS
     elif kind == JobKind.ACCEPTANCE_TEST:
         makefile_tests = MAKEFILE_ACCEPTANCE_TESTS
+    elif kind == JobKind.PERFORMANCE_TEST:
+        makefile_tests = MAKEFILE_PERFORMANCE_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
     else:
@@ -411,7 +425,7 @@ def get_matrix(
             go_packages = {pkg for pkg in go_packages if not is_codegen_test(pkg)}
 
         if kind == JobKind.INTEGRATION_TEST or kind == JobKind.ACCEPTANCE_TEST:
-            go_packages = {pkg for pkg in go_packages if not is_unit_test(pkg)}
+            go_packages = {pkg for pkg in go_packages if (not is_unit_test(pkg) and not is_performance_test(pkg))}
         elif kind == JobKind.UNIT_TEST:
             go_packages = {pkg for pkg in go_packages if is_unit_test(pkg)}
         elif kind == JobKind.ALL_TEST:

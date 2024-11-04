@@ -238,6 +238,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
+      - name: Remove performance test artifacts
+        run: rm -rf artifacts.tmp/*-perf
       - name: Flatten artifact directories
         run: |
           find artifacts.tmp
