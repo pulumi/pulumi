@@ -277,16 +277,23 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Create(self, request, context):
-        """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-        must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
+        """`Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
+        provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
+        Output properties are typically the union of the resource's input properties and any additional values that were
+        computed or made available during creation.
+
+        If creation fails, `Create` may return an [](pulumirpc.ErrorResourceInitFailed) error detail explaining why.
+        Moreover, if `Create` does return an error, it must be the case that the resource was *not* created (that is,
+        `Create` can be thought of as transactional or atomic).
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Read(self, request, context):
-        """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-        identify the resource; this is typically just the resource ID, but may also include some properties.
+        """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
+        must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
+        include other properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

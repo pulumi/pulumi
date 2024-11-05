@@ -133,11 +133,20 @@ service ResourceProvider {
     // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
     // by a [](pulumirpc.ResourceProvider.Check) call.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
-    // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
+
+    // `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
+    // provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
+    // Output properties are typically the union of the resource's input properties and any additional values that were
+    // computed or made available during creation.
+    //
+    // If creation fails, `Create` may return an [](pulumirpc.ErrorResourceInitFailed) error detail explaining why.
+    // Moreover, if `Create` does return an error, it must be the case that the resource was *not* created (that is,
+    // `Create` can be thought of as transactional or atomic).
     rpc Create(CreateRequest) returns (CreateResponse) {}
-    // Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-    // identify the resource; this is typically just the resource ID, but may also include some properties.
+
+    // `Read` reads the current live state associated with a resource identified by the supplied state. The given state
+    // must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
+    // include other properties.
     rpc Read(ReadRequest) returns (ReadResponse) {}
     // Update updates an existing resource with new values.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
@@ -594,35 +603,78 @@ message DiffResponse {
     }
 }
 
+// `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
 message CreateRequest {
-    string urn = 1;                        // the Pulumi URN for this resource.
-    google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
-    double timeout = 3;                    // the create request timeout represented in seconds.
-    bool preview = 4;                      // true if this is a preview and the provider should not actually create the resource.
-    string name = 5; // the Pulumi name for this resource.
-    string type = 6; // the Pulumi type for this resource.
+    // The URN of the resource being created.
+    string urn = 1;
+
+    // The resource's input properties, to be set during creation. These should have been validated by a call to
+    // [](pulumirpc.ResourceProvider.Check).
+    google.protobuf.Struct properties = 2;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 3;
+
+    // True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    // actually create the resource.
+    bool preview = 4;
+
+    // The name of the resource being created. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 5;
+
+    // The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 6;
 }
 
+// `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
+// contains the ID of the created resource, as well as any output properties that arose from the creation process.
 message CreateResponse {
-    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+    // The ID of the created resource.
+    string id = 1;
 
-    string id = 1;                         // the ID of the created resource.
-    google.protobuf.Struct properties = 2; // any properties that were computed during creation.
+    // The resource's output properties. Typically this will be a union of the resource's input properties and any
+    // additional values that were computed or made available during creation.
+    google.protobuf.Struct properties = 2;
 }
 
+// `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
 message ReadRequest {
-    string id = 1;                         // the ID of the resource to read.
-    string urn = 2;                        // the Pulumi URN for this resource.
-    google.protobuf.Struct properties = 3; // the current state (sufficiently complete to identify the resource).
-    google.protobuf.Struct inputs = 4;     // the current inputs, if any (only populated during refresh).
-    string name = 5; // the Pulumi name for this resource.
-    string type = 6; // the Pulumi type for this resource.
+    // The ID of the resource to read.
+    string id = 1;
+
+    // The URN of the resource being read.
+    string urn = 2;
+
+    // Any current state for the resource being read. This state should be sufficient to uniquely identify the resource.
+    google.protobuf.Struct properties = 3;
+
+    // Any current input properties for the resource being read. These will only be populated when the
+    // [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+    google.protobuf.Struct inputs = 4;
+
+    // The name of the resource being read. This must match the name specified by the `urn` field, and is passed so that
+    // providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 5;
+
+    // The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
+    // providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 6;
 }
 
+// `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
+// the ID of the resource being read, as well as any state that was successfully read from the live environment.
 message ReadResponse {
-    string id = 1;                         // the ID of the resource read back (or empty if missing).
-    google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
-    google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
+    // The ID of the read resource.
+    string id = 1;
+
+    // The output properties of the resource read from the live environment.
+    google.protobuf.Struct properties = 2;
+
+    // Output-derived input properties for the resource. These are returned as they would be returned from a
+    // [](pulumirpc.ResourceProvider.Check) call with the same values.
+    google.protobuf.Struct inputs = 3;
 }
 
 message UpdateRequest {

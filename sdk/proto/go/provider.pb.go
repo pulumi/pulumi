@@ -1546,17 +1546,28 @@ func (x *DiffResponse) GetHasDetailedDiff() bool {
 	return false
 }
 
+// `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
 type CreateRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urn        string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`               // the Pulumi URN for this resource.
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // the provider inputs to set during creation.
-	Timeout    float64          `protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`     // the create request timeout represented in seconds.
-	Preview    bool             `protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`      // true if this is a preview and the provider should not actually create the resource.
-	Name       string           `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`             // the Pulumi name for this resource.
-	Type       string           `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`             // the Pulumi type for this resource.
+	// The URN of the resource being created.
+	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The resource's input properties, to be set during creation. These should have been validated by a call to
+	// [](pulumirpc.ResourceProvider.Check).
+	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
+	Timeout float64 `protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+	// actually create the resource.
+	Preview bool `protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`
+	// The name of the resource being created. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *CreateRequest) Reset() {
@@ -1633,13 +1644,18 @@ func (x *CreateRequest) GetType() string {
 	return ""
 }
 
+// `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
+// contains the ID of the created resource, as well as any output properties that arose from the creation process.
 type CreateResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // the ID of the created resource.
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // any properties that were computed during creation.
+	// The ID of the created resource.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The resource's output properties. Typically this will be a union of the resource's input properties and any
+	// additional values that were computed or made available during creation.
+	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 }
 
 func (x *CreateResponse) Reset() {
@@ -1688,17 +1704,27 @@ func (x *CreateResponse) GetProperties() *structpb.Struct {
 	return nil
 }
 
+// `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
 type ReadRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // the ID of the resource to read.
-	Urn        string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`               // the Pulumi URN for this resource.
-	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"` // the current state (sufficiently complete to identify the resource).
-	Inputs     *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`         // the current inputs, if any (only populated during refresh).
-	Name       string           `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`             // the Pulumi name for this resource.
-	Type       string           `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`             // the Pulumi type for this resource.
+	// The ID of the resource to read.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The URN of the resource being read.
+	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	// Any current state for the resource being read. This state should be sufficient to uniquely identify the resource.
+	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	// Any current input properties for the resource being read. These will only be populated when the
+	// [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+	Inputs *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	// The name of the resource being read. This must match the name specified by the `urn` field, and is passed so that
+	// providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
+	// providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *ReadRequest) Reset() {
@@ -1775,14 +1801,20 @@ func (x *ReadRequest) GetType() string {
 	return ""
 }
 
+// `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
+// the ID of the resource being read, as well as any state that was successfully read from the live environment.
 type ReadResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // the ID of the resource read back (or empty if missing).
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // the state of the resource read from the live environment.
-	Inputs     *structpb.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`         // the inputs for this resource that would be returned from Check.
+	// The ID of the read resource.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The output properties of the resource read from the live environment.
+	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	// Output-derived input properties for the resource. These are returned as they would be returned from a
+	// [](pulumirpc.ResourceProvider.Check) call with the same values.
+	Inputs *structpb.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
 }
 
 func (x *ReadResponse) Reset() {

@@ -963,6 +963,8 @@ global___DiffResponse = DiffResponse
 
 @typing_extensions.final
 class CreateRequest(google.protobuf.message.Message):
+    """`CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     URN_FIELD_NUMBER: builtins.int
@@ -972,18 +974,26 @@ class CreateRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being created."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the provider inputs to set during creation."""
+        """The resource's input properties, to be set during creation. These should have been validated by a call to
+        [](pulumirpc.ResourceProvider.Check).
+        """
     timeout: builtins.float
-    """the create request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     preview: builtins.bool
-    """true if this is a preview and the provider should not actually create the resource."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually create the resource.
+    """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being created. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -1001,17 +1011,21 @@ global___CreateRequest = CreateRequest
 
 @typing_extensions.final
 class CreateResponse(google.protobuf.message.Message):
-    """NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`."""
+    """`CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
+    contains the ID of the created resource, as well as any output properties that arose from the creation process.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the created resource."""
+    """The ID of the created resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during creation."""
+        """The resource's output properties. Typically this will be a union of the resource's input properties and any
+        additional values that were computed or made available during creation.
+        """
     def __init__(
         self,
         *,
@@ -1025,6 +1039,8 @@ global___CreateResponse = CreateResponse
 
 @typing_extensions.final
 class ReadRequest(google.protobuf.message.Message):
+    """`ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -1034,19 +1050,25 @@ class ReadRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to read."""
+    """The ID of the resource to read."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being read."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the current state (sufficiently complete to identify the resource)."""
+        """Any current state for the resource being read. This state should be sufficient to uniquely identify the resource."""
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the current inputs, if any (only populated during refresh)."""
+        """Any current input properties for the resource being read. These will only be populated when the
+        [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+        """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being read. This must match the name specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -1064,19 +1086,25 @@ global___ReadRequest = ReadRequest
 
 @typing_extensions.final
 class ReadResponse(google.protobuf.message.Message):
+    """`ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
+    the ID of the resource being read, as well as any state that was successfully read from the live environment.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource read back (or empty if missing)."""
+    """The ID of the read resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the state of the resource read from the live environment."""
+        """The output properties of the resource read from the live environment."""
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the inputs for this resource that would be returned from Check."""
+        """Output-derived input properties for the resource. These are returned as they would be returned from a
+        [](pulumirpc.ResourceProvider.Check) call with the same values.
+        """
     def __init__(
         self,
         *,
