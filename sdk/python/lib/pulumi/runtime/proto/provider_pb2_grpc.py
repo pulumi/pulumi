@@ -186,7 +186,7 @@ class ResourceProviderServicer(object):
 
         As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
         the properties as present in the program inputs. Though this rule is not required for correctness, violations
-        thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
+        thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
         rendering diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -250,18 +250,27 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Check(self, request, context):
-        """Check validates that the given property bag is valid for a resource of the given type and returns the inputs
-        that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
-        inputs returned by a call to Check should preserve the original representation of the properties as present in
-        the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
-        the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+        """`Check` validates a set of input properties against a given resource type. A `Check` call returns either a set of
+        checked, known-valid inputs that may subsequently be passed to [](pulumirpc.ResourceProvider.Diff),
+        [](pulumirpc.ResourceProvider.Create), or [](pulumirpc.ResourceProvider.Update); or a set of errors explaining
+        why the inputs are invalid. In the case that a set of inputs are successfully validated and returned, `Check`
+        *may also populate default values* for resource inputs, returning them so that they may be passed to a subsequent
+        call and persisted in the Pulumi state. In the case that `Check` fails and returns a set of errors, it is
+        expected that the caller (typically the Pulumi engine) will fail resource registration.
+
+        As a rule, the provider inputs returned by a call to `Check` should preserve the original representation of the
+        properties as present in the program inputs. Though this rule is not required for correctness, violations thereof
+        can negatively impact the end-user experience, as the provider inputs are used for detecting and rendering
+        diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Diff(self, request, context):
-        """Diff checks what impacts a hypothetical update will have on the resource's properties.
+        """`Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
+        difference (if any) between them. `Diff` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.Check) call.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
