@@ -256,7 +256,7 @@ class ResourceProvider:
         assumed to still exist.
         """
 
-    def configure(self, req: ConfigureRequest)
+    def configure(self, req: ConfigureRequest) -> None:
         """
         Configure sets up the resource provider. Use this to initialize the
         provider and store configuration.
