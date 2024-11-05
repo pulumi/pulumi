@@ -18,8 +18,6 @@
 package nosleep
 
 import (
-	"errors"
-
 	"github.com/godbus/dbus/v5"
 )
 
@@ -29,26 +27,27 @@ func keepRunning() DoneFunc {
 		return func() {}
 	}
 
+	applicationName := "pulumi"
+	reasonForInhibit := "stay awake"
 	var cookie uint32
-	obj := conn.Object("org.freedesktop.PowerManagement", "/org/freedesktop/PowerManagement/Inhibit")
-	err = obj.Call("Inhibit", 0, "nosleep", "stay awake").Store(&cookie)
-	err = conn.BusObject().Call("org.freedesktop.PowerManagement", 0, "nosleep", "Keep the system awake").Store()
-	var dbusErr dbus.Error
-	if errors.As(err, &dbusErr) {
-		if dbusErr.Name == "org.freedesktop.DBus.Error.UnknownInterface" {
-			// The org.freedesktop.PowerManagement interface is not available, try the Gnome interface
-			obj = conn.Object("org.gnome.SessionManager", "/org/gnome/SessionManager")
-			err = obj.Call("Inhibit", 0, "nosleep", "stay awake").Store(&cookie)
-			if err != nil {
-				// We did not succeed in setting up the inhibit, so just return a no-op function
-				return func() {}
-			}
-			return func() {
-				obj.Call("UnInhibit", 0, cookie).Store()
-			}
-		}
+	// Use the gnome power manager.  Wakepy also supports org.freedesktop.PowerManagement, but that seems to be deprecated.
+	// Docs for this interface can be found at
+	// https://lira.no-ip.org:8443/doc/gnome-session/dbus/gnome-session.html#org.gnome.SessionManager.Inhibit
+	obj := conn.Object("org.gnome.SessionManager", "/org/gnome/SessionManager")
+	inhibitIdleFlag := uint(8) // inhibit the session from being marked as idle
+	toplevelXid := uint(42)    // value doesn't seem to matter here
+	err = obj.Call(
+		"org.gnome.SessionManager.Inhibit",
+		0,
+		applicationName,
+		toplevelXid,
+		reasonForInhibit,
+		inhibitIdleFlag).Store(&cookie)
+	if err != nil {
+		// We did not succeed in setting up the inhibit, so just return a no-op function
+		return func() {}
 	}
 	return func() {
-		obj.Call("UnInhibit", 0, cookie).Store()
+		_ = obj.Call("org.gnome.SessionManager.Uninhibit", 0, cookie).Store()
 	}
 }
