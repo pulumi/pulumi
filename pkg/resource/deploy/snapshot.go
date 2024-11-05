@@ -396,10 +396,13 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 
 		return newStateBuilder(old).
 			withUpdatedURN(fixUrn).
-			withUpdatedParent(fixUrn).
-			withUpdatedDependencies(fixUrn).
-			withUpdatedPropertyDependencies(fixUrn).
-			withUpdatedProvider(fixProvider).
+			withAllUpdatedDependencies(
+				fixProvider,
+				fixUrn,
+
+				// We want to fix up all dependency types, so we pass a nil include function.
+				nil,
+			).
 			withUpdatedAliases().
 			build()
 	}
