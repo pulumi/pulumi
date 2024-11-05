@@ -190,20 +190,14 @@ func (err *MissingError) Error() string {
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-	Download(version semver.Version, opSy string, arch string,
-		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
-	// DownloadWithContext fetches an io.ReadCloser for this plugin and also returns the size of the response
-	// (if known). This variant takes a context to facilitate cancellation.
-	DownloadWithContext(ctx context.Context,
+	// The context supplied enables IO to be canceled as needed.
+	Download(ctx context.Context,
 		version semver.Version, opSy string, arch string,
 		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
 
 	// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
-	// plugins we can get from GitHub releases.
-	GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
-	// GetLatestVersionWithContext tries to find the latest version for this plugin. This is currently only supported
-	// for plugins we can get from GitHub releases. This variant takes a context to facilitate cancellation.
-	GetLatestVersionWithContext(ctx context.Context,
+	// plugins we can get from GitHub releases. The context supplied enables IO to be canceled as needed.
+	GetLatestVersion(ctx context.Context,
 		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
 
 	// A base URL that can uniquely identify the source. Has the same structure as the PluginDownloadURL
@@ -227,13 +221,6 @@ func newGetPulumiSource(name string, kind apitype.PluginKind) *getPulumiSource {
 }
 
 func (source *getPulumiSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *getPulumiSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
@@ -303,12 +290,6 @@ func (source *gitlabSource) newHTTPRequest(ctx context.Context, url, accept stri
 }
 
 func (source *gitlabSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
-}
-
-func (source *gitlabSource) GetLatestVersionWithContext(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
@@ -341,13 +322,6 @@ func (source *gitlabSource) GetLatestVersionWithContext(
 }
 
 func (source *gitlabSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *gitlabSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
@@ -520,12 +494,6 @@ func (source *githubSource) getHTTPResponse(
 }
 
 func (source *githubSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
-}
-
-func (source *githubSource) GetLatestVersionWithContext(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
@@ -554,13 +522,6 @@ func (source *githubSource) GetLatestVersionWithContext(
 }
 
 func (source *githubSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *githubSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
@@ -626,12 +587,6 @@ func newHTTPSource(name string, kind apitype.PluginKind, url *url.URL) *httpSour
 }
 
 func (source *httpSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
-}
-
-func (source *httpSource) GetLatestVersionWithContext(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
@@ -649,13 +604,6 @@ func interpolateURL(serverURL string, name string, version semver.Version, os, a
 }
 
 func (source *httpSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *httpSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
@@ -699,12 +647,6 @@ func urlMustParse(rawURL string) *url.URL {
 }
 
 func (source *fallbackSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
-}
-
-func (source *fallbackSource) GetLatestVersionWithContext(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
@@ -713,7 +655,7 @@ func (source *fallbackSource) GetLatestVersionWithContext(
 	if err != nil {
 		return nil, err
 	}
-	version, err := public.GetLatestVersionWithContext(ctx, getHTTPResponse)
+	version, err := public.GetLatestVersion(ctx, getHTTPResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -722,13 +664,6 @@ func (source *fallbackSource) GetLatestVersionWithContext(
 }
 
 func (source *fallbackSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *fallbackSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
@@ -738,7 +673,7 @@ func (source *fallbackSource) DownloadWithContext(
 	if err != nil {
 		return nil, -1, err
 	}
-	resp, length, err := public.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
+	resp, length, err := public.Download(ctx, version, opSy, arch, getHTTPResponse)
 	if err == nil {
 		return resp, length, nil
 	}
@@ -746,7 +681,7 @@ func (source *fallbackSource) DownloadWithContext(
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
-	return pulumi.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
+	return pulumi.Download(ctx, version, opSy, arch, getHTTPResponse)
 }
 
 func (source *fallbackSource) URL() string {
@@ -780,16 +715,10 @@ func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksu
 }
 
 func (source *checksumSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (*semver.Version, error) {
-	return source.GetLatestVersionWithContext(context.Background(), getHTTPResponse)
-}
-
-func (source *checksumSource) GetLatestVersionWithContext(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	return source.source.GetLatestVersionWithContext(ctx, getHTTPResponse)
+	return source.source.GetLatestVersion(ctx, getHTTPResponse)
 }
 
 type checksumReader struct {
@@ -823,19 +752,12 @@ func (reader *checksumReader) Close() error {
 }
 
 func (source *checksumSource) Download(
-	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-) (io.ReadCloser, int64, error) {
-	return source.DownloadWithContext(context.Background(), version, opSy, arch, getHTTPResponse)
-}
-
-func (source *checksumSource) DownloadWithContext(
 	ctx context.Context,
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
 	checksum, ok := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
-	response, length, err := source.source.DownloadWithContext(ctx, version, opSy, arch, getHTTPResponse)
+	response, length, err := source.source.Download(ctx, version, opSy, arch, getHTTPResponse)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -1106,7 +1028,7 @@ func (spec PluginSpec) GetLatestVersionWithContext(ctx context.Context) (*semver
 	if err != nil {
 		return nil, err
 	}
-	return source.GetLatestVersionWithContext(ctx, getHTTPResponseWithRetry)
+	return source.GetLatestVersion(ctx, getHTTPResponseWithRetry)
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
@@ -1142,7 +1064,7 @@ func (spec PluginSpec) DownloadWithContext(ctx context.Context) (io.ReadCloser, 
 	if err != nil {
 		return nil, -1, err
 	}
-	return source.DownloadWithContext(ctx, *spec.Version, opSy, arch, getHTTPResponse)
+	return source.Download(ctx, *spec.Version, opSy, arch, getHTTPResponse)
 }
 
 func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization string) (*http.Request, error) {
