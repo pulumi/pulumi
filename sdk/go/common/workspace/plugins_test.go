@@ -755,16 +755,13 @@ func TestPluginDownload(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			attempts++
 
-			fmt.Println("req.Header.Get(\"Authorization\")", req.Header.Get("Authorization"))
 			if req.Header.Get("Authorization") == "token "+token {
-				fmt.Println("fail forbidden")
 				// Fail with a 403 Forbidden
 				return nil, -1, &downloadError{
 					code:   403,
 					header: http.Header{"x-ratelimit-remaining": []string{"42"}},
 				}
 			}
-			fmt.Println("req.URL.String()", req.URL.String())
 
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v5.32.0" {
 				assert.Equal(t, "", req.Header.Get("Authorization"))

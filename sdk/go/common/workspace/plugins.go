@@ -434,6 +434,10 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 	return req, nil
 }
 
+func isRateLimitError(downErr *downloadError) bool {
+	return downErr.code == 403 && downErr.header.Get("x-ratelimit-remaining") == "0"
+}
+
 func (source *githubSource) getHTTPResponse(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 	url, accept string,
@@ -447,12 +451,15 @@ func (source *githubSource) getHTTPResponse(
 		return resp, length, nil
 	}
 
-	// Wrap 403 rate limit errors with a more helpful message later. This is a rate limiting error only
-	// if x-ratelimit-remaining is 0.
-	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+	// We handle error responoses differently here based on the type:
+	// - 403 errors that are also rate limit errors (x-ratelimit-remaining is 0) are wrapped in a more helpful message later.
+	// - If the user has a GITHUB_TOKEN set, 401s and 403s (that are not rate limit errors) are handled by disabling the token
+	//   and trying again.  This can be useful for example if the user has a fine grained token, which when set doesn't allow
+	//   access to public repositories.
+	// All other errors are returned as is.
 	var downErr *downloadError
-	if !errors.As(err, &downErr) || downErr.code != 403 || downErr.header.Get("x-ratelimit-remaining") != "0" {
-		// If we see a 401 error and we're using a token we'll disable that token and try again
+	if !errors.As(err, &downErr) || !isRateLimitError(downErr) {
+		// If we see a 401 or 403 error and we're using a token we'll disable that token and try again
 		if downErr != nil && (downErr.code == 401 || downErr.code == 403) && source.token != "" {
 			source.token = ""
 			source.tokenDisabled = true
