@@ -1802,9 +1802,9 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		AcceptsOutputValues: true,
 	})
 	if err != nil {
-		// rpcError := rpcerror.Convert(err)
-		// logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
-		return CallResult{}, err
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return CallResult{}, rpcError
 	}
 
 	// Unmarshal any return values.
