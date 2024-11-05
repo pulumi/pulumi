@@ -53,7 +53,24 @@ type ResourceProviderClient interface {
 	Parameterize(ctx context.Context, in *ParameterizeRequest, opts ...grpc.CallOption) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
-	// CheckConfig validates the configuration for this resource provider.
+	// `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
+	// `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
+	// is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
+	// a provider using user-supplied values. In the case that provider inputs are coming from some source that has been
+	// checked previously (e.g. a Pulumi state), it is not necessary to call `CheckConfig`.
+	//
+	// A `CheckConfig` call returns either a set of checked, known-valid inputs that may subsequently be passed to
+	// [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure), or a set of errors
+	// explaining why the inputs are invalid. In the case that a set of inputs are successfully validated and returned,
+	// `CheckConfig` *may also populate default values* for provider configuration, returning them so that they may be
+	// passed to a subsequent [](pulumirpc.ResourceProvider.Configure) call and persisted in the Pulumi state. In the
+	// case that `CheckConfig` fails and returns a set of errors, it is expected that the caller (typically the Pulumi
+	// engine) will fail provider registration.
+	//
+	// As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
+	// the properties as present in the program inputs. Though this rule is not required for correctness, violations
+	// thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
+	// rendering diffs.
 	CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
@@ -356,7 +373,24 @@ type ResourceProviderServer interface {
 	Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
-	// CheckConfig validates the configuration for this resource provider.
+	// `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
+	// `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
+	// is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
+	// a provider using user-supplied values. In the case that provider inputs are coming from some source that has been
+	// checked previously (e.g. a Pulumi state), it is not necessary to call `CheckConfig`.
+	//
+	// A `CheckConfig` call returns either a set of checked, known-valid inputs that may subsequently be passed to
+	// [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure), or a set of errors
+	// explaining why the inputs are invalid. In the case that a set of inputs are successfully validated and returned,
+	// `CheckConfig` *may also populate default values* for provider configuration, returning them so that they may be
+	// passed to a subsequent [](pulumirpc.ResourceProvider.Configure) call and persisted in the Pulumi state. In the
+	// case that `CheckConfig` fails and returns a set of errors, it is expected that the caller (typically the Pulumi
+	// engine) will fail provider registration.
+	//
+	// As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
+	// the properties as present in the program inputs. Though this rule is not required for correctness, violations
+	// thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
+	// rendering diffs.
 	CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error)
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
