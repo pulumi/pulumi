@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -175,6 +176,39 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 	return schema, nil
 }
 
+func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	loader schema.Loader,
+	descriptor *schema.PackageDescriptor,
+) (*packageSchema, error) {
+	version := ""
+	if descriptor.Version != nil {
+		version = descriptor.Version.String()
+	}
+
+	pkgInfo := PackageInfo{
+		name:    descriptor.Name,
+		version: version,
+	}
+
+	if s, ok := c.getPackageSchema(pkgInfo); ok {
+		return s, nil
+	}
+
+	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	if err != nil {
+		return nil, err
+	}
+
+	schema := newPackageSchema(pkg)
+
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	c.entries[pkgInfo] = schema
+
+	return schema, nil
+}
+
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
 func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
@@ -273,7 +307,13 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 			continue
 		}
 
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+		var pkg *packageSchema
+		var err error
+		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		} else {
+			pkg, err = b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+		}
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
 				continue

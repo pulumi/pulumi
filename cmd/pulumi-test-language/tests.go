@@ -1372,6 +1372,25 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-parameterized-resource": {
+		providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					require.Equal(l,
+						resource.NewStringProperty("HelloWorld"),
+						stack.Outputs["parameterValue"],
+						"parameter value should be correct")
+				},
+			},
+		},
+	},
 	"l2-map-keys": {
 		providers: []plugin.Provider{
 			&providers.PrimitiveProvider{}, &providers.PrimitiveRefProvider{},
