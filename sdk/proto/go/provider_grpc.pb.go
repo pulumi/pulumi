@@ -139,7 +139,20 @@ type ResourceProviderClient interface {
 	// a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
 	// exist.
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Construct creates a new instance of the provided component resource and returns its state.
+	// `Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+	// referred to as [component providers](component-providers). `Construct` is to component resources what
+	// [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+	// lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
+	//
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
+	//
+	// * A set of input properties.
+	//
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
@@ -491,7 +504,20 @@ type ResourceProviderServer interface {
 	// a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
 	// exist.
 	Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error)
-	// Construct creates a new instance of the provided component resource and returns its state.
+	// `Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+	// referred to as [component providers](component-providers). `Construct` is to component resources what
+	// [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+	// lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
+	//
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
+	//
+	// * A set of input properties.
+	//
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a

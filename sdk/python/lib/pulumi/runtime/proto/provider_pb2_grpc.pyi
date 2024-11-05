@@ -204,7 +204,21 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ConstructRequest,
         pulumi.provider_pb2.ConstructResponse,
     ]
-    """Construct creates a new instance of the provided component resource and returns its state."""
+    """`Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+    referred to as [component providers](component-providers). `Construct` is to component resources what
+    [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+    lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+    `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+    consequently passed enough information to manage fully these resources. At a high level, this comprises:
+
+    * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+      custom or component resources that belong to the component.
+
+    * A set of input properties.
+
+    * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+      propagate to resources it registers against the supplied resource monitor.
+    """
     Cancel: grpc.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
         google.protobuf.empty_pb2.Empty,
@@ -450,7 +464,21 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ConstructRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.ConstructResponse:
-        """Construct creates a new instance of the provided component resource and returns its state."""
+        """`Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+        referred to as [component providers](component-providers). `Construct` is to component resources what
+        [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+        lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+        `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+        consequently passed enough information to manage fully these resources. At a high level, this comprises:
+
+        * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+          custom or component resources that belong to the component.
+
+        * A set of input properties.
+
+        * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+          propagate to resources it registers against the supplied resource monitor.
+        """
     
     def Cancel(
         self,

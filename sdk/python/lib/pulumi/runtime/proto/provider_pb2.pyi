@@ -1259,18 +1259,23 @@ global___DeleteRequest = DeleteRequest
 
 @typing_extensions.final
 class ConstructRequest(google.protobuf.message.Message):
+    """`ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
+    `ConstructRequest` captures enough data to be able to register nested components against the caller's resource
+    monitor.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class PropertyDependencies(google.protobuf.message.Message):
-        """PropertyDependencies describes the resources that a particular property depends on."""
+        """A `PropertyDependencies` list is a set of URNs that a particular property may depend on."""
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         URNS_FIELD_NUMBER: builtins.int
         @property
         def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-            """A list of URNs this property depends on."""
+            """A list of URNs that this property depends on."""
         def __init__(
             self,
             *,
@@ -1280,23 +1285,17 @@ class ConstructRequest(google.protobuf.message.Message):
 
     @typing_extensions.final
     class CustomTimeouts(google.protobuf.message.Message):
-        """CustomTimeouts specifies timeouts for resource provisioning operations.
-        Use it with the [Timeouts] option when creating new resources
-        to override default timeouts.
+        """A `CustomTimeouts` object encapsulates a set of timeouts for the various CRUD operations that might be performed
+        on this resource's nested resources. Timeout values are specified as duration strings, such as `"5ms"` (5
+        milliseconds), `"40s"` (40 seconds), or `"1m30s"` (1 minute and 30 seconds). The following units of time are
+        supported:
 
-        Each timeout is specified as a duration string such as,
-        "5ms" (5 milliseconds), "40s" (40 seconds),
-        and "1m30s" (1 minute, 30 seconds).
-
-        The following units are accepted.
-
-          - ns: nanoseconds
-          - us: microseconds
-          - µs: microseconds
-          - ms: milliseconds
-          - s: seconds
-          - m: minutes
-          - h: hours
+        * `ns`: nanoseconds
+        * `us` or `µs`: microseconds
+        * `ms`: milliseconds
+        * `s`: seconds
+        * `m`: minutes
+        * `h`: hours
         """
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -1305,8 +1304,17 @@ class ConstructRequest(google.protobuf.message.Message):
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
         create: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
+        to complete.
+        """
         update: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Update) operation
+        to complete.
+        """
         delete: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
+        to complete.
+        """
         def __init__(
             self,
             *,
@@ -1392,69 +1400,104 @@ class ConstructRequest(google.protobuf.message.Message):
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
-    """the name of the stack being deployed into."""
+    """The name of the stack being deployed into."""
     @property
     def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the configuration variables to apply before running."""
+        """Configuration for the specified project and stack."""
     dryRun: builtins.bool
-    """true if we're only doing a dryrun (preview)."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually construct the component.
+    """
     parallel: builtins.int
-    """the degree of parallelism for resource operations (<=1 for serial)."""
+    """The degree of parallelism that may be used for resource operations. A value less than or equal to 1 indicates
+    that operations should be performed serially.
+    """
     monitorEndpoint: builtins.str
-    """the address for communicating back to the resource monitor."""
+    """The address of the [](pulumirpc.ResourceMonitor) that the provider should connect to in order to send [resource
+    registrations](resource-registration) for its nested resources.
+    """
     type: builtins.str
-    """the type of the object allocated."""
+    """The type of the component resource being constructed. This must match the type specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     name: builtins.str
-    """the name, for URN purposes, of the object."""
+    """The name of the component resource being constructed. This must match the name specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     parent: builtins.str
-    """an optional parent URN that this child resource belongs to."""
+    """Dependencies and resource options
+
+    These are passed so that the component may propagate them to resources it registers against the supplied resource
+    monitor.
+
+    Do *not* change field IDs. Add new fields at the end with appropriate field IDs as necessary.
+
+    An optional parent resource that the component (and by extension, its nested resources) should be children of.
+    """
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the inputs to the resource constructor."""
+        """The component resource's input properties. Unlike the inputs of custom resources, these will *not* have been
+        passed to a call to [](pulumirpc.ResourceProvider.Check). By virtue of their being a composition of other
+        resources, component resources are able to (and therefore expected) to validate their own inputs. Moreover,
+        [](pulumirpc.ResourceProvider.Check) will be called on any inputs passed to nested custom resources as usual.
+        """
     @property
     def inputDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructRequest.PropertyDependencies]:
-        """a map from property keys to the dependencies of the property."""
+        """A map of property dependencies for the component resource and its nested resources."""
     @property
     def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the map of providers to use for this resource's children."""
+        """A map of package names to provider references for the component resource and its nested resources."""
     @property
     def dependencies(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of URNs that this resource depends on, as observed by the language host."""
+        """A list of URNs that this resource and its nested resources depend on."""
     @property
     def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """the configuration keys that have secret values."""
+        """A set of configuration keys whose values are [secret](output-secrets)."""
     organization: builtins.str
-    """the organization of the stack being deployed into."""
+    """The organization to which this resource and its nested resources will belong."""
     protect: builtins.bool
-    """Resource options:
-    Do not change field IDs. Add new fields at the end.
-    true if the resource should be marked protected.
+    """True if and only if the resource (and by extension, its nested resources) should be marked as protected.
+    Protected resources cannot be deleted without first being unprotected.
     """
     @property
     def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of additional URNs that shoud be considered the same."""
+        """A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
+        used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
+        e.g. if it had its parent (and consequently URN) changed.
+        """
     @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """additional output properties that should be treated as secrets."""
+        """A list of input properties whose values should be treated as [secret](output-secrets)."""
     @property
     def customTimeouts(self) -> global___ConstructRequest.CustomTimeouts:
-        """default timeouts for CRUD operations on this resource."""
+        """A set of custom timeouts that specify how long the caller is prepared to wait for the various CRUD operations of
+        this resource's nested resources.
+        """
     deletedWith: builtins.str
-    """URN of a resource that, if deleted, also deletes this resource."""
+    """The URN of a resource that this resource (and thus its nested resources) will be implicitly deleted with. If the
+    resource referred to by this URN is deleted in the same operation that this resource would be deleted, the
+    [](pulumirpc.ResourceProvider.Delete) call for this resource will be elided (since this dependency signals that
+    it will have already been deleted).
+    """
     deleteBeforeReplace: builtins.bool
-    """whether to delete the resource before replacing it."""
+    """If true, this resource (and its nested resources) must be deleted *before* its replacement is created."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """properties that should be ignored during a diff"""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     @property
     def replaceOnChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """properties that, when changed, trigger a replacement"""
+        """A set of properties that, when changed, trigger a replacement."""
     retainOnDelete: builtins.bool
-    """whether to retain the resource in the cloud provider when it is deleted"""
+    """True if [](pulumirpc.ResourceProvider.Delete) should *not* be called when the resource (and by extension, its
+    nested resources) are removed from a Pulumi program.
+    """
     accepts_output_values: builtins.bool
-    """the engine can be passed output values back, stateDependencies can be left blank if returning output values."""
+    """True if the caller is capable of accepting output values in response to the call. If this is set, these outputs
+    may be used to communicate dependency information and so there is no need to populate
+    [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
+    """
     def __init__(
         self,
         *,
@@ -1491,18 +1534,20 @@ global___ConstructRequest = ConstructRequest
 
 @typing_extensions.final
 class ConstructResponse(google.protobuf.message.Message):
+    """`ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class PropertyDependencies(google.protobuf.message.Message):
-        """PropertyDependencies describes the resources that a particular property depends on."""
+        """A `PropertyDependencies` list is a set of URNs that a particular property may depend on."""
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         URNS_FIELD_NUMBER: builtins.int
         @property
         def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-            """A list of URNs this property depends on."""
+            """A list of URNs that this property depends on."""
         def __init__(
             self,
             *,
@@ -1532,13 +1577,16 @@ class ConstructResponse(google.protobuf.message.Message):
     STATE_FIELD_NUMBER: builtins.int
     STATEDEPENDENCIES_FIELD_NUMBER: builtins.int
     urn: builtins.str
-    """the URN of the component resource."""
+    """The URN of the constructed component resource."""
     @property
     def state(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during construction."""
+        """Any output properties that the component registered as part of its construction."""
     @property
     def stateDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructResponse.PropertyDependencies]:
-        """a map from property keys to the dependencies of the property."""
+        """A map of property dependencies for the component's outputs. This will be set if the caller indicated that it
+        could not receive dependency-communicating [output](outputs) values by setting [](pulumirpc.ConstructRequest)'s
+        `accepts_output_values` field to false.
+        """
     def __init__(
         self,
         *,

@@ -2159,38 +2159,82 @@ func (x *DeleteRequest) GetType() string {
 	return ""
 }
 
+// `ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
+// `ConstructRequest` captures enough data to be able to register nested components against the caller's resource
+// monitor.
 type ConstructRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Project           string                                            `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`                                                                                                              // the project name.
-	Stack             string                                            `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`                                                                                                                  // the name of the stack being deployed into.
-	Config            map[string]string                                 `protobuf:"bytes,3,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`                        // the configuration variables to apply before running.
-	DryRun            bool                                              `protobuf:"varint,4,opt,name=dryRun,proto3" json:"dryRun,omitempty"`                                                                                                               // true if we're only doing a dryrun (preview).
-	Parallel          int32                                             `protobuf:"varint,5,opt,name=parallel,proto3" json:"parallel,omitempty"`                                                                                                           // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorEndpoint   string                                            `protobuf:"bytes,6,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`                                                                                              // the address for communicating back to the resource monitor.
-	Type              string                                            `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`                                                                                                                    // the type of the object allocated.
-	Name              string                                            `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`                                                                                                                    // the name, for URN purposes, of the object.
-	Parent            string                                            `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                                                // an optional parent URN that this child resource belongs to.
-	Inputs            *structpb.Struct                                  `protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`                                                                                                               // the inputs to the resource constructor.
-	InputDependencies map[string]*ConstructRequest_PropertyDependencies `protobuf:"bytes,11,rep,name=inputDependencies,proto3" json:"inputDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map from property keys to the dependencies of the property.
-	Providers         map[string]string                                 `protobuf:"bytes,13,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`                 // the map of providers to use for this resource's children.
-	Dependencies      []string                                          `protobuf:"bytes,15,rep,name=dependencies,proto3" json:"dependencies,omitempty"`                                                                                                   // a list of URNs that this resource depends on, as observed by the language host.
-	ConfigSecretKeys  []string                                          `protobuf:"bytes,16,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`                                                                                           // the configuration keys that have secret values.
-	Organization      string                                            `protobuf:"bytes,17,opt,name=organization,proto3" json:"organization,omitempty"`                                                                                                   // the organization of the stack being deployed into.
-	// Resource options:
-	// Do not change field IDs. Add new fields at the end.
-	Protect                 bool                             `protobuf:"varint,12,opt,name=protect,proto3" json:"protect,omitempty"`                                                      // true if the resource should be marked protected.
-	Aliases                 []string                         `protobuf:"bytes,14,rep,name=aliases,proto3" json:"aliases,omitempty"`                                                       // a list of additional URNs that shoud be considered the same.
-	AdditionalSecretOutputs []string                         `protobuf:"bytes,18,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`                       // additional output properties that should be treated as secrets.
-	CustomTimeouts          *ConstructRequest_CustomTimeouts `protobuf:"bytes,19,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`                                         // default timeouts for CRUD operations on this resource.
-	DeletedWith             string                           `protobuf:"bytes,20,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`                                               // URN of a resource that, if deleted, also deletes this resource.
-	DeleteBeforeReplace     bool                             `protobuf:"varint,21,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`                              // whether to delete the resource before replacing it.
-	IgnoreChanges           []string                         `protobuf:"bytes,22,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`                                           // properties that should be ignored during a diff
-	ReplaceOnChanges        []string                         `protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`                                     // properties that, when changed, trigger a replacement
-	RetainOnDelete          bool                             `protobuf:"varint,24,opt,name=retainOnDelete,proto3" json:"retainOnDelete,omitempty"`                                        // whether to retain the resource in the cloud provider when it is deleted
-	AcceptsOutputValues     bool                             `protobuf:"varint,25,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"` // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
+	// The project to which this resource and its nested resources will belong.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	// The name of the stack being deployed into.
+	Stack string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
+	// Configuration for the specified project and stack.
+	Config map[string]string `protobuf:"bytes,3,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+	// actually construct the component.
+	DryRun bool `protobuf:"varint,4,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
+	// The degree of parallelism that may be used for resource operations. A value less than or equal to 1 indicates
+	// that operations should be performed serially.
+	Parallel int32 `protobuf:"varint,5,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	// The address of the [](pulumirpc.ResourceMonitor) that the provider should connect to in order to send [resource
+	// registrations](resource-registration) for its nested resources.
+	MonitorEndpoint string `protobuf:"bytes,6,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`
+	// The type of the component resource being constructed. This must match the type specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+	// The name of the component resource being constructed. This must match the name specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
+	// An optional parent resource that the component (and by extension, its nested resources) should be children of.
+	Parent string `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
+	// The component resource's input properties. Unlike the inputs of custom resources, these will *not* have been
+	// passed to a call to [](pulumirpc.ResourceProvider.Check). By virtue of their being a composition of other
+	// resources, component resources are able to (and therefore expected) to validate their own inputs. Moreover,
+	// [](pulumirpc.ResourceProvider.Check) will be called on any inputs passed to nested custom resources as usual.
+	Inputs *structpb.Struct `protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	// A map of property dependencies for the component resource and its nested resources.
+	InputDependencies map[string]*ConstructRequest_PropertyDependencies `protobuf:"bytes,11,rep,name=inputDependencies,proto3" json:"inputDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// A map of package names to provider references for the component resource and its nested resources.
+	Providers map[string]string `protobuf:"bytes,13,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// A list of URNs that this resource and its nested resources depend on.
+	Dependencies []string `protobuf:"bytes,15,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	// A set of configuration keys whose values are [secret](output-secrets).
+	ConfigSecretKeys []string `protobuf:"bytes,16,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
+	// The organization to which this resource and its nested resources will belong.
+	Organization string `protobuf:"bytes,17,opt,name=organization,proto3" json:"organization,omitempty"`
+	// True if and only if the resource (and by extension, its nested resources) should be marked as protected.
+	// Protected resources cannot be deleted without first being unprotected.
+	Protect bool `protobuf:"varint,12,opt,name=protect,proto3" json:"protect,omitempty"`
+	// A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
+	// used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
+	// e.g. if it had its parent (and consequently URN) changed.
+	Aliases []string `protobuf:"bytes,14,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	// A list of input properties whose values should be treated as [secret](output-secrets).
+	AdditionalSecretOutputs []string `protobuf:"bytes,18,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
+	// A set of custom timeouts that specify how long the caller is prepared to wait for the various CRUD operations of
+	// this resource's nested resources.
+	CustomTimeouts *ConstructRequest_CustomTimeouts `protobuf:"bytes,19,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`
+	// The URN of a resource that this resource (and thus its nested resources) will be implicitly deleted with. If the
+	// resource referred to by this URN is deleted in the same operation that this resource would be deleted, the
+	// [](pulumirpc.ResourceProvider.Delete) call for this resource will be elided (since this dependency signals that
+	// it will have already been deleted).
+	DeletedWith string `protobuf:"bytes,20,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`
+	// If true, this resource (and its nested resources) must be deleted *before* its replacement is created.
+	DeleteBeforeReplace bool `protobuf:"varint,21,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`
+	// A set of [property paths](property-paths) that should be treated as unchanged.
+	IgnoreChanges []string `protobuf:"bytes,22,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	// A set of properties that, when changed, trigger a replacement.
+	ReplaceOnChanges []string `protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`
+	// True if [](pulumirpc.ResourceProvider.Delete) should *not* be called when the resource (and by extension, its
+	// nested resources) are removed from a Pulumi program.
+	RetainOnDelete bool `protobuf:"varint,24,opt,name=retainOnDelete,proto3" json:"retainOnDelete,omitempty"`
+	// True if the caller is capable of accepting output values in response to the call. If this is set, these outputs
+	// may be used to communicate dependency information and so there is no need to populate
+	// [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
+	AcceptsOutputValues bool `protobuf:"varint,25,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`
 }
 
 func (x *ConstructRequest) Reset() {
@@ -2400,14 +2444,20 @@ func (x *ConstructRequest) GetAcceptsOutputValues() bool {
 	return false
 }
 
+// `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
 type ConstructResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urn               string                                             `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`                                                                                                                     // the URN of the component resource.
-	State             *structpb.Struct                                   `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`                                                                                                                 // any properties that were computed during construction.
-	StateDependencies map[string]*ConstructResponse_PropertyDependencies `protobuf:"bytes,3,rep,name=stateDependencies,proto3" json:"stateDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map from property keys to the dependencies of the property.
+	// The URN of the constructed component resource.
+	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	// Any output properties that the component registered as part of its construction.
+	State *structpb.Struct `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	// A map of property dependencies for the component's outputs. This will be set if the caller indicated that it
+	// could not receive dependency-communicating [output](outputs) values by setting [](pulumirpc.ConstructRequest)'s
+	// `accepts_output_values` field to false.
+	StateDependencies map[string]*ConstructResponse_PropertyDependencies `protobuf:"bytes,3,rep,name=stateDependencies,proto3" json:"stateDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ConstructResponse) Reset() {
@@ -3035,13 +3085,14 @@ func (x *CallResponse_ReturnDependencies) GetUrns() []string {
 	return nil
 }
 
-// PropertyDependencies describes the resources that a particular property depends on.
+// A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
 type ConstructRequest_PropertyDependencies struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urns []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"` // A list of URNs this property depends on.
+	// A list of URNs that this property depends on.
+	Urns []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
 }
 
 func (x *ConstructRequest_PropertyDependencies) Reset() {
@@ -3083,30 +3134,30 @@ func (x *ConstructRequest_PropertyDependencies) GetUrns() []string {
 	return nil
 }
 
-// CustomTimeouts specifies timeouts for resource provisioning operations.
-// Use it with the [Timeouts] option when creating new resources
-// to override default timeouts.
+// A `CustomTimeouts` object encapsulates a set of timeouts for the various CRUD operations that might be performed
+// on this resource's nested resources. Timeout values are specified as duration strings, such as `"5ms"` (5
+// milliseconds), `"40s"` (40 seconds), or `"1m30s"` (1 minute and 30 seconds). The following units of time are
+// supported:
 //
-// Each timeout is specified as a duration string such as,
-// "5ms" (5 milliseconds), "40s" (40 seconds),
-// and "1m30s" (1 minute, 30 seconds).
-//
-// The following units are accepted.
-//
-//   - ns: nanoseconds
-//   - us: microseconds
-//   - µs: microseconds
-//   - ms: milliseconds
-//   - s: seconds
-//   - m: minutes
-//   - h: hours
+// * `ns`: nanoseconds
+// * `us` or `µs`: microseconds
+// * `ms`: milliseconds
+// * `s`: seconds
+// * `m`: minutes
+// * `h`: hours
 type ConstructRequest_CustomTimeouts struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
+	// to complete.
 	Create string `protobuf:"bytes,1,opt,name=create,proto3" json:"create,omitempty"`
+	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Update) operation
+	// to complete.
 	Update string `protobuf:"bytes,2,opt,name=update,proto3" json:"update,omitempty"`
+	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
+	// to complete.
 	Delete string `protobuf:"bytes,3,opt,name=delete,proto3" json:"delete,omitempty"`
 }
 
@@ -3163,13 +3214,14 @@ func (x *ConstructRequest_CustomTimeouts) GetDelete() string {
 	return ""
 }
 
-// PropertyDependencies describes the resources that a particular property depends on.
+// A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
 type ConstructResponse_PropertyDependencies struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urns []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"` // A list of URNs this property depends on.
+	// A list of URNs that this property depends on.
+	Urns []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
 }
 
 func (x *ConstructResponse_PropertyDependencies) Reset() {
