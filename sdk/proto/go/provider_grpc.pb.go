@@ -83,13 +83,18 @@ type ResourceProviderClient interface {
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
-	// Configure configures the resource provider with "globals" that control its behavior.
+	// `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 	//
-	// :::{warning}
-	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-	// ConfigureRequest.args.
-	// :::
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	//
+	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
+	// in turn so that the caller and the provider can interact appropriately.
+	//
+	// Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+	// the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+	// indicate which keys are missing.
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
@@ -412,13 +417,18 @@ type ResourceProviderServer interface {
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
-	// Configure configures the resource provider with "globals" that control its behavior.
+	// `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 	//
-	// :::{warning}
-	// ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-	// ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-	// ConfigureRequest.args.
-	// :::
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	//
+	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
+	// in turn so that the caller and the provider can interact appropriately.
+	//
+	// Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+	// the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+	// indicate which keys are missing.
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)

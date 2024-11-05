@@ -181,6 +181,11 @@ global___GetSchemaResponse = GetSchemaResponse
 
 @typing_extensions.final
 class ConfigureRequest(google.protobuf.message.Message):
+    """`ConfigureRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Configure) call. Requests
+    include both provider-specific inputs (`variables` or `args`) and provider-agnostic ("protocol") configuration
+    (`acceptSecrets`, `acceptResources`, and so on).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
@@ -207,18 +212,59 @@ class ConfigureRequest(google.protobuf.message.Message):
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the input properties for the provider, with nested values JSON-encoded; please read from `args` instead."""
+        """:::{warning}
+        `variables` is deprecated; `args` should be used instead wherever possible.
+        :::
+
+        A map of input properties for the provider. Compound values, such as nested objects, should be JSON encoded so
+        that they too can be passed as strings. For instance, the following configuration:
+
+        ```
+        {
+          "a": 42,
+          "b": {
+            "c": "hello",
+            "d": true
+          }
+        }
+        ```
+
+        should be encoded as:
+
+        ```
+        {
+          "a": "42",
+          "b": "{\\"c\\":\\"hello\\",\\"d\\":true}"
+        }
+        ```
+        """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
-        """the input properties for the provider"""
+        """A map of input properties for the provider.
+
+        :::{warning}
+        `args` may include secrets. Because `ConfigureRequest` is sent before [](pulumirpc.ConfigureResponse) can specify
+        whether or not the provider accepts secrets in general, providers *must* handle secrets if they appear in `args`.
+        :::
+        """
     acceptSecrets: builtins.bool
-    """when true, operations should return secrets as strongly typed."""
+    """True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
+    provider supports them also.
+    """
     acceptResources: builtins.bool
-    """when true, operations should return resources as strongly typed values to the provider."""
+    """True if and only if the caller supports strongly typed resources. If true, operations should return resources as
+    strongly typed values if the provider supports them also.
+    """
     sends_old_inputs: builtins.bool
-    """when true, diff and update will be called with the old outputs and the old inputs."""
+    """True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
+    [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
+    these calls.
+    """
     sends_old_inputs_to_delete: builtins.bool
-    """when true, delete will be called with the old outputs and the old inputs."""
+    """True if and only if the caller supports sending old inputs and outputs as part of
+    [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
+    these calls.
+    """
     def __init__(
         self,
         *,
@@ -236,6 +282,10 @@ global___ConfigureRequest = ConfigureRequest
 
 @typing_extensions.final
 class ConfigureResponse(google.protobuf.message.Message):
+    """`ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
+    purpose is to communicate features that the provider supports back to the caller.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
@@ -243,13 +293,22 @@ class ConfigureResponse(google.protobuf.message.Message):
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     ACCEPTOUTPUTS_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
-    """when true, the engine should pass secrets as strongly typed values to the provider."""
+    """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+    values to the provider.
+    """
     supportsPreview: builtins.bool
-    """when true, the engine should invoke create and update with preview=true during previews."""
+    """True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
+    [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
+    `true` during previews.
+    """
     acceptResources: builtins.bool
-    """when true, the engine should pass resources as strongly typed values to the provider."""
+    """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+    strongly typed values to the provider.
+    """
     acceptOutputs: builtins.bool
-    """when true, the engine should pass output values to the provider."""
+    """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+    to the provider where possible.
+    """
     def __init__(
         self,
         *,
@@ -264,20 +323,32 @@ global___ConfigureResponse = ConfigureResponse
 
 @typing_extensions.final
 class ConfigureErrorMissingKeys(google.protobuf.message.Message):
-    """ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`."""
+    """`ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
+    [](pulumirpc.ResourceProvider.Configure) call when required configuration keys are missing.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class MissingKey(google.protobuf.message.Message):
+        """The type of key-value pairs representing keys that are missing from a [](pulumirpc.ResourceProvider.Configure)
+        call.
+        """
+
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         NAME_FIELD_NUMBER: builtins.int
         DESCRIPTION_FIELD_NUMBER: builtins.int
         name: builtins.str
-        """the Pulumi name (not the provider name!) of the missing config key."""
+        """The name of the missing configuration key.
+
+        :::{note}
+        This should be the *Pulumi name* of the missing key, and not any provider-internal or upstream name. Names
+        that differ between Pulumi and an upstream provider should be translated prior to being returned.
+        :::
+        """
         description: builtins.str
-        """a description of the missing config key, as reported by the provider."""
+        """A description of the missing config key, as reported by the provider."""
         def __init__(
             self,
             *,
@@ -289,7 +360,7 @@ class ConfigureErrorMissingKeys(google.protobuf.message.Message):
     MISSINGKEYS_FIELD_NUMBER: builtins.int
     @property
     def missingKeys(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ConfigureErrorMissingKeys.MissingKey]:
-        """a list of required configuration keys that were not supplied."""
+        """A list of required configuration keys that were not supplied."""
     def __init__(
         self,
         *,

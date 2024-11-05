@@ -422,18 +422,61 @@ func (x *GetSchemaResponse) GetSchema() string {
 	return ""
 }
 
+// `ConfigureRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Configure) call. Requests
+// include both provider-specific inputs (`variables` or `args`) and provider-agnostic ("protocol") configuration
+// (`acceptSecrets`, `acceptResources`, and so on).
 type ConfigureRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the input properties for the provider, with nested values JSON-encoded; please read from `args` instead.
-	Variables              map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Args                   *structpb.Struct  `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                          // the input properties for the provider
-	AcceptSecrets          bool              `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`                                                       // when true, operations should return secrets as strongly typed.
-	AcceptResources        bool              `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                   // when true, operations should return resources as strongly typed values to the provider.
-	SendsOldInputs         bool              `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`                             // when true, diff and update will be called with the old outputs and the old inputs.
-	SendsOldInputsToDelete bool              `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"` // when true, delete will be called with the old outputs and the old inputs.
+	// :::{warning}
+	// `variables` is deprecated; `args` should be used instead wherever possible.
+	// :::
+	//
+	// A map of input properties for the provider. Compound values, such as nested objects, should be JSON encoded so
+	// that they too can be passed as strings. For instance, the following configuration:
+	//
+	// ```
+	// {
+	//   "a": 42,
+	//   "b": {
+	//     "c": "hello",
+	//     "d": true
+	//   }
+	// }
+	// ```
+	//
+	// should be encoded as:
+	//
+	// ```
+	// {
+	//   "a": "42",
+	//   "b": "{\"c\":\"hello\",\"d\":true}"
+	// }
+	// ```
+	Variables map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// A map of input properties for the provider.
+	//
+	// :::{warning}
+	// `args` may include secrets. Because `ConfigureRequest` is sent before [](pulumirpc.ConfigureResponse) can specify
+	// whether or not the provider accepts secrets in general, providers *must* handle secrets if they appear in `args`.
+	// :::
+	Args *structpb.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	// True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
+	// provider supports them also.
+	AcceptSecrets bool `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
+	// True if and only if the caller supports strongly typed resources. If true, operations should return resources as
+	// strongly typed values if the provider supports them also.
+	AcceptResources bool `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	// True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
+	// [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
+	// these calls.
+	SendsOldInputs bool `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`
+	// True if and only if the caller supports sending old inputs and outputs as part of
+	// [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
+	// these calls.
+	SendsOldInputsToDelete bool `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`
 }
 
 func (x *ConfigureRequest) Reset() {
@@ -510,15 +553,26 @@ func (x *ConfigureRequest) GetSendsOldInputsToDelete() bool {
 	return false
 }
 
+// `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
+// purpose is to communicate features that the provider supports back to the caller.
 type ConfigureResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AcceptSecrets   bool `protobuf:"varint,1,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`     // when true, the engine should pass secrets as strongly typed values to the provider.
-	SupportsPreview bool `protobuf:"varint,2,opt,name=supportsPreview,proto3" json:"supportsPreview,omitempty"` // when true, the engine should invoke create and update with preview=true during previews.
-	AcceptResources bool `protobuf:"varint,3,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"` // when true, the engine should pass resources as strongly typed values to the provider.
-	AcceptOutputs   bool `protobuf:"varint,4,opt,name=acceptOutputs,proto3" json:"acceptOutputs,omitempty"`     // when true, the engine should pass output values to the provider.
+	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+	// values to the provider.
+	AcceptSecrets bool `protobuf:"varint,1,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
+	// True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
+	// [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
+	// `true` during previews.
+	SupportsPreview bool `protobuf:"varint,2,opt,name=supportsPreview,proto3" json:"supportsPreview,omitempty"`
+	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+	// strongly typed values to the provider.
+	AcceptResources bool `protobuf:"varint,3,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+	// to the provider where possible.
+	AcceptOutputs bool `protobuf:"varint,4,opt,name=acceptOutputs,proto3" json:"acceptOutputs,omitempty"`
 }
 
 func (x *ConfigureResponse) Reset() {
@@ -581,13 +635,15 @@ func (x *ConfigureResponse) GetAcceptOutputs() bool {
 	return false
 }
 
-// ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
+// `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
+// [](pulumirpc.ResourceProvider.Configure) call when required configuration keys are missing.
 type ConfigureErrorMissingKeys struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	MissingKeys []*ConfigureErrorMissingKeys_MissingKey `protobuf:"bytes,1,rep,name=missingKeys,proto3" json:"missingKeys,omitempty"` // a list of required configuration keys that were not supplied.
+	// A list of required configuration keys that were not supplied.
+	MissingKeys []*ConfigureErrorMissingKeys_MissingKey `protobuf:"bytes,1,rep,name=missingKeys,proto3" json:"missingKeys,omitempty"`
 }
 
 func (x *ConfigureErrorMissingKeys) Reset() {
@@ -2760,13 +2816,22 @@ func (x *ParameterizeRequest_ParametersValue) GetValue() []byte {
 	return nil
 }
 
+// The type of key-value pairs representing keys that are missing from a [](pulumirpc.ResourceProvider.Configure)
+// call.
 type ConfigureErrorMissingKeys_MissingKey struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`               // the Pulumi name (not the provider name!) of the missing config key.
-	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"` // a description of the missing config key, as reported by the provider.
+	// The name of the missing configuration key.
+	//
+	// :::{note}
+	// This should be the *Pulumi name* of the missing key, and not any provider-internal or upstream name. Names
+	// that differ between Pulumi and an upstream provider should be translated prior to being returned.
+	// :::
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// A description of the missing config key, as reported by the provider.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (x *ConfigureErrorMissingKeys_MissingKey) Reset() {

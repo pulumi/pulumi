@@ -91,13 +91,18 @@ service ResourceProvider {
     // AWS access key, should almost certainly not.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
 
-    // Configure configures the resource provider with "globals" that control its behavior.
+    // `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
     //
-    // :::{warning}
-    // ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-    // ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-    // ConfigureRequest.args.
-    // :::
+    // * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+    //   [](pulumirpc.ResourceProvider.CheckConfig) call.
+    // * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+    //
+    // The provider is expected to return its own set of protocol configuration, indicating which features it supports
+    // in turn so that the caller and the provider can interact appropriately.
+    //
+    // Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+    // the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+    // indicate which keys are missing.
     rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
 
     // Invoke dynamically executes a built-in function in the provider.
@@ -215,32 +220,105 @@ message GetSchemaResponse {
     string schema = 1; // the JSON-encoded schema.
 }
 
+// `ConfigureRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Configure) call. Requests
+// include both provider-specific inputs (`variables` or `args`) and provider-agnostic ("protocol") configuration
+// (`acceptSecrets`, `acceptResources`, and so on).
 message ConfigureRequest {
-    // the input properties for the provider, with nested values JSON-encoded; please read from `args` instead.
+    // :::{warning}
+    // `variables` is deprecated; `args` should be used instead wherever possible.
+    // :::
+    //
+    // A map of input properties for the provider. Compound values, such as nested objects, should be JSON encoded so
+    // that they too can be passed as strings. For instance, the following configuration:
+    //
+    // ```
+    // {
+    //   "a": 42,
+    //   "b": {
+    //     "c": "hello",
+    //     "d": true
+    //   }
+    // }
+    // ```
+    //
+    // should be encoded as:
+    //
+    // ```
+    // {
+    //   "a": "42",
+    //   "b": "{\"c\":\"hello\",\"d\":true}"
+    // }
+    // ```
     map<string, string> variables = 1;
 
-    google.protobuf.Struct args = 2;   // the input properties for the provider
-    bool acceptSecrets  = 3;           // when true, operations should return secrets as strongly typed.
-    bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
-    bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
-    bool sends_old_inputs_to_delete = 6; // when true, delete will be called with the old outputs and the old inputs.
+    // A map of input properties for the provider.
+    //
+    // :::{warning}
+    // `args` may include secrets. Because `ConfigureRequest` is sent before [](pulumirpc.ConfigureResponse) can specify
+    // whether or not the provider accepts secrets in general, providers *must* handle secrets if they appear in `args`.
+    // :::
+    google.protobuf.Struct args = 2;
+
+    // True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
+    // provider supports them also.
+    bool acceptSecrets  = 3;
+
+    // True if and only if the caller supports strongly typed resources. If true, operations should return resources as
+    // strongly typed values if the provider supports them also.
+    bool acceptResources = 4;
+
+    // True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
+    // [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
+    // these calls.
+    bool sends_old_inputs = 5;
+
+    // True if and only if the caller supports sending old inputs and outputs as part of
+    // [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
+    // these calls.
+    bool sends_old_inputs_to_delete = 6;
 }
 
+// `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
+// purpose is to communicate features that the provider supports back to the caller.
 message ConfigureResponse {
-    bool acceptSecrets = 1;   // when true, the engine should pass secrets as strongly typed values to the provider.
-    bool supportsPreview = 2; // when true, the engine should invoke create and update with preview=true during previews.
-    bool acceptResources = 3; // when true, the engine should pass resources as strongly typed values to the provider.
-    bool acceptOutputs = 4;   // when true, the engine should pass output values to the provider.
+    // True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+    // values to the provider.
+    bool acceptSecrets = 1;
+
+    // True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
+    // [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
+    // `true` during previews.
+    bool supportsPreview = 2;
+
+    // True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+    // strongly typed values to the provider.
+    bool acceptResources = 3;
+
+    // True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+    // to the provider where possible.
+    bool acceptOutputs = 4;
 }
 
-// ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
+// `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
+// [](pulumirpc.ResourceProvider.Configure) call when required configuration keys are missing.
 message ConfigureErrorMissingKeys {
+    // The type of key-value pairs representing keys that are missing from a [](pulumirpc.ResourceProvider.Configure)
+    // call.
     message MissingKey {
-        string name = 1;        // the Pulumi name (not the provider name!) of the missing config key.
-        string description = 2; // a description of the missing config key, as reported by the provider.
+        // The name of the missing configuration key.
+        //
+        // :::{note}
+        // This should be the *Pulumi name* of the missing key, and not any provider-internal or upstream name. Names
+        // that differ between Pulumi and an upstream provider should be translated prior to being returned.
+        // :::
+        string name = 1;
+
+        // A description of the missing config key, as reported by the provider.
+        string description = 2;
     }
 
-    repeated MissingKey missingKeys = 1; // a list of required configuration keys that were not supplied.
+    // A list of required configuration keys that were not supplied.
+    repeated MissingKey missingKeys = 1;
 }
 
 message InvokeRequest {

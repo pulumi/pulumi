@@ -111,13 +111,18 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ConfigureRequest,
         pulumi.provider_pb2.ConfigureResponse,
     ]
-    """Configure configures the resource provider with "globals" that control its behavior.
+    """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 
-    :::{warning}
-    ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-    ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-    ConfigureRequest.args.
-    :::
+    * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+      [](pulumirpc.ResourceProvider.CheckConfig) call.
+    * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+
+    The provider is expected to return its own set of protocol configuration, indicating which features it supports
+    in turn so that the caller and the provider can interact appropriately.
+
+    Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+    the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+    indicate which keys are missing.
     """
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.InvokeRequest,
@@ -312,13 +317,18 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ConfigureRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.ConfigureResponse:
-        """Configure configures the resource provider with "globals" that control its behavior.
+        """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 
-        :::{warning}
-        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-        ConfigureRequest.args.
-        :::
+        * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+          [](pulumirpc.ResourceProvider.CheckConfig) call.
+        * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+
+        The provider is expected to return its own set of protocol configuration, indicating which features it supports
+        in turn so that the caller and the provider can interact appropriately.
+
+        Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+        the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+        indicate which keys are missing.
         """
     
     def Invoke(

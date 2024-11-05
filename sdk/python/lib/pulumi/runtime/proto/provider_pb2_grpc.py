@@ -210,13 +210,18 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Configure(self, request, context):
-        """Configure configures the resource provider with "globals" that control its behavior.
+        """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 
-        :::{warning}
-        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-        ConfigureRequest.args.
-        :::
+        * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+        [](pulumirpc.ResourceProvider.CheckConfig) call.
+        * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+
+        The provider is expected to return its own set of protocol configuration, indicating which features it supports
+        in turn so that the caller and the provider can interact appropriately.
+
+        Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+        the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+        indicate which keys are missing.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
