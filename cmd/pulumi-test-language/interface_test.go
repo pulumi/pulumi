@@ -138,6 +138,11 @@ func TestProviderSchemas(t *testing.T) {
 		loader := &providerLoader{providers: test.providers}
 
 		for _, provider := range test.providers {
+			if provider.Pkg() == "parameterized" {
+				// We don't currently support testing the schemas of parameterized providers.
+				continue
+			}
+
 			resp, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
