@@ -291,13 +291,18 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		pkg, isProvider = name, true
 	}
 	var pkgSchema *packageSchema
-
-	// It is important that we call `loadPackageSchema` instead of `getPackageSchema` here
-	// because the version may be wrong. When the version should not be empty,
+	var err error
+	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
+	// instead of `getPackageSchema` here  because the version may be wrong. When the version should not be empty,
 	// `loadPackageSchema` will load the default version while `getPackageSchema` will
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
-	pkgSchema, err := b.options.packageCache.loadPackageSchema(b.options.loader, pkg, "")
+	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+	} else {
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(b.options.loader, pkg, "")
+	}
+
 	if err != nil {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()

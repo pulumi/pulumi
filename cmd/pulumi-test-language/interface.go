@@ -158,9 +158,26 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		return nil, fmt.Errorf("could not load schema for %s, provider not known", descriptor.Name)
 	}
 
-	// TODO: We need to support parameterized packages here but we'll do that when we add a test that needs it.
+	getSchemaRequest := plugin.GetSchemaRequest{}
+	if descriptor.Parameterization != nil {
+		parameter := &plugin.ParameterizeValue{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
+		}
 
-	jsonSchema, err := provider.GetSchema(context.TODO(), plugin.GetSchemaRequest{})
+		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: parameter,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize package '%s' failed: %w", descriptor.Name, err)
+		}
+
+		getSchemaRequest.SubpackageName = descriptor.Parameterization.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Parameterization.Version
+	}
+
+	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)
 	if err != nil {
 		return nil, fmt.Errorf("get schema for %s: %w", descriptor.Name, err)
 	}
@@ -829,6 +846,11 @@ func (eng *languageTestServer) RunLanguageTest(
 			version, err := getProviderVersion(provider)
 			if err != nil {
 				return nil, err
+			}
+			if pkg == "parameterized" {
+				// TODO: not sure what to do with this yet because we can't get the parameterized package name
+				// unless we call `Parameterize` which we can't do here because we don't have the descriptor info
+				continue
 			}
 			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
 				Name:    pkg,

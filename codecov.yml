@@ -34,9 +34,10 @@ coverage:
         informational: true
 
 ignore:
-  # Integration tests and codegen test data
+  # Integration tests, lifecycle tests and codegen test data
   # should not count against coverage.
   - "tests/"
+  - "pkg/engine/lifecycletest/"
   - "pkg/codegen/testing/test/testdata"
 
   # Don't count protobuf-generated code against coverage.

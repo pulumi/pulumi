@@ -102,6 +102,11 @@ func TestProviderVersions(t *testing.T) {
 	for _, test := range languageTests {
 		for _, provider := range test.providers {
 			pkg := string(provider.Pkg())
+			if pkg == "parameterized" {
+				// for parameterized provider, the version is set in the parameterization
+				// it is not necessarily the case that the plugin info version is the same as package version
+				continue
+			}
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
 
