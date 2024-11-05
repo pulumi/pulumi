@@ -528,7 +528,11 @@ func CopyTemplateFiles(
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
 				// Create the destination directory.
-				return os.Mkdir(dest, 0o700)
+				if force { 
+					return os.MkdirAll(dest, 0o700) 
+				} else { 
+					return os.Mkdir(dest, 0o700) 
+				}
 			}
 
 			// Read the source file.

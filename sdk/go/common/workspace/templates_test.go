@@ -204,3 +204,113 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestCopyTemplateFiles(t *testing.T) {
+	tests := []struct {
+		testName     string
+		directories []string
+		files []string
+	}{
+		{
+			testName:     "FlatProject",
+			files: []string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml",},
+		},
+		{
+			testName:	"NestedProject",
+			directories: []string{"src"},
+			files: []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml",},
+		},
+	}
+
+	setupTestData := func(t *testing.T, files []string, directories []string) (string, string) {
+		testDataDir := "CopyTemplateFilesTestData"
+		err := os.MkdirAll(testDataDir, 0o700)
+		assert.NoError(t, err)
+
+		projectDir := testDataDir + "/project"
+		err = os.MkdirAll(projectDir, 0o700)
+		assert.NoError(t, err)
+		
+		copyDestDir := testDataDir + "/tmp"
+		err = os.MkdirAll(copyDestDir, 0o700)
+		assert.NoError(t, err)
+
+		for _, dirName := range directories {
+			err := os.MkdirAll(projectDir + "/" + dirName, 0o700)
+			assert.NoError(t, err)
+		}
+
+		for _, fileName := range files {
+			err := os.WriteFile(projectDir + "/" + fileName, []byte("testing"), 0o600)
+			assert.NoError(t, err)
+		}
+
+		return projectDir, copyDestDir
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Copy" + tt.testName, func(t *testing.T) {
+			defer func() {
+				err := os.RemoveAll("CopyTemplateFilesTestData")
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("CopyForce" + tt.testName, func(t *testing.T) {
+			defer func() {
+				err := os.RemoveAll("CopyTemplateFilesTestData")
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Overwrite" + tt.testName, func(t *testing.T) {
+			defer func() {
+				err := os.RemoveAll("CopyTemplateFilesTestData")
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+			// copy the same files again to test overwriting - expect error
+			err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.Error(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("OverwriteForce" + tt.testName, func(t *testing.T) {
+			defer func() {
+				err := os.RemoveAll("CopyTemplateFilesTestData")
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+			// copy the same files again to test overwriting - expect no error with force
+			err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+}
