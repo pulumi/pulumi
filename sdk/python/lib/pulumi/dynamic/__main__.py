@@ -197,7 +197,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
     def Configure(self, request, context):
         # Get the configuration from the request and store it. When
-        # deserializing dynamic providers, we will call the providers
+        # deserializing dynamic providers, we will call the provider's
         # `configure` method with this configuration.
         config = rpc.deserialize_properties(request.args)
         config = {k: rpc.unwrap_rpc_secret(v) for k, v in config.items()}

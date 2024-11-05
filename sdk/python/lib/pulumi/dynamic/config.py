@@ -13,7 +13,7 @@ class Config:
     _props: Dict[str, Any]
     _project_name: str
 
-    def __init__(self, raw_config, project_name):
+    def __init__(self, raw_config: Dict[str, Any], project_name: str) -> None:
         self._props = raw_config
         self._project_name = project_name
 
