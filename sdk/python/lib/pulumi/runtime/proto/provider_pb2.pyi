@@ -181,6 +181,11 @@ global___GetSchemaResponse = GetSchemaResponse
 
 @typing_extensions.final
 class ConfigureRequest(google.protobuf.message.Message):
+    """`ConfigureRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Configure) call. Requests
+    include both provider-specific inputs (`variables` or `args`) and provider-agnostic ("protocol") configuration
+    (`acceptSecrets`, `acceptResources`, and so on).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
@@ -207,18 +212,59 @@ class ConfigureRequest(google.protobuf.message.Message):
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the input properties for the provider, with nested values JSON-encoded; please read from `args` instead."""
+        """:::{warning}
+        `variables` is deprecated; `args` should be used instead wherever possible.
+        :::
+
+        A map of input properties for the provider. Compound values, such as nested objects, should be JSON encoded so
+        that they too can be passed as strings. For instance, the following configuration:
+
+        ```
+        {
+          "a": 42,
+          "b": {
+            "c": "hello",
+            "d": true
+          }
+        }
+        ```
+
+        should be encoded as:
+
+        ```
+        {
+          "a": "42",
+          "b": "{\\"c\\":\\"hello\\",\\"d\\":true}"
+        }
+        ```
+        """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
-        """the input properties for the provider"""
+        """A map of input properties for the provider.
+
+        :::{warning}
+        `args` may include secrets. Because `ConfigureRequest` is sent before [](pulumirpc.ConfigureResponse) can specify
+        whether or not the provider accepts secrets in general, providers *must* handle secrets if they appear in `args`.
+        :::
+        """
     acceptSecrets: builtins.bool
-    """when true, operations should return secrets as strongly typed."""
+    """True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
+    provider supports them also.
+    """
     acceptResources: builtins.bool
-    """when true, operations should return resources as strongly typed values to the provider."""
+    """True if and only if the caller supports strongly typed resources. If true, operations should return resources as
+    strongly typed values if the provider supports them also.
+    """
     sends_old_inputs: builtins.bool
-    """when true, diff and update will be called with the old outputs and the old inputs."""
+    """True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
+    [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
+    these calls.
+    """
     sends_old_inputs_to_delete: builtins.bool
-    """when true, delete will be called with the old outputs and the old inputs."""
+    """True if and only if the caller supports sending old inputs and outputs as part of
+    [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
+    these calls.
+    """
     def __init__(
         self,
         *,
@@ -236,6 +282,10 @@ global___ConfigureRequest = ConfigureRequest
 
 @typing_extensions.final
 class ConfigureResponse(google.protobuf.message.Message):
+    """`ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
+    purpose is to communicate features that the provider supports back to the caller.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
@@ -243,13 +293,22 @@ class ConfigureResponse(google.protobuf.message.Message):
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     ACCEPTOUTPUTS_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
-    """when true, the engine should pass secrets as strongly typed values to the provider."""
+    """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+    values to the provider.
+    """
     supportsPreview: builtins.bool
-    """when true, the engine should invoke create and update with preview=true during previews."""
+    """True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
+    [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
+    `true` during previews.
+    """
     acceptResources: builtins.bool
-    """when true, the engine should pass resources as strongly typed values to the provider."""
+    """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+    strongly typed values to the provider.
+    """
     acceptOutputs: builtins.bool
-    """when true, the engine should pass output values to the provider."""
+    """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+    to the provider where possible.
+    """
     def __init__(
         self,
         *,
@@ -264,20 +323,32 @@ global___ConfigureResponse = ConfigureResponse
 
 @typing_extensions.final
 class ConfigureErrorMissingKeys(google.protobuf.message.Message):
-    """ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`."""
+    """`ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
+    [](pulumirpc.ResourceProvider.Configure) call when required configuration keys are missing.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class MissingKey(google.protobuf.message.Message):
+        """The type of key-value pairs representing keys that are missing from a [](pulumirpc.ResourceProvider.Configure)
+        call.
+        """
+
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         NAME_FIELD_NUMBER: builtins.int
         DESCRIPTION_FIELD_NUMBER: builtins.int
         name: builtins.str
-        """the Pulumi name (not the provider name!) of the missing config key."""
+        """The name of the missing configuration key.
+
+        :::{note}
+        This should be the *Pulumi name* of the missing key, and not any provider-internal or upstream name. Names
+        that differ between Pulumi and an upstream provider should be translated prior to being returned.
+        :::
+        """
         description: builtins.str
-        """a description of the missing config key, as reported by the provider."""
+        """A description of the missing config key, as reported by the provider."""
         def __init__(
             self,
             *,
@@ -289,7 +360,7 @@ class ConfigureErrorMissingKeys(google.protobuf.message.Message):
     MISSINGKEYS_FIELD_NUMBER: builtins.int
     @property
     def missingKeys(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ConfigureErrorMissingKeys.MissingKey]:
-        """a list of required configuration keys that were not supplied."""
+        """A list of required configuration keys that were not supplied."""
     def __init__(
         self,
         *,
@@ -643,6 +714,21 @@ global___CheckFailure = CheckFailure
 
 @typing_extensions.final
 class DiffRequest(google.protobuf.message.Message):
+    """`DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
+    [](pulumirpc.ResourceProvider.Diff) calls. A `DiffRequest` primarily captures:
+
+    * the URN of the resource whose properties are being compared;
+    * the old and new input properties of the resource; and
+    * the old output properties of the resource.
+
+    In the case of [](pulumirpc.ResourceProvider.DiffConfig), the URN will be the URN of the provider resource being
+    examined, which may or may not be a [default provider](default-providers), and the inputs and outputs will be the
+    provider configuration and state. Inputs supplied to a [](pulumirpc.ResourceProvider.DiffConfig) call should have
+    been previously checked by a call to [](pulumirpc.ResourceProvider.CheckConfig); inputs supplied to a
+    [](pulumirpc.ResourceProvider.Diff) call should have been previously checked by a call to
+    [](pulumirpc.ResourceProvider.Check).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -654,25 +740,31 @@ class DiffRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to diff."""
+    """The ID of the resource being diffed."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being diffed."""
     @property
     def olds(self) -> google.protobuf.struct_pb2.Struct:
-        """the old output values of resource to diff."""
+        """The old *output* properties of the resource being diffed."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new input values of resource to diff, copied from CheckResponse.inputs."""
+        """The new *input* properties of the resource being diffed. These should have been validated by an appropriate call
+        to [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check).
+        """
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a set of property paths that should be treated as unchanged."""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to diff."""
+        """The old *input* properties of the resource being diffed."""
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being diffed. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -692,6 +784,11 @@ global___DiffRequest = DiffRequest
 
 @typing_extensions.final
 class PropertyDiff(google.protobuf.message.Message):
+    """`PropertyDiff` describes the kind of change that occurred to a property during a diff operation. A `PropertyDiff` may
+    indicate that a property was added, deleted, or updated, and may further indicate that the change requires a
+    replacement.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     class _Kind:
@@ -701,38 +798,42 @@ class PropertyDiff(google.protobuf.message.Message):
     class _KindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[PropertyDiff._Kind.ValueType], builtins.type):  # noqa: F821
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         ADD: PropertyDiff._Kind.ValueType  # 0
-        """this property was added"""
+        """This property was added."""
         ADD_REPLACE: PropertyDiff._Kind.ValueType  # 1
-        """this property was added, and this change requires a replace"""
+        """This property was added, and this change requires a replace."""
         DELETE: PropertyDiff._Kind.ValueType  # 2
-        """this property was removed"""
+        """This property was removed."""
         DELETE_REPLACE: PropertyDiff._Kind.ValueType  # 3
-        """this property was removed, and this change requires a replace"""
+        """This property was removed, and this change requires a replace."""
         UPDATE: PropertyDiff._Kind.ValueType  # 4
-        """this property's value was changed"""
+        """This property's value was changed."""
         UPDATE_REPLACE: PropertyDiff._Kind.ValueType  # 5
-        """this property's value was changed, and this change requires a replace"""
+        """This property's value was changed, and this change requires a replace."""
 
-    class Kind(_Kind, metaclass=_KindEnumTypeWrapper): ...
+    class Kind(_Kind, metaclass=_KindEnumTypeWrapper):
+        """The type of property diff kinds."""
+
     ADD: PropertyDiff.Kind.ValueType  # 0
-    """this property was added"""
+    """This property was added."""
     ADD_REPLACE: PropertyDiff.Kind.ValueType  # 1
-    """this property was added, and this change requires a replace"""
+    """This property was added, and this change requires a replace."""
     DELETE: PropertyDiff.Kind.ValueType  # 2
-    """this property was removed"""
+    """This property was removed."""
     DELETE_REPLACE: PropertyDiff.Kind.ValueType  # 3
-    """this property was removed, and this change requires a replace"""
+    """This property was removed, and this change requires a replace."""
     UPDATE: PropertyDiff.Kind.ValueType  # 4
-    """this property's value was changed"""
+    """This property's value was changed."""
     UPDATE_REPLACE: PropertyDiff.Kind.ValueType  # 5
-    """this property's value was changed, and this change requires a replace"""
+    """This property's value was changed, and this change requires a replace."""
 
     KIND_FIELD_NUMBER: builtins.int
     INPUTDIFF_FIELD_NUMBER: builtins.int
     kind: global___PropertyDiff.Kind.ValueType
-    """The kind of diff asdsociated with this property."""
+    """The kind of diff associated with this property."""
     inputDiff: builtins.bool
-    """The difference is between old and new inputs, not old and new state."""
+    """True if and only if this difference represents one between a pair of old and new inputs, as opposed to a pair of
+    old and new states.
+    """
     def __init__(
         self,
         *,
@@ -745,6 +846,23 @@ global___PropertyDiff = PropertyDiff
 
 @typing_extensions.final
 class DiffResponse(google.protobuf.message.Message):
+    """`DiffResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.DiffConfig) or
+    [](pulumirpc.ResourceProvider.Diff) call. A `DiffResponse` indicates whether a resource is unchanged, requires
+    updating (that is, can be changed "in place"), or requires replacement (that is, must be destroyed and recreated
+    anew). Legacy implementations may also signal that it is unknown whether there are changes or not.
+
+    `DiffResponse` has evolved since its inception and there are now a number of ways that providers can signal their
+    intent to callers:
+
+    * *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
+      field to further communicate which changes (if any) require a replacement as opposed to an update.
+
+    * *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
+      granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
+      precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
+      change occurred (e.g. a field was added, deleted or updated).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     class _DiffChanges:
@@ -754,19 +872,25 @@ class DiffResponse(google.protobuf.message.Message):
     class _DiffChangesEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[DiffResponse._DiffChanges.ValueType], builtins.type):  # noqa: F821
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         DIFF_UNKNOWN: DiffResponse._DiffChanges.ValueType  # 0
-        """unknown whether there are changes or not (legacy behavior)."""
+        """A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+        behaviour and should be generally avoided wherever possible.
+        """
         DIFF_NONE: DiffResponse._DiffChanges.ValueType  # 1
-        """the diff was performed, and no changes were detected that require an update."""
+        """A diff was performed and there were no changes. An update is not required."""
         DIFF_SOME: DiffResponse._DiffChanges.ValueType  # 2
-        """the diff was performed, and changes were detected that require an update or replacement."""
+        """A diff was performed, and changes were detected that require an update or replacement."""
 
-    class DiffChanges(_DiffChanges, metaclass=_DiffChangesEnumTypeWrapper): ...
+    class DiffChanges(_DiffChanges, metaclass=_DiffChangesEnumTypeWrapper):
+        """The type of high-level diff results."""
+
     DIFF_UNKNOWN: DiffResponse.DiffChanges.ValueType  # 0
-    """unknown whether there are changes or not (legacy behavior)."""
+    """A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+    behaviour and should be generally avoided wherever possible.
+    """
     DIFF_NONE: DiffResponse.DiffChanges.ValueType  # 1
-    """the diff was performed, and no changes were detected that require an update."""
+    """A diff was performed and there were no changes. An update is not required."""
     DIFF_SOME: DiffResponse.DiffChanges.ValueType  # 2
-    """the diff was performed, and changes were detected that require an update or replacement."""
+    """A diff was performed, and changes were detected that require an update or replacement."""
 
     @typing_extensions.final
     class DetailedDiffEntry(google.protobuf.message.Message):
@@ -795,55 +919,33 @@ class DiffResponse(google.protobuf.message.Message):
     HASDETAILEDDIFF_FIELD_NUMBER: builtins.int
     @property
     def replaces(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """if this update requires a replacement, the set of properties triggering it."""
+        """A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
+        caller should replace the resource if this set is non-empty, or if any of the properties specified in
+        `detailedDiff` have a `*_REPLACE` kind.
+        """
     @property
     def stables(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """an optional list of properties that will not ever change."""
+        """An optional list of properties that will not ever change (are stable)."""
     deleteBeforeReplace: builtins.bool
-    """if true, this resource must be deleted before replacing it."""
+    """If true, this resource must be deleted *before* its replacement is created."""
     changes: global___DiffResponse.DiffChanges.ValueType
-    """if true, this diff represents an actual difference and thus requires an update."""
+    """The result of the diff. Indicates at a high level whether the resource has changed or not (or, in legacy cases,
+    if the provider does not know).
+    """
     @property
     def diffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of the properties that changed. This should only contain top level property names, it does not
-        support nested properties. For that use detailedDiff.
+        """The set of properties which have changed. This field only supports top-level properties. It *does not* support
+        full [property paths](property-paths); implementations should use `detailedDiff` when this is required.
         """
     @property
     def detailedDiff(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PropertyDiff]:
-        """detailedDiff is an optional field that contains map from each changed property to the type of the change.
-
-        The keys of this map are property paths. These paths are essentially Javascript property access expressions
-        in which all elements are literals, and obey the following EBNF-ish grammar:
-
-          propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-          quotedPropertyName := '"' ( '\\' '"' | [^"] ) { ( '\\' '"' | [^"] ) } '"'
-          arrayIndex := { [0-9] }
-
-          propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-          rootProperty := ( propertyName | propertyIndex )
-          propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-          path := rootProperty { propertyAccessor }
-
-        Examples of valid keys:
-        - root
-        - root.nested
-        - root["nested"]
-        - root.double.nest
-        - root["double"].nest
-        - root["double"]["nest"]
-        - root.array[0]
-        - root.array[100]
-        - root.array[0].nested
-        - root.array[0][1].nested
-        - root.nested.array[0].double[1]
-        - root["key with \\"escaped\\" quotes"]
-        - root["key with a ."]
-        - ["root key with \\"escaped\\" quotes"].nested
-        - ["root key with a ."][100]
-        a detailed diff appropriate for display.
+        """`detailedDiff` can be used to implement more detailed diffs. A detailed diff is a map from [property
+        paths](property-paths) to [](pulumirpc.PropertyDiff)s, which describe the kind of change that occurred to the
+        property located at that path. If a provider does not implement this, the caller (typically the Pulumi engine)
+        will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
         """
     hasDetailedDiff: builtins.bool
-    """true if this response contains a detailed diff."""
+    """True if and only if this response contains a `detailedDiff`."""
     def __init__(
         self,
         *,
@@ -861,6 +963,8 @@ global___DiffResponse = DiffResponse
 
 @typing_extensions.final
 class CreateRequest(google.protobuf.message.Message):
+    """`CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     URN_FIELD_NUMBER: builtins.int
@@ -870,18 +974,26 @@ class CreateRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being created."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the provider inputs to set during creation."""
+        """The resource's input properties, to be set during creation. These should have been validated by a call to
+        [](pulumirpc.ResourceProvider.Check).
+        """
     timeout: builtins.float
-    """the create request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     preview: builtins.bool
-    """true if this is a preview and the provider should not actually create the resource."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually create the resource.
+    """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being created. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -899,17 +1011,21 @@ global___CreateRequest = CreateRequest
 
 @typing_extensions.final
 class CreateResponse(google.protobuf.message.Message):
-    """NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`."""
+    """`CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
+    contains the ID of the created resource, as well as any output properties that arose from the creation process.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the created resource."""
+    """The ID of the created resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during creation."""
+        """The resource's output properties. Typically this will be a union of the resource's input properties and any
+        additional values that were computed or made available during creation.
+        """
     def __init__(
         self,
         *,
@@ -923,6 +1039,8 @@ global___CreateResponse = CreateResponse
 
 @typing_extensions.final
 class ReadRequest(google.protobuf.message.Message):
+    """`ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -932,19 +1050,25 @@ class ReadRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to read."""
+    """The ID of the resource to read."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being read."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the current state (sufficiently complete to identify the resource)."""
+        """Any current state for the resource being read. This state should be sufficient to uniquely identify the resource."""
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the current inputs, if any (only populated during refresh)."""
+        """Any current input properties for the resource being read. These will only be populated when the
+        [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+        """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being read. This must match the name specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -962,19 +1086,25 @@ global___ReadRequest = ReadRequest
 
 @typing_extensions.final
 class ReadResponse(google.protobuf.message.Message):
+    """`ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
+    the ID of the resource being read, as well as any state that was successfully read from the live environment.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource read back (or empty if missing)."""
+    """The ID of the read resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the state of the resource read from the live environment."""
+        """The output properties of the resource read from the live environment."""
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the inputs for this resource that would be returned from Check."""
+        """Output-derived input properties for the resource. These are returned as they would be returned from a
+        [](pulumirpc.ResourceProvider.Check) call with the same values.
+        """
     def __init__(
         self,
         *,
@@ -989,7 +1119,7 @@ global___ReadResponse = ReadResponse
 
 @typing_extensions.final
 class UpdateRequest(google.protobuf.message.Message):
-    """NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`."""
+    """`UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1004,29 +1134,37 @@ class UpdateRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to update."""
+    """The ID of the resource being updated."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being updated."""
     @property
     def olds(self) -> google.protobuf.struct_pb2.Struct:
-        """the old values of provider inputs for the resource to update."""
+        """The old *output* properties of the resource being updated."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new values of provider inputs for the resource to update, copied from CheckResponse.inputs."""
+        """The new input properties of the resource being updated. These should have been validated by a call to
+        [](pulumirpc.ResourceProvider.Check).
+        """
     timeout: builtins.float
-    """the update request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a set of property paths that should be treated as unchanged."""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     preview: builtins.bool
-    """true if this is a preview and the provider should not actually create the resource."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually update the resource.
+    """
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to diff."""
+        """The old *input* properties of the resource being updated."""
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being updated. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -1048,12 +1186,16 @@ global___UpdateRequest = UpdateRequest
 
 @typing_extensions.final
 class UpdateResponse(google.protobuf.message.Message):
+    """`UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROPERTIES_FIELD_NUMBER: builtins.int
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during updating."""
+        """An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
+        additional values that were computed or made available during the update.
+        """
     def __init__(
         self,
         *,
@@ -1066,6 +1208,8 @@ global___UpdateResponse = UpdateResponse
 
 @typing_extensions.final
 class DeleteRequest(google.protobuf.message.Message):
+    """`DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -1076,21 +1220,27 @@ class DeleteRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to delete."""
+    """The ID of the resource to delete."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource to delete."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the current properties on the resource."""
+        """The old *output* properties of the resource being deleted."""
     timeout: builtins.float
-    """the delete request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to delete."""
+        """The old *input* properties of the resource being deleted.
+        the old input values of the resource to delete.
+        """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being deleted. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -1109,18 +1259,23 @@ global___DeleteRequest = DeleteRequest
 
 @typing_extensions.final
 class ConstructRequest(google.protobuf.message.Message):
+    """`ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
+    `ConstructRequest` captures enough data to be able to register nested components against the caller's resource
+    monitor.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class PropertyDependencies(google.protobuf.message.Message):
-        """PropertyDependencies describes the resources that a particular property depends on."""
+        """A `PropertyDependencies` list is a set of URNs that a particular property may depend on."""
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         URNS_FIELD_NUMBER: builtins.int
         @property
         def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-            """A list of URNs this property depends on."""
+            """A list of URNs that this property depends on."""
         def __init__(
             self,
             *,
@@ -1130,23 +1285,17 @@ class ConstructRequest(google.protobuf.message.Message):
 
     @typing_extensions.final
     class CustomTimeouts(google.protobuf.message.Message):
-        """CustomTimeouts specifies timeouts for resource provisioning operations.
-        Use it with the [Timeouts] option when creating new resources
-        to override default timeouts.
+        """A `CustomTimeouts` object encapsulates a set of timeouts for the various CRUD operations that might be performed
+        on this resource's nested resources. Timeout values are specified as duration strings, such as `"5ms"` (5
+        milliseconds), `"40s"` (40 seconds), or `"1m30s"` (1 minute and 30 seconds). The following units of time are
+        supported:
 
-        Each timeout is specified as a duration string such as,
-        "5ms" (5 milliseconds), "40s" (40 seconds),
-        and "1m30s" (1 minute, 30 seconds).
-
-        The following units are accepted.
-
-          - ns: nanoseconds
-          - us: microseconds
-          - µs: microseconds
-          - ms: milliseconds
-          - s: seconds
-          - m: minutes
-          - h: hours
+        * `ns`: nanoseconds
+        * `us` or `µs`: microseconds
+        * `ms`: milliseconds
+        * `s`: seconds
+        * `m`: minutes
+        * `h`: hours
         """
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -1155,8 +1304,17 @@ class ConstructRequest(google.protobuf.message.Message):
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
         create: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
+        to complete.
+        """
         update: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Update) operation
+        to complete.
+        """
         delete: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
+        to complete.
+        """
         def __init__(
             self,
             *,
@@ -1242,69 +1400,104 @@ class ConstructRequest(google.protobuf.message.Message):
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
-    """the name of the stack being deployed into."""
+    """The name of the stack being deployed into."""
     @property
     def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the configuration variables to apply before running."""
+        """Configuration for the specified project and stack."""
     dryRun: builtins.bool
-    """true if we're only doing a dryrun (preview)."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually construct the component.
+    """
     parallel: builtins.int
-    """the degree of parallelism for resource operations (<=1 for serial)."""
+    """The degree of parallelism that may be used for resource operations. A value less than or equal to 1 indicates
+    that operations should be performed serially.
+    """
     monitorEndpoint: builtins.str
-    """the address for communicating back to the resource monitor."""
+    """The address of the [](pulumirpc.ResourceMonitor) that the provider should connect to in order to send [resource
+    registrations](resource-registration) for its nested resources.
+    """
     type: builtins.str
-    """the type of the object allocated."""
+    """The type of the component resource being constructed. This must match the type specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     name: builtins.str
-    """the name, for URN purposes, of the object."""
+    """The name of the component resource being constructed. This must match the name specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     parent: builtins.str
-    """an optional parent URN that this child resource belongs to."""
+    """Dependencies and resource options
+
+    These are passed so that the component may propagate them to resources it registers against the supplied resource
+    monitor.
+
+    Do *not* change field IDs. Add new fields at the end with appropriate field IDs as necessary.
+
+    An optional parent resource that the component (and by extension, its nested resources) should be children of.
+    """
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the inputs to the resource constructor."""
+        """The component resource's input properties. Unlike the inputs of custom resources, these will *not* have been
+        passed to a call to [](pulumirpc.ResourceProvider.Check). By virtue of their being a composition of other
+        resources, component resources are able to (and therefore expected) to validate their own inputs. Moreover,
+        [](pulumirpc.ResourceProvider.Check) will be called on any inputs passed to nested custom resources as usual.
+        """
     @property
     def inputDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructRequest.PropertyDependencies]:
-        """a map from property keys to the dependencies of the property."""
+        """A map of property dependencies for the component resource and its nested resources."""
     @property
     def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the map of providers to use for this resource's children."""
+        """A map of package names to provider references for the component resource and its nested resources."""
     @property
     def dependencies(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of URNs that this resource depends on, as observed by the language host."""
+        """A list of URNs that this resource and its nested resources depend on."""
     @property
     def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """the configuration keys that have secret values."""
+        """A set of configuration keys whose values are [secret](output-secrets)."""
     organization: builtins.str
-    """the organization of the stack being deployed into."""
+    """The organization to which this resource and its nested resources will belong."""
     protect: builtins.bool
-    """Resource options:
-    Do not change field IDs. Add new fields at the end.
-    true if the resource should be marked protected.
+    """True if and only if the resource (and by extension, its nested resources) should be marked as protected.
+    Protected resources cannot be deleted without first being unprotected.
     """
     @property
     def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of additional URNs that shoud be considered the same."""
+        """A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
+        used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
+        e.g. if it had its parent (and consequently URN) changed.
+        """
     @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """additional output properties that should be treated as secrets."""
+        """A list of input properties whose values should be treated as [secret](output-secrets)."""
     @property
     def customTimeouts(self) -> global___ConstructRequest.CustomTimeouts:
-        """default timeouts for CRUD operations on this resource."""
+        """A set of custom timeouts that specify how long the caller is prepared to wait for the various CRUD operations of
+        this resource's nested resources.
+        """
     deletedWith: builtins.str
-    """URN of a resource that, if deleted, also deletes this resource."""
+    """The URN of a resource that this resource (and thus its nested resources) will be implicitly deleted with. If the
+    resource referred to by this URN is deleted in the same operation that this resource would be deleted, the
+    [](pulumirpc.ResourceProvider.Delete) call for this resource will be elided (since this dependency signals that
+    it will have already been deleted).
+    """
     deleteBeforeReplace: builtins.bool
-    """whether to delete the resource before replacing it."""
+    """If true, this resource (and its nested resources) must be deleted *before* its replacement is created."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """properties that should be ignored during a diff"""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     @property
     def replaceOnChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """properties that, when changed, trigger a replacement"""
+        """A set of properties that, when changed, trigger a replacement."""
     retainOnDelete: builtins.bool
-    """whether to retain the resource in the cloud provider when it is deleted"""
+    """True if [](pulumirpc.ResourceProvider.Delete) should *not* be called when the resource (and by extension, its
+    nested resources) are removed from a Pulumi program.
+    """
     accepts_output_values: builtins.bool
-    """the engine can be passed output values back, stateDependencies can be left blank if returning output values."""
+    """True if the caller is capable of accepting output values in response to the call. If this is set, these outputs
+    may be used to communicate dependency information and so there is no need to populate
+    [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
+    """
     def __init__(
         self,
         *,
@@ -1341,18 +1534,20 @@ global___ConstructRequest = ConstructRequest
 
 @typing_extensions.final
 class ConstructResponse(google.protobuf.message.Message):
+    """`ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class PropertyDependencies(google.protobuf.message.Message):
-        """PropertyDependencies describes the resources that a particular property depends on."""
+        """A `PropertyDependencies` list is a set of URNs that a particular property may depend on."""
 
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         URNS_FIELD_NUMBER: builtins.int
         @property
         def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-            """A list of URNs this property depends on."""
+            """A list of URNs that this property depends on."""
         def __init__(
             self,
             *,
@@ -1382,13 +1577,16 @@ class ConstructResponse(google.protobuf.message.Message):
     STATE_FIELD_NUMBER: builtins.int
     STATEDEPENDENCIES_FIELD_NUMBER: builtins.int
     urn: builtins.str
-    """the URN of the component resource."""
+    """The URN of the constructed component resource."""
     @property
     def state(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during construction."""
+        """Any output properties that the component registered as part of its construction."""
     @property
     def stateDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructResponse.PropertyDependencies]:
-        """a map from property keys to the dependencies of the property."""
+        """A map of property dependencies for the component's outputs. This will be set if the caller indicated that it
+        could not receive dependency-communicating [output](outputs) values by setting [](pulumirpc.ConstructRequest)'s
+        `accepts_output_values` field to false.
+        """
     def __init__(
         self,
         *,

@@ -186,7 +186,7 @@ class ResourceProviderServicer(object):
 
         As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
         the properties as present in the program inputs. Though this rule is not required for correctness, violations
-        thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
+        thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
         rendering diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -194,20 +194,34 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def DiffConfig(self, request, context):
-        """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+        """`DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+        difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+        is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+        call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+        owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+        instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+        thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+        Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+        AWS access key, should almost certainly not.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Configure(self, request, context):
-        """Configure configures the resource provider with "globals" that control its behavior.
+        """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
 
-        :::{warning}
-        ConfigureRequest.args may include secrets. Because ConfigureRequest is sent before
-        ConfigureResponse can specify acceptSecrets: false, providers *must* handle secrets from
-        ConfigureRequest.args.
-        :::
+        * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+        [](pulumirpc.ResourceProvider.CheckConfig) call.
+        * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+
+        The provider is expected to return its own set of protocol configuration, indicating which features it supports
+        in turn so that the caller and the provider can interact appropriately.
+
+        Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+        the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+        indicate which keys are missing.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -236,55 +250,86 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Check(self, request, context):
-        """Check validates that the given property bag is valid for a resource of the given type and returns the inputs
-        that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
-        inputs returned by a call to Check should preserve the original representation of the properties as present in
-        the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
-        the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+        """`Check` validates a set of input properties against a given resource type. A `Check` call returns either a set of
+        checked, known-valid inputs that may subsequently be passed to [](pulumirpc.ResourceProvider.Diff),
+        [](pulumirpc.ResourceProvider.Create), or [](pulumirpc.ResourceProvider.Update); or a set of errors explaining
+        why the inputs are invalid. In the case that a set of inputs are successfully validated and returned, `Check`
+        *may also populate default values* for resource inputs, returning them so that they may be passed to a subsequent
+        call and persisted in the Pulumi state. In the case that `Check` fails and returns a set of errors, it is
+        expected that the caller (typically the Pulumi engine) will fail resource registration.
+
+        As a rule, the provider inputs returned by a call to `Check` should preserve the original representation of the
+        properties as present in the program inputs. Though this rule is not required for correctness, violations thereof
+        can negatively impact the end-user experience, as the provider inputs are used for detecting and rendering
+        diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Diff(self, request, context):
-        """Diff checks what impacts a hypothetical update will have on the resource's properties.
+        """`Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
+        difference (if any) between them. `Diff` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.Check) call.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Create(self, request, context):
-        """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-        must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
+        """`Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
+        provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
+        Output properties are typically the union of the resource's input properties and any additional values that were
+        computed or made available during creation.
+
+        If creation fails, `Create` may return an [](pulumirpc.ErrorResourceInitFailed) error detail explaining why.
+        Moreover, if `Create` does return an error, it must be the case that the resource was *not* created (that is,
+        `Create` can be thought of as transactional or atomic).
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Read(self, request, context):
-        """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-        identify the resource; this is typically just the resource ID, but may also include some properties.
+        """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
+        must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
+        include other properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Update(self, request, context):
-        """Update updates an existing resource with new values.
+        """`Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Delete(self, request, context):
-        """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+        """`Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+        a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+        exist.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Construct(self, request, context):
-        """Construct creates a new instance of the provided component resource and returns its state.
+        """`Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+        referred to as [component providers](component-providers). `Construct` is to component resources what
+        [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+        lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+        `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+        consequently passed enough information to manage fully these resources. At a high level, this comprises:
+
+        * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+        custom or component resources that belong to the component.
+
+        * A set of input properties.
+
+        * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+        propagate to resources it registers against the supplied resource monitor.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
