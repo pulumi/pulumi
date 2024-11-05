@@ -8,8 +8,10 @@ from . import provider_pb2 as pulumi_dot_provider__pb2
 
 
 class ResourceProviderStub(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
 
     def __init__(self, channel):
@@ -121,24 +123,40 @@ class ResourceProviderStub(object):
 
 
 class ResourceProviderServicer(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
 
     def Parameterize(self, request, context):
-        """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+        """`Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
+        a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
+        subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
+        behaviour at a high level (e.g. by specifying the region in which an AWS provider should operate), a
+        `Parameterize` call may change the set of resources and functions that a provider offers (that is, its schema).
+        This is useful in any case where some "set" of providers can be captured by a single implementation that may
+        power fundamentally different schemata -- dynamically bridging Terraform providers, or managing Kubernetes
+        clusters with custom resource definitions, for instance, are good examples. The parameterized package that
+        `Parameterize` yields is known as a *sub-package* of the original (unparameterized) package.
 
-        Providers can be parameterized with either multiple extension packages (which don't define their own provider
-        resources), or with a replacement package (which does define its own provider resource).
+        `Parameterize` supports two types of parameterization:
 
-        Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
-        called once. Extension packages may even be called multiple times for the same package name, but with different
-        versions.
+        * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+        original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+        the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+        Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
 
-        Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
-        should return the sub-package name and version (which for `ParametersValue` should match the given input).
+        * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+        original. This is useful in cases where a provider can be extended with additional resources or functions, such
+        as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+        Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+        packages may even be called multiple times with the same package name, but with different versions. The CRUD
+        operations of extension resources must include the version of which sub-package they correspond to.
 
-        For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+        `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
+        each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
+        match the given input).
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -408,8 +426,10 @@ def add_ResourceProviderServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class ResourceProvider(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
 
     @staticmethod

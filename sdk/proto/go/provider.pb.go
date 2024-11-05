@@ -143,6 +143,18 @@ func (DiffResponse_DiffChanges) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{16, 0}
 }
 
+// `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
+// `ParameterizeRequest` may contain either:
+//
+// * a string array (`ParametersArgs`), intended to represent a set of command-line arguments so as to support
+//   instantiating a parameterized provider from a command-line invocation (e.g. to generate an SDK).
+// * a byte array accompanied by a name and version (`ParametersValue`), intended to represent a parameter embedded in a
+//   previously generated SDK.
+//
+// Embedding parameter values in SDKs allows programs to consume parameterized providers without needing to know the
+// details of the parameterization. Allowing the representation embedded into an SDK to differ from that supplied on the
+// command-line permits providers to implement optimizations for the common, fast-path case (program execution), such as
+// embedding a generated schema as opposed to generating it on-demand for each resource registration.
 type ParameterizeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -212,17 +224,22 @@ type isParameterizeRequest_Parameters interface {
 }
 
 type ParameterizeRequest_Args struct {
-	Args *ParameterizeRequest_ParametersArgs `protobuf:"bytes,1,opt,name=args,proto3,oneof"` // arguments from the command line.
+	// Arguments from the command line.
+	Args *ParameterizeRequest_ParametersArgs `protobuf:"bytes,1,opt,name=args,proto3,oneof"`
 }
 
 type ParameterizeRequest_Value struct {
-	Value *ParameterizeRequest_ParametersValue `protobuf:"bytes,2,opt,name=value,proto3,oneof"` // values from a generated package.
+	// Values from a generated SDK.
+	Value *ParameterizeRequest_ParametersValue `protobuf:"bytes,2,opt,name=value,proto3,oneof"`
 }
 
 func (*ParameterizeRequest_Args) isParameterizeRequest_Parameters() {}
 
 func (*ParameterizeRequest_Value) isParameterizeRequest_Parameters() {}
 
+// `ParameterizeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Parameterize) call. It
+// contains a name and version that can be used to identify the sub-package that now exists as a result of
+// parameterization.
 type ParameterizeResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2555,6 +2572,8 @@ func (x *GetMappingsResponse) GetProviders() []string {
 	return nil
 }
 
+// A parameter value, represented as an array of strings, as might be provided by a command-line invocation, such as
+// that used to generate an SDK.
 type ParameterizeRequest_ParametersArgs struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2602,6 +2621,8 @@ func (x *ParameterizeRequest_ParametersArgs) GetArgs() []string {
 	return nil
 }
 
+// A parameter value, represented by an arbitrary array of bytes accompanied by a name and version. This is expected
+// to be the format used by parameterized provider SDKs.
 type ParameterizeRequest_ParametersValue struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
