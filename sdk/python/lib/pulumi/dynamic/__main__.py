@@ -43,6 +43,11 @@ _PROVIDER_CACHE: Dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
 
 
+# get_provider deserializes the provider from the string found in
+# `props[PROVIDER_KEY]` and calls `provider.configure` with the config. The
+# deserialized and configured provider is stored in `_PROVIDER_CACHE`. This
+# guarantees that the provider is only deserialized and configured once per
+# process.
 def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvider:
     # Ensure Settings are configured in the thread that calls get_provider
     configure(

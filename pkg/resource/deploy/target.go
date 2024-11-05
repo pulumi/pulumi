@@ -30,10 +30,13 @@ type Target struct {
 }
 
 const (
+	// The package name for the NodeJS dynamic provider.
 	nodejsDynamicProviderPackage = "pulumi-nodejs"
+	// The package name for the Python dynamic provider.
 	pythonDynamicProviderPackage = "pulumi-python"
 )
 
+// Returns true if the given package refers to a dynamic provider.
 func isDynamicProvider(pkg tokens.Package) bool {
 	return pkg == tokens.Package(nodejsDynamicProviderPackage) || pkg == tokens.Package(pythonDynamicProviderPackage)
 }
