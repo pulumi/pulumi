@@ -453,7 +453,6 @@ func (source *githubSource) getHTTPResponse(
 	var downErr *downloadError
 	if !errors.As(err, &downErr) || downErr.code != 403 || downErr.header.Get("x-ratelimit-remaining") != "0" {
 		// If we see a 401 error and we're using a token we'll disable that token and try again
-		fmt.Println(err, downErr)
 		if downErr != nil && (downErr.code == 401 || downErr.code == 403) && source.token != "" {
 			source.token = ""
 			source.tokenDisabled = true
