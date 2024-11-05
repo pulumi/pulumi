@@ -47,6 +47,9 @@ class ConfigureRequest:
     """
 
     config: Config
+    """
+    The stack's configuration.
+    """
 
     def __init__(self, config: Config):
         self.config = config
