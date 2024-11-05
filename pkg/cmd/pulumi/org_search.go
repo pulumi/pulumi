@@ -214,8 +214,8 @@ func newSearchCmd() *cobra.Command {
 		&scmd.queryParams, "query", "q", nil,
 		"A Pulumi Query to send to Pulumi Cloud for resource search."+
 			"May be formatted as a single query, or multiple:\n"+
-			"\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n"+
-			"\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\n"+
+			"\t-q \"type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01\"\n"+
+			"\t-q \"type:aws:s3/bucketv2:BucketV2\" -q \"modified:>=2023-09-01\"\n"+
 			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
 	)
 	cmd.PersistentFlags().VarP(
