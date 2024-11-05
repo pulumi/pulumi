@@ -123,7 +123,7 @@ well as discussing how they are verified and tested.
 /docs/architecture/deployment-execution/README
 /docs/architecture/types/README
 /docs/architecture/languages
-/docs/architecture/providers
+/docs/architecture/providers/README
 /docs/architecture/plugins
 /pkg/codegen/README
 /docs/architecture/testing/README
