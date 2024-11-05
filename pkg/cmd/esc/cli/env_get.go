@@ -33,6 +33,7 @@ type envGetCommand struct {
 
 func newEnvGetCmd(env *envCommand) *cobra.Command {
 	var value string
+	var defOnly bool
 	var showSecrets bool
 
 	get := &envGetCommand{env: env}
@@ -67,6 +68,10 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				}
 			}
 
+			if defOnly && value != "" {
+				return fmt.Errorf("`--value` and `--definition` flags cannot be used together")
+			}
+
 			switch value {
 			case "":
 				// OK
@@ -94,6 +99,11 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return nil
 			}
 
+			if defOnly {
+				fmt.Fprint(get.env.esc.stdout, data.Definition)
+				return nil
+			}
+
 			var markdown bytes.Buffer
 			if err := envGetTemplate.Execute(&markdown, data); err != nil {
 				return fmt.Errorf("internal error: rendering: %w", err)
@@ -117,9 +127,12 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(
+		&defOnly, "definition", false,
+		"Set to print just the definition.")
 	cmd.Flags().StringVar(
 		&value, "value", "",
-		"set to print just the value in the given format. may be 'dotenv', 'json', 'detailed', or 'shell'")
+		"Set to print just the value in the given format. May be 'dotenv', 'json', 'detailed', or 'shell'")
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")

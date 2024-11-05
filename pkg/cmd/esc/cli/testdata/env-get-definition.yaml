@@ -1,0 +1,22 @@
+run: |
+  esc env get default/test --definition
+environments:
+  test-user/default/test:
+    imports:
+      - a
+    values:
+      # comment
+      string: esc
+      files:
+        FILE: ${string}
+stdout: |
+  > esc env get default/test --definition
+  imports:
+    - a
+  values:
+    # comment
+    string: esc
+    files:
+      FILE: ${string}
+stderr: |
+  > esc env get default/test --definition
