@@ -1119,7 +1119,7 @@ global___ReadResponse = ReadResponse
 
 @typing_extensions.final
 class UpdateRequest(google.protobuf.message.Message):
-    """NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`."""
+    """`UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1134,29 +1134,37 @@ class UpdateRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to update."""
+    """The ID of the resource being updated."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being updated."""
     @property
     def olds(self) -> google.protobuf.struct_pb2.Struct:
-        """the old values of provider inputs for the resource to update."""
+        """The old *output* properties of the resource being updated."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new values of provider inputs for the resource to update, copied from CheckResponse.inputs."""
+        """The new input properties of the resource being updated. These should have been validated by a call to
+        [](pulumirpc.ResourceProvider.Check).
+        """
     timeout: builtins.float
-    """the update request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a set of property paths that should be treated as unchanged."""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     preview: builtins.bool
-    """true if this is a preview and the provider should not actually create the resource."""
+    """True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    actually update the resource.
+    """
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to diff."""
+        """The old *input* properties of the resource being updated."""
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being updated. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -1178,12 +1186,16 @@ global___UpdateRequest = UpdateRequest
 
 @typing_extensions.final
 class UpdateResponse(google.protobuf.message.Message):
+    """`UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROPERTIES_FIELD_NUMBER: builtins.int
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """any properties that were computed during updating."""
+        """An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
+        additional values that were computed or made available during the update.
+        """
     def __init__(
         self,
         *,
@@ -1196,6 +1208,8 @@ global___UpdateResponse = UpdateResponse
 
 @typing_extensions.final
 class DeleteRequest(google.protobuf.message.Message):
+    """`DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -1206,21 +1220,27 @@ class DeleteRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to delete."""
+    """The ID of the resource to delete."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource to delete."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
-        """the current properties on the resource."""
+        """The old *output* properties of the resource being deleted."""
     timeout: builtins.float
-    """the delete request timeout represented in seconds."""
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to delete."""
+        """The old *input* properties of the resource being deleted.
+        the old input values of the resource to delete.
+        """
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being deleted. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,

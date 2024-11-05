@@ -191,12 +191,15 @@ class ResourceProviderStub:
         pulumi.provider_pb2.UpdateRequest,
         pulumi.provider_pb2.UpdateResponse,
     ]
-    """Update updates an existing resource with new values."""
+    """`Update` updates an existing resource according to a new set of inputs, returning a new set of output properties."""
     Delete: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.DeleteRequest,
         google.protobuf.empty_pb2.Empty,
     ]
-    """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist."""
+    """`Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+    a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+    exist.
+    """
     Construct: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ConstructRequest,
         pulumi.provider_pb2.ConstructResponse,
@@ -430,14 +433,17 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.UpdateRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.UpdateResponse:
-        """Update updates an existing resource with new values."""
+        """`Update` updates an existing resource according to a new set of inputs, returning a new set of output properties."""
     
     def Delete(
         self,
         request: pulumi.provider_pb2.DeleteRequest,
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty:
-        """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist."""
+        """`Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+        a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+        exist.
+        """
     
     def Construct(
         self,

@@ -148,9 +148,13 @@ service ResourceProvider {
     // must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     // include other properties.
     rpc Read(ReadRequest) returns (ReadResponse) {}
-    // Update updates an existing resource with new values.
+
+    // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
-    // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+
+    // `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+    // a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+    // exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 
     // Construct creates a new instance of the provided component resource and returns its state.
@@ -677,36 +681,74 @@ message ReadResponse {
     google.protobuf.Struct inputs = 3;
 }
 
+// `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
 message UpdateRequest {
-    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+    // The ID of the resource being updated.
+    string id = 1;
 
-    string id = 1;                     // the ID of the resource to update.
-    string urn = 2;                    // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
+    // The URN of the resource being updated.
+    string urn = 2;
 
-    // the new values of provider inputs for the resource to update, copied from CheckResponse.inputs.
+    // The old *output* properties of the resource being updated.
+    google.protobuf.Struct olds = 3;
+
+    // The new input properties of the resource being updated. These should have been validated by a call to
+    // [](pulumirpc.ResourceProvider.Check).
     google.protobuf.Struct news = 4;
 
-    double timeout = 5;                // the update request timeout represented in seconds.
-    repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
-    bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
-    google.protobuf.Struct old_inputs = 8; // the old input values of the resource to diff.
-    string name = 9; // the Pulumi name for this resource.
-    string type = 10; // the Pulumi type for this resource.
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 5;
+
+    // A set of [property paths](property-paths) that should be treated as unchanged.
+    repeated string ignoreChanges = 6;
+
+    // True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+    // actually update the resource.
+    bool preview = 7;
+
+    // The old *input* properties of the resource being updated.
+    google.protobuf.Struct old_inputs = 8;
+
+    // The name of the resource being updated. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 9;
+
+    // The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 10;
 }
 
+// `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
 message UpdateResponse {
-    google.protobuf.Struct properties = 1; // any properties that were computed during updating.
+    // An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
+    // additional values that were computed or made available during the update.
+    google.protobuf.Struct properties = 1;
 }
 
+// `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
 message DeleteRequest {
-    string id = 1;                         // the ID of the resource to delete.
-    string urn = 2;                        // the Pulumi URN for this resource.
-    google.protobuf.Struct properties = 3; // the current properties on the resource.
-    double timeout = 4;                    // the delete request timeout represented in seconds.
+    // The ID of the resource to delete.
+    string id = 1;
+
+    // The URN of the resource to delete.
+    string urn = 2;
+
+    // The old *output* properties of the resource being deleted.
+    google.protobuf.Struct properties = 3;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 4;
+
+    // The old *input* properties of the resource being deleted.
     google.protobuf.Struct old_inputs = 5; // the old input values of the resource to delete.
-    string name = 6; // the Pulumi name for this resource.
-    string type = 7; // the Pulumi type for this resource.
+
+    // The name of the resource being deleted. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 6;
+
+    // The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 7;
 }
 
 message ConstructRequest {

@@ -133,9 +133,11 @@ type ResourceProviderClient interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
-	// Update updates an existing resource with new values.
+	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
-	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+	// a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+	// exist.
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
@@ -483,9 +485,11 @@ type ResourceProviderServer interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
-	// Update updates an existing resource with new values.
+	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
-	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+	// a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+	// exist.
 	Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)

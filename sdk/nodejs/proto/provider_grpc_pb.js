@@ -588,7 +588,7 @@ read: {
     responseSerialize: serialize_pulumirpc_ReadResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResponse,
   },
-  // Update updates an existing resource with new values.
+  // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 update: {
     path: '/pulumirpc.ResourceProvider/Update',
     requestStream: false,
@@ -600,7 +600,9 @@ update: {
     responseSerialize: serialize_pulumirpc_UpdateResponse,
     responseDeserialize: deserialize_pulumirpc_UpdateResponse,
   },
-  // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+  // `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+// a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+// exist.
 delete: {
     path: '/pulumirpc.ResourceProvider/Delete',
     requestStream: false,

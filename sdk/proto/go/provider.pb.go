@@ -1870,22 +1870,36 @@ func (x *ReadResponse) GetInputs() *structpb.Struct {
 	return nil
 }
 
+// `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
 type UpdateRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // the ID of the resource to update.
-	Urn  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
-	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"` // the old values of provider inputs for the resource to update.
-	// the new values of provider inputs for the resource to update, copied from CheckResponse.inputs.
-	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
-	Timeout       float64          `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`                    // the update request timeout represented in seconds.
-	IgnoreChanges []string         `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`          // a set of property paths that should be treated as unchanged.
-	Preview       bool             `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`                     // true if this is a preview and the provider should not actually create the resource.
-	OldInputs     *structpb.Struct `protobuf:"bytes,8,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to diff.
-	Name          string           `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`                            // the Pulumi name for this resource.
-	Type          string           `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`                           // the Pulumi type for this resource.
+	// The ID of the resource being updated.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The URN of the resource being updated.
+	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The old *output* properties of the resource being updated.
+	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	// The new input properties of the resource being updated. These should have been validated by a call to
+	// [](pulumirpc.ResourceProvider.Check).
+	News *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
+	Timeout float64 `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	// A set of [property paths](property-paths) that should be treated as unchanged.
+	IgnoreChanges []string `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
+	// actually update the resource.
+	Preview bool `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
+	// The old *input* properties of the resource being updated.
+	OldInputs *structpb.Struct `protobuf:"bytes,8,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
+	// The name of the resource being updated. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *UpdateRequest) Reset() {
@@ -1990,12 +2004,15 @@ func (x *UpdateRequest) GetType() string {
 	return ""
 }
 
+// `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
 type UpdateResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Properties *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"` // any properties that were computed during updating.
+	// An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
+	// additional values that were computed or made available during the update.
+	Properties *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
 }
 
 func (x *UpdateResponse) Reset() {
@@ -2037,18 +2054,28 @@ func (x *UpdateResponse) GetProperties() *structpb.Struct {
 	return nil
 }
 
+// `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
 type DeleteRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // the ID of the resource to delete.
-	Urn        string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`                              // the Pulumi URN for this resource.
-	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`                // the current properties on the resource.
-	Timeout    float64          `protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`                    // the delete request timeout represented in seconds.
-	OldInputs  *structpb.Struct `protobuf:"bytes,5,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to delete.
-	Name       string           `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`                            // the Pulumi name for this resource.
-	Type       string           `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`                            // the Pulumi type for this resource.
+	// The ID of the resource to delete.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The URN of the resource to delete.
+	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The old *output* properties of the resource being deleted.
+	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
+	Timeout float64 `protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	// The old *input* properties of the resource being deleted.
+	OldInputs *structpb.Struct `protobuf:"bytes,5,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to delete.
+	// The name of the resource being deleted. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *DeleteRequest) Reset() {

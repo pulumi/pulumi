@@ -300,14 +300,16 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Update(self, request, context):
-        """Update updates an existing resource with new values.
+        """`Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Delete(self, request, context):
-        """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+        """`Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+        a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+        exist.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
