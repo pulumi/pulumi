@@ -79,6 +79,7 @@ require (
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/fatih/color v1.16.0
 	github.com/go-git/go-git/v5 v5.12.0
+	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/hexops/autogold/v2 v2.2.1
@@ -106,6 +107,7 @@ require (
 	go.pennock.tech/tabular v1.1.3
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
 	golang.org/x/mod v0.18.0
+	golang.org/x/sys v0.22.0
 	golang.org/x/term v0.22.0
 	golang.org/x/text v0.16.0
 	google.golang.org/protobuf v1.33.0
@@ -255,7 +257,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect

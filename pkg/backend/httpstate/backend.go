@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -193,6 +194,8 @@ type cloudBackend struct {
 	client       *client.Client
 	escClient    esc_client.Client
 	capabilities func(context.Context) capabilities
+
+	resetSleep nosleep.DoneFunc
 
 	// The current project, if any.
 	currentProject *workspace.Project
@@ -1225,6 +1228,9 @@ func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
+	// Once we start an update we want to keep the machine from sleeping.
+	b.resetSleep = nosleep.KeepRunning()
+
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)

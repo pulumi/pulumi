@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Keep computers awake while an update is running
