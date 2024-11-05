@@ -14,11 +14,6 @@
 
 package nosleep
 
-const (
-	EsSystemRequired = 0x00000001
-	EsContinuous     = 0x80000000
-)
-
 type DoneFunc func()
 
 // KeepRunning attempts to prevent idle sleep on the system.  This is useful for long running processes, e.g. updates

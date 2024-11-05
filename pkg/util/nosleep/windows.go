@@ -17,14 +17,24 @@
 
 package nosleep
 
-import "golang.org/x/sys/windows"
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"golang.org/x/sys/windows"
+)
+
+const (
+	EsSystemRequired = 0x00000001
+	EsContinuous     = 0x80000000
+)
 
 func keepRunning() DoneFunc {
 	kernel32 := windows.NewLazySystemDLL("kernel32.dll")
 	setThreadExecStateProc := kernel32.NewProc("SetThreadExecutionState")
 	setThreadExecStateProc.Call(EsSystemRequired | EsContinuous)
+	logging.V(5).Infof("Got wake lock (SetThreadExecutionState)")
 	return func() {
 		// At the end of the long running process, we can allow the system to sleep again.
 		setThreadExecStateProc.Call(EsContinuous)
+		logging.V(5).Infof("Released wake lock (SetThreadExecutionState)")
 	}
 }

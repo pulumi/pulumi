@@ -21,14 +21,22 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func keepRunning() DoneFunc {
 	// Run caffeinate to keep the system awake.
 	cmd := exec.Command("caffeinate", "-i", "-w", strconv.Itoa(os.Getpid()))
 	// we intentionally ignore the error here.  If we can't keep the system awake we still want to continue.
-	_ = cmd.Start()
+	err := cmd.Start()
+	if err != nil {
+		logging.V(5).Infof("Failed to get wake lock: %v", err)
+		return func() {}
+	}
+	logging.V(5).Infof("Got wake lock (caffeinate with pid %d)", cmd.Process.Pid)
 	return func() {
 		_ = cmd.Process.Kill()
+		logging.V(5).Infof("Released wake lock (caffeinate with pid %d)", cmd.Process.Pid)
 	}
 }

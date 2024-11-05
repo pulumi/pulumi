@@ -19,6 +19,7 @@ package nosleep
 
 import (
 	"github.com/godbus/dbus/v5"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func keepRunning() DoneFunc {
@@ -44,10 +45,13 @@ func keepRunning() DoneFunc {
 		reasonForInhibit,
 		inhibitIdleFlag).Store(&cookie)
 	if err != nil {
+		logging.V(5).Infof("Failed to get wake lock: %v", err)
 		// We did not succeed in setting up the inhibit, so just return a no-op function
 		return func() {}
 	}
+	logging.V(5).Infof("Got wake lock (gnome session manager, with cookie %d)", cookie)
 	return func() {
 		_ = obj.Call("org.gnome.SessionManager.Uninhibit", 0, cookie).Store()
+		logging.V(5).Infof("Released wake lock (gnome session manager, with cookie %d)", cookie)
 	}
 }
