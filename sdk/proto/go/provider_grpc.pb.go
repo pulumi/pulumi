@@ -72,7 +72,16 @@ type ResourceProviderClient interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
 	// rendering diffs.
 	CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
-	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+	// by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+	// call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+	// owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+	// instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+	// AWS access key, should almost certainly not.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	//
@@ -392,7 +401,16 @@ type ResourceProviderServer interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
 	// rendering diffs.
 	CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error)
-	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+	// by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+	// call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+	// owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+	// instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+	// AWS access key, should almost certainly not.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	//

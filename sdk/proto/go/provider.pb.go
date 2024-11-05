@@ -36,15 +36,22 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The type of property diff kinds.
 type PropertyDiff_Kind int32
 
 const (
-	PropertyDiff_ADD            PropertyDiff_Kind = 0 // this property was added
-	PropertyDiff_ADD_REPLACE    PropertyDiff_Kind = 1 // this property was added, and this change requires a replace
-	PropertyDiff_DELETE         PropertyDiff_Kind = 2 // this property was removed
-	PropertyDiff_DELETE_REPLACE PropertyDiff_Kind = 3 // this property was removed, and this change requires a replace
-	PropertyDiff_UPDATE         PropertyDiff_Kind = 4 // this property's value was changed
-	PropertyDiff_UPDATE_REPLACE PropertyDiff_Kind = 5 // this property's value was changed, and this change requires a replace
+	// This property was added.
+	PropertyDiff_ADD PropertyDiff_Kind = 0
+	// This property was added, and this change requires a replace.
+	PropertyDiff_ADD_REPLACE PropertyDiff_Kind = 1
+	// This property was removed.
+	PropertyDiff_DELETE PropertyDiff_Kind = 2
+	// This property was removed, and this change requires a replace.
+	PropertyDiff_DELETE_REPLACE PropertyDiff_Kind = 3
+	// This property's value was changed.
+	PropertyDiff_UPDATE PropertyDiff_Kind = 4
+	// This property's value was changed, and this change requires a replace.
+	PropertyDiff_UPDATE_REPLACE PropertyDiff_Kind = 5
 )
 
 // Enum value maps for PropertyDiff_Kind.
@@ -94,12 +101,17 @@ func (PropertyDiff_Kind) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{15, 0}
 }
 
+// The type of high-level diff results.
 type DiffResponse_DiffChanges int32
 
 const (
-	DiffResponse_DIFF_UNKNOWN DiffResponse_DiffChanges = 0 // unknown whether there are changes or not (legacy behavior).
-	DiffResponse_DIFF_NONE    DiffResponse_DiffChanges = 1 // the diff was performed, and no changes were detected that require an update.
-	DiffResponse_DIFF_SOME    DiffResponse_DiffChanges = 2 // the diff was performed, and changes were detected that require an update or replacement.
+	// A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+	// behaviour and should be generally avoided wherever possible.
+	DiffResponse_DIFF_UNKNOWN DiffResponse_DiffChanges = 0
+	// A diff was performed and there were no changes. An update is not required.
+	DiffResponse_DIFF_NONE DiffResponse_DiffChanges = 1
+	// A diff was performed, and changes were detected that require an update or replacement.
+	DiffResponse_DIFF_SOME DiffResponse_DiffChanges = 2
 )
 
 // Enum value maps for DiffResponse_DiffChanges.
@@ -1166,20 +1178,43 @@ func (x *CheckFailure) GetReason() string {
 	return ""
 }
 
+// `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
+// [](pulumirpc.ResourceProvider.Diff) calls. A `DiffRequest` primarily captures:
+//
+// * the URN of the resource whose properties are being compared;
+// * the old and new input properties of the resource; and
+// * the old output properties of the resource.
+//
+// In the case of [](pulumirpc.ResourceProvider.DiffConfig), the URN will be the URN of the provider resource being
+// examined, which may or may not be a [default provider](default-providers), and the inputs and outputs will be the
+// provider configuration and state. Inputs supplied to a [](pulumirpc.ResourceProvider.DiffConfig) call should have
+// been previously checked by a call to [](pulumirpc.ResourceProvider.CheckConfig); inputs supplied to a
+// [](pulumirpc.ResourceProvider.Diff) call should have been previously checked by a call to
+// [](pulumirpc.ResourceProvider.Check).
 type DiffRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // the ID of the resource to diff.
-	Urn  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
-	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"` // the old output values of resource to diff.
-	// the new input values of resource to diff, copied from CheckResponse.inputs.
-	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
-	IgnoreChanges []string         `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`          // a set of property paths that should be treated as unchanged.
-	OldInputs     *structpb.Struct `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to diff.
-	Name          string           `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`                            // the Pulumi name for this resource.
-	Type          string           `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`                            // the Pulumi type for this resource.
+	// The ID of the resource being diffed.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The URN of the resource being diffed.
+	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The old *output* properties of the resource being diffed.
+	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	// The new *input* properties of the resource being diffed. These should have been validated by an appropriate call
+	// to [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check).
+	News *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	// A set of [property paths](property-paths) that should be treated as unchanged.
+	IgnoreChanges []string `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	// The old *input* properties of the resource being diffed.
+	OldInputs *structpb.Struct `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
+	// The name of the resource being diffed. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *DiffRequest) Reset() {
@@ -1270,13 +1305,19 @@ func (x *DiffRequest) GetType() string {
 	return ""
 }
 
+// `PropertyDiff` describes the kind of change that occurred to a property during a diff operation. A `PropertyDiff` may
+// indicate that a property was added, deleted, or updated, and may further indicate that the change requires a
+// replacement.
 type PropertyDiff struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Kind      PropertyDiff_Kind `protobuf:"varint,1,opt,name=kind,proto3,enum=pulumirpc.PropertyDiff_Kind" json:"kind,omitempty"` // The kind of diff asdsociated with this property.
-	InputDiff bool              `protobuf:"varint,2,opt,name=inputDiff,proto3" json:"inputDiff,omitempty"`                        // The difference is between old and new inputs, not old and new state.
+	// The kind of diff associated with this property.
+	Kind PropertyDiff_Kind `protobuf:"varint,1,opt,name=kind,proto3,enum=pulumirpc.PropertyDiff_Kind" json:"kind,omitempty"`
+	// True if and only if this difference represents one between a pair of old and new inputs, as opposed to a pair of
+	// old and new states.
+	InputDiff bool `protobuf:"varint,2,opt,name=inputDiff,proto3" json:"inputDiff,omitempty"`
 }
 
 func (x *PropertyDiff) Reset() {
@@ -1325,50 +1366,47 @@ func (x *PropertyDiff) GetInputDiff() bool {
 	return false
 }
 
+// `DiffResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.DiffConfig) or
+// [](pulumirpc.ResourceProvider.Diff) call. A `DiffResponse` indicates whether a resource is unchanged, requires
+// updating (that is, can be changed "in place"), or requires replacement (that is, must be destroyed and recreated
+// anew). Legacy implementations may also signal that it is unknown whether there are changes or not.
+//
+// `DiffResponse` has evolved since its inception and there are now a number of ways that providers can signal their
+// intent to callers:
+//
+// * *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
+//   field to further communicate which changes (if any) require a replacement as opposed to an update.
+//
+// * *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
+//   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
+//   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
+//   change occurred (e.g. a field was added, deleted or updated).
 type DiffResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Replaces            []string                 `protobuf:"bytes,1,rep,name=replaces,proto3" json:"replaces,omitempty"`                                        // if this update requires a replacement, the set of properties triggering it.
-	Stables             []string                 `protobuf:"bytes,2,rep,name=stables,proto3" json:"stables,omitempty"`                                          // an optional list of properties that will not ever change.
-	DeleteBeforeReplace bool                     `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`                 // if true, this resource must be deleted before replacing it.
-	Changes             DiffResponse_DiffChanges `protobuf:"varint,4,opt,name=changes,proto3,enum=pulumirpc.DiffResponse_DiffChanges" json:"changes,omitempty"` // if true, this diff represents an actual difference and thus requires an update.
-	// a list of the properties that changed. This should only contain top level property names, it does not
-	// support nested properties. For that use detailedDiff.
+	// A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
+	// caller should replace the resource if this set is non-empty, or if any of the properties specified in
+	// `detailedDiff` have a `*_REPLACE` kind.
+	Replaces []string `protobuf:"bytes,1,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	// An optional list of properties that will not ever change (are stable).
+	Stables []string `protobuf:"bytes,2,rep,name=stables,proto3" json:"stables,omitempty"`
+	// If true, this resource must be deleted *before* its replacement is created.
+	DeleteBeforeReplace bool `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`
+	// The result of the diff. Indicates at a high level whether the resource has changed or not (or, in legacy cases,
+	// if the provider does not know).
+	Changes DiffResponse_DiffChanges `protobuf:"varint,4,opt,name=changes,proto3,enum=pulumirpc.DiffResponse_DiffChanges" json:"changes,omitempty"`
+	// The set of properties which have changed. This field only supports top-level properties. It *does not* support
+	// full [property paths](property-paths); implementations should use `detailedDiff` when this is required.
 	Diffs []string `protobuf:"bytes,5,rep,name=diffs,proto3" json:"diffs,omitempty"`
-	// detailedDiff is an optional field that contains map from each changed property to the type of the change.
-	//
-	// The keys of this map are property paths. These paths are essentially Javascript property access expressions
-	// in which all elements are literals, and obey the following EBNF-ish grammar:
-	//
-	//   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-	//   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
-	//   arrayIndex := { [0-9] }
-	//
-	//   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-	//   rootProperty := ( propertyName | propertyIndex )
-	//   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-	//   path := rootProperty { propertyAccessor }
-	//
-	// Examples of valid keys:
-	// - root
-	// - root.nested
-	// - root["nested"]
-	// - root.double.nest
-	// - root["double"].nest
-	// - root["double"]["nest"]
-	// - root.array[0]
-	// - root.array[100]
-	// - root.array[0].nested
-	// - root.array[0][1].nested
-	// - root.nested.array[0].double[1]
-	// - root["key with \"escaped\" quotes"]
-	// - root["key with a ."]
-	// - ["root key with \"escaped\" quotes"].nested
-	// - ["root key with a ."][100]
-	DetailedDiff    map[string]*PropertyDiff `protobuf:"bytes,6,rep,name=detailedDiff,proto3" json:"detailedDiff,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a detailed diff appropriate for display.
-	HasDetailedDiff bool                     `protobuf:"varint,7,opt,name=hasDetailedDiff,proto3" json:"hasDetailedDiff,omitempty"`                                                                                  // true if this response contains a detailed diff.
+	// `detailedDiff` can be used to implement more detailed diffs. A detailed diff is a map from [property
+	// paths](property-paths) to [](pulumirpc.PropertyDiff)s, which describe the kind of change that occurred to the
+	// property located at that path. If a provider does not implement this, the caller (typically the Pulumi engine)
+	// will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
+	DetailedDiff map[string]*PropertyDiff `protobuf:"bytes,6,rep,name=detailedDiff,proto3" json:"detailedDiff,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// True if and only if this response contains a `detailedDiff`.
+	HasDetailedDiff bool `protobuf:"varint,7,opt,name=hasDetailedDiff,proto3" json:"hasDetailedDiff,omitempty"`
 }
 
 func (x *DiffResponse) Reset() {

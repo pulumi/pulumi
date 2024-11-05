@@ -78,7 +78,17 @@ service ResourceProvider {
     // thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
     // rendering diffs.
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
-    // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+
+    // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+    // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+    // is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+    // by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+    // call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+    // owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+    // instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+    // thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+    // Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+    // AWS access key, should almost certainly not.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
 
     // Configure configures the resource provider with "globals" that control its behavior.
@@ -363,81 +373,136 @@ message CheckFailure {
     string reason = 2;
 }
 
+// `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
+// [](pulumirpc.ResourceProvider.Diff) calls. A `DiffRequest` primarily captures:
+//
+// * the URN of the resource whose properties are being compared;
+// * the old and new input properties of the resource; and
+// * the old output properties of the resource.
+//
+// In the case of [](pulumirpc.ResourceProvider.DiffConfig), the URN will be the URN of the provider resource being
+// examined, which may or may not be a [default provider](default-providers), and the inputs and outputs will be the
+// provider configuration and state. Inputs supplied to a [](pulumirpc.ResourceProvider.DiffConfig) call should have
+// been previously checked by a call to [](pulumirpc.ResourceProvider.CheckConfig); inputs supplied to a
+// [](pulumirpc.ResourceProvider.Diff) call should have been previously checked by a call to
+// [](pulumirpc.ResourceProvider.Check).
 message DiffRequest {
-    string id = 1;                     // the ID of the resource to diff.
-    string urn = 2;                    // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3;   // the old output values of resource to diff.
+    // The ID of the resource being diffed.
+    string id = 1;
 
-    // the new input values of resource to diff, copied from CheckResponse.inputs.
+    // The URN of the resource being diffed.
+    string urn = 2;
+
+    // The old *output* properties of the resource being diffed.
+    google.protobuf.Struct olds = 3;
+
+    // The new *input* properties of the resource being diffed. These should have been validated by an appropriate call
+    // to [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check).
     google.protobuf.Struct news = 4;
 
-    repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
-    google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
-    string name = 7; // the Pulumi name for this resource.
-    string type = 8; // the Pulumi type for this resource.
+    // A set of [property paths](property-paths) that should be treated as unchanged.
+    repeated string ignoreChanges = 5;
+
+    // The old *input* properties of the resource being diffed.
+    google.protobuf.Struct old_inputs = 6;
+
+    // The name of the resource being diffed. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 7;
+
+    // The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 8;
 }
 
+// `PropertyDiff` describes the kind of change that occurred to a property during a diff operation. A `PropertyDiff` may
+// indicate that a property was added, deleted, or updated, and may further indicate that the change requires a
+// replacement.
 message PropertyDiff {
-    Kind kind = 1; // The kind of diff asdsociated with this property.
-    bool inputDiff = 2; // The difference is between old and new inputs, not old and new state.
+    // The kind of diff associated with this property.
+    Kind kind = 1;
 
+    // True if and only if this difference represents one between a pair of old and new inputs, as opposed to a pair of
+    // old and new states.
+    bool inputDiff = 2;
+
+    // The type of property diff kinds.
     enum Kind {
-        ADD = 0;            // this property was added
-        ADD_REPLACE = 1;    // this property was added, and this change requires a replace
-        DELETE = 2;         // this property was removed
-        DELETE_REPLACE = 3; // this property was removed, and this change requires a replace
-        UPDATE = 4;         // this property's value was changed
-        UPDATE_REPLACE = 5; // this property's value was changed, and this change requires a replace
+        // This property was added.
+        ADD = 0;
+
+        // This property was added, and this change requires a replace.
+        ADD_REPLACE = 1;
+
+        // This property was removed.
+        DELETE = 2;
+
+        // This property was removed, and this change requires a replace.
+        DELETE_REPLACE = 3;
+
+        // This property's value was changed.
+        UPDATE = 4;
+
+        // This property's value was changed, and this change requires a replace.
+        UPDATE_REPLACE = 5;
     }
 }
 
+// `DiffResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.DiffConfig) or
+// [](pulumirpc.ResourceProvider.Diff) call. A `DiffResponse` indicates whether a resource is unchanged, requires
+// updating (that is, can be changed "in place"), or requires replacement (that is, must be destroyed and recreated
+// anew). Legacy implementations may also signal that it is unknown whether there are changes or not.
+//
+// `DiffResponse` has evolved since its inception and there are now a number of ways that providers can signal their
+// intent to callers:
+//
+// * *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
+//   field to further communicate which changes (if any) require a replacement as opposed to an update.
+//
+// * *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
+//   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
+//   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
+//   change occurred (e.g. a field was added, deleted or updated).
 message DiffResponse {
-    repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
-    repeated string stables = 2;  // an optional list of properties that will not ever change.
-    bool deleteBeforeReplace = 3; // if true, this resource must be deleted before replacing it.
-    DiffChanges changes = 4;      // if true, this diff represents an actual difference and thus requires an update.
+    // A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
+    // caller should replace the resource if this set is non-empty, or if any of the properties specified in
+    // `detailedDiff` have a `*_REPLACE` kind.
+    repeated string replaces = 1;
 
-    // a list of the properties that changed. This should only contain top level property names, it does not
-    // support nested properties. For that use detailedDiff.
+    // An optional list of properties that will not ever change (are stable).
+    repeated string stables = 2;
+
+    // If true, this resource must be deleted *before* its replacement is created.
+    bool deleteBeforeReplace = 3;
+
+    // The result of the diff. Indicates at a high level whether the resource has changed or not (or, in legacy cases,
+    // if the provider does not know).
+    DiffChanges changes = 4;
+
+    // The set of properties which have changed. This field only supports top-level properties. It *does not* support
+    // full [property paths](property-paths); implementations should use `detailedDiff` when this is required.
     repeated string diffs = 5;
 
-    // detailedDiff is an optional field that contains map from each changed property to the type of the change.
-    //
-    // The keys of this map are property paths. These paths are essentially Javascript property access expressions
-    // in which all elements are literals, and obey the following EBNF-ish grammar:
-    //
-    //   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-    //   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
-    //   arrayIndex := { [0-9] }
-    //
-    //   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-    //   rootProperty := ( propertyName | propertyIndex )
-    //   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-    //   path := rootProperty { propertyAccessor }
-    //
-    // Examples of valid keys:
-    // - root
-    // - root.nested
-    // - root["nested"]
-    // - root.double.nest
-    // - root["double"].nest
-    // - root["double"]["nest"]
-    // - root.array[0]
-    // - root.array[100]
-    // - root.array[0].nested
-    // - root.array[0][1].nested
-    // - root.nested.array[0].double[1]
-    // - root["key with \"escaped\" quotes"]
-    // - root["key with a ."]
-    // - ["root key with \"escaped\" quotes"].nested
-    // - ["root key with a ."][100]
-    map<string, PropertyDiff> detailedDiff = 6; // a detailed diff appropriate for display.
-    bool hasDetailedDiff = 7; // true if this response contains a detailed diff.
+    // `detailedDiff` can be used to implement more detailed diffs. A detailed diff is a map from [property
+    // paths](property-paths) to [](pulumirpc.PropertyDiff)s, which describe the kind of change that occurred to the
+    // property located at that path. If a provider does not implement this, the caller (typically the Pulumi engine)
+    // will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
+    map<string, PropertyDiff> detailedDiff = 6;
 
+    // True if and only if this response contains a `detailedDiff`.
+    bool hasDetailedDiff = 7;
+
+    // The type of high-level diff results.
     enum DiffChanges {
-        DIFF_UNKNOWN = 0; // unknown whether there are changes or not (legacy behavior).
-        DIFF_NONE    = 1; // the diff was performed, and no changes were detected that require an update.
-        DIFF_SOME    = 2; // the diff was performed, and changes were detected that require an update or replacement.
+        // A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+        // behaviour and should be generally avoided wherever possible.
+        DIFF_UNKNOWN = 0;
+
+        // A diff was performed and there were no changes. An update is not required.
+        DIFF_NONE = 1;
+
+        // A diff was performed, and changes were detected that require an update or replacement.
+        DIFF_SOME = 2;
     }
 }
 

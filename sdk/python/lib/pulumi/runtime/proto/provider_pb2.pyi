@@ -643,6 +643,21 @@ global___CheckFailure = CheckFailure
 
 @typing_extensions.final
 class DiffRequest(google.protobuf.message.Message):
+    """`DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
+    [](pulumirpc.ResourceProvider.Diff) calls. A `DiffRequest` primarily captures:
+
+    * the URN of the resource whose properties are being compared;
+    * the old and new input properties of the resource; and
+    * the old output properties of the resource.
+
+    In the case of [](pulumirpc.ResourceProvider.DiffConfig), the URN will be the URN of the provider resource being
+    examined, which may or may not be a [default provider](default-providers), and the inputs and outputs will be the
+    provider configuration and state. Inputs supplied to a [](pulumirpc.ResourceProvider.DiffConfig) call should have
+    been previously checked by a call to [](pulumirpc.ResourceProvider.CheckConfig); inputs supplied to a
+    [](pulumirpc.ResourceProvider.Diff) call should have been previously checked by a call to
+    [](pulumirpc.ResourceProvider.Check).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
@@ -654,25 +669,31 @@ class DiffRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     id: builtins.str
-    """the ID of the resource to diff."""
+    """The ID of the resource being diffed."""
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource being diffed."""
     @property
     def olds(self) -> google.protobuf.struct_pb2.Struct:
-        """the old output values of resource to diff."""
+        """The old *output* properties of the resource being diffed."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new input values of resource to diff, copied from CheckResponse.inputs."""
+        """The new *input* properties of the resource being diffed. These should have been validated by an appropriate call
+        to [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check).
+        """
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a set of property paths that should be treated as unchanged."""
+        """A set of [property paths](property-paths) that should be treated as unchanged."""
     @property
     def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the old input values of the resource to diff."""
+        """The old *input* properties of the resource being diffed."""
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being diffed. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -692,6 +713,11 @@ global___DiffRequest = DiffRequest
 
 @typing_extensions.final
 class PropertyDiff(google.protobuf.message.Message):
+    """`PropertyDiff` describes the kind of change that occurred to a property during a diff operation. A `PropertyDiff` may
+    indicate that a property was added, deleted, or updated, and may further indicate that the change requires a
+    replacement.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     class _Kind:
@@ -701,38 +727,42 @@ class PropertyDiff(google.protobuf.message.Message):
     class _KindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[PropertyDiff._Kind.ValueType], builtins.type):  # noqa: F821
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         ADD: PropertyDiff._Kind.ValueType  # 0
-        """this property was added"""
+        """This property was added."""
         ADD_REPLACE: PropertyDiff._Kind.ValueType  # 1
-        """this property was added, and this change requires a replace"""
+        """This property was added, and this change requires a replace."""
         DELETE: PropertyDiff._Kind.ValueType  # 2
-        """this property was removed"""
+        """This property was removed."""
         DELETE_REPLACE: PropertyDiff._Kind.ValueType  # 3
-        """this property was removed, and this change requires a replace"""
+        """This property was removed, and this change requires a replace."""
         UPDATE: PropertyDiff._Kind.ValueType  # 4
-        """this property's value was changed"""
+        """This property's value was changed."""
         UPDATE_REPLACE: PropertyDiff._Kind.ValueType  # 5
-        """this property's value was changed, and this change requires a replace"""
+        """This property's value was changed, and this change requires a replace."""
 
-    class Kind(_Kind, metaclass=_KindEnumTypeWrapper): ...
+    class Kind(_Kind, metaclass=_KindEnumTypeWrapper):
+        """The type of property diff kinds."""
+
     ADD: PropertyDiff.Kind.ValueType  # 0
-    """this property was added"""
+    """This property was added."""
     ADD_REPLACE: PropertyDiff.Kind.ValueType  # 1
-    """this property was added, and this change requires a replace"""
+    """This property was added, and this change requires a replace."""
     DELETE: PropertyDiff.Kind.ValueType  # 2
-    """this property was removed"""
+    """This property was removed."""
     DELETE_REPLACE: PropertyDiff.Kind.ValueType  # 3
-    """this property was removed, and this change requires a replace"""
+    """This property was removed, and this change requires a replace."""
     UPDATE: PropertyDiff.Kind.ValueType  # 4
-    """this property's value was changed"""
+    """This property's value was changed."""
     UPDATE_REPLACE: PropertyDiff.Kind.ValueType  # 5
-    """this property's value was changed, and this change requires a replace"""
+    """This property's value was changed, and this change requires a replace."""
 
     KIND_FIELD_NUMBER: builtins.int
     INPUTDIFF_FIELD_NUMBER: builtins.int
     kind: global___PropertyDiff.Kind.ValueType
-    """The kind of diff asdsociated with this property."""
+    """The kind of diff associated with this property."""
     inputDiff: builtins.bool
-    """The difference is between old and new inputs, not old and new state."""
+    """True if and only if this difference represents one between a pair of old and new inputs, as opposed to a pair of
+    old and new states.
+    """
     def __init__(
         self,
         *,
@@ -745,6 +775,23 @@ global___PropertyDiff = PropertyDiff
 
 @typing_extensions.final
 class DiffResponse(google.protobuf.message.Message):
+    """`DiffResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.DiffConfig) or
+    [](pulumirpc.ResourceProvider.Diff) call. A `DiffResponse` indicates whether a resource is unchanged, requires
+    updating (that is, can be changed "in place"), or requires replacement (that is, must be destroyed and recreated
+    anew). Legacy implementations may also signal that it is unknown whether there are changes or not.
+
+    `DiffResponse` has evolved since its inception and there are now a number of ways that providers can signal their
+    intent to callers:
+
+    * *Simple diffs* utilise the `changes` field to signal which fields are responsible for a change, and the `replaces`
+      field to further communicate which changes (if any) require a replacement as opposed to an update.
+
+    * *Detailed diffs* are those with `hasDetailedDiff` set, and utilise the `detailedDiff` field to provide a more
+      granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
+      precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
+      change occurred (e.g. a field was added, deleted or updated).
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     class _DiffChanges:
@@ -754,19 +801,25 @@ class DiffResponse(google.protobuf.message.Message):
     class _DiffChangesEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[DiffResponse._DiffChanges.ValueType], builtins.type):  # noqa: F821
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         DIFF_UNKNOWN: DiffResponse._DiffChanges.ValueType  # 0
-        """unknown whether there are changes or not (legacy behavior)."""
+        """A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+        behaviour and should be generally avoided wherever possible.
+        """
         DIFF_NONE: DiffResponse._DiffChanges.ValueType  # 1
-        """the diff was performed, and no changes were detected that require an update."""
+        """A diff was performed and there were no changes. An update is not required."""
         DIFF_SOME: DiffResponse._DiffChanges.ValueType  # 2
-        """the diff was performed, and changes were detected that require an update or replacement."""
+        """A diff was performed, and changes were detected that require an update or replacement."""
 
-    class DiffChanges(_DiffChanges, metaclass=_DiffChangesEnumTypeWrapper): ...
+    class DiffChanges(_DiffChanges, metaclass=_DiffChangesEnumTypeWrapper):
+        """The type of high-level diff results."""
+
     DIFF_UNKNOWN: DiffResponse.DiffChanges.ValueType  # 0
-    """unknown whether there are changes or not (legacy behavior)."""
+    """A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
+    behaviour and should be generally avoided wherever possible.
+    """
     DIFF_NONE: DiffResponse.DiffChanges.ValueType  # 1
-    """the diff was performed, and no changes were detected that require an update."""
+    """A diff was performed and there were no changes. An update is not required."""
     DIFF_SOME: DiffResponse.DiffChanges.ValueType  # 2
-    """the diff was performed, and changes were detected that require an update or replacement."""
+    """A diff was performed, and changes were detected that require an update or replacement."""
 
     @typing_extensions.final
     class DetailedDiffEntry(google.protobuf.message.Message):
@@ -795,55 +848,33 @@ class DiffResponse(google.protobuf.message.Message):
     HASDETAILEDDIFF_FIELD_NUMBER: builtins.int
     @property
     def replaces(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """if this update requires a replacement, the set of properties triggering it."""
+        """A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
+        caller should replace the resource if this set is non-empty, or if any of the properties specified in
+        `detailedDiff` have a `*_REPLACE` kind.
+        """
     @property
     def stables(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """an optional list of properties that will not ever change."""
+        """An optional list of properties that will not ever change (are stable)."""
     deleteBeforeReplace: builtins.bool
-    """if true, this resource must be deleted before replacing it."""
+    """If true, this resource must be deleted *before* its replacement is created."""
     changes: global___DiffResponse.DiffChanges.ValueType
-    """if true, this diff represents an actual difference and thus requires an update."""
+    """The result of the diff. Indicates at a high level whether the resource has changed or not (or, in legacy cases,
+    if the provider does not know).
+    """
     @property
     def diffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of the properties that changed. This should only contain top level property names, it does not
-        support nested properties. For that use detailedDiff.
+        """The set of properties which have changed. This field only supports top-level properties. It *does not* support
+        full [property paths](property-paths); implementations should use `detailedDiff` when this is required.
         """
     @property
     def detailedDiff(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PropertyDiff]:
-        """detailedDiff is an optional field that contains map from each changed property to the type of the change.
-
-        The keys of this map are property paths. These paths are essentially Javascript property access expressions
-        in which all elements are literals, and obey the following EBNF-ish grammar:
-
-          propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-          quotedPropertyName := '"' ( '\\' '"' | [^"] ) { ( '\\' '"' | [^"] ) } '"'
-          arrayIndex := { [0-9] }
-
-          propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-          rootProperty := ( propertyName | propertyIndex )
-          propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-          path := rootProperty { propertyAccessor }
-
-        Examples of valid keys:
-        - root
-        - root.nested
-        - root["nested"]
-        - root.double.nest
-        - root["double"].nest
-        - root["double"]["nest"]
-        - root.array[0]
-        - root.array[100]
-        - root.array[0].nested
-        - root.array[0][1].nested
-        - root.nested.array[0].double[1]
-        - root["key with \\"escaped\\" quotes"]
-        - root["key with a ."]
-        - ["root key with \\"escaped\\" quotes"].nested
-        - ["root key with a ."][100]
-        a detailed diff appropriate for display.
+        """`detailedDiff` can be used to implement more detailed diffs. A detailed diff is a map from [property
+        paths](property-paths) to [](pulumirpc.PropertyDiff)s, which describe the kind of change that occurred to the
+        property located at that path. If a provider does not implement this, the caller (typically the Pulumi engine)
+        will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
         """
     hasDetailedDiff: builtins.bool
-    """true if this response contains a detailed diff."""
+    """True if and only if this response contains a `detailedDiff`."""
     def __init__(
         self,
         *,

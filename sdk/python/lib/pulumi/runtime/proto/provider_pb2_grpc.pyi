@@ -96,7 +96,17 @@ class ResourceProviderStub:
         pulumi.provider_pb2.DiffRequest,
         pulumi.provider_pb2.DiffResponse,
     ]
-    """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider."""
+    """`DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+    difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+    is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+    by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+    call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+    owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+    instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+    thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+    Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+    AWS access key, should almost certainly not.
+    """
     Configure: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ConfigureRequest,
         pulumi.provider_pb2.ConfigureResponse,
@@ -285,7 +295,17 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.DiffRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.DiffResponse:
-        """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider."""
+        """`DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+        difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+        is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+        call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+        owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+        instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+        thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+        Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+        AWS access key, should almost certainly not.
+        """
     
     def Configure(
         self,
