@@ -452,10 +452,12 @@ func (source *githubSource) getHTTPResponse(
 	}
 
 	// We handle error responoses differently here based on the type:
-	// - 403 errors that are also rate limit errors (x-ratelimit-remaining is 0) are wrapped in a more helpful message later.
-	// - If the user has a GITHUB_TOKEN set, 401s and 403s (that are not rate limit errors) are handled by disabling the token
-	//   and trying again.  This can be useful for example if the user has a fine grained token, which when set doesn't allow
-	//   access to public repositories.
+	// - 403 errors that are also rate limit errors (x-ratelimit-remaining is 0) are wrapped in a more helpful message
+	//   later.
+	// - If the user has a GITHUB_TOKEN set, 401s and 403s (that are not rate limit errors) are handled by disabling
+	//   the token
+	//   and trying again.  This can be useful for example if the user has a fine grained token, which when set doesn't
+	//   allow access to public repositories.
 	// All other errors are returned as is.
 	var downErr *downloadError
 	if !errors.As(err, &downErr) || !isRateLimitError(downErr) {
