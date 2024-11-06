@@ -80,7 +80,6 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
-	defer u.backend.resetSleep()
 
 	return u.backend.client.CompleteUpdate(u.context, u.update, status, u.tokenSource)
 }
