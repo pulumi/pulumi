@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -1059,6 +1060,9 @@ func (b *diyBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	resetKeepRunning := nosleep.KeepRunning()
+	defer resetKeepRunning()
+
 	stackRef := stack.Ref()
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
