@@ -50,12 +50,15 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+// The package name for the NodeJS dynamic provider.
+const nodejsDynamicProviderPackage = "pulumi-nodejs"
+
 // The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling
 // providers.MakeProviderType(tokens.Package("pulumi-nodejs")), but does not depend on the providers package
 // (a direct dependency would cause a cyclic import issue.
 //
 // This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
-const nodejsDynamicProviderType = "pulumi:providers:pulumi-nodejs"
+const nodejsDynamicProviderType = "pulumi:providers:" + nodejsDynamicProviderPackage
 
 // The `Type()` for the Kubernetes provider.  Logically, this is the same as calling
 // providers.MakeProviderType(tokens.Package("kubernetes")), but does not depend on the providers package
@@ -166,6 +169,12 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
 		if projectName != "" {
+			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
+				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
+				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
+				// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
+				env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", projectName))
+			}
 			env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", projectName))
 		}
 		if jsonConfig != "" {
