@@ -34,10 +34,28 @@ DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
 class ParameterizeRequest(google.protobuf.message.Message):
+    """`ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
+    `ParameterizeRequest` may contain either:
+
+    * a string array (`ParametersArgs`), intended to represent a set of command-line arguments so as to support
+      instantiating a parameterized provider from a command-line invocation (e.g. to generate an SDK).
+    * a byte array accompanied by a name and version (`ParametersValue`), intended to represent a parameter embedded in a
+      previously generated SDK.
+
+    Embedding parameter values in SDKs allows programs to consume parameterized providers without needing to know the
+    details of the parameterization. Allowing the representation embedded into an SDK to differ from that supplied on the
+    command-line permits providers to implement optimizations for the common, fast-path case (program execution), such as
+    embedding a generated schema as opposed to generating it on-demand for each resource registration.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
     class ParametersArgs(google.protobuf.message.Message):
+        """A parameter value, represented as an array of strings, as might be provided by a command-line invocation, such as
+        that used to generate an SDK.
+        """
+
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         ARGS_FIELD_NUMBER: builtins.int
@@ -52,6 +70,10 @@ class ParameterizeRequest(google.protobuf.message.Message):
 
     @typing_extensions.final
     class ParametersValue(google.protobuf.message.Message):
+        """A parameter value, represented by an arbitrary array of bytes accompanied by a name and version. This is expected
+        to be the format used by parameterized provider SDKs.
+        """
+
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         NAME_FIELD_NUMBER: builtins.int
@@ -76,10 +98,10 @@ class ParameterizeRequest(google.protobuf.message.Message):
     VALUE_FIELD_NUMBER: builtins.int
     @property
     def args(self) -> global___ParameterizeRequest.ParametersArgs:
-        """arguments from the command line."""
+        """Arguments from the command line."""
     @property
     def value(self) -> global___ParameterizeRequest.ParametersValue:
-        """values from a generated package."""
+        """Values from a generated SDK."""
     def __init__(
         self,
         *,
@@ -94,6 +116,11 @@ global___ParameterizeRequest = ParameterizeRequest
 
 @typing_extensions.final
 class ParameterizeResponse(google.protobuf.message.Message):
+    """`ParameterizeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Parameterize) call. It
+    contains a name and version that can be used to identify the sub-package that now exists as a result of
+    parameterization.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     NAME_FIELD_NUMBER: builtins.int
