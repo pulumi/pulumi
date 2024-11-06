@@ -752,7 +752,6 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 				return err
 			}
 		}
-
 	}
 
 	f, err := os.OpenFile(filename, flag, mode)
