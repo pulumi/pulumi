@@ -59,7 +59,24 @@ service ResourceProvider {
     // GetSchema fetches the schema for this resource provider.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 
-    // CheckConfig validates the configuration for this resource provider.
+    // `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
+    // `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
+    // is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
+    // a provider using user-supplied values. In the case that provider inputs are coming from some source that has been
+    // checked previously (e.g. a Pulumi state), it is not necessary to call `CheckConfig`.
+    //
+    // A `CheckConfig` call returns either a set of checked, known-valid inputs that may subsequently be passed to
+    // [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure), or a set of errors
+    // explaining why the inputs are invalid. In the case that a set of inputs are successfully validated and returned,
+    // `CheckConfig` *may also populate default values* for provider configuration, returning them so that they may be
+    // passed to a subsequent [](pulumirpc.ResourceProvider.Configure) call and persisted in the Pulumi state. In the
+    // case that `CheckConfig` fails and returns a set of errors, it is expected that the caller (typically the Pulumi
+    // engine) will fail provider registration.
+    //
+    // As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
+    // the properties as present in the program inputs. Though this rule is not required for correctness, violations
+    // thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and
+    // rendering diffs.
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
@@ -276,37 +293,74 @@ message CallResponse {
     map<string, ReturnDependencies> returnDependencies = 2;
 }
 
+// `CheckRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig) and
+// [](pulumirpc.ResourceProvider.Check) calls. A `CheckRequest` primarily captures the URN and inputs of the resource
+// being checked. In the case of [](pulumirpc.ResourceProvider.CheckConfig), the URN will be the URN of the provider
+// resource being constructed, which may or may not be a [default provider](default-providers), and the inputs will be
+// the provider configuration.
 message CheckRequest {
-    string urn = 1;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
+    // The URN of the resource whose inputs are being checked. In the case of
+    // [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
+    // which may or may not be a [default provider](default-providers).
+    string urn = 1;
 
-    // the new Pulumi inputs for this resource.
+    // The old input properties or configuration for the resource, if any.
+    google.protobuf.Struct olds = 2;
+
+    // The new input properties or configuration for the resource, if any.
     //
-    // Note that if the user specifies the ignoreChanges resource option, the value of news passed
-    // to the provider here may differ from the values written in the program source. It will be pre-processed by
-    // replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
-    //
-    // See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+    // :::{note}
+    // If this resource has been specified with the
+    // [`ignoreChanges`](https://www.pulumi.com/docs/concepts/options/ignorechanges/), then the values in `news` may
+    // differ from those written in the Pulumi program registering this resource. In such cases, the caller (e.g. the
+    // Pulumi engine) is expected to preprocess the `news` value by replacing every property matched by `ignoreChanges`
+    // with its corresponding `olds` value (effectively ignoring the change).
+    // :::
     google.protobuf.Struct news = 3;
 
-    // We used to send sequenceNumber but that has been replaced by randomSeed.
+    // `CheckRequest`s originally contained sequence numbers, but they have since been replaced by random seeds.
     reserved 4;
     reserved "sequenceNumber";
 
-    bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
+    // A random but deterministically computed hash, intended to be used for generating globally unique names.
+    bytes randomSeed = 5;
 
-    string name = 6; // the Pulumi name for this resource.
-    string type = 7; // the Pulumi type for this resource.
+    // The name of the resource being checked. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 6;
+
+    // The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 7;
 }
 
+// `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
+// [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
+//
+// * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
+//   subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
+//   [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
+//   to any of the supported lifecycle methods that accept provider inputs.
+// * a set of `failures` detailing invalid inputs.
+//
+// In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
+// persisted to Pulumi state and passed to subsequent calls.
 message CheckResponse {
-    google.protobuf.Struct inputs = 1;  // the provider inputs for this resource.
-    repeated CheckFailure failures = 2; // any validation failures that occurred.
+    // A valid, checked set of inputs. May contain defaults.
+    google.protobuf.Struct inputs = 1;
+
+    // Any validation failures that occurred.
+    repeated CheckFailure failures = 2;
 }
 
+// A `CheckFailure` describes a single validation error that arose as part of a
+// [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
 message CheckFailure {
-    string property = 1; // the property that failed validation.
-    string reason = 2;   // the reason that the property failed validation.
+    // The input property that failed validation.
+    string property = 1;
+
+    // The reason that the named property failed validation.
+    string reason = 2;
 }
 
 message DiffRequest {

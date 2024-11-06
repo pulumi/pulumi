@@ -521,6 +521,13 @@ global___CallResponse = CallResponse
 
 @typing_extensions.final
 class CheckRequest(google.protobuf.message.Message):
+    """`CheckRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig) and
+    [](pulumirpc.ResourceProvider.Check) calls. A `CheckRequest` primarily captures the URN and inputs of the resource
+    being checked. In the case of [](pulumirpc.ResourceProvider.CheckConfig), the URN will be the URN of the provider
+    resource being constructed, which may or may not be a [default provider](default-providers), and the inputs will be
+    the provider configuration.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     URN_FIELD_NUMBER: builtins.int
@@ -530,26 +537,35 @@ class CheckRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     urn: builtins.str
-    """the Pulumi URN for this resource."""
+    """The URN of the resource whose inputs are being checked. In the case of
+    [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
+    which may or may not be a [default provider](default-providers).
+    """
     @property
     def olds(self) -> google.protobuf.struct_pb2.Struct:
-        """the old Pulumi inputs for this resource, if any."""
+        """The old input properties or configuration for the resource, if any."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new Pulumi inputs for this resource.
+        """The new input properties or configuration for the resource, if any.
 
-        Note that if the user specifies the ignoreChanges resource option, the value of news passed
-        to the provider here may differ from the values written in the program source. It will be pre-processed by
-        replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
-
-        See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+        :::{note}
+        If this resource has been specified with the
+        [`ignoreChanges`](https://www.pulumi.com/docs/concepts/options/ignorechanges/), then the values in `news` may
+        differ from those written in the Pulumi program registering this resource. In such cases, the caller (e.g. the
+        Pulumi engine) is expected to preprocess the `news` value by replacing every property matched by `ignoreChanges`
+        with its corresponding `olds` value (effectively ignoring the change).
+        :::
         """
     randomSeed: builtins.bytes
-    """a deterministically random hash, primarily intended for global unique naming."""
+    """A random but deterministically computed hash, intended to be used for generating globally unique names."""
     name: builtins.str
-    """the Pulumi name for this resource."""
+    """The name of the resource being checked. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
     type: builtins.str
-    """the Pulumi type for this resource."""
+    """The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
     def __init__(
         self,
         *,
@@ -567,16 +583,29 @@ global___CheckRequest = CheckRequest
 
 @typing_extensions.final
 class CheckResponse(google.protobuf.message.Message):
+    """`CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
+    [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
+
+    * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
+      subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
+      [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
+      to any of the supported lifecycle methods that accept provider inputs.
+    * a set of `failures` detailing invalid inputs.
+
+    In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
+    persisted to Pulumi state and passed to subsequent calls.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     INPUTS_FIELD_NUMBER: builtins.int
     FAILURES_FIELD_NUMBER: builtins.int
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the provider inputs for this resource."""
+        """A valid, checked set of inputs. May contain defaults."""
     @property
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
-        """any validation failures that occurred."""
+        """Any validation failures that occurred."""
     def __init__(
         self,
         *,
@@ -590,14 +619,18 @@ global___CheckResponse = CheckResponse
 
 @typing_extensions.final
 class CheckFailure(google.protobuf.message.Message):
+    """A `CheckFailure` describes a single validation error that arose as part of a
+    [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
+    """
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
     property: builtins.str
-    """the property that failed validation."""
+    """The input property that failed validation."""
     reason: builtins.str
-    """the reason that the property failed validation."""
+    """The reason that the named property failed validation."""
     def __init__(
         self,
         *,

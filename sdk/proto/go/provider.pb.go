@@ -929,24 +929,40 @@ func (x *CallResponse) GetReturnDependencies() map[string]*CallResponse_ReturnDe
 	return nil
 }
 
+// `CheckRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig) and
+// [](pulumirpc.ResourceProvider.Check) calls. A `CheckRequest` primarily captures the URN and inputs of the resource
+// being checked. In the case of [](pulumirpc.ResourceProvider.CheckConfig), the URN will be the URN of the provider
+// resource being constructed, which may or may not be a [default provider](default-providers), and the inputs will be
+// the provider configuration.
 type CheckRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urn  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
-	Olds *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"` // the old Pulumi inputs for this resource, if any.
-	// the new Pulumi inputs for this resource.
+	// The URN of the resource whose inputs are being checked. In the case of
+	// [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
+	// which may or may not be a [default provider](default-providers).
+	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The old input properties or configuration for the resource, if any.
+	Olds *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
+	// The new input properties or configuration for the resource, if any.
 	//
-	// Note that if the user specifies the ignoreChanges resource option, the value of news passed
-	// to the provider here may differ from the values written in the program source. It will be pre-processed by
-	// replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
-	//
-	// See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
-	News       *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
-	RandomSeed []byte           `protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"` // a deterministically random hash, primarily intended for global unique naming.
-	Name       string           `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`             // the Pulumi name for this resource.
-	Type       string           `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`             // the Pulumi type for this resource.
+	// :::{note}
+	// If this resource has been specified with the
+	// [`ignoreChanges`](https://www.pulumi.com/docs/concepts/options/ignorechanges/), then the values in `news` may
+	// differ from those written in the Pulumi program registering this resource. In such cases, the caller (e.g. the
+	// Pulumi engine) is expected to preprocess the `news` value by replacing every property matched by `ignoreChanges`
+	// with its corresponding `olds` value (effectively ignoring the change).
+	// :::
+	News *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
+	// A random but deterministically computed hash, intended to be used for generating globally unique names.
+	RandomSeed []byte `protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"`
+	// The name of the resource being checked. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *CheckRequest) Reset() {
@@ -1023,13 +1039,26 @@ func (x *CheckRequest) GetType() string {
 	return ""
 }
 
+// `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
+// [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
+//
+// * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
+//   subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
+//   [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
+//   to any of the supported lifecycle methods that accept provider inputs.
+// * a set of `failures` detailing invalid inputs.
+//
+// In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
+// persisted to Pulumi state and passed to subsequent calls.
 type CheckResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Inputs   *structpb.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`     // the provider inputs for this resource.
-	Failures []*CheckFailure  `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"` // any validation failures that occurred.
+	// A valid, checked set of inputs. May contain defaults.
+	Inputs *structpb.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	// Any validation failures that occurred.
+	Failures []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
 }
 
 func (x *CheckResponse) Reset() {
@@ -1078,13 +1107,17 @@ func (x *CheckResponse) GetFailures() []*CheckFailure {
 	return nil
 }
 
+// A `CheckFailure` describes a single validation error that arose as part of a
+// [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
 type CheckFailure struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"` // the property that failed validation.
-	Reason   string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`     // the reason that the property failed validation.
+	// The input property that failed validation.
+	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
+	// The reason that the named property failed validation.
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 }
 
 func (x *CheckFailure) Reset() {
