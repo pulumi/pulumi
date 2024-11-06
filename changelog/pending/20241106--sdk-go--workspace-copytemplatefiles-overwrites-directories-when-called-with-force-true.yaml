@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdk/go
-  description: workspace.CopyTemplateFiles overwrites directories when called with force=true (#17653)
+  description: Overwrite directories in workspace.CopyTemplateFiles when called with force=true
