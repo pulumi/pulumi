@@ -90,7 +90,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
 	if addr := info.MonitorAddr; addr != "" {
-		conn, err := grpc.Dial(
+		conn, err := grpc.NewClient(
 			info.MonitorAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
@@ -108,7 +108,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engineConn = info.engineConn
 		engine = pulumirpc.NewEngineClient(engineConn)
 	} else if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.Dial(
+		conn, err := grpc.NewClient(
 			info.EngineAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),

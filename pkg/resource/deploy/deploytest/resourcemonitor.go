@@ -44,7 +44,7 @@ type ResourceMonitor struct {
 
 func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error) {
 	// Connect to the resource monitor and create an appropriate client.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -58,12 +58,12 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	supportsSecrets, err := supportsFeature(ctx, resmon, "secrets")
 	if err != nil {
 		contract.IgnoreError(conn.Close())
-		return nil, err
+		return nil, fmt.Errorf("could not determine whether secrets are supported: %w", err)
 	}
 	supportsResourceReferences, err := supportsFeature(ctx, resmon, "resourceReferences")
 	if err != nil {
 		contract.IgnoreError(conn.Close())
-		return nil, err
+		return nil, fmt.Errorf("could not determine whether resource references are supported: %w", err)
 	}
 
 	// Fire up a resource monitor client and return.

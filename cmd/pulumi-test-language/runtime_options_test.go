@@ -184,7 +184,7 @@ func (h *RuntimeOptionsLanguageHost) Run(
 		return nil, fmt.Errorf("unexpected entry point to run %s", req.Info.EntryPoint)
 	}
 
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		req.MonitorAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

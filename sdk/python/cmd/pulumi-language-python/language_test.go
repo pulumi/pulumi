@@ -152,7 +152,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 	address := string(stdoutBytes)
 
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),

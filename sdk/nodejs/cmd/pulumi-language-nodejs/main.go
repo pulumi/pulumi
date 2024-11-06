@@ -282,7 +282,7 @@ func newLanguageHost(
 }
 
 func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -601,7 +601,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	defer contract.IgnoreClose(closer)
 
 	// Make a connection to the real monitor that we will forward messages to.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		req.GetMonitorAddress(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

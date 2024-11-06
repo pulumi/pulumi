@@ -1463,7 +1463,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	// If the provider is not fully configured.  Pretend we are the provider and call RegisterResource to get the URN.
 	if !pcfg.known {
 		// Connect to the resource monitor and create an appropriate client.
-		conn, err := grpc.Dial(
+		conn, err := grpc.NewClient(
 			req.Info.MonitorAddress,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
