@@ -111,6 +111,19 @@ ami, err := ec2.LookupAmi(ctx,
 
 Ideally the error message can point to the matching Output form invoke.
 
+#### Alternative
+
+Alternatively, we could add a 3rd invoke variant to Go SDKs, besides the direct and Output form variants, which takes an additional dependsOn argument:
+
+```go
+func LookupAmi(ctx *Context, args *LookupAmiArgs, opts ...InvokeOption) (*LookupAmiResult, error) { ... }
+func LookupAmiOutput(ctx *Context, args *LookupAmiOutputArgs, opts ...InvokeOption) LookupAmiResultOutput { ... }
+// New variant
+func LookupAmiOutputWithDependsOn(ctx *Context, args *LookupAmiOutputArgs, dependsOn: []Resource, opts ...InvokeOption) LookupAmiResultOutput { ... }
+```
+
+Besides increasing the code size of SDKs, we feel that this would make Go SDKs more difficult for users to navigate and pick the function they need. The general use case does not require specifying additional dependencies, and exposing the variant at the level of functions feels like it would lead to more confusion.
+
 ### Java
 Options are represented by the [￼￼`InvokeOptions`￼￼](https://github.com/pulumi/pulumi-java/blob/main/sdk/java/pulumi/src/main/java/com/pulumi/deployment/InvokeOptions.java#L20) class in the Java SDK. We propose adding a new class `InvokeOutputOptions` with a `dependsOn` field, and to add a new overload for the Output form invokes:
 
