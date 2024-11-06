@@ -743,7 +743,7 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 	} else {
 		flag = flag | os.O_EXCL
 	}
-	
+
 	if overwrite {
 		info, err := os.Stat(filename)
 		if err == nil {

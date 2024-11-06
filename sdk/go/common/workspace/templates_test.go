@@ -330,7 +330,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 			err := os.RemoveAll(testDataDir)
 			assert.NoError(t, err)
 		}()
-		
+
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
 
@@ -340,7 +340,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
-		err = os.RemoveAll(copyDestDir+"/src")
+		err = os.RemoveAll(copyDestDir + "/src")
 		assert.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
@@ -350,7 +350,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
 		assert.Error(t, err)
 	})
-	
+
 	t.Run("OverwriteDirectoryOverFileForce", func(t *testing.T) {
 		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFileForce"
 
@@ -358,7 +358,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 			err := os.RemoveAll(testDataDir)
 			assert.NoError(t, err)
 		}()
-		
+
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
 
@@ -368,7 +368,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
-		err = os.RemoveAll(copyDestDir+"/src")
+		err = os.RemoveAll(copyDestDir + "/src")
 		assert.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
@@ -386,7 +386,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 			err := os.RemoveAll(testDataDir)
 			assert.NoError(t, err)
 		}()
-		
+
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
 
@@ -396,7 +396,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
-		err = os.RemoveAll(copyDestDir+"/Pulumi.dev.yaml")
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
 		assert.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
@@ -414,7 +414,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 			err := os.RemoveAll(testDataDir)
 			assert.NoError(t, err)
 		}()
-		
+
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
 
@@ -424,7 +424,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
-		err = os.RemoveAll(copyDestDir+"/Pulumi.dev.yaml")
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
 		assert.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
