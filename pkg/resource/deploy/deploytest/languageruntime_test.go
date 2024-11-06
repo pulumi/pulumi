@@ -78,13 +78,13 @@ func TestLanguageRuntime(t *testing.T) {
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 	})
-	t.Run("error: could not connect to resource monitor", func(t *testing.T) {
+	t.Run("error: could not determine whether secrets are supported", func(t *testing.T) {
 		t.Parallel()
 		t.Run("Run", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			_, _, err := p.Run(plugin.RunInfo{})
-			assert.ErrorContains(t, err, "could not connect to resource monitor")
+			assert.ErrorContains(t, err, "could not determine whether secrets are supported")
 		})
 	})
 	t.Run("ok", func(t *testing.T) {

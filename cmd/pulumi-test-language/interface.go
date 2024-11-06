@@ -324,7 +324,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}()
 
 	// Connect to the language host
-	conn, err := grpc.Dial(req.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(req.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
@@ -446,7 +446,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	pctx.Host = nil
 
 	// Connect to the language host
-	conn, err := grpc.Dial(token.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(token.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}

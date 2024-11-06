@@ -121,12 +121,15 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 	port := strconv.Itoa(portNum)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial("127.0.0.1:"+port, dialOptions...)
+	conn, err := grpc.NewClient("127.0.0.1:"+port, dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
 	}
 
-	// Now wait for the gRPC connection to the plugin to become ready.
+	// We want to wait for the gRPC connection to the plugin to become ready before we proceed. To this end, we'll
+	// manually kick off a Connect() call and then wait until the state of the connection becomes Ready.
+	conn.Connect()
+
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.

@@ -184,7 +184,7 @@ func TestProvider(t *testing.T) {
 				assert.True(t, dialCalled)
 				assert.True(t, constructCalled)
 			})
-			t.Run("dial error", func(t *testing.T) {
+			t.Run("connection error", func(t *testing.T) {
 				t.Parallel()
 				t.Run("invalid address", func(t *testing.T) {
 					t.Parallel()
@@ -203,7 +203,7 @@ func TestProvider(t *testing.T) {
 						Name:   "name",
 						Parent: resource.URN("<parent-urn>"),
 					})
-					assert.ErrorContains(t, err, "could not connect to resource monitor")
+					assert.ErrorContains(t, err, "could not determine whether secrets are supported")
 				})
 				t.Run("injected error", func(t *testing.T) {
 					t.Parallel()
@@ -338,7 +338,7 @@ func TestProvider(t *testing.T) {
 				assert.True(t, dialCalled)
 				assert.True(t, callCalled)
 			})
-			t.Run("dial error", func(t *testing.T) {
+			t.Run("connection error", func(t *testing.T) {
 				t.Parallel()
 				t.Run("invalid address", func(t *testing.T) {
 					t.Parallel()
@@ -349,7 +349,7 @@ func TestProvider(t *testing.T) {
 						},
 					}
 					_, err := prov.Call(context.Background(), plugin.CallRequest{})
-					assert.ErrorContains(t, err, "could not connect to resource monitor")
+					assert.ErrorContains(t, err, "could not determine whether secrets are supported")
 				})
 				t.Run("injected error", func(t *testing.T) {
 					t.Parallel()
