@@ -1176,7 +1176,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 
 		rm.abortChan <- true
 		<-rm.cancel
-		return nil, rpcerror.New(codes.Unknown, "resource monitor shut down")
+		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}
 
 	if ret.ReturnDependencies == nil {
