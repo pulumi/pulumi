@@ -110,34 +110,82 @@ do not accept [`Input`](inputs)s or return [`Output`](outputs)) are perhaps the
 primary example of their use.
 
 (resources)=
-(custom-resources)=
-(component-resources)=
 ## Resources
 
 Resources are the fundamental unit of Pulumi-managed infrastructure, such as a
 compute instance, a storage bucket, or a Kubernetes cluster. At a high level,
-resources are divided into two classes:
+resources are divided into two classes: *custom resources* and *component
+resources*.
 
-* *Custom resources*, which are cloud resources managed by a resource provider
-  such as AWS, Microsoft Azure, Google Cloud, or Kubernetes.
-* [*Component
-  resources*](https://www.pulumi.com/docs/concepts/resources/components/), which
-  are logical groupings of other resources that create a larger, higher-level
-  abstraction that encapsulates their implementation details.
+(custom-resources)=
+### Custom resources
+
+*Custom resources* are cloud resources managed by a resource provider such as
+AWS, Microsoft Azure, Google Cloud, or Kubernetes. Custom resources have a
+well-defined lifecycle built around the differences between their actual state
+and the desired state described by their input properties. They are
+[implemented](provider-implementers-guide) using
+[](pulumirpc.ResourceProvider.Create), [](pulumirpc.ResourceProvider.Read),
+[](pulumirpc.ResourceProvider.Update), and [](pulumirpc.ResourceProvider.Delete)
+operations defined by the [provider](providers).
+
+(component-resources)=
+### Component resources
+
+[*Component
+resources*](https://www.pulumi.com/docs/concepts/resources/components/) are
+logical groupings of other resources that create a larger, higher-level
+abstraction that encapsulates their implementation details. Component resources
+have no associated lifecycle of their own -- their only lifecycle semantics are
+those of their children. The inputs and outputs of a component resource are not
+related in the same way as the inputs and outputs of a custom resource. *Local*
+components are defined using program-level abstractions such as the
+`ComponentResource` class offered by e.g. the NodeJS and Python SDKs. *Remote*
+components are defined by [component providers](component-providers) and are
+constructed by [registering](resource-registration) child custom or component
+resources with the Pulumi engine in a [](pulumirpc.ResourceProvider.Construct)
+operation.
 
 (urns)=
-(resource-ids)=
-All resources have a required `String` `Name`, which forms part of the
-resource's [*uniform resource name*, or
-*`URN`*](https://www.pulumi.com/docs/iac/concepts/resources/names/#urns).[^urn-uniqueness]
-If a resource has been [created](pulumirpc.ResourceProvider.Create) or
-[read](pulumirpc.ResourceProvider.Read) by a [provider](providers), it will also
-have a `String` `ID` corresponding to the instance in the provider. A resource's
+### URNs
+
+All resources have a required `String` `Name`. A resource's
 [*`Type`*](https://www.pulumi.com/docs/iac/concepts/resources/names/#types)
 (often captured in a [schema](schema) in the case of a custom provider resource)
 specifies a set of [*input properties*](inputs) that define the resource's
 desired state, and a set of [*output properties*](outputs) that represent the
-last actual state that Pulumi recorded.
+last actual state that Pulumi recorded. A resource's [*uniform resource name*,
+or
+*`URN`*](https://www.pulumi.com/docs/iac/concepts/resources/names/#urns)[^urn-uniqueness]
+serves as its identifier to the Pulumi engine and is built from the stack and
+project a resource is located in, followed by its type, parent type and name:
+
+```
+urn:pulumi:<stack>::<project>::<qualified-type>::<name>
+```
+
+More formally, the
+[EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) grammar
+for a URN is as follows:
+
+(urn-ebnf)=
+```ebnf
+urn = "urn:pulumi:" stack "::" project "::" qualified type name "::" name ;
+
+stack   = string ;
+project = string ;
+name    = string ;
+string  = (* any sequence of Unicode code points that does not contain "::" *) ;
+
+qualified type name = [ parent type "$" ] type ;
+parent type         = type ;
+
+type       = package ":" [ module ":" ] type name ;
+package    = identifier ;
+module     = identifier ;
+type name  = identifier ;
+identifier = Unicode letter { Unicode letter | Unicode digit | "_" } ;
+```
 
 [^urn-uniqueness]:
     In an ideal world, URNs would be globally unique, but in practice there are
@@ -146,6 +194,15 @@ last actual state that Pulumi recorded.
     appear multiple times in order to identify, for instance, both a copy of a
     resource that is pending deletion and a copy that will be created to replace
     that deleted instance.
+
+(resource-ids)=
+### IDs
+
+If a resource has been [created](pulumirpc.ResourceProvider.Create) or
+[read](pulumirpc.ResourceProvider.Read) by a [provider](providers), it will also
+have a `String` `ID` corresponding to the instance in the provider. IDs are
+generally opaque to the engine and only have meaning in the context of the
+provider that created them.
 
 (outputs)=
 ### Outputs
@@ -199,6 +256,48 @@ either of type `T` or `Output<T>` (and is thus defined as `Union<T,
 Output<T>>`). In this manner, input properties may accept either plain values
 defined in the program outright, or values which arise from the outputs of other
 resources.
+
+(property-paths)=
+### Property paths
+
+A *property path* is [JSONPath](https://en.wikipedia.org/wiki/JSONPath)-like
+expression that describes a path to one or more properties within a set of
+values, such as those that may comprise a resource's [input](inputs) or
+[output](outputs) properties. Property paths are used in many contexts, such as
+specifying a set of properties to
+[`ignoreChanges`](https://www.pulumi.com/docs/iac/concepts/options/ignorechanges/)
+for, or when identifying the set of properties responsible for a particular
+[](pulumirpc.DiffResponse). Example property paths include:
+
+```
+root
+root.nested
+root["nested"]
+root.double.nest
+root["double"].nest
+root["double"]["nest"]
+root.array[0]
+root.array[100]
+root.array[0].nested
+root.array[0][1].nested
+root.nested.array[0].double[1]
+root["key with \"escaped\" quotes"]
+root["key with a ."]
+["root key with \"escaped\" quotes"].nested
+["root key with a ."][100]
+root.array[*].field
+root.array["*"].field
+```
+
+Note that property paths use the identifier `root` to refer to the top level of
+a set of values, and not `$` as is common in JSONPath.
+
+In this codebase, the `PropertyPath` type is used to represent property paths. A
+`PropertyPath` lookup will result in a `PropertyValue`, which is a value of any
+of the appropriate types in this document. An object `PropertyValue` can be
+constructed from a map of `PropertyKey`s to `PropertyValue`s (that is,
+`map[PropertyKey]PropertyValue`, aka `PropertyMap`) using the
+`NewObjectProperty` function.
 
 ### Transformations
 
