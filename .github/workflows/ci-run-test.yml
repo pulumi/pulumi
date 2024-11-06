@@ -280,7 +280,7 @@ jobs:
         if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v4
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
           path: artifacts/cli
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}

@@ -240,6 +240,8 @@ jobs:
           path: artifacts.tmp
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
+      - name: Remove integration test artifacts
+        run: rm -rf artifacts.tmp/*-integration
       - name: Flatten artifact directories
         run: |
           find artifacts.tmp
