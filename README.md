@@ -15,14 +15,14 @@
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
-**Pulumi's Infrastructure as Code SDK** is the easiest way to build and deploy infrastructure, of any architecture and on any cloud, using programming languages that you already know and love. Code and ship infrastructure faster with your favorite languages and tools, and embed IaC anywhere with [Automation API](https://www.pulumi.com/docs/guides/automation-api/).
+**Pulumi's Infrastructure as Code SDK** is the easiest way to build and deploy infrastructure, of any architecture and on any cloud, using programming languages that you already know and love. Code and ship infrastructure faster with your favorite languages and tools, and embed IaC anywhere with [Automation API](https://www.pulumi.com/docs/guides/automation-api/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=automation+api).
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your resources on
 [AWS](https://www.pulumi.com/docs/reference/clouds/aws/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=aws-reference-link),
 [Azure](https://www.pulumi.com/docs/reference/clouds/azure/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=azure-reference-link),
 [Google Cloud Platform](https://www.pulumi.com/docs/reference/clouds/gcp/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=gcp-reference-link), 
 [Kubernetes](https://www.pulumi.com/docs/reference/clouds/kubernetes/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=kuberneters-reference-link), and [120+ providers](https://www.pulumi.com/registry/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=providers-reference-link) using an
-[infrastructure-as-code](https://www.pulumi.com/what-is/what-is-infrastructure-as-code/) approach.
+[infrastructure-as-code](https://www.pulumi.com/what-is/what-is-infrastructure-as-code/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=infrastructure-as-code) approach.
 Skip the YAML, and use standard language features like loops, functions, classes,
 and package management that you already know and love.
 
@@ -78,18 +78,18 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 <img align="right" width="400" src="https://www.pulumi.com/images/docs/quickstart/console.png" />
 
-* **[Get Started with Pulumi](https://www.pulumi.com/docs/get-started/)**: Deploy a simple application in AWS, Azure, Google Cloud, or Kubernetes using Pulumi.
+* **[Get Started with Pulumi](https://www.pulumi.com/docs/get-started/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=get+started+with+pulumi)**: Deploy a simple application in AWS, Azure, Google Cloud, or Kubernetes using Pulumi.
 
-* **[Learn](https://www.pulumi.com/learn/)**: Follow Pulumi learning pathways to learn best practices and architectural patterns through authentic examples.
+* **[Learn](https://www.pulumi.com/learn/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=learn)**: Follow Pulumi learning pathways to learn best practices and architectural patterns through authentic examples.
 
 * **[Examples](https://github.com/pulumi/examples)**: Browse several examples across many languages,
   clouds, and scenarios including containers, serverless, and infrastructure.
 
-* **[Docs](https://www.pulumi.com/docs/)**: Learn about Pulumi concepts, follow user-guides, and consult the reference documentation.
+* **[Docs](https://www.pulumi.com/docs/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=docs)**: Learn about Pulumi concepts, follow user-guides, and consult the reference documentation.
 
-* **[Registry](https://www.pulumi.com/registry/)**: Find the Pulumi Package with the resources you need. Install the package directly into your project, browse the API documentation, and start building.
+* **[Registry](https://www.pulumi.com/registry/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=registry)**: Find the Pulumi Package with the resources you need. Install the package directly into your project, browse the API documentation, and start building.
 
-* **[Pulumi ESC](https://www.pulumi.com/esc/)**: Centralized secrets management & orchestration. Tame secrets sprawl and configuration complexity securely across all your cloud infrastructure and applications.
+* **[Secrets Management](https://www.pulumi.com/esc/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=secrets+management)**: Tame secrets sprawl and configuration complexity securely across all your cloud infrastructure and applications with Pulumi ESC.
 
 * **[Pulumi Roadmap](https://github.com/orgs/pulumi/projects/44)**: Review the planned work for the upcoming quarter and a selected backlog of issues that are on our mind but not yet scheduled.
 
@@ -185,11 +185,11 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
 
-* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/install/migrating-3.0/).
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/install/migrating-3.0/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=v3+migration+guide).
 
 ### Clouds
 
-Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supported cloud and infrastructure providers.
+Visit the [Registry](https://www.pulumi.com/registry/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=registry) for the full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
