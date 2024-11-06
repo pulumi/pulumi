@@ -1455,9 +1455,10 @@ func getStackConfigurationFromProjectStack(
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			Environment: pulumiEnv,
-			Config:      workspaceStack.Config,
-			Decrypter:   config.NewPanicCrypter(),
+			EnvironmentImports: workspaceStack.Environment.Imports(),
+			Environment:        pulumiEnv,
+			Config:             workspaceStack.Config,
+			Decrypter:          config.NewPanicCrypter(),
 		}, nil
 	}
 
@@ -1467,9 +1468,10 @@ func getStackConfigurationFromProjectStack(
 	}
 
 	return backend.StackConfiguration{
-		Environment: pulumiEnv,
-		Config:      workspaceStack.Config,
-		Decrypter:   crypter,
+		EnvironmentImports: workspaceStack.Environment.Imports(),
+		Environment:        pulumiEnv,
+		Config:             workspaceStack.Config,
+		Decrypter:          crypter,
 	}, nil
 }
 

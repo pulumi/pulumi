@@ -316,6 +316,9 @@ type QueryOperation struct {
 
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
+	// List of ESC environments imported by the stack being updated.
+	EnvironmentImports []string
+
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter

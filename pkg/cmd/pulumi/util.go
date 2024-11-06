@@ -704,7 +704,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func getUpdateMetadata(
-	msg, root, execKind, execAgent string, updatePlan bool, flags *pflag.FlagSet,
+	msg, root, execKind, execAgent string, updatePlan bool, cfg backend.StackConfiguration, flags *pflag.FlagSet,
 ) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
@@ -722,6 +722,8 @@ func getUpdateMetadata(
 	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
 
 	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
+
+	addEscMetadataToEnvironment(m.Environment, cfg.EnvironmentImports)
 
 	return m, nil
 }
@@ -973,6 +975,26 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 // addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.
 func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) {
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
+}
+
+type EscEnvironmentMetadata struct {
+	Name string `json:"name"`
+}
+
+// addEscMetadataToEnvironment populates the environment metadata bag with the ESC environments
+// used as part of the stack update.
+func addEscMetadataToEnvironment(env map[string]string, escEnvironments []string) {
+	envs := make([]EscEnvironmentMetadata, len(escEnvironments))
+	for i, s := range escEnvironments {
+		envs[i] = EscEnvironmentMetadata{Name: s}
+	}
+
+	jsonData, err := json.Marshal(envs)
+	if err != nil {
+		return
+	}
+
+	env[backend.StackEnvironments] = string(jsonData)
 }
 
 // makeJSONString turns the given value into a JSON string.
