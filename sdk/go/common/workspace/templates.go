@@ -745,12 +745,14 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 	}
 
 	if overwrite {
-		info, err := os.Stat(filename)
-		if err == nil {
-			if info.IsDir() {
-				os.Remove(filename)
+		info, _ := os.Stat(filename)
+		if info != nil && info.IsDir() {
+			err := os.RemoveAll(filename)
+			if err != nil {
+				return err
 			}
 		}
+
 	}
 
 	f, err := os.OpenFile(filename, flag, mode)

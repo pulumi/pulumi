@@ -251,7 +251,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("Copy"+tt.testName, func(t *testing.T) {
+		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Copy"
 
 			defer func() {
@@ -268,7 +268,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("CopyForce"+tt.testName, func(t *testing.T) {
+		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-CopyForce"
 
 			defer func() {
@@ -285,7 +285,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("Overwrite"+tt.testName, func(t *testing.T) {
+		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Overwrite"
 
 			defer func() {
@@ -305,7 +305,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("OverwriteForce"+tt.testName, func(t *testing.T) {
+		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
 
 			defer func() {
@@ -323,7 +323,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		})
 	}
 
-	t.Run("OverwriteDirectoryOverFile", func(t *testing.T) {
+	t.Run("Overwrite directory over file: force=false", func(t *testing.T) {
 		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFile"
 
 		defer func() {
@@ -351,7 +351,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("OverwriteDirectoryOverFileForce", func(t *testing.T) {
+	t.Run("Overwrite directory over file: force=true", func(t *testing.T) {
 		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFileForce"
 
 		defer func() {
@@ -379,8 +379,8 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("OverwriteFileOverDirectory", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverDirectory"
+	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectory"
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
@@ -407,8 +407,8 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("OverwriteFileOverDirectoryForce", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverDirectoryForce"
+	t.Run("Overwrite file over empty directory: force=true", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectoryForce"
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
@@ -428,6 +428,38 @@ func TestCopyTemplateFiles(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect no error with force
+		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+	})
+
+	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverNonEmptyDirectoryWithForce"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the Pulumi.dev.yaml file in the destination dir to a dir
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
+		assert.NoError(t, err)
+
+		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
+		assert.NoError(t, err)
+
+		// add a file to the dir
+		err = os.WriteFile(copyDestDir+"/Pulumi.dev.yaml/README.md", []byte("testing"), 0o600)
 		assert.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
