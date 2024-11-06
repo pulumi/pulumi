@@ -205,43 +205,44 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest
 func TestCopyTemplateFiles(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
-		testName     string
+		testName    string
 		directories []string
-		files []string
+		files       []string
 	}{
 		{
-			testName:     "FlatProject",
-			files: []string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml",},
+			testName: "FlatProject",
+			files:    []string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
 		},
 		{
-			testName:	"NestedProject",
+			testName:    "NestedProject",
 			directories: []string{"src"},
-			files: []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml",},
+			files:       []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
 		},
 	}
 
-	setupTestData := func(t *testing.T, files []string, directories []string) (string, string) {
-		testDataDir := "CopyTemplateFilesTestData"
+	setupTestData := func(t *testing.T, testDataDir string, files []string, directories []string) (string, string) {
 		err := os.MkdirAll(testDataDir, 0o700)
 		assert.NoError(t, err)
 
 		projectDir := testDataDir + "/project"
 		err = os.MkdirAll(projectDir, 0o700)
 		assert.NoError(t, err)
-		
+
 		copyDestDir := testDataDir + "/tmp"
 		err = os.MkdirAll(copyDestDir, 0o700)
 		assert.NoError(t, err)
 
 		for _, dirName := range directories {
-			err := os.MkdirAll(projectDir + "/" + dirName, 0o700)
+			err := os.MkdirAll(projectDir+"/"+dirName, 0o700)
 			assert.NoError(t, err)
 		}
 
 		for _, fileName := range files {
-			err := os.WriteFile(projectDir + "/" + fileName, []byte("testing"), 0o600)
+			err := os.WriteFile(projectDir+"/"+fileName, []byte("testing"), 0o600)
 			assert.NoError(t, err)
 		}
 
@@ -250,13 +251,15 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("Copy" + tt.testName, func(t *testing.T) {
+		t.Run("Copy"+tt.testName, func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-Copy"
+
 			defer func() {
-				err := os.RemoveAll("CopyTemplateFilesTestData")
+				err := os.RemoveAll(testDataDir)
 				assert.NoError(t, err)
 			}()
 
-			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
 			assert.NoError(t, err)
@@ -265,13 +268,15 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("CopyForce" + tt.testName, func(t *testing.T) {
+		t.Run("CopyForce"+tt.testName, func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-CopyForce"
+
 			defer func() {
-				err := os.RemoveAll("CopyTemplateFilesTestData")
+				err := os.RemoveAll(testDataDir)
 				assert.NoError(t, err)
 			}()
 
-			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
 			assert.NoError(t, err)
@@ -280,13 +285,15 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("Overwrite" + tt.testName, func(t *testing.T) {
+		t.Run("Overwrite"+tt.testName, func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-Overwrite"
+
 			defer func() {
-				err := os.RemoveAll("CopyTemplateFilesTestData")
+				err := os.RemoveAll(testDataDir)
 				assert.NoError(t, err)
 			}()
 
-			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
 			assert.NoError(t, err)
@@ -298,13 +305,15 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("OverwriteForce" + tt.testName, func(t *testing.T) {
+		t.Run("OverwriteForce"+tt.testName, func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
+
 			defer func() {
-				err := os.RemoveAll("CopyTemplateFilesTestData")
+				err := os.RemoveAll(testDataDir)
 				assert.NoError(t, err)
 			}()
 
-			projectDir, copyDestDir := setupTestData(t, tt.files, tt.directories)
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
 			assert.NoError(t, err)

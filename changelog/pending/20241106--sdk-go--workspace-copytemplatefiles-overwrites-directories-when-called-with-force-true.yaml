@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: workspace.CopyTemplateFiles overwrites directories when called with force=true
