@@ -1133,6 +1133,36 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-invoke-options": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 2, "expected 2 resource")
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+					outputs := stack.Outputs
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+				},
+			},
+		},
+	},
 	"l2-invoke-variants": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
 		runs: []testRun{

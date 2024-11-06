@@ -470,7 +470,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 		}
 		if len(expr.Args) == 3 {
-			g.Fgenf(w, ", %.v", expr.Args[2])
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				g.Fgen(w, ", {")
+				g.Indented(func() {
+					for _, item := range invokeOptions.Items {
+						key := pcl.LiteralValueString(item.Key)
+						g.Fgenf(w, "\n%s", g.Indent)
+						switch key {
+						case "pluginDownloadUrl":
+							// the casing of the key is important here so we special case pluginDownloadURL
+							// in PCL it is pluginDownloadURL, but in TS it is pluginDownloadUrl
+							g.Fgenf(w, "pluginDownloadURL: %v,", item.Value)
+						default:
+							g.Fgenf(w, "%s: %v,", key, item.Value)
+						}
+					}
+				})
+				g.Fgenf(w, "\n%s}", g.Indent)
+			}
 		}
 		g.Fprint(w, ")")
 	case "join":
