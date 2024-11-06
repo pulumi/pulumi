@@ -109,28 +109,6 @@ jobs:
       performance-test-platforms: ubuntu-latest
     secrets: inherit
 
-  prepare-release:
-    name: prepare
-    if: >- # No newlines or trailing newline.
-      ${{
-        github.event.pull_request.head.repo.full_name == github.repository
-        && contains(github.event.pull_request.labels.*.name, 'ci/test')
-      }}
-    needs: [info, ci]
-    uses: ./.github/workflows/ci-prepare-release.yml
-    permissions:
-      contents: write
-      # To sign artifacts.
-      id-token: write
-    with:
-      ref: ${{ github.ref }}
-      version: ${{ needs.info.outputs.version }}
-      release-notes: ${{ needs.info.outputs.release-notes }}
-      project: ${{ github.repository }}
-      draft: true
-      prerelease: true
-    secrets: inherit
-
   ci-ok:
     name: ci-ok
     needs: [ci, performance-gate]
