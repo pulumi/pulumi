@@ -1478,7 +1478,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 			Parent: string(req.Parent),
 		})
 		if err != nil {
-			return ConstructResult{}, err
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+			return ConstructResult{}, rpcError
 		}
 		return ConstructResult{
 			URN: resource.URN(resp.GetUrn()),

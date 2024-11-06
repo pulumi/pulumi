@@ -17,7 +17,6 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"google.golang.org/grpc/codes"
@@ -28,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -734,21 +733,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		Options: options,
 	})
 	if err != nil {
-		var iperr *perrors.InputPropertiesError
-		if errors.As(err, &iperr) {
-			// Convert the errors to a slice of proto messages.
-			errorDetails := pulumirpc.InputPropertiesError{}
-			for _, e := range iperr.Errors {
-				errorDetails.Errors = append(errorDetails.Errors, &pulumirpc.InputPropertiesError_PropertyError{
-					PropertyPath: e.PropertyPath,
-					Reason:       e.Reason,
-				})
-			}
-
-			s, _ := status.Newf(codes.InvalidArgument, "%s", iperr.Message).WithDetails(&errorDetails)
-			return nil, s.Err()
-		}
-		return nil, err
+		return nil, rpcerror.WrapDetailedError(err)
 	}
 
 	opts := p.marshalOptions("outputs")
