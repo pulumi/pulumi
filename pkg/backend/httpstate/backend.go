@@ -195,8 +195,6 @@ type cloudBackend struct {
 	escClient    esc_client.Client
 	capabilities func(context.Context) capabilities
 
-	resetSleep nosleep.DoneFunc
-
 	// The current project, if any.
 	currentProject *workspace.Project
 }
@@ -1229,8 +1227,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
 	// Once we start an update we want to keep the machine from sleeping.
-	b.resetSleep = nosleep.KeepRunning()
-
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
@@ -1323,6 +1319,9 @@ func (b *cloudBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	resetKeepRunning := nosleep.KeepRunning()
+	defer resetKeepRunning()
+
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
