@@ -166,12 +166,6 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
 		if projectName != "" {
-			if pkg == tokens.Package(nodejsDynamicProviderType) {
-				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
-				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
-				// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
-				env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", projectName))
-			}
 			env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", projectName))
 		}
 		if jsonConfig != "" {
