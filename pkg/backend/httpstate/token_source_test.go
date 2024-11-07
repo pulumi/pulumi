@@ -19,11 +19,16 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,6 +87,94 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
 		clock.Advance(dur / 80)
 	}
+}
+
+func TestTokenSourceWithClient(t *testing.T) {
+	t.Parallel()
+
+	response := "timeout"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if response == "timeout" {
+			w.WriteHeader(http.StatusGatewayTimeout)
+			_, err := w.Write([]byte("Gateway Timeout"))
+			require.NoError(t, err)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			_, err := w.Write([]byte("Forbidden"))
+			require.NoError(t, err)
+		}
+	}))
+	defer server.Close()
+
+	apiClient := client.NewClient(server.URL, "fake-token", true, nil)
+	ctx := context.Background()
+
+	clock := clockwork.NewFakeClock()
+
+	tok0, tok0Expires := "fake-token", clock.Now().Add(20*time.Millisecond)
+
+	duration := 20 * time.Millisecond
+	assumedExpires := func() time.Time {
+		return time.Now().Add(duration)
+	}
+
+	updateIdentifier := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{
+			Owner:   "my-owner",
+			Project: "my-project",
+			Stack:   tokens.MustParseStackName("my-stack"),
+		},
+		UpdateKind: apitype.PreviewUpdate,
+		UpdateID:   "my-update",
+	}
+
+	renewLeaseCalled := 0
+	renewLease := func(
+		ctx context.Context,
+		duration time.Duration,
+		currentToken string,
+	) (string, time.Time, error) {
+		renewLeaseCalled++
+		tok, err := apiClient.RenewUpdateLease(
+			ctx, updateIdentifier, currentToken, duration)
+		if err != nil {
+			// Translate 403 status codes to expired token errors to stop the token refresh loop.
+			var apierr *apitype.ErrorResponse
+			if errors.As(err, &apierr) && apierr.Code == 403 {
+				return "", time.Time{}, expiredTokenError{err}
+			}
+			return "", time.Time{}, err
+		}
+		return tok, assumedExpires(), err
+	}
+	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, 20*time.Millisecond, renewLease)
+	require.NoError(t, err)
+	defer ts.Close()
+
+	clock.Advance(20 * time.Millisecond)
+
+	// The first time we call GetToken, we should get a 504 from the test httpserver.  We don't get
+	// an error in this case, as the token source will retry until the token expires, and still return
+	// the old token, which is hopefully still valid.
+	tok, err := ts.GetToken(ctx)
+	require.NoError(t, err)
+	require.Equal(t, tok0, tok)
+
+	// The http client we're using does retries internally.  So we can't simply base our test on the number of
+	// requests the http server gets, but need to switch the response type here.
+	response = "forbidden"
+
+	// The we're returning a 403 from the test httpserver.  This should cause the token source to stop requesting
+	// new tokens, and return an error.
+	_, err = ts.GetToken(ctx)
+	require.ErrorContains(t, err, "[403] Forbidden")
+
+	// Requesting a second token should still return the same error, but should not call the renewLease function
+	// again, as we're aborting the renewal loop on 403 errors.
+	_, err = ts.GetToken(ctx)
+	require.ErrorContains(t, err, "[403] Forbidden")
+	// Once with the 504 error, and once with the 403 error.  No more requests for the second 403.
+	require.Equal(t, 2, renewLeaseCalled)
 }
 
 type testTokenBackend struct {
