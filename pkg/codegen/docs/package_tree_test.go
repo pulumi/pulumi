@@ -240,7 +240,7 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 		},
 	}
 
-	prep := func(t *testing.T, tc testCase) (*docGenContext, *schema.Package) {
+	prep := func(t *testing.T, tc testCase) *docGenContext {
 		t.Helper()
 
 		schemaPkg, err := schema.ImportSpec(tc.spec, nil)
@@ -249,7 +249,7 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 		c := newDocGenContext()
 		c.initialize("test", schemaPkg)
 
-		return c, schemaPkg
+		return c
 	}
 
 	for _, tc := range testCases {
@@ -268,7 +268,7 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 
-				c, _ := prep(t, tc)
+				c := prep(t, tc)
 
 				items, err := c.generatePackageTree()
 				require.NoError(t, err)
@@ -284,9 +284,9 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 			t.Run(name+"/generatePackage", func(t *testing.T) {
 				t.Parallel()
 
-				c, schemaPkg := prep(t, tc)
+				c := prep(t, tc)
 
-				files, err := c.generatePackage("test", schemaPkg)
+				files, err := c.generatePackage()
 				require.NoError(t, err)
 
 				for f := range files {
