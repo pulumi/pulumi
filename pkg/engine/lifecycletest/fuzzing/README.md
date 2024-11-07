@@ -66,3 +66,47 @@ By default, reproduction test files will be written to a temporary directory. A
 specific directory can be configured using the
 `PULUMI_LIFECYCLE_TEST_FUZZING_REPRO_DIR` environment variable.
 :::
+
+### Running a suite of fuzz tests
+
+The `TestFuzz` test generates and tests a set of fixtures, and can be run with
+the top-level `test_lifecycle_fuzz` target:
+
+```
+make test_lifecycle_fuzz
+```
+
+You can change how many checks Rapid performs by setting the
+`LIFECYCLE_TEST_FUZZ_CHECKS` Make variable on the command line. For instance, to
+perform 10,000 checks:
+
+```
+make test_lifecycle_fuzz LIFECYCLE_TEST_FUZZ_CHECKS=10000
+```
+
+If you use `go test` directly, make sure you set the
+`PULUMI_LIFECYCLE_TEST_FUZZ` variable to something; the test will be skipped if
+you do not:
+
+```
+(cd pkg/engine/lifecycletest; PULUMI_LIFECYCLE_TEST_FUZZ=1 go test ./... -run '^TestFuzz$')
+```
+
+### Starting from a known state
+
+Rather than generating entirely random scenarios, it can be useful to start from
+a known snapshot, and to fuzz potential provider configurations and operations,
+etc. from there. The `TestFuzzFromStateFile` test is provided to this end. It
+will read state from a JSON file (such as that produced by a `pulumi stack
+export` command) and use this as the starting point for a fuzzing run. Use the
+`PULUMI_LIFECYCLE_TEST_FUZZ_FROM_STATE_FILE` environment variable to specify the
+file to read (if this variable is not set, the test will be skipped):
+
+```
+PULUMI_LIFECYCLE_TEST_FUZZ_FROM_STATE_FILE=/path/to/state.json \
+    make test_lifecycle_fuzz_from_state_file \
+    LIFECYCLE_TEST_FUZZ_CHECKS=10000
+```
+
+In this example we have again configured 10,000 Rapid checks using the
+`LIFECYCLE_TEST_FUZZ_CHECKS` Make variable as before.

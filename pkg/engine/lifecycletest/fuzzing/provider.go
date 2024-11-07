@@ -496,7 +496,7 @@ func GeneratedProviderSpec(progSpec *ProgramSpec, pso ProviderSpecOptions) *rapi
 		for _, r := range allResources {
 			if providers.IsProviderType(r.Type) {
 				provSpec.AddPackage(tokens.Package(r.Type.Name()))
-			} else {
+			} else if tokens.Token(r.Type).HasModuleMember() {
 				provSpec.AddPackage(r.Type.Package())
 			}
 
