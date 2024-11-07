@@ -30,6 +30,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1948,4 +1949,460 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[2].URN)
+}
+
+// Tests that aliases in provider dependencies are correctly normalized when snapshots are written. That is, if a
+// resource's provider reference points to a URN that is now an alias for a newly renamed resource, the provider
+// reference should be updated to the new URN before the snapshot is persisted.
+func TestAliasesInProvidersAreNormalized(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Set up the initial program:
+	//
+	// * res0 and res1, which will serve as parents -- res1 initially, then res0 in the second update;
+	// * prov, which will be the child that moves from res1 to res0 and that is aliased in the second update;
+	// * res3, which will have prov as its provider.
+	//
+	// Note: for the URN of prov to change, res0 and res1 must have different types, since only parent types are included
+	// in the URNs of their children. The choice of type0/type1 etc. is thus important in this test.
+	setupProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			Parent:   res1.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF,
+	}
+	setupSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), setupOpts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Set up the test program:
+	//
+	// * res0 and res1, which will serve as parents as before;
+	// * prov, which will now be moved to a child of res0, with an alias to its URN when it was a child of res0;
+	// * res3, which will have prov as its provider.
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		res0, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Parent: res0.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			Parent:   res0.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+	}
+
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// Tests that aliases in dependencies are correctly normalized when snapshots are written. That is, if a resource's
+// dependency list contains to a URN that is now an alias for a newly renamed resource, the reference should be updated
+// to the new URN before the snapshot is persisted.
+func TestAliasesInDependenciesAreNormalized(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Set up the initial program:
+	//
+	// * res0 and res1, which will serve as parents -- res1 initially, then res0 in the second update;
+	// * res2, which will be the child that moves from res1 to res0 and that is aliased in the second update;
+	// * res3, which will depend on res2.
+	//
+	// Note: for the URN of res2 to change, res0 and res1 must have different types, since only parent types are included
+	// in the URNs of their children. The choice of type0/type1 etc. is thus important in this test.
+	setupProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:       res1.URN,
+			Dependencies: []resource.URN{res2.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF,
+	}
+	setupSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), setupOpts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Set up the test program:
+	//
+	// * res0 and res1, which will serve as parents as before;
+	// * res2, which will now be moved to a child of res0, with an alias to its URN when it was a child of res1;
+	// * res3, which will depend on res2.
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		res0, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res0.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:       res0.URN,
+			Dependencies: []resource.URN{res2.URN},
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+	}
+
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// Tests that aliases in property dependencies are correctly normalized when snapshots are written. That is, if a
+// resource's property dependency map contains to a URN that is now an alias for a newly renamed resource, the reference
+// should be updated to the new URN before the snapshot is persisted.
+func TestAliasesInPropertyDependenciesAreNormalized(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Set up the initial program:
+	//
+	// * res0 and res1, which will serve as parents -- res1 initially, then res0 in the second update;
+	// * res2, which will be the child that moves from res1 to res0 and that is aliased in the second update;
+	// * res3, which will depend on res2 via a property dependency.
+	//
+	// Note: for the URN of res2 to change, res0 and res1 must have different types, since only parent types are included
+	// in the URNs of their children. The choice of type0/type1 etc. is thus important in this test.
+	setupProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:       res1.URN,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"propA": {res2.URN}},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF,
+	}
+	setupSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), setupOpts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Set up the test program:
+	//
+	// * res0 and res1, which will serve as parents as before;
+	// * res2, which will now be moved to a child of res0, with an alias to its URN when it was a child of res1;
+	// * res3, which will depend on res2 via a property dependency.
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		res0, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res0.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:       res0.URN,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"propA": {res2.URN}},
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+	}
+
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// Tests that aliases in deleted-with references are correctly normalized when snapshots are written. That is, if a
+// resource's deleted-with reference points to to a URN that is now an alias for a newly renamed resource, the reference
+// should be updated to the new URN before the snapshot is persisted.
+func TestAliasesInDeletedWithAreNormalized(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Set up the initial program:
+	//
+	// * res0 and res1, which will serve as parents -- res1 initially, then res0 in the second update;
+	// * res2, which will be the child that moves from res1 to res0 and that is aliased in the second update;
+	// * res3, which will depend on res2 via a deleted-with relationship.
+	//
+	// Note: for the URN of res2 to change, res0 and res1 must have different types, since only parent types are included
+	// in the URNs of their children. The choice of type0/type1 etc. is thus important in this test.
+	setupProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:      res1.URN,
+			DeletedWith: res2.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF,
+	}
+	setupSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), setupOpts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Set up the test program:
+	//
+	// * res0 and res1, which will serve as parents as before;
+	// * res2, which will now be moved to a child of res0, with an alias to its URN when it was a child of res1;
+	// * res3, which will depend on res2 via a deleted-with relationship.
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		res0, err := monitor.RegisterResource("pkgA:modA:type0", "res0", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:modA:type1", "res1", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkgA:modA:type2", "res2", true, deploytest.ResourceOptions{
+			Parent: res0.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:type3", "res3", true, deploytest.ResourceOptions{
+			Parent:      res0.URN,
+			DeletedWith: res2.URN,
+			Aliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: string(res1.URN),
+							},
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+	}
+
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
 }

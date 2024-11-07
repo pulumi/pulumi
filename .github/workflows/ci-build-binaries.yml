@@ -23,6 +23,10 @@ on:
         default: ubuntu-latest
         description: 'Build platform (i.e.: runs-on) for job'
         type: string
+      artifact-suffix:
+        required: false
+        description: "Suffix to append to the artifact names"
+        type: string
       dev-version:
         required: false
         description: "Dev version to bake into the binary"
@@ -57,9 +61,6 @@ jobs:
   build:
     name: ${{ inputs.os }}-${{ inputs.arch }}
     runs-on: ${{ inputs.build-platform }}
-
-    permissions:
-      id-token: write
 
     steps:
       - name: "Windows cache workaround"
@@ -130,7 +131,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ inputs.os != 'js' }}
         with:
-          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
+          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
           overwrite: true
           retention-days: 7
           path: |

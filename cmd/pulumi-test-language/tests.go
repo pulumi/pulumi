@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"math"
@@ -28,9 +29,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
@@ -892,6 +895,13 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{}", v["config-grpc:config:objString1"], "objString1")
 					assert.JSONEq(l, "{\"x\":\"x-value\"}", v["config-grpc:config:objString2"], "objString2")
 					assert.JSONEq(l, "{\"x\":42}", v["config-grpc:config:objInt1"], "objInt1")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
 				},
 			},
 		},
@@ -980,6 +990,110 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "[\"VALUE\",\"SECRET\"]", v["config-grpc:config:listString2"], "listString2")
 					assert.JSONEq(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["config-grpc:config:mapString2"], "mapString2")
 					assert.JSONEq(l, "{\"x\":\"SECRET\"}", v["config-grpc:config:objString2"], "objString2")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
+				},
+			},
+		},
+	},
+	// This test checks how SDKs propagate properties marked as secret to the provider Configure on the gRPC level.
+	"l2-provider-grpc-config-schema-secret": {
+		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					g := &grpcTestContext{l: l, s: snap}
+
+					// Verify the CheckConfig request received by the provider.
+					r := g.CheckConfigReq("config")
+
+					// TODO[pulumi/pulumi#16876]: CheckConfig request gets the secrets in the plain.
+					// This is suspect, probably has to do with secret negotiation happening later
+					// in the gRPC provider cycle.
+					assert.Equal(l, "SECRET",
+						r.News.Fields["secretString1"].AsInterface(), "secretString1")
+
+					assertEqualOrJSONEncoded(l, float64(16),
+						r.News.Fields["secretInt1"].AsInterface(), "secretInt1")
+
+					assertEqualOrJSONEncoded(l, float64(123456.7890),
+						r.News.Fields["secretNum1"].AsInterface(), "secretNum1")
+
+					assertEqualOrJSONEncoded(l, true,
+						r.News.Fields["secretBool1"].AsInterface(), "secretBool1")
+
+					assertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
+						r.News.Fields["listSecretString1"].AsInterface(), "listSecretString1")
+
+					assertEqualOrJSONEncoded(l, map[string]any{"key1": "SECRET", "key2": "SECRET2"},
+						r.News.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
+
+					// Now verify the Configure request.
+					c := g.ConfigureReq("config")
+
+					// All the fields are coming in as secret-wrapped fields into Configure.
+					assert.Equal(l, secret("SECRET"),
+						c.Args.Fields["secretString1"].AsInterface(), "secretString1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(16)), float64(16),
+						c.Args.Fields["secretInt1"].AsInterface(), "secretInt1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(float64(123456.7890)), float64(123456.7890),
+						c.Args.Fields["secretNum1"].AsInterface(), "secretNum1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(true), true,
+						c.Args.Fields["secretBool1"].AsInterface(), "secretBool1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret([]any{"SECRET", "SECRET2"}),
+						[]any{"SECRET", "SECRET2"},
+						c.Args.Fields["listSecretString1"].AsInterface(), "listSecretString1")
+
+					assertEqualOrJSONEncodedSecret(l,
+						secret(map[string]any{"key1": "SECRET", "key2": "SECRET2"}),
+						map[string]any{"key1": "SECRET", "key2": "SECRET2"},
+						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
+
+					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
+					v := c.GetVariables()
+					assert.Equal(l, "SECRET", v["config-grpc:config:secretString1"], "secretString1")
+					assert.JSONEq(l, "16", v["config-grpc:config:secretInt1"], "secretInt1")
+					assert.JSONEq(l, "123456.7890", v["config-grpc:config:secretNum1"], "secretNum1")
+					assert.JSONEq(l, "true", v["config-grpc:config:secretBool1"], "secretBool1")
+					assert.JSONEq(l, `["SECRET", "SECRET2"]`, v["config-grpc:config:listSecretString1"], "listSecretString1")
+
+					assert.JSONEq(l, `{"key1":"SECRET","key2":"SECRET2"}`,
+						v["config-grpc:config:mapSecretString1"], "mapSecretString1")
+
+					// TODO[pulumi/pulumi#17652] Languages do not agree on the object property
+					// casing sent to CheckConfig, Node and Go send "secretX", Python sends
+					// "secret_x" though.
+					//
+					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
+					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
+					// assertEqualOrJSONEncodedSecret(l,
+					//      map[string]any{"secretX": secret("SECRET")}, map[string]any{"secretX": "SECRET"},
+					// 	r.Args.Fields["objSecretString1"].AsInterface(), "objSecretString1")
+					// assert.JSONEq(l, `{"secretX":"SECRET"}`,
+					// 	v["config-grpc:config:objectSecretString1"], "objSecretString1")
+
+					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+						// ConfigFetcher is a test helper that retains secret material in its
+						// state by design, and should not be part of the check.
+						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
+						Secrets:             []string{"SECRET", "SECRET2"},
+					})
 				},
 			},
 		},
@@ -1258,6 +1372,25 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-parameterized-resource": {
+		providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					require.Equal(l,
+						resource.NewStringProperty("HelloWorld"),
+						stack.Outputs["parameterValue"],
+						"parameter value should be correct")
+				},
+			},
+		},
+	},
 	"l2-map-keys": {
 		providers: []plugin.Provider{
 			&providers.PrimitiveProvider{}, &providers.PrimitiveRefProvider{},
@@ -1470,5 +1603,40 @@ func secret(x any) any {
 	return map[string]any{
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		"value":                            x,
+	}
+}
+
+type assertNoSecretLeaksOpts struct {
+	IgnoreResourceTypes []tokens.Type
+	Secrets             []string
+}
+
+func (opts *assertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
+	for _, t := range opts.IgnoreResourceTypes {
+		if ty == t {
+			return true
+		}
+	}
+	return false
+}
+
+func assertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts assertNoSecretLeaksOpts) {
+	// Remove states for resources with types in opts.IgnoreResourceTypes from the snap to exclude these states from
+	// the secret leak checks.
+	var filteredResourceStates []*resource.State
+	for _, r := range snap.Resources {
+		if !opts.isIgnored(r.Type) {
+			filteredResourceStates = append(filteredResourceStates, r)
+		}
+	}
+	snap.Resources = filteredResourceStates
+
+	// Ensure that secrets do not leak to the state.
+	deployment, err := stack.SerializeDeployment(context.Background(), snap, false /*showSecrets*/)
+	require.NoError(l, err)
+	bytes, err := json.MarshalIndent(deployment, "", "  ")
+	require.NoError(l, err)
+	for _, s := range opts.Secrets {
+		require.NotContainsf(l, string(bytes), s, "Detected a secret leak in state: %s", s)
 	}
 }

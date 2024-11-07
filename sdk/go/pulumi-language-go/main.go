@@ -264,7 +264,7 @@ func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRunti
 }
 
 func (host *goLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

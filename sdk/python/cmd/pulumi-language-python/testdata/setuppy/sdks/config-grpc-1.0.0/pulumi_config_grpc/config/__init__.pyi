@@ -45,6 +45,30 @@ listNum2: Optional[str]
 
 listNum3: Optional[str]
 
+listSecretBool1: Optional[str]
+
+listSecretBool2: Optional[str]
+
+listSecretBool3: Optional[str]
+
+listSecretInt1: Optional[str]
+
+listSecretInt2: Optional[str]
+
+listSecretInt3: Optional[str]
+
+listSecretNum1: Optional[str]
+
+listSecretNum2: Optional[str]
+
+listSecretNum3: Optional[str]
+
+listSecretString1: Optional[str]
+
+listSecretString2: Optional[str]
+
+listSecretString3: Optional[str]
+
 listString1: Optional[str]
 
 listString2: Optional[str]
@@ -68,6 +92,30 @@ mapNum1: Optional[str]
 mapNum2: Optional[str]
 
 mapNum3: Optional[str]
+
+mapSecretBool1: Optional[str]
+
+mapSecretBool2: Optional[str]
+
+mapSecretBool3: Optional[str]
+
+mapSecretInt1: Optional[str]
+
+mapSecretInt2: Optional[str]
+
+mapSecretInt3: Optional[str]
+
+mapSecretNum1: Optional[str]
+
+mapSecretNum2: Optional[str]
+
+mapSecretNum3: Optional[str]
+
+mapSecretString1: Optional[str]
+
+mapSecretString2: Optional[str]
+
+mapSecretString3: Optional[str]
 
 mapString1: Optional[str]
 
@@ -99,11 +147,59 @@ objNum2: Optional[str]
 
 objNum3: Optional[str]
 
+objSecretBool1: Optional[str]
+
+objSecretBool2: Optional[str]
+
+objSecretBool3: Optional[str]
+
+objSecretInt1: Optional[str]
+
+objSecretInt2: Optional[str]
+
+objSecretInt3: Optional[str]
+
+objSecretNum1: Optional[str]
+
+objSecretNum2: Optional[str]
+
+objSecretNum3: Optional[str]
+
+objSecretString1: Optional[str]
+
+objSecretString2: Optional[str]
+
+objSecretString3: Optional[str]
+
 objString1: Optional[str]
 
 objString2: Optional[str]
 
 objString3: Optional[str]
+
+secretBool1: Optional[bool]
+
+secretBool2: Optional[bool]
+
+secretBool3: Optional[bool]
+
+secretInt1: Optional[int]
+
+secretInt2: Optional[int]
+
+secretInt3: Optional[int]
+
+secretNum1: Optional[float]
+
+secretNum2: Optional[float]
+
+secretNum3: Optional[float]
+
+secretString1: Optional[str]
+
+secretString2: Optional[str]
+
+secretString3: Optional[str]
 
 string1: Optional[str]
 

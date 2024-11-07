@@ -396,10 +396,13 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 
 		return newStateBuilder(old).
 			withUpdatedURN(fixUrn).
-			withUpdatedParent(fixUrn).
-			withUpdatedDependencies(fixUrn).
-			withUpdatedPropertyDependencies(fixUrn).
-			withUpdatedProvider(fixProvider).
+			withAllUpdatedDependencies(
+				fixProvider,
+				fixUrn,
+
+				// We want to fix up all dependency types, so we pass a nil include function.
+				nil,
+			).
 			withUpdatedAliases().
 			build()
 	}
@@ -586,6 +589,9 @@ type SnapshotIntegrityError struct {
 
 	// The stack trace at the point the error was raised.
 	Stack []byte
+
+	// Metadata about the operation that caused the error, if available.
+	Metadata *SnapshotIntegrityErrorMetadata
 }
 
 // The set of operations alongside which snapshot integrity checks can be
@@ -625,12 +631,14 @@ func (s *SnapshotIntegrityError) Unwrap() error {
 }
 
 // Returns a copy of the given snapshot integrity error with the operation set to
-// SnapshotIntegrityRead.
-func (s *SnapshotIntegrityError) ForRead() *SnapshotIntegrityError {
+// SnapshotIntegrityRead and metadata set to the given snapshot's integrity error
+// metadata.
+func (s *SnapshotIntegrityError) ForRead(snap *Snapshot) *SnapshotIntegrityError {
 	return &SnapshotIntegrityError{
-		Err:   s.Err,
-		Op:    SnapshotIntegrityRead,
-		Stack: s.Stack,
+		Err:      s.Err,
+		Op:       SnapshotIntegrityRead,
+		Stack:    s.Stack,
+		Metadata: snap.Metadata.IntegrityErrorMetadata,
 	}
 }
 

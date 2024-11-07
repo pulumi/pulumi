@@ -51,6 +51,54 @@ __all__ = [
     'Tnum3Dict',
     'Tnum3Args',
     'Tnum3ArgsDict',
+    'TsecretBool1',
+    'TsecretBool1Dict',
+    'TsecretBool1Args',
+    'TsecretBool1ArgsDict',
+    'TsecretBool2',
+    'TsecretBool2Dict',
+    'TsecretBool2Args',
+    'TsecretBool2ArgsDict',
+    'TsecretBool3',
+    'TsecretBool3Dict',
+    'TsecretBool3Args',
+    'TsecretBool3ArgsDict',
+    'TsecretInt1',
+    'TsecretInt1Dict',
+    'TsecretInt1Args',
+    'TsecretInt1ArgsDict',
+    'TsecretInt2',
+    'TsecretInt2Dict',
+    'TsecretInt2Args',
+    'TsecretInt2ArgsDict',
+    'TsecretInt3',
+    'TsecretInt3Dict',
+    'TsecretInt3Args',
+    'TsecretInt3ArgsDict',
+    'TsecretNum1',
+    'TsecretNum1Dict',
+    'TsecretNum1Args',
+    'TsecretNum1ArgsDict',
+    'TsecretNum2',
+    'TsecretNum2Dict',
+    'TsecretNum2Args',
+    'TsecretNum2ArgsDict',
+    'TsecretNum3',
+    'TsecretNum3Dict',
+    'TsecretNum3Args',
+    'TsecretNum3ArgsDict',
+    'TsecretString1',
+    'TsecretString1Dict',
+    'TsecretString1Args',
+    'TsecretString1ArgsDict',
+    'TsecretString2',
+    'TsecretString2Dict',
+    'TsecretString2Args',
+    'TsecretString2ArgsDict',
+    'TsecretString3',
+    'TsecretString3Dict',
+    'TsecretString3Args',
+    'TsecretString3ArgsDict',
     'Tstring1',
     'Tstring1Dict',
     'Tstring1Args',
@@ -479,6 +527,558 @@ class Tnum3Args:
     @x.setter
     def x(self, value: Optional[pulumi.Input[float]]):
         pulumi.set(self, "x", value)
+
+
+if not MYPY:
+    class TsecretBool1Dict(TypedDict):
+        secret_x: NotRequired[bool]
+elif False:
+    TsecretBool1Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool1:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretBool1ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[bool]]
+elif False:
+    TsecretBool1ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretBool2Dict(TypedDict):
+        secret_x: NotRequired[bool]
+elif False:
+    TsecretBool2Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool2:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretBool2ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[bool]]
+elif False:
+    TsecretBool2ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretBool3Dict(TypedDict):
+        secret_x: NotRequired[bool]
+elif False:
+    TsecretBool3Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool3:
+    def __init__(__self__, *,
+                 secret_x: Optional[bool] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[bool]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[bool]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretBool3ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[bool]]
+elif False:
+    TsecretBool3ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretBool3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[bool]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt1Dict(TypedDict):
+        secret_x: NotRequired[int]
+elif False:
+    TsecretInt1Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt1:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt1ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[int]]
+elif False:
+    TsecretInt1ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt2Dict(TypedDict):
+        secret_x: NotRequired[int]
+elif False:
+    TsecretInt2Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt2:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt2ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[int]]
+elif False:
+    TsecretInt2ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt3Dict(TypedDict):
+        secret_x: NotRequired[int]
+elif False:
+    TsecretInt3Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt3:
+    def __init__(__self__, *,
+                 secret_x: Optional[int] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[int]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[int]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretInt3ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[int]]
+elif False:
+    TsecretInt3ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretInt3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[int]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[int]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum1Dict(TypedDict):
+        secret_x: NotRequired[float]
+elif False:
+    TsecretNum1Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum1:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum1ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[float]]
+elif False:
+    TsecretNum1ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum2Dict(TypedDict):
+        secret_x: NotRequired[float]
+elif False:
+    TsecretNum2Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum2:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum2ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[float]]
+elif False:
+    TsecretNum2ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum3Dict(TypedDict):
+        secret_x: NotRequired[float]
+elif False:
+    TsecretNum3Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum3:
+    def __init__(__self__, *,
+                 secret_x: Optional[float] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[float]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[float]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretNum3ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[float]]
+elif False:
+    TsecretNum3ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretNum3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[float]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString1Dict(TypedDict):
+        secret_x: NotRequired[str]
+elif False:
+    TsecretString1Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString1:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString1ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[str]]
+elif False:
+    TsecretString1ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString1Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString2Dict(TypedDict):
+        secret_x: NotRequired[str]
+elif False:
+    TsecretString2Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString2:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString2ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[str]]
+elif False:
+    TsecretString2ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString2Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString3Dict(TypedDict):
+        secret_x: NotRequired[str]
+elif False:
+    TsecretString3Dict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString3:
+    def __init__(__self__, *,
+                 secret_x: Optional[str] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[str]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[str]):
+        pulumi.set(self, "secret_x", value)
+
+
+if not MYPY:
+    class TsecretString3ArgsDict(TypedDict):
+        secret_x: NotRequired[pulumi.Input[str]]
+elif False:
+    TsecretString3ArgsDict: TypeAlias = Mapping[str, Any]
+
+@pulumi.input_type
+class TsecretString3Args:
+    def __init__(__self__, *,
+                 secret_x: Optional[pulumi.Input[str]] = None):
+        if secret_x is not None:
+            pulumi.set(__self__, "secret_x", secret_x)
+
+    @property
+    @pulumi.getter(name="secretX")
+    def secret_x(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "secret_x")
+
+    @secret_x.setter
+    def secret_x(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "secret_x", value)
 
 
 if not MYPY:

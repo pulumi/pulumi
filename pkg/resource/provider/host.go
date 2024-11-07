@@ -36,12 +36,16 @@ type HostClient struct {
 	client pulumirpc.EngineClient
 }
 
+// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
+// See https://github.com/pulumi/pulumi/issues/7156
+//
+// grpclog.SetLoggerV2 sets global state, and thus must be called before any gRPC
+// connection is initiated. To avoid race conditions, we call it when the package loads.
+func init() { grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr)) }
+
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
-	// See https://github.com/pulumi/pulumi/issues/7156
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),

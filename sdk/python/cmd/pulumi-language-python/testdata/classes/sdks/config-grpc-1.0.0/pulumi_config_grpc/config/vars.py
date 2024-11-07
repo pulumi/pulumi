@@ -77,6 +77,54 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('listNum3')
 
     @property
+    def list_secret_bool1(self) -> Optional[str]:
+        return __config__.get('listSecretBool1')
+
+    @property
+    def list_secret_bool2(self) -> Optional[str]:
+        return __config__.get('listSecretBool2')
+
+    @property
+    def list_secret_bool3(self) -> Optional[str]:
+        return __config__.get('listSecretBool3')
+
+    @property
+    def list_secret_int1(self) -> Optional[str]:
+        return __config__.get('listSecretInt1')
+
+    @property
+    def list_secret_int2(self) -> Optional[str]:
+        return __config__.get('listSecretInt2')
+
+    @property
+    def list_secret_int3(self) -> Optional[str]:
+        return __config__.get('listSecretInt3')
+
+    @property
+    def list_secret_num1(self) -> Optional[str]:
+        return __config__.get('listSecretNum1')
+
+    @property
+    def list_secret_num2(self) -> Optional[str]:
+        return __config__.get('listSecretNum2')
+
+    @property
+    def list_secret_num3(self) -> Optional[str]:
+        return __config__.get('listSecretNum3')
+
+    @property
+    def list_secret_string1(self) -> Optional[str]:
+        return __config__.get('listSecretString1')
+
+    @property
+    def list_secret_string2(self) -> Optional[str]:
+        return __config__.get('listSecretString2')
+
+    @property
+    def list_secret_string3(self) -> Optional[str]:
+        return __config__.get('listSecretString3')
+
+    @property
     def list_string1(self) -> Optional[str]:
         return __config__.get('listString1')
 
@@ -123,6 +171,54 @@ class _ExportableConfig(types.ModuleType):
     @property
     def map_num3(self) -> Optional[str]:
         return __config__.get('mapNum3')
+
+    @property
+    def map_secret_bool1(self) -> Optional[str]:
+        return __config__.get('mapSecretBool1')
+
+    @property
+    def map_secret_bool2(self) -> Optional[str]:
+        return __config__.get('mapSecretBool2')
+
+    @property
+    def map_secret_bool3(self) -> Optional[str]:
+        return __config__.get('mapSecretBool3')
+
+    @property
+    def map_secret_int1(self) -> Optional[str]:
+        return __config__.get('mapSecretInt1')
+
+    @property
+    def map_secret_int2(self) -> Optional[str]:
+        return __config__.get('mapSecretInt2')
+
+    @property
+    def map_secret_int3(self) -> Optional[str]:
+        return __config__.get('mapSecretInt3')
+
+    @property
+    def map_secret_num1(self) -> Optional[str]:
+        return __config__.get('mapSecretNum1')
+
+    @property
+    def map_secret_num2(self) -> Optional[str]:
+        return __config__.get('mapSecretNum2')
+
+    @property
+    def map_secret_num3(self) -> Optional[str]:
+        return __config__.get('mapSecretNum3')
+
+    @property
+    def map_secret_string1(self) -> Optional[str]:
+        return __config__.get('mapSecretString1')
+
+    @property
+    def map_secret_string2(self) -> Optional[str]:
+        return __config__.get('mapSecretString2')
+
+    @property
+    def map_secret_string3(self) -> Optional[str]:
+        return __config__.get('mapSecretString3')
 
     @property
     def map_string1(self) -> Optional[str]:
@@ -185,6 +281,54 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('objNum3')
 
     @property
+    def obj_secret_bool1(self) -> Optional[str]:
+        return __config__.get('objSecretBool1')
+
+    @property
+    def obj_secret_bool2(self) -> Optional[str]:
+        return __config__.get('objSecretBool2')
+
+    @property
+    def obj_secret_bool3(self) -> Optional[str]:
+        return __config__.get('objSecretBool3')
+
+    @property
+    def obj_secret_int1(self) -> Optional[str]:
+        return __config__.get('objSecretInt1')
+
+    @property
+    def obj_secret_int2(self) -> Optional[str]:
+        return __config__.get('objSecretInt2')
+
+    @property
+    def obj_secret_int3(self) -> Optional[str]:
+        return __config__.get('objSecretInt3')
+
+    @property
+    def obj_secret_num1(self) -> Optional[str]:
+        return __config__.get('objSecretNum1')
+
+    @property
+    def obj_secret_num2(self) -> Optional[str]:
+        return __config__.get('objSecretNum2')
+
+    @property
+    def obj_secret_num3(self) -> Optional[str]:
+        return __config__.get('objSecretNum3')
+
+    @property
+    def obj_secret_string1(self) -> Optional[str]:
+        return __config__.get('objSecretString1')
+
+    @property
+    def obj_secret_string2(self) -> Optional[str]:
+        return __config__.get('objSecretString2')
+
+    @property
+    def obj_secret_string3(self) -> Optional[str]:
+        return __config__.get('objSecretString3')
+
+    @property
     def obj_string1(self) -> Optional[str]:
         return __config__.get('objString1')
 
@@ -195,6 +339,54 @@ class _ExportableConfig(types.ModuleType):
     @property
     def obj_string3(self) -> Optional[str]:
         return __config__.get('objString3')
+
+    @property
+    def secret_bool1(self) -> Optional[bool]:
+        return __config__.get_bool('secretBool1')
+
+    @property
+    def secret_bool2(self) -> Optional[bool]:
+        return __config__.get_bool('secretBool2')
+
+    @property
+    def secret_bool3(self) -> Optional[bool]:
+        return __config__.get_bool('secretBool3')
+
+    @property
+    def secret_int1(self) -> Optional[int]:
+        return __config__.get_int('secretInt1')
+
+    @property
+    def secret_int2(self) -> Optional[int]:
+        return __config__.get_int('secretInt2')
+
+    @property
+    def secret_int3(self) -> Optional[int]:
+        return __config__.get_int('secretInt3')
+
+    @property
+    def secret_num1(self) -> Optional[float]:
+        return __config__.get_float('secretNum1')
+
+    @property
+    def secret_num2(self) -> Optional[float]:
+        return __config__.get_float('secretNum2')
+
+    @property
+    def secret_num3(self) -> Optional[float]:
+        return __config__.get_float('secretNum3')
+
+    @property
+    def secret_string1(self) -> Optional[str]:
+        return __config__.get('secretString1')
+
+    @property
+    def secret_string2(self) -> Optional[str]:
+        return __config__.get('secretString2')
+
+    @property
+    def secret_string3(self) -> Optional[str]:
+        return __config__.get('secretString3')
 
     @property
     def string1(self) -> Optional[str]:

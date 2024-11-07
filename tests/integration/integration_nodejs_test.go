@@ -62,7 +62,7 @@ func TestEngineEventPerf(t *testing.T) {
 	// Since then, it should now be down to ~4s, with additional padding,
 	// since some Travis machines (especially the macOS ones) seem quite slow
 	// to begin with.
-	benchmarkEnforcer := &assertPerfBenchmark{
+	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 8 * time.Second,
 		MaxUpdateDuration:  8 * time.Second,
@@ -2155,6 +2155,11 @@ func TestParameterizedNode(t *testing.T) {
 func TestConstructFailuresNode(t *testing.T) {
 	t.Parallel()
 	testConstructFailures(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestCallFailuresNode(t *testing.T) {
+	t.Parallel()
+	testCallFailures(t, "nodejs", "@pulumi/pulumi")
 }
 
 // TestLogDebugNode tests that the amount of debug logs is reasonable.

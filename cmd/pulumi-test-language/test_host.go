@@ -229,7 +229,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
 	}
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("127.0.0.1:%v", handle.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),

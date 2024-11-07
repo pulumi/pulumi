@@ -315,11 +315,19 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		return steps, nil
 	}
 
-	// We got a set of steps to perform during a targeted update. If any of the steps are not same steps and depend on
-	// creates we skipped because they were not in the --target list, issue an error that that the create was necessary
-	// and that the user must target the resource to create.
+	// If we get to this point, we are performing a targeted update. If any of the steps we are about to execute depend on
+	// resources that need to be created, but which won't be due to the --target list (so-called "skipped creates"), we
+	// need to abort with an error informing the user which creates are necessary to proceed. The exception to this is
+	// steps that are *themselves* skipped creates -- that is, if B depends on A, and both the creation of A and B will be
+	// skipped, we don't need to error out.
 	for _, step := range steps {
-		if step.Op() == OpSame || step.New() == nil {
+		if step.New() == nil {
+			continue
+		}
+
+		// If this step is a skipped create (which under the hood is a SameStep), we don't need to error out, since its
+		// execution won't result in any updates to dependencies which don't exist.
+		if sameStep, ok := step.(*SameStep); ok && sameStep.Op() == OpSame && sameStep.IsSkippedCreate() {
 			continue
 		}
 

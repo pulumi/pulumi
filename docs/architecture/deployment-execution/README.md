@@ -87,4 +87,5 @@ following pages.
 
 /docs/architecture/deployment-execution/resource-registration
 /docs/architecture/deployment-execution/state
+/docs/architecture/deployment-execution/import
 :::

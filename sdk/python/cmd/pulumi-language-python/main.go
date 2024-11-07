@@ -255,7 +255,7 @@ func newLanguageHost(exec, engineAddress, tracing, typechecker string,
 }
 
 func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -392,7 +392,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 // createEngineWriters creates a pair of writers that can be used to log messages to the engine.
 func (host *pythonLanguageHost) createEngineWriters(ctx context.Context) (io.Writer, io.Writer, error) {
 	// Make a connection to the real engine that we will log messages to.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

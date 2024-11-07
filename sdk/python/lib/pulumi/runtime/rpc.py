@@ -214,15 +214,26 @@ async def serialize_properties(
     for k in inputs:
         v = inputs[k]
         deps: List["Resource"] = []
-        result = await serialize_property(
-            v,
-            deps,
-            k,
-            resource_obj,
-            input_transformer,
-            get_type(k),
-            keep_output_values,
-        )
+        try:
+            result = await serialize_property(
+                v,
+                deps,
+                k,
+                resource_obj,
+                input_transformer,
+                get_type(k),
+                keep_output_values,
+            )
+        except ValueError as e:
+            raise ValueError(
+                f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
+                + f"ValueError has risen: {e}"
+            ) from e
+        except AssertionError as e:
+            raise AssertionError(
+                f"While processing input: {repr(k)}, type {type(k)}, value {repr(v)}\n"
+                + f"AssertionError has risen: {e}"
+            ) from e
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the
@@ -621,6 +632,7 @@ async def serialize_property(
                 types = _types.input_type_types(typ)
                 # pylint: disable=C3001
                 translate = lambda k: py_name_to_pulumi_name.get(k) or k
+
                 get_type = types.get
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
@@ -1201,6 +1213,7 @@ def translate_output_properties(
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
                         translate = lambda k: k
+
             elif return_none_on_dict_type_mismatch:
                 return None
             else:
@@ -1339,6 +1352,7 @@ def resolve_outputs(
     )
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
+
         # pylint: disable=C3001
         translate = lambda prop: pulumi_to_py_names.get(prop) or prop
         # pylint: disable=C3001

@@ -63,10 +63,11 @@ func newStackInitCmd() *cobra.Command {
 			"* `pulumi stack init --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
 			"* `pulumi stack init --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
 			"* `pulumi stack init --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"\n`" +
+			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"`\n" +
 			"\n" +
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
-			"`--copy-config-from` flag.\n" +
+			"`--copy-config-from` flag:\n" +
+			"\n" +
 			"* `pulumi stack init --copy-config-from dev`",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

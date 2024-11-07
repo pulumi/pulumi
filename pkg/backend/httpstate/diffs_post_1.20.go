@@ -83,7 +83,7 @@ func (s *spanner) finish() ([]byte, spans) {
 }
 
 func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, error) {
-	// one span for {"manifest":...,"secrets_providers":...,"resources":[
+	// one span for {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
 	// len(resources) spans for resources,
 	// one span for ],"pendingOperations":[
 	// len(operations) spans for operations
@@ -101,6 +101,10 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, 
 		if err := encoder.Encode(d.SecretsProviders); err != nil {
 			return spans{}, err
 		}
+	}
+	spanner.WriteString(`,"metadata":`)
+	if err := encoder.Encode(d.Metadata); err != nil {
+		return spans{}, err
 	}
 
 	if len(d.Resources) > 0 {

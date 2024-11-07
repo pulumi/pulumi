@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1225,6 +1226,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
+	// Once we start an update we want to keep the machine from sleeping.
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
@@ -1317,6 +1319,9 @@ func (b *cloudBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	resetKeepRunning := nosleep.KeepRunning()
+	defer resetKeepRunning()
+
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {

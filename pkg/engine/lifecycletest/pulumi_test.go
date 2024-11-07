@@ -2587,7 +2587,7 @@ func (ctx *updateContext) GetRequiredPlugins(_ context.Context,
 
 func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	// Connect to the resource monitor and create an appropriate client.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		req.MonitorAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

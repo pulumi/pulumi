@@ -18,55 +18,85 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// Simplifies non-mutating edits on resource.State
+// stateBuilder offers a fluent API for making edits to a resource.State object in a way that avoids mutation and
+// allocation where possible.
 type stateBuilder struct {
 	state    resource.State
 	original *resource.State
 	edited   bool
 }
 
+// newStateBuilder creates a new builder atop the given state.
 func newStateBuilder(state *resource.State) *stateBuilder {
-	return &stateBuilder{*(state.Copy()), state, false}
+	return &stateBuilder{
+		state:    *(state.Copy()),
+		original: state,
+		edited:   false,
+	}
 }
 
+// withUpdatedURN updates the URN of the state being modified using the given function.
 func (sb *stateBuilder) withUpdatedURN(update func(resource.URN) resource.URN) *stateBuilder {
 	sb.setURN(&sb.state.URN, update(sb.state.URN))
 	return sb
 }
 
-func (sb *stateBuilder) withUpdatedParent(update func(resource.URN) resource.URN) *stateBuilder {
-	if sb.state.Parent != "" {
-		sb.setURN(&sb.state.Parent, update(sb.state.Parent))
+// withAllUpdatedDependencies updates all dependencies in the state being modified using the given functions to modify
+// the provider reference and any URNs encountered respectively. A third function may be supplied in order to determine
+// which dependency types should be targeted.
+func (sb *stateBuilder) withAllUpdatedDependencies(
+	updateProviderRef func(string) string,
+	updateURN func(resource.URN) resource.URN,
+	include func(dep resource.StateDependency) bool,
+) *stateBuilder {
+	provider, allDeps := sb.state.GetAllDependencies()
+	if provider != "" {
+		sb.setString(&sb.state.Provider, updateProviderRef(provider))
 	}
-	return sb
-}
 
-func (sb *stateBuilder) withUpdatedProvider(update func(string) string) *stateBuilder {
-	if sb.state.Provider != "" {
-		sb.setString(&sb.state.Provider, update(sb.state.Provider))
-	}
-	return sb
-}
+	editedDeps := false
+	newDeps := []resource.URN{}
 
-func (sb *stateBuilder) withUpdatedDependencies(update func(resource.URN) resource.URN) *stateBuilder {
-	var edited bool
-	edited, sb.state.Dependencies = sb.updateURNSlice(sb.state.Dependencies, update)
-	sb.edited = sb.edited || edited
-	return sb
-}
+	editedPropDeps := false
+	newPropDeps := map[resource.PropertyKey][]resource.URN{}
 
-func (sb *stateBuilder) withUpdatedPropertyDependencies(update func(resource.URN) resource.URN) *stateBuilder {
-	m := map[resource.PropertyKey][]resource.URN{}
-	edited := false
-	for k, urns := range sb.state.PropertyDependencies {
-		var edit bool
-		edit, m[k] = sb.updateURNSlice(urns, update)
-		edited = edited || edit
+	for _, dep := range allDeps {
+		if include != nil && !include(dep) {
+			continue
+		}
+
+		switch dep.Type {
+		case resource.ResourceParent:
+			sb.setURN(&sb.state.Parent, updateURN(sb.state.Parent))
+		case resource.ResourceDependency:
+			newURN := updateURN(dep.URN)
+			newDeps = append(newDeps, newURN)
+
+			if newURN != dep.URN {
+				editedDeps = true
+			}
+		case resource.ResourcePropertyDependency:
+			newURN := updateURN(dep.URN)
+			newPropDeps[dep.Key] = append(newPropDeps[dep.Key], newURN)
+
+			if newURN != dep.URN {
+				editedPropDeps = true
+			}
+		case resource.ResourceDeletedWith:
+			sb.setURN(&sb.state.DeletedWith, updateURN(sb.state.DeletedWith))
+		}
 	}
-	if edited {
-		sb.state.PropertyDependencies = m
+
+	// Only update dependencies and property dependencies if we've actually made changes.
+	if editedDeps {
+		sb.state.Dependencies = newDeps
+		sb.edited = true
 	}
-	sb.edited = sb.edited || edited
+	if editedPropDeps {
+		sb.state.PropertyDependencies = newPropDeps
+		sb.edited = true
+	}
+
 	return sb
 }
 
@@ -79,6 +109,8 @@ func (sb *stateBuilder) withUpdatedAliases() *stateBuilder {
 	return sb
 }
 
+// build returns the resulting state object. If no visible changes have been made, build will return the original object
+// unmodified.
 func (sb *stateBuilder) build() *resource.State {
 	if !sb.edited {
 		return sb.original
@@ -102,26 +134,4 @@ func (sb *stateBuilder) setURN(loc *resource.URN, value resource.URN) {
 	}
 	sb.edited = true
 	*loc = value
-}
-
-// internal
-func (sb *stateBuilder) updateURNSlice(
-	slice []resource.URN,
-	update func(resource.URN) resource.URN,
-) (bool, []resource.URN) {
-	needsUpdate := false
-	for _, urn := range slice {
-		if update(urn) != urn {
-			needsUpdate = true
-			break
-		}
-	}
-	if !needsUpdate {
-		return false, slice
-	}
-	updated := make([]resource.URN, len(slice))
-	for i, urn := range slice {
-		updated[i] = update(urn)
-	}
-	return true, updated
 }

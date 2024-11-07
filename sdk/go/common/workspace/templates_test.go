@@ -204,3 +204,266 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest
+func TestCopyTemplateFiles(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		testName    string
+		directories []string
+		files       []string
+	}{
+		{
+			testName: "FlatProject",
+			files:    []string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
+		},
+		{
+			testName:    "NestedProject",
+			directories: []string{"src"},
+			files:       []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
+		},
+	}
+
+	setupTestData := func(t *testing.T, testDataDir string, files []string, directories []string) (string, string) {
+		err := os.MkdirAll(testDataDir, 0o700)
+		assert.NoError(t, err)
+
+		projectDir := testDataDir + "/project"
+		err = os.MkdirAll(projectDir, 0o700)
+		assert.NoError(t, err)
+
+		copyDestDir := testDataDir + "/tmp"
+		err = os.MkdirAll(copyDestDir, 0o700)
+		assert.NoError(t, err)
+
+		for _, dirName := range directories {
+			err := os.MkdirAll(projectDir+"/"+dirName, 0o700)
+			assert.NoError(t, err)
+		}
+
+		for _, fileName := range files {
+			err := os.WriteFile(projectDir+"/"+fileName, []byte("testing"), 0o600)
+			assert.NoError(t, err)
+		}
+
+		return projectDir, copyDestDir
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-Copy"
+
+			defer func() {
+				err := os.RemoveAll(testDataDir)
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-CopyForce"
+
+			defer func() {
+				err := os.RemoveAll(testDataDir)
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-Overwrite"
+
+			defer func() {
+				err := os.RemoveAll(testDataDir)
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+			// copy the same files again to test overwriting - expect error
+			err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+			assert.Error(t, err)
+		})
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
+			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
+
+			defer func() {
+				err := os.RemoveAll(testDataDir)
+				assert.NoError(t, err)
+			}()
+
+			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
+
+			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+			// copy the same files again to test overwriting - expect no error with force
+			err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+			assert.NoError(t, err)
+		})
+	}
+
+	t.Run("Overwrite directory over file: force=false", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFile"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the src directory in the destination dir to a file
+		err = os.RemoveAll(copyDestDir + "/src")
+		assert.NoError(t, err)
+
+		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect error
+		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+		assert.Error(t, err)
+	})
+
+	t.Run("Overwrite directory over file: force=true", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFileForce"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the src directory in the destination dir to a file
+		err = os.RemoveAll(copyDestDir + "/src")
+		assert.NoError(t, err)
+
+		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect no error with force
+		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+	})
+
+	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectory"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the Pulumi.dev.yaml file in the destination dir to a dir
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
+		assert.NoError(t, err)
+
+		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect error
+		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
+		assert.Error(t, err)
+	})
+
+	t.Run("Overwrite file over empty directory: force=true", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectoryForce"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the Pulumi.dev.yaml file in the destination dir to a dir
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
+		assert.NoError(t, err)
+
+		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect no error with force
+		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+	})
+
+	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
+		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverNonEmptyDirectoryWithForce"
+
+		defer func() {
+			err := os.RemoveAll(testDataDir)
+			assert.NoError(t, err)
+		}()
+
+		directories := []string{"src"}
+		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
+
+		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
+
+		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+
+		// change the Pulumi.dev.yaml file in the destination dir to a dir
+		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
+		assert.NoError(t, err)
+
+		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
+		assert.NoError(t, err)
+
+		// add a file to the dir
+		err = os.WriteFile(copyDestDir+"/Pulumi.dev.yaml/README.md", []byte("testing"), 0o600)
+		assert.NoError(t, err)
+
+		// copy the same files again to test overwriting - expect no error with force
+		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
+		assert.NoError(t, err)
+	})
+}

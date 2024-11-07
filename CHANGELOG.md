@@ -1,5 +1,62 @@
 # Changelog
 
+## 3.138.0 (2024-11-06)
+
+
+### Features
+
+- [backend/diy] Keep computer awake while an update is running
+  [#17699](https://github.com/pulumi/pulumi/pull/17699)
+
+- [backend/service] Keep computer awake while an update is running
+  [#17699](https://github.com/pulumi/pulumi/pull/17699)
+  [#17675](https://github.com/pulumi/pulumi/pull/17675)
+
+- [cli] Add interactive account selection to pulumi login command
+  [#17618](https://github.com/pulumi/pulumi/pull/17618)
+
+- [cli/display] Colorize selected stack when listing
+  [#17606](https://github.com/pulumi/pulumi/pull/17606)
+
+- [engine] Persist metadata about snapshot integrity errors
+  [#17291](https://github.com/pulumi/pulumi/pull/17291)
+
+- [programgen] Implement package descriptor blocks in PCL to load parameterized packages
+  [#17589](https://github.com/pulumi/pulumi/pull/17589)
+
+- [sdk/nodejs] Support Node.js 23
+  [#17639](https://github.com/pulumi/pulumi/pull/17639)
+
+
+### Bug Fixes
+
+- [docs] Fix spacing and formatting of `stack init` command's long doc
+  [#17534](https://github.com/pulumi/pulumi/pull/17534)
+
+- [engine] Spot skipped-create dependencies even when inputs don't change
+  [#17633](https://github.com/pulumi/pulumi/pull/17633)
+
+- [engine] Normalize URNs in `DeletedWith` references
+  [#17666](https://github.com/pulumi/pulumi/pull/17666)
+
+- [engine] Disable the enviromental GITHUB_TOKEN on 403 responses
+  [#17671](https://github.com/pulumi/pulumi/pull/17671)
+
+- [sdk/go] Overwrite directories in workspace.CopyTemplateFiles when called with force=true
+  [#17695](https://github.com/pulumi/pulumi/pull/17695)
+
+- [sdk/python] Add additional debug information to `ValueError` and `AssertionError`
+  [#17577](https://github.com/pulumi/pulumi/pull/17577)
+
+
+### Miscellaneous
+
+- [docs] Update function comments to remove outdated DIY backend note
+  [#17563](https://github.com/pulumi/pulumi/pull/17563)
+
+- [yaml] Update YAML to 1.11.2
+  [#17637](https://github.com/pulumi/pulumi/pull/17637)
+
 ## 3.137.0 (2024-10-17)
 
 

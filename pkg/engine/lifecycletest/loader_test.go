@@ -74,7 +74,7 @@ func TestLoader(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Check we can connect to the schema loader and query a schema.
-		conn, err := grpc.Dial(
+		conn, err := grpc.NewClient(
 			info.LoaderAddress,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
