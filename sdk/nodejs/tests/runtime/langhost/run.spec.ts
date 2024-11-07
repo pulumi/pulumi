@@ -1614,6 +1614,7 @@ describe("rpc", () => {
                 let rootResource: string | undefined;
                 let regCnt = 0;
                 let logCnt = 0;
+                let logError = undefined; // Used to track errors or assertion failures in the log callback
                 const monitor = await createMockEngineAsync(
                     opts,
                     // Invoke callback
@@ -1743,7 +1744,11 @@ describe("rpc", () => {
                             if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
                                 logCnt++;
                                 if (opts.log) {
-                                    opts.log(ctx, severity, message, urn, streamId);
+                                    try {
+                                        opts.log(ctx, severity, message, urn, streamId);
+                                    } catch (e) {
+                                        logError = e
+                                    }
                                 }
                             }
                         }
@@ -1825,6 +1830,10 @@ describe("rpc", () => {
                     if (logs.count) {
                         assert.strictEqual(logCnt, logs.count, `Expected exactly ${logs.count} logs; got ${logCnt}`);
                     }
+                }
+
+                if (logError) {
+                    assert.fail(logError)
                 }
             }
         });
