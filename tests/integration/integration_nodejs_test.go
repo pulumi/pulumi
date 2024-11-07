@@ -2133,6 +2133,11 @@ func TestConstructFailuresNode(t *testing.T) {
 	testConstructFailures(t, "nodejs", "@pulumi/pulumi")
 }
 
+func TestCallFailuresNode(t *testing.T) {
+	t.Parallel()
+	testCallFailures(t, "nodejs", "@pulumi/pulumi")
+}
+
 // TestLogDebugNode tests that the amount of debug logs is reasonable.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

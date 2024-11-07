@@ -2505,6 +2505,11 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
@@ -2517,6 +2522,15 @@ func TestCall(t *testing.T) {
 				},
 			}
 			wg.Done()
+		}()
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
 		}()
 
 		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
@@ -2592,6 +2606,20 @@ func TestCall(t *testing.T) {
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
+
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
+		}()
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
 			"test": resource.NewStringProperty("test-value"),
