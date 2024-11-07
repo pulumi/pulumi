@@ -128,26 +128,17 @@ func TestTokenSourceWithClient(t *testing.T) {
 		UpdateID:   "my-update",
 	}
 
+	renewLease := RenewLeaseFunc(apiClient, updateIdentifier, assumedExpires)
 	renewLeaseCalled := 0
-	renewLease := func(
+	renewLeaseWrapped := func(
 		ctx context.Context,
 		duration time.Duration,
 		currentToken string,
 	) (string, time.Time, error) {
 		renewLeaseCalled++
-		tok, err := apiClient.RenewUpdateLease(
-			ctx, updateIdentifier, currentToken, duration)
-		if err != nil {
-			// Translate 403 status codes to expired token errors to stop the token refresh loop.
-			var apierr *apitype.ErrorResponse
-			if errors.As(err, &apierr) && apierr.Code == 403 {
-				return "", time.Time{}, expiredTokenError{err}
-			}
-			return "", time.Time{}, err
-		}
-		return tok, assumedExpires(), err
+		return renewLease(ctx, duration, currentToken)
 	}
-	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, 20*time.Millisecond, renewLease)
+	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, 20*time.Millisecond, renewLeaseWrapped)
 	require.NoError(t, err)
 	defer ts.Close()
 
@@ -164,7 +155,7 @@ func TestTokenSourceWithClient(t *testing.T) {
 	// requests the http server gets, but need to switch the response type here.
 	response = "forbidden"
 
-	// The we're returning a 403 from the test httpserver.  This should cause the token source to stop requesting
+	// We're returning a 403 from the test httpserver.  This should cause the token source to stop requesting
 	// new tokens, and return an error.
 	_, err = ts.GetToken(ctx)
 	require.ErrorContains(t, err, "[403] Forbidden")
