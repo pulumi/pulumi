@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/diy
-  description: Keep computer awake while an update is running
