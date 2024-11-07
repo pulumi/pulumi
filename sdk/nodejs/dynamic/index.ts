@@ -127,7 +127,7 @@ export interface UpdateResult<Outputs = any> {
  */
 export interface Config {
     /**
-     *  get retrieves a configuration value by key. Returns None if the key is not present.
+     * get retrieves a configuration value by key. Returns undefined if the key is not present.
      *
      * @param key
      *  The key to lookup in the configuration. If no namespace is provided in the key, the project
@@ -162,8 +162,6 @@ export interface ConfigureRequest {
 export interface ResourceProvider<Inputs = any, Outputs = any> {
     /**
      * Configures the resource provider.
-     *
-     * @param config
      */
     configure?: (req: ConfigureRequest) => Promise<void>;
 

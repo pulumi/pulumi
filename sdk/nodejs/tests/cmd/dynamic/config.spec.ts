@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { Config } from "../../dynamic/config";
+import { Config } from "../../../cmd/dynamic-provider/config";
 
 describe("dynamic config", () => {
     it("exposes get to retrieve values", () => {

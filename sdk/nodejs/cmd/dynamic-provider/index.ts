@@ -18,7 +18,7 @@ import { getProject } from "../../metadata";
 import * as dynamic from "../../dynamic";
 import * as rpc from "../../runtime/rpc";
 import { version } from "../../version";
-import * as dynConfig from "../../dynamic/config";
+import * as dynConfig from "./config";
 
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
@@ -56,13 +56,15 @@ process.on("exit", (code: number) => {
     }
 });
 
-const providerCache: { [key: string]: dynamic.ResourceProvider } = {};
+const providerCache: Record<string, dynamic.ResourceProvider> = {};
 
-// getProvider deserializes the provider from the string found in
-// `props[providerKey]` and calls `provider.configure` with the config. The
-// deserialized and configured provider is stored in `providerCache`. This
-// guarantees that the provider is only deserialized and configured once per
-// process.
+/**
+ * getProvider deserializes the provider from the string found in
+ * `props[providerKey]` and calls `provider.configure` with the config. The
+ * deserialized and configured provider is stored in `providerCache`. This
+ * guarantees that the provider is only deserialized and configured once per
+ * process.
+ */
 async function getProvider(props: any, rawConfig: Record<string, any>): Promise<dynamic.ResourceProvider> {
     const providerString = props[providerKey];
     let provider: any = providerCache[providerString];
@@ -71,21 +73,13 @@ async function getProvider(props: any, rawConfig: Record<string, any>): Promise<
         providerCache[providerString] = provider;
         if (provider.configure) {
             const config = new dynConfig.Config(rawConfig, getProject());
-            const req = new ConfigureRequest(config);
+            const req: dynamic.ConfigureRequest = { config };
             await provider.configure(req);
         }
     }
 
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
     return provider;
-}
-
-class ConfigureRequest implements dynamic.ConfigureRequest {
-    public readonly config: dynamic.Config;
-
-    constructor(config: dynamic.Config) {
-        this.config = config;
-    }
 }
 
 // Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD
@@ -110,7 +104,11 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         call: grpc.ServerUnaryCall<provproto.ConfigureRequest, provproto.ConfigureResponse>,
         callback: any,
     ): Promise<void> {
-        const args = call.request.getArgs()!.toJavaScript();
+        const protoArgs = call.request.getArgs();
+        if (!protoArgs) {
+            throw new Error("ConfigureRequest missing args");
+        }
+        const args = protoArgs.toObject();
         const config: Record<string, any> = {};
         for (const [k, v] of Object.entries(args)) {
             if (k === providerKey) {

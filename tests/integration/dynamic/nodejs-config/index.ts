@@ -27,7 +27,7 @@ class DummyResourceProvider implements pulumi.dynamic.ResourceProvider {
 
     async configure(req: pulumi.dynamic.ConfigureRequest): Promise<any> {
         this.password = req.config.require("password");
-        this.color = req.config.get("colors:banana") || "blue";
+        this.color = req.config.get("colors:banana") ?? "blue";
     }
 
     async create(props: any): Promise<pulumi.dynamic.CreateResult> {

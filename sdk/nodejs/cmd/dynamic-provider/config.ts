@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as dynamic from ".";
+import * as dynamic from "../../dynamic";
 
 const configSeparator = `:`;
 
