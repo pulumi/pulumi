@@ -96,6 +96,13 @@ async function getProvider(props: any, rawConfig: Record<string, any>): Promise<
 class ResourceProviderService implements provrpc.IResourceProviderServer {
     [method: string]: grpc.UntypedHandleCall;
 
+    // Ideally we'd type the config as `Record<string, any>`, but since we
+    // implement `IResourceProviderServer`, we require the `[method: string`]
+    // index signature to satisfy the interface. This is a bit unfortunate and
+    // means we can't have a strongly typed `config` property. We'll just use
+    // `any` here.
+    private config: any
+
     cancel(call: any, callback: any): void {
         callback(undefined, new emptyproto.Empty());
     }
@@ -116,7 +123,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             }
             config[k] = rpc.unwrapRpcSecret(v);
         }
-        this.config = config as any;
+        this.config = config;
         const resp = new provproto.ConfigureResponse();
         resp.setAcceptsecrets(false);
         callback(undefined, resp);
