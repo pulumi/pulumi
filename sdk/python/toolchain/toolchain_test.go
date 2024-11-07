@@ -392,7 +392,8 @@ func TestErrorWithStderr(t *testing.T) {
 	require.Equal(t, "the error message: error", errorWithStderr(err, "the error message").Error())
 
 	exitErr := &exec.ExitError{ProcessState: &os.ProcessState{}, Stderr: []byte("command said something")}
-	require.Equal(t, "the error message: exit status 0: command said something", errorWithStderr(exitErr, "the error message").Error())
+	require.Equal(t, "the error message: exit status 0: command said something",
+		errorWithStderr(exitErr, "the error message").Error())
 
 	exitErrNoStderr := &exec.ExitError{ProcessState: &os.ProcessState{}}
 	require.Equal(t, "the error message: exit status 0", errorWithStderr(exitErrNoStderr, "the error message").Error())
