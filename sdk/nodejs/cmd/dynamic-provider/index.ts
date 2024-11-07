@@ -115,7 +115,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         if (!protoArgs) {
             throw new Error("ConfigureRequest missing args");
         }
-        const args = protoArgs.toObject();
+        const args = protoArgs.toJavaScript();
         const config: Record<string, any> = {};
         for (const [k, v] of Object.entries(args)) {
             if (k === providerKey) {
