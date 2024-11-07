@@ -1631,7 +1631,6 @@ describe("rpc", () => {
                 ignoreDebug: true,
             },
             log: (ctx: any, severity: any, message: string) => {
-                console.log(`flop2`, { ctx, message, severity, x: severity === engineproto.LogSeverity.WARNING });
                 if (severity === engineproto.LogSeverity.WARNING) {
                     if (message.indexOf(`Invalid option "dependsOn" passed to direct form provider function`) < 0) {
                         throw new Error("Unexpected warning: " + message);
