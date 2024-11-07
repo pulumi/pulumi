@@ -386,6 +386,8 @@ func (p *ProcessState) String() string {
 }
 
 func TestErrorWithStderr(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("error")
 	require.Equal(t, "the error message: error", errorWithStderr(err, "the error message").Error())
 

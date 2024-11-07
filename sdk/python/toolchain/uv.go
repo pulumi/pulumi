@@ -156,7 +156,9 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 					return fmt.Errorf("failed to remove %q", requirementsTxt)
 				}
 				if showOutput {
-					infoWriter.Write([]byte("Deleted requirements.txt, dependencies for this project are tracked in pyproject.toml\n"))
+					if _, err := infoWriter.Write([]byte("Deleted requirements.txt, dependencies for this project are tracked in pyproject.toml\n")); err != nil {
+						return fmt.Errorf("failed to write to infoWriter: %w", err)
+					}
 				}
 			}
 
