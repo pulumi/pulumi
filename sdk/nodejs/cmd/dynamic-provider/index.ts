@@ -63,7 +63,7 @@ const providerCache: { [key: string]: dynamic.ResourceProvider } = {};
 // deserialized and configured provider is stored in `providerCache`. This
 // guarantees that the provider is only deserialized and configured once per
 // process.
-function getProvider(props: any, rawConfig: Record<string, any>): dynamic.ResourceProvider {
+async function getProvider(props: any, rawConfig: Record<string, any>): Promise<dynamic.ResourceProvider> {
     const providerString = props[providerKey];
     let provider: any = providerCache[providerString];
     if (!provider) {
@@ -72,7 +72,7 @@ function getProvider(props: any, rawConfig: Record<string, any>): dynamic.Resour
         if (provider.configure) {
             const config = new dynConfig.Config(rawConfig, getProject());
             const req = new ConfigureRequest(config);
-            provider.configure(req);
+            await provider.configure(req);
         }
     }
 
@@ -150,7 +150,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             const olds = req.getOlds().toJavaScript();
             const news = req.getNews().toJavaScript();
-            const provider = getProvider(news[providerKey] === rpc.unknownValue ? olds : news, this.config);
+            const provider = await getProvider(news[providerKey] === rpc.unknownValue ? olds : news, this.config);
 
             let inputs: any = news;
             let failures: any[] = [];
@@ -213,7 +213,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             // time the provider was updated.
             const olds = req.getOlds().toJavaScript();
             const news = req.getNews().toJavaScript();
-            const provider = getProvider(news[providerKey] === rpc.unknownValue ? olds : news, this.config);
+            const provider = await getProvider(news[providerKey] === rpc.unknownValue ? olds : news, this.config);
             if (provider.diff) {
                 const result: any = await provider.diff(req.getId(), olds, news);
 
@@ -256,7 +256,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             const resp = new provproto.CreateResponse();
 
             const props = req.getProperties().toJavaScript();
-            const provider = getProvider(props, this.config);
+            const provider = await getProvider(props, this.config);
             const result = await provider.create(props);
             const resultProps = resultIncludingProvider(result.outs, props);
             resp.setId(result.id);
@@ -276,7 +276,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             const id = req.getId();
             const props = req.getProperties().toJavaScript();
-            const provider = getProvider(props, this.config);
+            const provider = await getProvider(props, this.config);
             if (provider.read) {
                 // If there's a read function, consult the provider. Ensure to propagate the special __provider
                 // value too, so that the provider's CRUD operations continue to function after a refresh.
@@ -306,7 +306,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             const news = req.getNews().toJavaScript();
 
             let result: any = {};
-            const provider = getProvider(news, this.config);
+            const provider = await getProvider(news, this.config);
             if (provider.update) {
                 result = (await provider.update(req.getId(), olds, news)) || {};
             }
