@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Colorize selected stack when listing

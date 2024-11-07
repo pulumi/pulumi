@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: "Add additional debug information to `ValueError` and `AssertionError`"
