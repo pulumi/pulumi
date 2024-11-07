@@ -470,6 +470,17 @@ func TestPulumiCLIMetadata(t *testing.T) {
 	}, actualEnv)
 }
 
+func TestAddEscMetadataToEnvironment(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]string{}
+
+	addEscMetadataToEnvironment(env, []string{"proj/env1", "proj/env2@stable"})
+
+	expected := "[{\"name\":\"proj/env1\"},{\"name\":\"proj/env2@stable\"}]"
+	assert.Equal(t, expected, env[backend.StackEnvironments])
+}
+
 // Tests that createStack will send an appropriate initial state when it is asked to create a stack with a non-default
 // secrets manager.
 func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {

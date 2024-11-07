@@ -113,14 +113,14 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
-		if err != nil {
-			return fmt.Errorf("gathering environment metadata: %w", err)
-		}
-
 		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
+		}
+
+		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
+		if err != nil {
+			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
 		decrypter, err := sm.Decrypter()
@@ -367,14 +367,14 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
-		if err != nil {
-			return fmt.Errorf("gathering environment metadata: %w", err)
-		}
-
 		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
+		}
+
+		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
+		if err != nil {
+			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
 		decrypter, err := sm.Decrypter()

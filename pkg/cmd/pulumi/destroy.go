@@ -202,11 +202,6 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
-			if err != nil {
-				return fmt.Errorf("gathering environment metadata: %w", err)
-			}
-
 			getConfig := getStackConfiguration
 			if stackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
@@ -216,6 +211,11 @@ func newDestroyCmd() *cobra.Command {
 			cfg, sm, err := getConfig(ctx, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
+			}
+
+			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cfg, cmd.Flags())
+			if err != nil {
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
