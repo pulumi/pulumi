@@ -1822,6 +1822,30 @@ func TestErrorCreateDynamicNode(t *testing.T) {
 	})
 }
 
+// Tests configuration for dynamic providers
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderConfig(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-config"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Secrets: map[string]string{
+			"password":      "s3cret",
+			"colors:banana": "yellow",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the resulting output had the expected value
+			code, ok := stackInfo.Outputs["authenticated"].(string)
+			assert.True(t, ok)
+			assert.Equal(t, "200", code)
+
+			color, ok := stackInfo.Outputs["color"].(string)
+			assert.True(t, ok)
+			assert.Equal(t, "yellow", color)
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
