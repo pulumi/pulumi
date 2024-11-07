@@ -122,6 +122,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
@@ -163,6 +164,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		env := os.Environ()
 		for k, v := range options {
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+		}
+		if projectName != "" {
+			env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", projectName))
 		}
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)

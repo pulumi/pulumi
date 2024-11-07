@@ -566,6 +566,41 @@ func TestDynamicProviderSecretsPython(t *testing.T) {
 	})
 }
 
+// Tests configuration for dynamic providers
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderConfig(t *testing.T) {
+	tests := []string{
+		"python-config",
+		"python-config-separate-module",
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir: filepath.Join("dynamic", test),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Secrets: map[string]string{
+					"password":      "s3cret",
+					"colors:banana": "yellow",
+				},
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Ensure the resulting output had the expected value
+					code, ok := stackInfo.Outputs["authenticated"].(string)
+					assert.True(t, ok)
+					assert.Equal(t, "200", code)
+
+					color, ok := stackInfo.Outputs["color"].(string)
+					assert.True(t, ok)
+					assert.Equal(t, "yellow", color)
+				},
+			})
+		})
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
