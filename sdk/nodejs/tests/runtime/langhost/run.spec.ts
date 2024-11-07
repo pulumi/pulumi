@@ -1747,7 +1747,7 @@ describe("rpc", () => {
                                     try {
                                         opts.log(ctx, severity, message, urn, streamId);
                                     } catch (e) {
-                                        logError = e
+                                        logError = e;
                                     }
                                 }
                             }
@@ -1833,7 +1833,7 @@ describe("rpc", () => {
                 }
 
                 if (logError) {
-                    assert.fail(logError)
+                    assert.fail(logError);
                 }
             }
         });
