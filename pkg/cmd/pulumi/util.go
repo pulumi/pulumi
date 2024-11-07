@@ -977,16 +977,12 @@ func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) 
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
 }
 
-type EscEnvironmentMetadata struct {
-	Name string `json:"name"`
-}
-
 // addEscMetadataToEnvironment populates the environment metadata bag with the ESC environments
 // used as part of the stack update.
 func addEscMetadataToEnvironment(env map[string]string, escEnvironments []string) {
-	envs := make([]EscEnvironmentMetadata, len(escEnvironments))
+	envs := make([]apitype.EscEnvironmentMetadata, len(escEnvironments))
 	for i, s := range escEnvironments {
-		envs[i] = EscEnvironmentMetadata{Name: s}
+		envs[i] = apitype.EscEnvironmentMetadata{ID: s}
 	}
 
 	jsonData, err := json.Marshal(envs)

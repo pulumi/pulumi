@@ -477,7 +477,7 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 
 	addEscMetadataToEnvironment(env, []string{"proj/env1", "proj/env2@stable"})
 
-	expected := "[{\"name\":\"proj/env1\"},{\"name\":\"proj/env2@stable\"}]"
+	expected := "[{\"id\":\"proj/env1\"},{\"id\":\"proj/env2@stable\"}]"
 	assert.Equal(t, expected, env[backend.StackEnvironments])
 }
 
