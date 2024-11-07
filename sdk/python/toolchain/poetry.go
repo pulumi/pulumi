@@ -249,7 +249,9 @@ func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
 	return virtualenvPath, nil
 }
 
-func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, showOutput bool, infoWriter io.Writer) error {
+func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, showOutput bool,
+	infoWriter io.Writer,
+) error {
 	f, err := os.Open(requirementsTxt)
 	if err != nil {
 		return fmt.Errorf("failed to open %q", requirementsTxt)
