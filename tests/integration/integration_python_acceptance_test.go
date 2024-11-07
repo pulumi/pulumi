@@ -728,13 +728,14 @@ in-project = true`
 	template := "python"
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
+	out, _ := e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
 		"--name", "test_project",
 		"--description", "A python test using poetry as toolchain",
 		"--stack", "test",
 		"--runtime-options", "toolchain=poetry",
 	)
 
+	require.Contains(t, out, "Deleted requirements.txt")
 	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
 	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
 
