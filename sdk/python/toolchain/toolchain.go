@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -195,4 +196,16 @@ func searchup(currentDir, fileToFind string) (string, error) {
 		return "", os.ErrNotExist
 	}
 	return searchup(parentDir, fileToFind)
+}
+
+// errorWithStderr returns an error that includes the stderr output if the error is an ExitError.
+func errorWithStderr(err error, message string) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		stderr := strings.TrimSpace(string(exitErr.Stderr))
+		if len(stderr) > 0 {
+			return fmt.Errorf("%s: %w: %s", message, exitErr, exitErr.Stderr)
+		}
+	}
+	return fmt.Errorf("%s: %w", message, err)
 }

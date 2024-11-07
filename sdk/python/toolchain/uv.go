@@ -128,7 +128,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter,
 				"init", "--no-readme", "--no-package", "--no-pin-python")
 			if err := initCmd.Run(); err != nil {
-				return fmt.Errorf("error initializing python project: %w", err)
+				return errorWithStderr(err, "error initializing python project")
 			}
 
 			// `uv init` creates a `hello.py` file, delete it.
@@ -140,7 +140,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
 				if err := addCmd.Run(); err != nil {
-					return fmt.Errorf("error installing dependecies from requirements.txt: %w", err)
+					return errorWithStderr(err, "error installing dependecies from requirements.txt")
 				}
 				// Remove the requirements.txt file, after calling `uv add`, the
 				// dependencies are tracked in pyproject.toml.
@@ -156,7 +156,10 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
-	return syncCmd.Run()
+	if err := syncCmd.Run(); err != nil {
+		return errorWithStderr(err, "error installing dependencies")
+	}
+	return nil
 }
 
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
@@ -164,7 +167,7 @@ func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools
 ) error {
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
-		return fmt.Errorf("error creating virtual environment: %w", err)
+		return errorWithStderr(err, "error creating virtual environment")
 	}
 
 	return nil
