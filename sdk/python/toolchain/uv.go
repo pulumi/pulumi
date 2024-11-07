@@ -123,20 +123,28 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
 			}
+			// No pyproject.toml found, we'll create it with `uv init`.
+			// First we'll look for a requirements.txt file. If we find one, we'll use the directory
+			// that contains the requirements.txt file as the directory for `pyproject.toml`.
+			// We'll also install the dependencies from the requirements.txt file., and then
+			// remove the requirements.txt file.
+			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
+			pyprojectTomlDir := cwd
+			hasRequirementsTxt := false
+			if err == nil {
+				pyprojectTomlDir = requirementsTxtDir
+				hasRequirementsTxt = true
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
+			}
 
-			// No pyproject.toml found, create one using `uv`
-			initCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter,
+			initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter,
 				"init", "--no-readme", "--no-package", "--no-pin-python")
 			if err := initCmd.Run(); err != nil {
 				return errorWithStderr(err, "error initializing python project")
 			}
 
-			// `uv init` creates a `hello.py` file, delete it.
-			contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
-
-			// Look for a requirements.txt file and use it to install dependencies
-			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
-			if err == nil {
+			if hasRequirementsTxt {
 				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
 				if err := addCmd.Run(); err != nil {
@@ -147,9 +155,13 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 				if err := os.Remove(requirementsTxt); err != nil {
 					return fmt.Errorf("failed to remove %q", requirementsTxt)
 				}
-			} else if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
+				if showOutput {
+					infoWriter.Write([]byte("Deleted requirements.txt, dependencies for this project are tracked in pyproject.toml\n"))
+				}
 			}
+
+			// `uv init` creates a `hello.py` file, delete it.
+			contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
 		}
 	}
 

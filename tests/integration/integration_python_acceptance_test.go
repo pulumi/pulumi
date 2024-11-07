@@ -464,6 +464,48 @@ func TestUv(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("convert requirements.txt", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Parallel()
+		}
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		e.ImportDirectory(filepath.Join("python", "uv-convert-requirements"))
+
+		e.RunCommand("pulumi", "install")
+
+		venv := filepath.Join(e.RootPath, "my-venv")
+		if !toolchain.IsVirtualEnv(venv) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+		}
+
+		require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml should have been created")
+		require.False(t, e.PathExists("requirements.txt"), "requirements.txt should have been deleted")
+	})
+
+	t.Run("convert requirements.txt subfolder", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Parallel()
+		}
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		e.ImportDirectory(filepath.Join("python", "uv-convert-requirements-subfolder"))
+		e.CWD = filepath.Join(e.RootPath, "subfolder")
+
+		e.RunCommand("pulumi", "install")
+
+		venv := filepath.Join(e.RootPath, "subfolder", "my-venv")
+		if !toolchain.IsVirtualEnv(venv) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+		}
+
+		e.CWD = e.RootPath // Reset the CWD so we can use e.PathExists
+		require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml should have been created")
+		require.False(t, e.PathExists("requirements.txt"), "requirements.txt should have been deleted")
+	})
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
