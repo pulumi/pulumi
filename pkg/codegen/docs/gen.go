@@ -217,6 +217,10 @@ type docGenContext struct {
 	moduleConflictLinkMap map[interface{}]string
 
 	constructorSyntaxData *constructorSyntaxData
+
+	// docGenContext should not be copied to prevent decentralization between fields, i.e. map mutations
+	// will persist between copied but appending to arrays will be witnessed only by a single copy.
+	_ noCopy
 }
 
 // modules is a map of a module name and information
@@ -2520,7 +2524,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 	dctx.setModules(dctx.generateModulesFromSchemaPackage(tool, pkg))
 }
 
-func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func (dctx *docGenContext) generatePackage() (map[string][]byte, error) {
 	if dctx.modules() == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
@@ -2590,14 +2594,54 @@ func Initialize(tool string, pkg *schema.Package) {
 	defaultContext.initialize(tool, pkg)
 }
 
-// GeneratePackage generates docs for each resource given the Pulumi
-// schema. The returned map contains the filename with path as the key
-// and the contents as its value.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	return defaultContext.generatePackage(tool, pkg)
+// Context provides ambient context for docs generation.
+//
+// Context should be created with [NewContext]. The zero value of Context is not safe to use.
+type Context struct{ *docGenContext }
+
+// NewContext creates a new [Context] for docs generation.
+//
+// Operations on the generated [Context] use tool and pkg.
+func NewContext(tool string, pkg *schema.Package) Context {
+	c := newDocGenContext()
+	c.initialize(tool, pkg)
+	return Context{c}
 }
 
-// GeneratePackageTree returns a navigable structure starting from the top-most module.
+// GeneratePackage generates docs for each resource given the Pulumi schema. The
+// returned map contains the filename with path as the key and the contents as
+// its value.
+func (c Context) GeneratePackage() (map[string][]byte, error) {
+	if c.docGenContext == nil {
+		return nil, errors.New("cannot use zero value of Context. You must call NewContext")
+	}
+	return c.generatePackage()
+}
+
+// GeneratePackageTree returns a navigable structure starting from the top-most
+// module.
+func (c Context) GeneratePackageTree() ([]PackageTreeItem, error) {
+	if c.docGenContext == nil {
+		return nil, errors.New("cannot use zero value of Context. You must call NewContext")
+	}
+	return c.generatePackageTree()
+}
+
+// GeneratePackage generates docs for each resource given the Pulumi schema. The
+// returned map contains the filename with path as the key and the contents as
+// its value.
+//
+// GeneratePackage is not safe to call in parallel. See [NewContext] and
+// [Context.GeneratePackage] for parallel docs generation.
+func GeneratePackage(string, *schema.Package) (map[string][]byte, error) {
+	return defaultContext.generatePackage()
+}
+
+// GeneratePackageTree returns a navigable structure starting from the top-most
+// module.
+//
+// GeneratePackageTree is not safe to call in parallel. See [NewContext] and
+// [Context.GeneratePackageTree] for parallel docs generation.
 func GeneratePackageTree() ([]PackageTreeItem, error) {
 	return defaultContext.generatePackageTree()
 }

@@ -133,3 +133,11 @@ func removeLeadingUnderscores(s string) string {
 	}
 	return sb.String()
 }
+
+// noCopy tells go vet that any type that contains this type should not be copied.
+//
+// https://github.com/golang/go/issues/8005#issuecomment-190753527
+type noCopy struct{}
+
+// Lock is a type hint for go vet. It need not be called.
+func (*noCopy) Lock() {}
