@@ -101,7 +101,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
     // index signature to satisfy the interface. This is a bit unfortunate and
     // means we can't have a strongly typed `config` property. We'll just use
     // `any` here.
-    private config: any
+    private config: any;
 
     cancel(call: any, callback: any): void {
         callback(undefined, new emptyproto.Empty());
