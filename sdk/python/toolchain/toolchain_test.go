@@ -17,6 +17,7 @@ package toolchain
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -372,4 +373,28 @@ func normalizePath(t *testing.T, path string) string {
 	normDir, err := filepath.EvalSymlinks(dir)
 	require.NoError(t, err)
 	return filepath.Join(normDir, bin)
+}
+
+type ProcessState struct{}
+
+func (p *ProcessState) Pid() int {
+	return 123
+}
+
+func (p *ProcessState) String() string {
+	return "exit status 139 "
+}
+
+func TestErrorWithStderr(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("error")
+	require.Equal(t, "the error message: error", errorWithStderr(err, "the error message").Error())
+
+	exitErr := &exec.ExitError{ProcessState: &os.ProcessState{}, Stderr: []byte("command said something")}
+	require.Equal(t, "the error message: exit status 0: command said something",
+		errorWithStderr(exitErr, "the error message").Error())
+
+	exitErrNoStderr := &exec.ExitError{ProcessState: &os.ProcessState{}}
+	require.Equal(t, "the error message: exit status 0", errorWithStderr(exitErrNoStderr, "the error message").Error())
 }

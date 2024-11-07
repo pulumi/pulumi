@@ -228,6 +228,8 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Install poetry
         run: pipx install poetry
+      - name: Install uv
+        run: pipx install uv
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"

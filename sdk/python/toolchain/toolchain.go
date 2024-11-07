@@ -19,8 +19,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -42,6 +45,7 @@ type toolchain int
 const (
 	Pip toolchain = iota
 	Poetry
+	Uv
 )
 
 type PythonOptions struct {
@@ -94,6 +98,8 @@ func Name(tc toolchain) string {
 		return "Pip"
 	case Poetry:
 		return "Poetry"
+	case Uv:
+		return "Uv"
 	default:
 		return "Unknown"
 	}
@@ -106,6 +112,8 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 			dir = options.Root
 		}
 		return newPoetry(dir)
+	} else if options.Toolchain == Uv {
+		return newUv(options.Root, options.Virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
@@ -174,4 +182,30 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 		return fmt.Errorf("error while running pyenv install: %s", err)
 	}
 	return nil
+}
+
+func searchup(currentDir, fileToFind string) (string, error) {
+	if _, err := os.Stat(filepath.Join(currentDir, fileToFind)); err == nil {
+		return currentDir, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	parentDir := filepath.Dir(currentDir)
+	if currentDir == parentDir {
+		// Reached the root directory, file not found
+		return "", os.ErrNotExist
+	}
+	return searchup(parentDir, fileToFind)
+}
+
+// errorWithStderr returns an error that includes the stderr output if the error is an ExitError.
+func errorWithStderr(err error, message string) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		stderr := strings.TrimSpace(string(exitErr.Stderr))
+		if len(stderr) > 0 {
+			return fmt.Errorf("%s: %w: %s", message, exitErr, exitErr.Stderr)
+		}
+	}
+	return fmt.Errorf("%s: %w", message, err)
 }
