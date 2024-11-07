@@ -424,11 +424,13 @@ function resultIncludingProvider(result: any, props: any): any {
     });
 }
 
-// grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
-// resource. This is typically either a creation error, in which the API server has (virtually)
-// rejected the resource, or an initialization error, where the API server has accepted the
-// resource, but it failed to initialize (e.g., the app code is continually crashing and the
-// resource has failed to become alive).
+/**
+ * grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
+ * resource. This is typically either a creation error, in which the API server has (virtually)
+ * rejected the resource, or an initialization error, where the API server has accepted the
+ * resource, but it failed to initialize (e.g., the app code is continually crashing and the
+ * resource has failed to become alive).
+ */
 function grpcResponseFromError(e: {
     id: string;
     properties: any;
