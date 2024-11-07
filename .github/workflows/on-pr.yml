@@ -70,9 +70,8 @@ jobs:
       ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      # codegen tests take quite a while to run.
-      # Run them only if ci/test is set,
-      # or if one of the codegen files changed.
+      # codegen tests are not the fastest, but we want to run them
+      # on PR to get correct coverage numbers.
       test-codegen: true
       test-version-sets: >- # No newlines or trailing newline.
         ${{
