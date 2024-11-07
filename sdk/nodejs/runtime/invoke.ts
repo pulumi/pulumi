@@ -84,7 +84,17 @@ export function invoke(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
-    return invokeAsync(tok, props, opts, packageRef).then((response) => {
+    const optsCopy = { ...opts };
+    if ("dependsOn" in optsCopy) {
+        // DependsOn is only allowed for invokeOutput.
+        //@ts-ignore
+        optsCopy["dependsOn"] = undefined;
+        log.warn(
+            `Invalid option "dependsOn" passed to direct form provider function "${tok}", ignoring it. ` +
+                `Use the Output form "${tok}Output" instead to track additional dependencies with "dependsOn".`,
+        );
+    }
+    return invokeAsync(tok, props, optsCopy, packageRef).then((response) => {
         // ignore secrets for plain invoke
         const { result } = response;
         return result;

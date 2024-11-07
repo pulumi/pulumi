@@ -1594,8 +1594,8 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
-        invoke_depends_on: {
-            pwd: path.join(base, "075.invoke_depends_on"),
+        invoke_output_depends_on: {
+            pwd: path.join(base, "075.invoke_output_depends_on"),
             expectResourceCount: 1,
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(tok, "test:index:echo");
@@ -1603,8 +1603,8 @@ describe("rpc", () => {
                 return { failures: undefined, ret: args };
             },
         },
-        invoke_depends_on_non_resource: {
-            pwd: path.join(base, "076.invoke_depends_on_non_resource"),
+        invoke_output_depends_on_non_resource: {
+            pwd: path.join(base, "076.invoke_output_depends_on_non_resource"),
             expectResourceCount: 0,
             // We should get the error message saying that a message was reported and the
             // host should bail.
@@ -1617,6 +1617,24 @@ describe("rpc", () => {
                 if (severity === engineproto.LogSeverity.ERROR) {
                     if (message.indexOf("'dependsOn' was passed a value that was not a Resource.") < 0) {
                         throw new Error("Unexpected error: " + message);
+                    }
+                }
+            },
+        },
+        invoke_depends_on_invalid: {
+            pwd: path.join(base, "077.invoke_depends_on_invalid"),
+            expectResourceCount: 1,
+            expectBail: false,
+            // We should get a warning about the "dependsOn" option.
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                console.log(`flop2`, { ctx, message, severity, x: severity === engineproto.LogSeverity.WARNING });
+                if (severity === engineproto.LogSeverity.WARNING) {
+                    if (message.indexOf(`Invalid option "dependsOn" passed to direct form provider function`) < 0) {
+                        throw new Error("Unexpected warning: " + message);
                     }
                 }
             },

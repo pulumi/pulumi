@@ -25,6 +25,6 @@ const dependsOn = pulumi.output(
 // above. Without dependsOn, the invoke will be serialised before promise
 // resolution (since promises [microtasks] happen before timeout events
 // [macrotasks]).
-pulumi.runtime.invoke("test:index:echo", { dependency }, { dependsOn }).then((result) => {
+pulumi.runtime.invokeOutput("test:index:echo", { dependency }, { dependsOn }).apply((result) => {
     assert.strictEqual(result.dependency.resolved, true);
 });

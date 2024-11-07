@@ -3,4 +3,4 @@
 let pulumi = require("../../../../../");
 
 const dependsOn = pulumi.output(Promise.resolve([Promise.resolve(1)]));
-pulumi.runtime.invoke("test:index:echo", {}, { dependsOn });
+pulumi.runtime.invokeOutput("test:index:echo", {}, { dependsOn });
