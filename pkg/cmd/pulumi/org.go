@@ -88,6 +88,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			"projects and stacks for the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations. " +
+			"DIY backends (e.g. AWS S3 or Azure Blob Storage) do not support organizations." +
 			"If you try and set a default organization for a backend that does not \n" +
 			"support create organizations, then an error will be returned by the CLI",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
@@ -135,7 +136,10 @@ func newOrgListCmd() *cobra.Command {
 			"This command is used to list all of the organizations the user is a part of within " +
 			"the current backend.\n" +
 			"\n" +
-			"Currently, only the managed and self-hosted backends support organizations.",
+			"Currently, only the managed and self-hosted backends support organizations. " +
+			"DIY backends (e.g. AWS S3 or Azure Blob Storage) do not support organizations." +
+			"If you try and set a default organization for a backend that does not \n" +
+			"support create organizations, then an error will be returned by the CLI",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -193,7 +197,10 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"This command is used to get the default organization for which and stacks are created in " +
 			"the current backend.\n" +
 			"\n" +
-			"Currently, only the managed and self-hosted backends support organizations.",
+			"Currently, only the managed and self-hosted backends support organizations. " +
+			"DIY backends (e.g. AWS S3 or Azure Blob Storage) do not support organizations." +
+			"If you try and set a default organization for a backend that does not \n" +
+			"support create organizations, then an error will be returned by the CLI",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -241,7 +248,12 @@ func newOrgClearDefaultCmd() *cobra.Command {
 		Long: "Clear the local default organization for the current backend.\n" +
 			"\n" +
 			"This command is used to clear your local default organization \n" +
-			"for the current backend.\n",
+			"for the current backend.\n" +
+			"\n" +
+			"Currently, only the managed and self-hosted backends support organizations. " +
+			"DIY backends (e.g. AWS S3 or Azure Blob Storage) do not support organizations." +
+			"If you try and set a default organization for a backend that does not \n" +
+			"support create organizations, then an error will be returned by the CLI",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
