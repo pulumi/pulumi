@@ -472,7 +472,9 @@ jobs:
           pattern: coverage-*
           merge-multiple: true
           path: coverage
+      # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
+        if: github.event_name == 'pull_request'
         run: |
           curl -Os https://cli.codecov.io/latest/linux/codecov
           sudo chmod +x codecov
