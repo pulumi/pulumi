@@ -21,6 +21,7 @@ import (
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"golang.org/x/exp/maps"
@@ -51,6 +52,33 @@ type ResourceSpec struct {
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
 	// and identifying the causes of snapshot integrity issues.
 	Tags map[string]bool
+}
+
+// Creates a ResourceSpec from the given ResourceV3.
+func FromResourceV3(r apitype.ResourceV3) *ResourceSpec {
+	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
+	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
+	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
+
+	return &ResourceSpec{
+		Project:              r.URN.Project(),
+		Stack:                r.URN.Stack(),
+		Type:                 r.Type,
+		Name:                 r.URN.Name(),
+		Custom:               r.Custom,
+		Delete:               r.Delete,
+		ID:                   r.ID,
+		Protect:              r.Protect,
+		PendingReplacement:   r.PendingReplacement,
+		RetainOnDelete:       r.RetainOnDelete,
+		Provider:             r.Provider,
+		Parent:               r.Parent,
+		Dependencies:         deps,
+		PropertyDependencies: propDeps,
+		DeletedWith:          r.DeletedWith,
+		Aliases:              aliases,
+		Tags:                 map[string]bool{},
+	}
 }
 
 // AddTag adds the given tag to the given ResourceSpec. Ideally this would be a generic method on ResourceSpec itself,

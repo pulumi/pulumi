@@ -29,6 +29,11 @@ endif
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 
+# The number of Rapid checks to perform when fuzzing lifecycle tests. See the documentation on Rapid at
+# https://pkg.go.dev/pgregory.net/rapid#section-readme or the lifecycle test documentation under
+# pkg/engine/lifecycletest for more information.
+LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
+
 ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
@@ -124,6 +129,19 @@ test_all:: test_pkg test_integration
 
 test_lifecycle:
 	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest
+
+test_lifecycle_fuzz: GO_TEST_RACE = false
+test_lifecycle_fuzz: export PULUMI_LIFECYCLE_TEST_FUZZ := 1
+test_lifecycle_fuzz:
+	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
+		-run '^TestFuzz$$' \
+		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
+
+test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
+test_lifecycle_fuzz_from_state_file:
+	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
+		-run '^TestFuzzFromStateFile$$' \
+		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
 test_codegen_%: get_schemas

@@ -92,7 +92,13 @@ func (ps *PlanSpec) Pretty(indent string) string {
 
 // A set of options for configuring the generation of a PlanSpec.
 type PlanSpecOptions struct {
-	Operation   *rapid.Generator[OperationSpec]
+	// A generator for operations that might be planned.
+	Operation *rapid.Generator[OperationSpec]
+
+	// A source set of targets that should be used literally, skipping the target generation process.
+	SourceTargets []resource.URN
+
+	// A generator for the maximum number of resources to target in a plan.
 	TargetCount *rapid.Generator[int]
 }
 
@@ -100,6 +106,9 @@ type PlanSpecOptions struct {
 func (pso PlanSpecOptions) With(overrides PlanSpecOptions) PlanSpecOptions {
 	if overrides.Operation != nil {
 		pso.Operation = overrides.Operation
+	}
+	if overrides.SourceTargets != nil {
+		pso.SourceTargets = overrides.SourceTargets
 	}
 	if overrides.TargetCount != nil {
 		pso.TargetCount = overrides.TargetCount
@@ -111,8 +120,9 @@ func (pso PlanSpecOptions) With(overrides PlanSpecOptions) PlanSpecOptions {
 // A default set of PlanSpecOptions. By default, a PlanSpec will have a random operation and between 0 and 5 target
 // URNs.
 var defaultPlanSpecOptions = PlanSpecOptions{
-	Operation:   rapid.SampledFrom(operationSpecs),
-	TargetCount: rapid.IntRange(0, 5),
+	Operation:     rapid.SampledFrom(operationSpecs),
+	SourceTargets: nil,
+	TargetCount:   rapid.IntRange(0, 5),
 }
 
 var operationSpecs = []OperationSpec{
@@ -129,18 +139,22 @@ func GeneratedPlanSpec(ss *SnapshotSpec, pso PlanSpecOptions) *rapid.Generator[*
 	return rapid.Custom(func(t *rapid.T) *PlanSpec {
 		op := pso.Operation.Draw(t, "PlanSpec.Operation")
 
-		seen := map[resource.URN]bool{}
-		targetURNs := []resource.URN{}
+		var targetURNs []resource.URN
+		if len(pso.SourceTargets) > 0 {
+			targetURNs = pso.SourceTargets
+		} else {
+			seen := map[resource.URN]bool{}
 
-		targetCount := pso.TargetCount.Draw(t, "PlanSpec.TargetCount")
-		for i := 0; i < targetCount; i++ {
-			candidate := rapid.SampledFrom(ss.Resources).Draw(t, fmt.Sprintf("PlanSpec.TargetResource[%d]", i))
-			if seen[candidate.URN()] {
-				continue
+			targetCount := pso.TargetCount.Draw(t, "PlanSpec.TargetCount")
+			for i := 0; i < targetCount; i++ {
+				candidate := rapid.SampledFrom(ss.Resources).Draw(t, fmt.Sprintf("PlanSpec.TargetResource[%d]", i))
+				if seen[candidate.URN()] {
+					continue
+				}
+
+				seen[candidate.URN()] = true
+				targetURNs = append(targetURNs, candidate.URN())
 			}
-
-			seen[candidate.URN()] = true
-			targetURNs = append(targetURNs, candidate.URN())
 		}
 
 		ps := &PlanSpec{
