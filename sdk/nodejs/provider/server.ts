@@ -124,6 +124,27 @@ class Server implements grpc.UntypedServiceImplementation {
         callback(undefined, resp);
     }
 
+    public async parameterize(call: any, callback: any): Promise<void> {
+        if (!this.provider.parameterize) {
+            callback(new Error("parameterize not implemented"), undefined);
+            return;
+        }
+
+        let arg = null;
+        if (call.request.hasArgs()) {
+            arg = call.request.getArgs().getArgsList()[0];
+        } else {
+            const b64 = call.request.getValue().getValue_asB64();
+            arg = Buffer.from(b64, 'base64').toString('utf-8')
+        }
+        const res = await this.provider.parameterize(arg);
+
+        const resp = new provproto.ParameterizeResponse();
+        resp.setName(res.name);
+        resp.setVersion(res.version);
+        callback(undefined, resp);
+    }
+
     // CRUD resource methods
 
     public async check(call: any, callback: any): Promise<void> {

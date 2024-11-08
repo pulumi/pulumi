@@ -153,6 +153,11 @@ export interface InvokeResult {
     readonly failures?: CheckFailure[];
 }
 
+export interface ParameterizeResult {
+    name: string
+    version: string
+}
+
 /**
  * {@link Provider} represents an object that implements the resources and
  * functions for a particular Pulumi package.
@@ -167,6 +172,8 @@ export interface Provider {
      * The JSON-encoded schema for this provider's package.
      */
     schema?: string;
+
+    parameterize?: (req: string) => Promise<ParameterizeResult>;
 
     /**
      * Validates that the given property bag is valid for a resource of the

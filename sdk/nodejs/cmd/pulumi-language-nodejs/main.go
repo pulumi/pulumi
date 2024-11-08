@@ -43,6 +43,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/blang/semver"
@@ -1345,7 +1346,56 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	return errors.New("not supported")
+	logging.V(5).Infof("Attempting to run dotnet plugin in %s", req.Program)
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	executable := "yarn"
+	args := []string{"--silent", "start"}
+
+	// Add on all the request args to start this plugin
+	args = append(args, req.Args...)
+
+	if logging.V(5) {
+		commandStr := strings.Join(args, " ")
+		logging.V(5).Infoln("Language host launching process: ", executable, commandStr)
+	}
+
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd.Dir = req.Pwd
+	cmd.Env = req.Env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	if err := cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
+			// errors will trigger this.  So, the error message should look as nice as possible.
+			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				err = fmt.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+			} else {
+				err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+			}
+		} else {
+			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			err = fmt.Errorf("Problem executing plugin program (could not run language executor): %w", err)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (host *nodeLanguageHost) GenerateProject(
