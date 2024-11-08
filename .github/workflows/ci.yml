@@ -393,7 +393,7 @@ jobs:
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
-      enable-coverage: ${{ inputs.enable-coverage }}
+      enable-coverage: false
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -420,7 +420,7 @@ jobs:
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
-      enable-coverage: ${{ inputs.enable-coverage }}
+      enable-coverage: false
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -449,7 +449,7 @@ jobs:
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
-    needs: [unit-test, integration-test, acceptance-test-macos]
+    needs: [unit-test, integration-test]
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
@@ -473,6 +473,13 @@ jobs:
           pattern: coverage-*
           merge-multiple: true
           path: coverage
+      # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
+      - name: Set codecov PR base
+        if: github.event_name == 'pull_request'
+        run: |
+          curl -Os https://cli.codecov.io/latest/linux/codecov
+          sudo chmod +x codecov
+          ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
         with:
