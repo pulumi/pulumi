@@ -70,6 +70,12 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
+// EscEnvironmentMetadata describes the ESC Environments used in an update.
+type EscEnvironmentMetadata struct {
+	// This will be in the format of "[project/]name[@tag/version]"
+	ID string `json:"id"`
+}
+
 type MessageSeverity string
 
 const (
