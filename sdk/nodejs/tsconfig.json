@@ -61,6 +61,8 @@
         "cmd/run/index.ts",
         "cmd/run/run.ts",
         "cmd/run/tracing.ts",
+        "cmd/run-plugin/index.ts",
+        "cmd/run-plugin/run.ts",
         "cmd/run-policy-pack/index.ts",
         "cmd/run-policy-pack/run.ts",
         "automation/index.ts",
