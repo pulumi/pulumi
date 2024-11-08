@@ -708,7 +708,7 @@ message UpdateRequest {
     // The old *output* properties of the resource being updated.
     google.protobuf.Struct olds = 3;
 
-    // The new input properties of the resource being updated. These should have been validated by a call to
+    // The new *input* properties of the resource being updated. These should have been validated by a call to
     // [](pulumirpc.ResourceProvider.Check).
     google.protobuf.Struct news = 4;
 
@@ -732,6 +732,8 @@ message UpdateRequest {
     // The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 10;
+
+    google.protobuf.Struct unchecked_new_inputs = 11;
 }
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.

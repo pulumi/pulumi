@@ -596,17 +596,24 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
+	uncheckedNewInputs, err := UnmarshalProperties(
+		req.GetUncheckedNewInputs(), p.unmarshalOptions("uncheckedNewInputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.provider.Update(ctx, UpdateRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
-		Timeout:       req.GetTimeout(),
-		IgnoreChanges: req.GetIgnoreChanges(),
-		Preview:       req.GetPreview(),
+		URN:                urn,
+		Name:               req.Name,
+		Type:               tokens.Type(req.Type),
+		ID:                 id,
+		OldInputs:          oldInputs,
+		OldOutputs:         oldOutputs,
+		NewInputs:          newInputs,
+		UncheckedNewInputs: uncheckedNewInputs,
+		Timeout:            req.GetTimeout(),
+		IgnoreChanges:      req.GetIgnoreChanges(),
+		Preview:            req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err

@@ -637,16 +637,26 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
+		var uncheckedNewInputs resource.PropertyMap
+		uncheckedEntry, ok := s.new.Inputs["__pulumi_unchecked"]
+		if ok && uncheckedEntry.IsObject() {
+			if uncheckedEntry.IsObject() {
+				uncheckedNewInputs = uncheckedEntry.ObjectValue()
+			}
+			delete(s.new.Inputs, "__pulumi_unchecked")
+		}
+
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		resp, upderr := prov.Update(context.TODO(), plugin.UpdateRequest{
-			URN:           s.URN(),
-			ID:            s.old.ID,
-			OldInputs:     s.old.Inputs,
-			OldOutputs:    s.old.Outputs,
-			NewInputs:     s.new.Inputs,
-			Timeout:       s.new.CustomTimeouts.Update,
-			IgnoreChanges: s.ignoreChanges,
-			Preview:       s.deployment.opts.DryRun,
+			URN:                s.URN(),
+			ID:                 s.old.ID,
+			OldInputs:          s.old.Inputs,
+			OldOutputs:         s.old.Outputs,
+			NewInputs:          s.new.Inputs,
+			UncheckedNewInputs: uncheckedNewInputs,
+			Timeout:            s.new.CustomTimeouts.Update,
+			IgnoreChanges:      s.ignoreChanges,
+			Preview:            s.deployment.opts.DryRun,
 		})
 
 		s.new.Lock.Lock()

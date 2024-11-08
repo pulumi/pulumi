@@ -7104,7 +7104,8 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     preview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
     oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     name: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 10, "")
+    type: jspb.Message.getFieldWithDefault(msg, 10, ""),
+    uncheckedNewInputs: (f = msg.getUncheckedNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7183,6 +7184,11 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 11:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setUncheckedNewInputs(value);
       break;
     default:
       reader.skipField();
@@ -7284,6 +7290,14 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
     writer.writeString(
       10,
       f
+    );
+  }
+  f = message.getUncheckedNewInputs();
+  if (f != null) {
+    writer.writeMessage(
+      11,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -7542,6 +7556,43 @@ proto.pulumirpc.UpdateRequest.prototype.getType = function() {
  */
 proto.pulumirpc.UpdateRequest.prototype.setType = function(value) {
   return jspb.Message.setProto3StringField(this, 10, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct unchecked_new_inputs = 11;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.UpdateRequest.prototype.getUncheckedNewInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 11));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.UpdateRequest} returns this
+*/
+proto.pulumirpc.UpdateRequest.prototype.setUncheckedNewInputs = function(value) {
+  return jspb.Message.setWrapperField(this, 11, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.UpdateRequest} returns this
+ */
+proto.pulumirpc.UpdateRequest.prototype.clearUncheckedNewInputs = function() {
+  return this.setUncheckedNewInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateRequest.prototype.hasUncheckedNewInputs = function() {
+  return jspb.Message.getField(this, 11) != null;
 };
 
 

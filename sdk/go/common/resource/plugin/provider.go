@@ -164,6 +164,7 @@ type UpdateRequest struct {
 	Type                             tokens.Type
 	ID                               resource.ID
 	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	UncheckedNewInputs               resource.PropertyMap
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool

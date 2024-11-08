@@ -889,6 +889,11 @@ export class UpdateRequest extends jspb.Message {
     getType(): string;
     setType(value: string): UpdateRequest;
 
+    hasUncheckedNewInputs(): boolean;
+    clearUncheckedNewInputs(): void;
+    getUncheckedNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setUncheckedNewInputs(value?: google_protobuf_struct_pb.Struct): UpdateRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateRequest.AsObject;
     static toObject(includeInstance: boolean, msg: UpdateRequest): UpdateRequest.AsObject;
@@ -911,6 +916,7 @@ export namespace UpdateRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         name: string,
         type: string,
+        uncheckedNewInputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

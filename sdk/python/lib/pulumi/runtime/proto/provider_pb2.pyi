@@ -1138,6 +1138,7 @@ class UpdateRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    UNCHECKED_NEW_INPUTS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource being updated."""
     urn: builtins.str
@@ -1147,7 +1148,7 @@ class UpdateRequest(google.protobuf.message.Message):
         """The old *output* properties of the resource being updated."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """The new input properties of the resource being updated. These should have been validated by a call to
+        """The new *input* properties of the resource being updated. These should have been validated by a call to
         [](pulumirpc.ResourceProvider.Check).
         """
     timeout: builtins.float
@@ -1170,6 +1171,8 @@ class UpdateRequest(google.protobuf.message.Message):
     """The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    @property
+    def unchecked_new_inputs(self) -> google.protobuf.struct_pb2.Struct: ...
     def __init__(
         self,
         *,
@@ -1183,9 +1186,10 @@ class UpdateRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        unchecked_new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "preview", b"preview", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "unchecked_new_inputs", b"unchecked_new_inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "preview", b"preview", "timeout", b"timeout", "type", b"type", "unchecked_new_inputs", b"unchecked_new_inputs", "urn", b"urn"]) -> None: ...
 
 global___UpdateRequest = UpdateRequest
 

@@ -673,6 +673,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
+	var uncheckedInputs resource.PropertyMap
 	if prov != nil {
 		var resp plugin.CheckResponse
 
@@ -688,23 +689,28 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
+		var req plugin.CheckRequest
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+			req = plugin.CheckRequest{
 				URN:           urn,
 				News:          goal.Properties,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
-			})
+			}
 		} else {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+			req = plugin.CheckRequest{
 				URN:           urn,
 				Olds:          oldInputs,
 				News:          inputs,
 				OldOutputs:    oldOutputs,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
-			})
+			}
 		}
+
+		uncheckedInputs = req.News
+
+		resp, err = checkInputs(context.TODO(), req)
 		inputs = resp.Properties
 
 		if err != nil {
@@ -712,6 +718,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
 			invalid = true
 		}
+		new.Inputs["__pulumi_unchecked"] = resource.NewObjectProperty(uncheckedInputs)
 		new.Inputs = inputs
 	}
 
