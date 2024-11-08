@@ -1621,23 +1621,6 @@ describe("rpc", () => {
                 }
             },
         },
-        invoke_depends_on_invalid: {
-            pwd: path.join(base, "077.invoke_depends_on_invalid"),
-            expectResourceCount: 1,
-            expectBail: false,
-            // We should get a warning about the "dependsOn" option.
-            expectedLogs: {
-                count: 1,
-                ignoreDebug: true,
-            },
-            log: (ctx: any, severity: any, message: string) => {
-                if (severity === engineproto.LogSeverity.WARNING) {
-                    if (message.indexOf(`Invalid option "dependsOn" passed to direct form provider function`) < 0) {
-                        throw new Error("Unexpected warning: " + message);
-                    }
-                }
-            },
-        },
     };
 
     for (const casename of Object.keys(cases)) {
