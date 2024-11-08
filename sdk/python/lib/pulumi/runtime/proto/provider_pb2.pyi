@@ -607,6 +607,7 @@ class CheckRequest(google.protobuf.message.Message):
     RANDOMSEED_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource whose inputs are being checked. In the case of
     [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
@@ -637,6 +638,9 @@ class CheckRequest(google.protobuf.message.Message):
     """The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old output properties for the resource, if any. This will be empty in the case of CheckConfig."""
     def __init__(
         self,
         *,
@@ -646,9 +650,10 @@ class CheckRequest(google.protobuf.message.Message):
         randomSeed: builtins.bytes = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_outputs", b"old_outputs", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "news", b"news", "old_outputs", b"old_outputs", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckRequest = CheckRequest
 

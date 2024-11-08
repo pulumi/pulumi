@@ -102,8 +102,12 @@ type CheckRequest struct {
 	URN  resource.URN
 	Name string
 	Type tokens.Type
-	// TODO Change to (State, Input)
-	Olds, News    resource.PropertyMap
+	// Old inputs.
+	Olds resource.PropertyMap
+	// New inputs.
+	News resource.PropertyMap
+	// Old outputs.
+	OldOutputs    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
 }

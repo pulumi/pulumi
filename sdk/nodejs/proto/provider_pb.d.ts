@@ -503,6 +503,11 @@ export class CheckRequest extends jspb.Message {
     getType(): string;
     setType(value: string): CheckRequest;
 
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CheckRequest): CheckRequest.AsObject;
@@ -521,6 +526,7 @@ export namespace CheckRequest {
         randomseed: Uint8Array | string,
         name: string,
         type: string,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

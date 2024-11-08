@@ -859,12 +859,22 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	if err != nil {
 		return CheckResponse{}, err
 	}
+	moldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
+		Label:         label + ".oldOutputs",
+		KeepUnknowns:  req.AllowUnknowns,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
+	})
+	if err != nil {
+		return CheckResponse{}, err
+	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
 		Olds:       molds,
+		OldOutputs: moldOutputs,
 		News:       mnews,
 		RandomSeed: req.RandomSeed,
 	})

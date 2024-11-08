@@ -456,6 +456,9 @@ message CheckRequest {
     // The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 7;
+
+    // The old output properties for the resource, if any. This will be empty in the case of CheckConfig.
+    google.protobuf.Struct old_outputs = 8;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or

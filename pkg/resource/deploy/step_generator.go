@@ -700,6 +700,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				URN:           urn,
 				Olds:          oldInputs,
 				News:          inputs,
+				OldOutputs:    oldOutputs,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 			})

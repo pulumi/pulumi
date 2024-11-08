@@ -4302,7 +4302,8 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     randomseed: msg.getRandomseed_asB64(),
     name: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 7, "")
+    type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4364,6 +4365,11 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 8:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setOldOutputs(value);
       break;
     default:
       reader.skipField();
@@ -4436,6 +4442,14 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
     writer.writeString(
       7,
       f
+    );
+  }
+  f = message.getOldOutputs();
+  if (f != null) {
+    writer.writeMessage(
+      8,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -4608,6 +4622,43 @@ proto.pulumirpc.CheckRequest.prototype.getType = function() {
  */
 proto.pulumirpc.CheckRequest.prototype.setType = function(value) {
   return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct old_outputs = 8;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CheckRequest.prototype.getOldOutputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 8));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+*/
+proto.pulumirpc.CheckRequest.prototype.setOldOutputs = function(value) {
+  return jspb.Message.setWrapperField(this, 8, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+ */
+proto.pulumirpc.CheckRequest.prototype.clearOldOutputs = function() {
+  return this.setOldOutputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CheckRequest.prototype.hasOldOutputs = function() {
+  return jspb.Message.getField(this, 8) != null;
 };
 
 

@@ -1364,6 +1364,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			URN:           s.new.URN,
 			Olds:          s.old.Inputs,
 			News:          s.new.Inputs,
+			OldOutputs:    s.old.Outputs,
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
@@ -1410,6 +1411,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		URN:           s.new.URN,
 		Olds:          s.old.Inputs,
 		News:          s.new.Inputs,
+		OldOutputs:    s.old.Outputs,
 		AllowUnknowns: s.deployment.opts.DryRun,
 		RandomSeed:    s.randomSeed,
 	})
