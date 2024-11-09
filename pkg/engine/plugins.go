@@ -330,7 +330,7 @@ func installPlugin(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	tarball, err := workspace.DownloadToFileWithContext(ctx, plugin, withDownloadProgress, retry)
+	tarball, err := workspace.DownloadToFile(ctx, plugin, withDownloadProgress, retry)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}

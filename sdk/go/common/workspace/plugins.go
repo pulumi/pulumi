@@ -1363,20 +1363,9 @@ func (d *pluginDownloader) DownloadToFileWithContext(ctx context.Context, pkgPlu
 }
 
 // DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
-// This has some retry logic to re-attempt the download if it errors for any reason.
+// This has some retry logic to re-attempt the download if it errors for any reason. The context supplied
+// may be used for cancellable I/O.
 func DownloadToFile(
-	ctx context.Context,
-	pkgPlugin PluginSpec,
-	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	retry func(err error, attempt int, limit int, delay time.Duration),
-) (*os.File, error) {
-	return DownloadToFileWithContext(context.Background(), pkgPlugin, wrapper, retry)
-}
-
-// DownloadToFileWithContext downloads the given PluginInfo to a temporary file and returns that temporary file.
-// This has some retry logic to re-attempt the download if it errors for any reason. This variant
-// accepts a context for I/O cancellation purposes.
-func DownloadToFileWithContext(
 	ctx context.Context,
 	pkgPlugin PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,

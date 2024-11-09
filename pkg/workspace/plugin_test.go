@@ -133,6 +133,8 @@ func TestPluginInstallCancellation(t *testing.T) {
 	// On the first pass, test that everything succeeds; then trigger cancellation, and
 	// test that everything fails.
 	for _, canceled := range []bool{false, true} {
+		t.Logf("Canceled: %v", canceled)
+
 		if canceled {
 			cancel()
 		}
@@ -145,12 +147,15 @@ func TestPluginInstallCancellation(t *testing.T) {
 			}
 		}
 
+		t.Logf("InstallPlugin")
 		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {})
 		assertCorrectFailureMode(err)
 
+		t.Logf("GetLatestVersion")
 		_, err = spec.GetLatestVersion(ctx)
 		assertCorrectFailureMode(err)
 
+		t.Logf("Download")
 		rc, _, err := spec.Download(ctx)
 		assertCorrectFailureMode(err)
 		if rc != nil {

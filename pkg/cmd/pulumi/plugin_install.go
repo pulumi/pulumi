@@ -233,7 +233,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 					diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
 			}
 
-			r, err := workspace.DownloadToFileWithContext(ctx, install, withProgress, retry)
+			r, err := workspace.DownloadToFile(ctx, install, withProgress, retry)
 			if err != nil {
 				return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 			}
