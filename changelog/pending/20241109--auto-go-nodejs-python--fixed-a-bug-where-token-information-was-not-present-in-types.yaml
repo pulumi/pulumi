@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go,nodejs,python
+  description: Fixed a bug where token information was not present in types

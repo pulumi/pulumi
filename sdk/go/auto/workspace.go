@@ -183,11 +183,18 @@ type StackSummary struct {
 	URL              string `json:"url,omitempty"`
 }
 
+// TokenInformation contains information about the currently logged-in Pulumi access token.
+type TokenInformation struct {
+	Name         string `json:"name"`
+	Organization string `json:"organization"`
+}
+
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
 type WhoAmIResult struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User             string           `json:"user"`
+	Organizations    []string         `json:"organizations"`
+	URL              string           `json:"url"`
+	TokenInformation TokenInformation `json:"tokenInformation"`
 }
 
 type ChangeSecretsProviderOptions struct {
