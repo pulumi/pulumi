@@ -1343,14 +1343,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 
 // DownloadToFile downloads the given PluginSpec to a temporary file and returns that temporary file. This has
 // some retry logic to re-attempt the download if it errors for any reason.
-func (d *pluginDownloader) DownloadToFile(pkgPlugin PluginSpec) (*os.File, error) {
-	return d.DownloadToFileWithContext(context.Background(), pkgPlugin)
-}
-
-// DownloadToFileWithContext downloads the given PluginSpec to a temporary file and returns that temporary file.
-// This has some retry logic to re-attempt the download if it errors for any reason. This variant accepts a Context
-// to allow for I/O cancellation.
-func (d *pluginDownloader) DownloadToFileWithContext(ctx context.Context, pkgPlugin PluginSpec) (*os.File, error) {
+func (d *pluginDownloader) DownloadToFile(ctx context.Context, pkgPlugin PluginSpec) (*os.File, error) {
 	tarball, err := d.downloadToFileWithRetry(ctx, pkgPlugin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
@@ -1374,7 +1367,7 @@ func DownloadToFile(
 	return (&pluginDownloader{
 		WrapStream: wrapper,
 		OnRetry:    retry,
-	}).DownloadToFileWithContext(ctx, pkgPlugin)
+	}).DownloadToFile(ctx, pkgPlugin)
 }
 
 type PluginContent interface {

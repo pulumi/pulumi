@@ -1190,7 +1190,7 @@ func TestDownloadToFile_retries(t *testing.T) {
 			ch <- currentTime
 			return ch
 		},
-	}).DownloadToFile(spec)
+	}).DownloadToFile(context.Background(), spec)
 	assert.ErrorContains(t, err, "failed to download plugin: myplugin-1.0.0")
 	assert.Equal(t, numRequests, numRetries)
 }
