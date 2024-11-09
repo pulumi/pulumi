@@ -119,6 +119,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 
 	// Create a new cancellable context.
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Now proceed to try various ways of installing plugins, all of which should promptly
 	// fail because we are operating on an already-cancelled context.
@@ -144,13 +145,13 @@ func TestPluginInstallCancellation(t *testing.T) {
 			}
 		}
 
-		_, err := InstallPluginWithContext(ctx, spec, func(diag.Severity, string) {})
+		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {})
 		assertCorrectFailureMode(err)
 
-		_, err = spec.GetLatestVersionWithContext(ctx)
+		_, err = spec.GetLatestVersion(ctx)
 		assertCorrectFailureMode(err)
 
-		rc, _, err := spec.DownloadWithContext(ctx)
+		rc, _, err := spec.Download(ctx)
 		assertCorrectFailureMode(err)
 		if rc != nil {
 			rc.Close()

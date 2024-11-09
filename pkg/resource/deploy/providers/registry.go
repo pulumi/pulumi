@@ -289,8 +289,8 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	host plugin.Host, builtins plugin.Provider,
+func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string,
+	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
@@ -331,7 +331,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPluginWithContext(host.Context(), descriptor.PluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(host.Context(), descriptor.PluginSpec, log)
 	if err != nil {
 		return nil, err
 	}

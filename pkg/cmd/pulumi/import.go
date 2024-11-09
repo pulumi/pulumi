@@ -702,7 +702,7 @@ func newImportCmd() *cobra.Command {
 						Name: string(provider),
 						Kind: apitype.ResourcePlugin,
 					}
-					version, err := pkgWorkspace.InstallPluginWithContext(ctx, pluginSpec, log)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
 						return nil

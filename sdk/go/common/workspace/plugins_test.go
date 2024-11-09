@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -391,7 +392,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -418,7 +419,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -442,7 +443,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -467,7 +468,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -510,7 +511,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -558,7 +559,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -607,7 +608,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
@@ -630,7 +631,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			require.NoError(t, err)
@@ -655,7 +656,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			require.NoError(t, err)
@@ -682,7 +683,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "windows", "arm64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "windows", "arm64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -732,7 +733,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -765,7 +766,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 				"tag_name": "v4.37.5"
 			}`)
 		}
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -777,7 +778,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		assert.Nil(t, version)
 		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
@@ -789,7 +790,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		assert.Nil(t, version)
 		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
@@ -815,7 +816,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -841,7 +842,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -868,7 +869,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(getHTTPResponse)
+		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -884,7 +885,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
-		_, err = source.GetLatestVersion(getHTTPResponse)
+		_, err = source.GetLatestVersion(context.Background(), getHTTPResponse)
 		assert.ErrorContains(t, err, "rate limit exceeded")
 		assert.ErrorContains(t, err, "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})

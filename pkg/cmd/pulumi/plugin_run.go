@@ -88,7 +88,7 @@ func (cmd *pluginRunCmd) run(ctx context.Context, args []string) error {
 			d.Logf(sev, diag.RawMessage("", msg))
 		}
 
-		_, err = pkgWorkspace.InstallPluginWithContext(ctx, pluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
 		if err != nil {
 			return err
 		}

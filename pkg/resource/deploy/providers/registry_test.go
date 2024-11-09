@@ -41,6 +41,10 @@ type testPluginHost struct {
 	closeProvider func(provider plugin.Provider) error
 }
 
+func (host *testPluginHost) Context() context.Context {
+	return context.Background()
+}
+
 func (host *testPluginHost) SignalCancellation() error {
 	return nil
 }

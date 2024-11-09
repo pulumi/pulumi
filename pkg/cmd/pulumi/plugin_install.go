@@ -102,7 +102,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.color = cmdutil.GetGlobalColorization()
 	}
 	if cmd.pluginGetLatestVersion == nil {
-		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersionWithContext
+		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
 	}
 
 	// Parse the kind, name, and version, if specified.

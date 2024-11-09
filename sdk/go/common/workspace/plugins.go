@@ -190,13 +190,13 @@ func (err *MissingError) Error() string {
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-	// The context supplied enables IO to be canceled as needed.
+	// The context supplied enables I/O to be canceled as needed.
 	Download(ctx context.Context,
 		version semver.Version, opSy string, arch string,
 		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
 
 	// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
-	// plugins we can get from GitHub releases. The context supplied enables IO to be canceled as needed.
+	// plugins we can get from GitHub releases. The context supplied enables I/O to be canceled as needed.
 	GetLatestVersion(ctx context.Context,
 		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
 
@@ -1016,14 +1016,8 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
-// plugins we can get from github releases.
-func (spec PluginSpec) GetLatestVersion() (*semver.Version, error) {
-	return spec.GetLatestVersionWithContext(context.Background())
-}
-
-// GetLatestVersionWithContext tries to find the latest version for this plugin. This is currently only supported for
-// plugins we can get from github releases. This variant accepts a context for I/O cancellation purposes.
-func (spec PluginSpec) GetLatestVersionWithContext(ctx context.Context) (*semver.Version, error) {
+// plugins we can get from github releases. The context allows for I/O cancellation.
+func (spec PluginSpec) GetLatestVersion(ctx context.Context) (*semver.Version, error) {
 	source, err := spec.GetSource()
 	if err != nil {
 		return nil, err
@@ -1032,13 +1026,8 @@ func (spec PluginSpec) GetLatestVersionWithContext(ctx context.Context) (*semver
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
-	return spec.DownloadWithContext(context.Background())
-}
-
-// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-// This variant accepts a context for I/O cancellation purposes.
-func (spec PluginSpec) DownloadWithContext(ctx context.Context) (io.ReadCloser, int64, error) {
+// The context allows for I/O cancellation.
+func (spec PluginSpec) Download(ctx context.Context) (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
 	var opSy string
 	switch runtime.GOOS {
@@ -1259,7 +1248,7 @@ func (d *pluginDownloader) copyBuffer(dst io.Writer, src io.Reader) (written int
 
 func (d *pluginDownloader) tryDownload(ctx context.Context, pkgPlugin PluginSpec, dst io.WriteCloser) (error, error) {
 	defer dst.Close()
-	tarball, expectedByteCount, err := pkgPlugin.DownloadWithContext(ctx)
+	tarball, expectedByteCount, err := pkgPlugin.Download(ctx)
 	if err != nil {
 		return err, nil
 	}

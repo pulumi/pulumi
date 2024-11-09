@@ -283,7 +283,7 @@ func installPlugin(
 		logging.V(preparePluginVerboseLog).Infof(
 			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
 
-		version, err := plugin.GetLatestVersionWithContext(ctx)
+		version, err := plugin.GetLatestVersion(ctx)
 		if err != nil {
 			return fmt.Errorf("could not get latest version for plugin %s: %w", plugin.Name, err)
 		}
