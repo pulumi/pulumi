@@ -611,8 +611,6 @@ func TestRunLangPlugin(t *testing.T) {
 }
 
 type mockHost struct {
-	ContextF func() context.Context
-
 	ServerAddrF func() string
 
 	LogF func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
@@ -643,13 +641,6 @@ type mockHost struct {
 }
 
 var _ plugin.Host = (*mockHost)(nil)
-
-func (h *mockHost) Context() context.Context {
-	if h.ContextF != nil {
-		return h.ContextF()
-	}
-	panic("unimplemented")
-}
 
 func (h *mockHost) ServerAddr() string {
 	if h.ServerAddrF != nil {

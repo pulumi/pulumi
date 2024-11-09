@@ -41,10 +41,6 @@ type testPluginHost struct {
 	closeProvider func(provider plugin.Provider) error
 }
 
-func (host *testPluginHost) Context() context.Context {
-	return context.Background()
-}
-
 func (host *testPluginHost) SignalCancellation() error {
 	return nil
 }
@@ -321,7 +317,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(old)
+		err = r.Same(context.Background(), old)
 		assert.NoError(t, err)
 
 		// Now we should be able to get it
@@ -370,7 +366,7 @@ func TestCRUD(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(old)
+		err = r.Same(context.Background(), old)
 		assert.NoError(t, err)
 
 		// Now we should be able to get it
@@ -554,7 +550,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(old)
+		err = r.Same(context.Background(), old)
 		assert.NoError(t, err)
 
 		// Now we should be able to get it
@@ -822,6 +818,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 		_, err := loadProvider(
+			context.Background(),
 			"myplugin", &version, srv.URL,
 			nil, host, nil /* builtins */)
 		assert.ErrorContains(t, err,
@@ -833,6 +830,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 		_, err := loadProvider(
+			context.Background(),
 			"myplugin", &version, srv.URL,
 			nil, host, nil /* builtins */)
 		assert.ErrorContains(t, err,

@@ -289,7 +289,7 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string,
+func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
@@ -331,7 +331,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(host.Context(), descriptor.PluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginSpec, log)
 	if err != nil {
 		return nil, err
 	}
@@ -342,11 +342,12 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
 func loadParameterizedProvider(
+	ctx context.Context,
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *ProviderParameterization,
 	host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(name, version, downloadURL, checksums, host, builtins)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +528,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	}
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -629,7 +630,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
-func (r *Registry) Same(res *resource.State) error {
+func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	urn := res.URN
 	if !IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
@@ -675,7 +676,7 @@ func (r *Registry) Same(res *resource.State) error {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -739,7 +740,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

@@ -124,8 +124,8 @@ func NewContextWithContext(
 	return pctx, nil
 }
 
-// BaseContext returns this plugin context's base context; this is useful for things like cancellation.
-func (ctx *Context) BaseContext() context.Context {
+// Base returns this plugin context's base context; this is useful for things like cancellation.
+func (ctx *Context) Base() context.Context {
 	return ctx.baseContext
 }
 
