@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -141,10 +141,13 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
 /** @internal */
 export interface RunOpts {
+    // The argv for the program to start
     argv: minimist.ParsedArgs;
+    // A callback to indicate that the program has started running.
     programStarted: () => void;
+    // A callback to report an error that was logged.
     reportLoggedError: (err: Error) => void;
-    runInStack: boolean;
+    // Whether or not the program is a typescript program.
     typeScript: boolean;
 }
 
@@ -298,5 +301,5 @@ ${errMsg}`,
         }
     };
 
-    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
+    return runProgram();
 }

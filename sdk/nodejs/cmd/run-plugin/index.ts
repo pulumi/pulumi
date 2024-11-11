@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ const uncaughtHandler = (err: Error) => {
     }
 };
 
-// Keep track if we already logged the information about an unhandled error to the user..  If
-// so, we end with a different exit code.  The language host recognizes this and will not print
+// Keep track if we already logged the information about an unhandled error to the user.  If
+// so, we end with a different exit code. The language host recognizes this and will not print
 // any further messages to the user since we already took care of it.
 //
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
@@ -81,7 +81,7 @@ import * as v8Hooks from "../../runtime/closure/v8Hooks";
 import minimist from "minimist";
 
 function usage(): void {
-    console.error("usage: RUN <engine-address> <program>");
+    console.error("usage: RUN <program>");
 }
 
 function printUsageAndExit(): never {
@@ -94,12 +94,9 @@ function main(args: string[]): void {
     const argv: minimist.ParsedArgs = minimist(args, {});
 
     // Finally, ensure we have a program to run.
-    if (argv._.length < 2) {
+    if (argv._.length < 1) {
         return printUsageAndExit();
     }
-
-    // Remove <engine-address> so we simply execute the program.
-    argv._.shift();
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
@@ -109,7 +106,6 @@ function main(args: string[]): void {
                 programRunning = true;
             },
             reportLoggedError: (err: Error) => loggedErrors.add(err),
-            runInStack: false,
             typeScript: true, // Should have no deleterious impact on JS codebases.
         });
 
