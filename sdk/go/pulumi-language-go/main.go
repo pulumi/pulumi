@@ -43,6 +43,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/buildutil"
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion"
+	// "github.com/pulumi/pulumi/pkg/v3/sdkgen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -1284,6 +1285,11 @@ func (host *goLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
+
+	// externalPackages := program.PackageDescriptors()
+	// for _, pkg := range externalPackages {
+	// 	sdkgen.GenSDK("go", )
+	// }
 
 	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {

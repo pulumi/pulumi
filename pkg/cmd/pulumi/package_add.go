@@ -25,6 +25,7 @@ import (
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/sdkgen"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ as in:
 			plugin := args[0]
 			parameters := args[1:]
 
-			pkg, err := schemaFromSchemaSource(ctx, plugin, parameters)
+			pkg, err := schema.SchemaFromSchemaSource(ctx, plugin, parameters)
 			if err != nil {
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
@@ -73,7 +74,7 @@ as in:
 
 			local := true
 
-			err = genSDK(
+			err = sdkgen.GenSDK(
 				language,
 				tempOut,
 				pkg,

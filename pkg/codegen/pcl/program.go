@@ -119,6 +119,10 @@ func (p *Program) Packages() []*schema.Package {
 	return defs
 }
 
+func (p *Program) PackageDescriptors() map[string]*schema.PackageDescriptor {
+	return p.binder.packageDescriptors
+}
+
 // PackageReferences returns the list of package referenced used by this program.
 func (p *Program) PackageReferences() []schema.PackageReference {
 	keys := slice.Prealloc[string](len(p.binder.referencedPackages))

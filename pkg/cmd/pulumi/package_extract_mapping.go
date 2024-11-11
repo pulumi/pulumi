@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/packages"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,7 @@ func newExtractMappingCommand() *cobra.Command {
 				provider = args[2]
 			}
 
-			p, err := providerFromSource(source)
+			p, err := packages.ProviderFromSource(source)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}

@@ -16,15 +16,21 @@ package schema
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/packages"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 
 	"gopkg.in/yaml.v3"
@@ -2102,4 +2108,80 @@ type PartialPackageSpec struct {
 	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
 	// Parameterization contains parameterization information about the package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+}
+
+// SchemaFromSchemaSource takes a schema source and returns its associated schema. A
+// schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
+// optional version:
+//
+//	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
+func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []string) (*Package, error) {
+	var spec PackageSpec
+	bind := func(spec PackageSpec) (*Package, error) {
+		pkg, diags, err := BindSpec(spec, nil)
+		if err != nil {
+			return nil, err
+		}
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		return pkg, nil
+	}
+	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
+		if len(args) > 0 {
+			return nil, errors.New("parameterization arguments are not supported for yaml files")
+		}
+		f, err := os.ReadFile(packageSource)
+		if err != nil {
+			return nil, err
+		}
+		err = yaml.Unmarshal(f, &spec)
+		if err != nil {
+			return nil, err
+		}
+		return bind(spec)
+	} else if ext == ".json" {
+		if len(args) > 0 {
+			return nil, errors.New("parameterization arguments are not supported for json files")
+		}
+
+		f, err := os.ReadFile(packageSource)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(f, &spec)
+		if err != nil {
+			return nil, err
+		}
+		return bind(spec)
+	}
+
+	p, err := packages.ProviderFromSource(packageSource)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Close()
+
+	var request plugin.GetSchemaRequest
+	if len(args) > 0 {
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeArgs{Args: args}})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize: %w", err)
+		}
+
+		request = plugin.GetSchemaRequest{
+			SubpackageName:    resp.Name,
+			SubpackageVersion: &resp.Version,
+		}
+	}
+
+	s, err := p.GetSchema(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(s.Schema, &spec)
+	if err != nil {
+		return nil, err
+	}
+	return bind(spec)
 }
