@@ -154,6 +154,24 @@ export interface InvokeResult {
 }
 
 /**
+ * {@link ParameterizeResult} represents the results of a call to
+ * {@link ResourceProvider.parameterize}.  It contains the ame and
+ * version that can be used to identify the sub-package that now
+ * exists as a result of parameterization.
+ */
+export interface ParameterizeResult {
+    /**
+     * The name of the sub-package parameterized.
+     */
+    readonly name: string;
+
+    /**
+     * The version of the sub-package parameterized.
+     */
+    readonly version: string;
+}
+
+/**
  * {@link Provider} represents an object that implements the resources and
  * functions for a particular Pulumi package.
  */
@@ -269,4 +287,26 @@ export interface Provider {
      *  The inputs to the function.
      */
     invoke?: (token: string, inputs: any) => Promise<InvokeResult>;
+
+    /**
+     * Parameterizes a sub-package.
+     *
+     * @param args
+     *   A parameter value, represented as an array of strings,
+     *   as might be provided by a command-line invocation, such
+     *   as that used to generate an SDK.
+     */
+    parameterizeArgs?: (args: string[]) => Promise<ParameterizeResult>;
+
+    /**
+     * Parameterizes a sub-package.
+     *
+     * @param name
+     *   The sub-package name for this sub-schema parameterization.
+     * @param version
+     *   The sub-package version for this sub-schema parameterization.
+     * @param value
+     *   The embedded value from the sub-package.
+     */
+    parameterizeValue?: (name: string, version: string, value: string) => Promise<ParameterizeResult>;
 }
