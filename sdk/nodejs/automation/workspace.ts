@@ -434,7 +434,8 @@ export type PulumiFn = () => Promise<Record<string, any> | void>;
  */
 export interface TokenInfomation {
     name: string;
-    organization: string;
+    organization?: string;
+    team?: string;
 }
 
 /**

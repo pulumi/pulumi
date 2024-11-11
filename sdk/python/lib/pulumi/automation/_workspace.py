@@ -55,8 +55,9 @@ class StackSummary:
 class TokenInformation:
     """Information about the token that was used to authenticate the current user."""
     name: str
-    Organization: Optional[str]
-    Team: Optional[str]
+    organization: Optional[str]
+    team: Optional[str]
+    
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
