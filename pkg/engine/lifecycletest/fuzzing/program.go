@@ -140,7 +140,7 @@ func (ps *ProgramSpec) Pretty(indent string) string {
 	} else {
 		rendered += fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
 		for _, r := range ps.ResourceRegistrations {
-			rendered += fmt.Sprintf("\n%s%s", indent, r.Pretty(indent+"    "))
+			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
@@ -149,7 +149,7 @@ func (ps *ProgramSpec) Pretty(indent string) string {
 	} else {
 		rendered += fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops))
 		for _, r := range ps.Drops {
-			rendered += fmt.Sprintf("\n%s%s", indent, r.Pretty(indent+"    "))
+			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
