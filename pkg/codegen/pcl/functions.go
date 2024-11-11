@@ -65,12 +65,15 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						_, elementType := model.UnifyTypes(t.ElementTypes...)
 						listType, returnType = args[0].Type(), elementType
 					default:
-						rng := args[0].SyntaxNode().Range()
-						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  "the first argument to 'element' must be a list or tuple",
-							Subject:  &rng,
-						}}
+						if !options.skipRangeTypecheck {
+							// we are in strict mode, so we should error if the type is not a list or tuple
+							rng := args[0].SyntaxNode().Range()
+							diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "the first argument to 'element' must be a list or tuple",
+								Subject:  &rng,
+							}}
+						}
 					}
 				}
 				return model.StaticFunctionSignature{
