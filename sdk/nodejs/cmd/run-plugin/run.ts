@@ -30,7 +30,7 @@ import * as stack from "../../runtime/stack";
 //
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
-// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+// https://nodejs.org/api/process.html#process_exit_codes
 const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 /**
@@ -141,12 +141,13 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
 /** @internal */
 export interface RunOpts {
-    // TODO: Explicitly pass `main` in here instead of just argv.
-
+    // The argv for the program to start
     argv: minimist.ParsedArgs;
+    // A callback to indicate that the program has started running.
     programStarted: () => void;
+    // A callback to report an error that was logged.
     reportLoggedError: (err: Error) => void;
-    runInStack: boolean;
+    // Whether or not the program is a typescript program.
     typeScript: boolean;
 }
 
@@ -300,5 +301,5 @@ ${errMsg}`,
         }
     };
 
-    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
+    return runProgram();
 }

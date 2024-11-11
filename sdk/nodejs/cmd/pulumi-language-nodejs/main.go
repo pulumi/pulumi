@@ -79,7 +79,7 @@ const (
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
 
-	// The path to run a pluginn.
+	// The path to the NodeJS plugin launcher.
 	defaultRunPluginPath = "@pulumi/pulumi/cmd/run-plugin"
 
 	// The runtime expects the config object to be saved to this environment variable.
@@ -161,7 +161,7 @@ func main() {
 func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin bool) (string, error) {
 	installCommand := "pulumi install"
 	if isPlugin {
-		installCommand = fmt.Sprintf("npm install in %s", programDir)
+		installCommand = "npm install in " + programDir
 	}
 	script := fmt.Sprintf(`try {
 		console.log(require.resolve('%s'));
@@ -1408,24 +1408,22 @@ func (host *nodeLanguageHost) RunPlugin(
 	args = append(args, nodeargs...)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.Command(nodeBin, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd := exec.Command(nodeBin, args...)
 	cmd.Dir = req.Pwd
-	cmd.Env = req.Env
+	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
-			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
+			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = fmt.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
-			} else {
-				err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+				return fmt.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			}
-		} else {
-			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			err = fmt.Errorf("Problem executing plugin program (could not run language executor): %w", err)
+			return fmt.Errorf("Program exited unexpectedly: %w", exiterr)
 		}
+		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+		return fmt.Errorf("Problem executing plugin program (could not run language executor): %w", err)
 	}
 
 	if err := closer.Close(); err != nil {
