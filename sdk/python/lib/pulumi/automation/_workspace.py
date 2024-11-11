@@ -52,21 +52,25 @@ class StackSummary:
         self.resource_count = resource_count
         self.url = url
 
-
+class TokenInformation:
+    """Information about the token that was used to authenticate the current user."""
+    name: str
+    Organization: Optional[str]
+    Team: Optional[str]
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
     url: Optional[str]
     organizations: Optional[List[str]]
-    tokenInformation: Optional[Mapping[str, Any]]
+    tokenInformation: Optional[TokenInformation]
     
     def __init__(
         self,
         user: str,
         url: Optional[str] = None,
         organizations: Optional[List[str]] = None,
-        tokenInformation: Optional[Mapping[str, Any]] = None,
+        tokenInformation: Optional[TokenInformation] = None,
         
     ) -> None:
         self.user = user
