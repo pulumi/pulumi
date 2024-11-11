@@ -128,23 +128,23 @@ class Server implements grpc.UntypedServiceImplementation {
         let res = null;
         if (call.request.hasArgs()) {
             if (!this.provider.parameterizeArgs) {
-		callback(new Error("parameterizeArgs not implemented"), undefined);
-		return;
+                callback(new Error("parameterizeArgs not implemented"), undefined);
+                return;
             }
 
-	    res = await this.provider.parameterizeArgs(call.request.getArgs().getArgsList());
+            res = await this.provider.parameterizeArgs(call.request.getArgs().getArgsList());
         } else {
             if (!this.provider.parameterizeValue) {
-		callback(new Error("parameterizeValue not implemented"), undefined);
-		return;
+                callback(new Error("parameterizeValue not implemented"), undefined);
+                return;
             }
 
-	    const b64 = call.request.getValue().getValue_asB64();
-	    res = await this.provider.parameterizeValue(
-		call.request.getValue().getName(),
-		call.request.getValue().getVersion(),
-		Buffer.from(b64, 'base64').toString('utf-8'),
-	    );
+            const b64 = call.request.getValue().getValue_asB64();
+            res = await this.provider.parameterizeValue(
+                call.request.getValue().getName(),
+                call.request.getValue().getVersion(),
+                Buffer.from(b64, "base64").toString("utf-8"),
+            );
         }
 
         const resp = new provproto.ParameterizeResponse();
