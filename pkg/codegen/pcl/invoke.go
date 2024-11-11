@@ -168,6 +168,17 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	return sig, nil
 }
 
+func invokeOptionsType() model.Type {
+	return model.NewObjectType(map[string]model.Type{
+		// using dynamic (any) types for expressions expecting a Resource type because
+		// we don't have a way to represent a Resource type in the PCL.
+		"provider":          model.NewOptionalType(model.DynamicType),
+		"parent":            model.NewOptionalType(model.DynamicType),
+		"version":           model.NewOptionalType(model.StringType),
+		"pluginDownloadUrl": model.NewOptionalType(model.StringType),
+	})
+}
+
 func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunctionSignature {
 	return model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
@@ -180,8 +191,8 @@ func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunc
 				Type: argsType,
 			},
 			{
-				Name: "provider",
-				Type: model.NewOptionalType(model.StringType),
+				Name: "invokeOptions",
+				Type: model.NewOptionalType(invokeOptionsType()),
 			},
 		},
 		ReturnType: returnType,

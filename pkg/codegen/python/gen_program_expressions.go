@@ -359,7 +359,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
+				for i, item := range invokeOptions.Items {
+					last := i == len(invokeOptions.Items)-1
+					key := PyName(pcl.LiteralValueString(item.Key))
+					g.Fgenf(&buf, "%s=%v", key, item.Value)
+					if !last {
+						g.Fgen(&buf, ", ")
+					}
+				}
+				g.Fgen(&buf, ")")
+			}
+
 			optionsBag = buf.String()
 		}
 

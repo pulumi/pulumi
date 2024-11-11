@@ -104,6 +104,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS EKS",
 	},
 	{
+		Directory:   "csharp-invoke-options",
+		Description: "A program that uses InvokeOptions in C#",
+		// Test only C# because the other languages have conformance tests
+		Skip: allProgLanguages.Except(TestDotnet),
+	},
+	{
 		Directory:   "aws-fargate",
 		Description: "AWS Fargate",
 	},
