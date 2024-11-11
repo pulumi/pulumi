@@ -41,10 +41,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/pkg/v3/sdkgen"
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/buildutil"
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion"
-	// "github.com/pulumi/pulumi/pkg/v3/sdkgen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/packages"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -827,7 +828,8 @@ func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
 
 func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger) error {
 	// wait for the debugger to be ready
-	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute,
+		errors.New("debugger startup timed out"))
 	err := dbg.WaitForReady(ctx)
 	if err != nil {
 		return err
@@ -1229,7 +1231,8 @@ func (host *goLanguageHost) GenerateProject(
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory,
+		schema.NewCachedLoader(loader), extraOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1252,6 +1255,16 @@ func (host *goLanguageHost) GenerateProject(
 	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
+	}
+
+	sdksPath := filepath.Join(req.TargetDirectory, "sdks")
+	externalPackages := program.PackageDescriptors()
+	for name, pkg := range externalPackages {
+		logging.V(3).Infof("Generating SDK for package %s", name)
+		err = genSdkForPackage(ctx, name, pkg, sdksPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &pulumirpc.GenerateProjectResponse{
@@ -1281,15 +1294,11 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
+	program, diags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewCachedLoader(loader)))
 	if err != nil {
 		return nil, err
 	}
-
-	// externalPackages := program.PackageDescriptors()
-	// for _, pkg := range externalPackages {
-	// 	sdkgen.GenSDK("go", )
-	// }
 
 	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
@@ -1390,4 +1399,124 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	return &pulumirpc.PackResponse{
 		ArtifactPath: artifactPath,
 	}, nil
+}
+
+// TODO move to common and take language parameter.
+func genSdkForPackage(ctx context.Context, name string, pkg *schema.PackageDescriptor, out string) error {
+	language := "go"
+	pulumiPlugin := pkg.Name
+	p, err := packages.ProviderFromSource(pulumiPlugin)
+	if err != nil {
+		return fmt.Errorf("error getting provider from source: %w", err)
+	}
+
+	var pResp plugin.ParameterizeResponse
+	if pkg.Parameterization != nil {
+		logging.V(3).Infof("Parameterizing provider %s with %s", pulumiPlugin, pkg.Parameterization.Value)
+		pResp, err = p.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Name:    pkg.Parameterization.Name,
+				Version: pkg.Parameterization.Version,
+				Value:   pkg.Parameterization.Value,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("error parameterizing provider: %w", err)
+		}
+	} else {
+		logging.V(3).Infof("No parameterization for provider %s", pulumiPlugin)
+	}
+
+	schResp, err := p.GetSchema(ctx, plugin.GetSchemaRequest{
+		SubpackageName:    pResp.Name,
+		SubpackageVersion: &pResp.Version,
+	})
+	if err != nil {
+		return fmt.Errorf("error getting schema: %w", err)
+	}
+	var spec schema.PackageSpec
+	err = json.Unmarshal(schResp.Schema, &spec)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling schema: %w", err)
+	}
+
+	packageSchema, err := bind(spec)
+	if err != nil {
+		return fmt.Errorf("could not bind package schema: %w", err)
+	}
+
+	tempOut, err := os.MkdirTemp("", "pulumi-terraform-converter-")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+
+	err = sdkgen.GenSDK(language, tempOut, packageSchema /*overlays*/, "" /*local*/, true)
+	if err != nil {
+		return fmt.Errorf("error generating sdk: %w", err)
+	}
+
+	out = filepath.Join(out, name)
+
+	err = copyAll(out, filepath.Join(tempOut, language))
+	if err != nil {
+		return fmt.Errorf("failed to move SDK to project: %w", err)
+	}
+
+	err = os.RemoveAll(tempOut)
+	if err != nil {
+		return fmt.Errorf("failed to remove temporary directory: %w", err)
+	}
+
+	// TODO print instructions or do it automatically (go mod tidy).
+	return nil
+}
+
+func bind(spec schema.PackageSpec) (*schema.Package, error) {
+	pkg, diags, err := schema.BindSpec(spec, nil)
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return pkg, nil
+}
+
+// copyAll copies src to dst. If src is a directory, its contents will be copied
+// recursively.
+func copyAll(dst string, src string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		// Recursively copy all files in a directory.
+		files, err := os.ReadDir(src)
+		if err != nil {
+			return fmt.Errorf("read dir: %w", err)
+		}
+		for _, file := range files {
+			name := file.Name()
+			copyerr := copyAll(filepath.Join(dst, name), filepath.Join(src, name))
+			if copyerr != nil {
+				return copyerr
+			}
+		}
+	} else if info.Mode().IsRegular() {
+		// Copy files by reading and rewriting their contents.  Skip other special files.
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return fmt.Errorf("read file: %w", err)
+		}
+		dstdir := filepath.Dir(dst)
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
+			return err
+		}
+		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
