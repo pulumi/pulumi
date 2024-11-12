@@ -283,7 +283,7 @@ func installPlugin(
 		logging.V(preparePluginVerboseLog).Infof(
 			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
 
-		version, err := plugin.GetLatestVersion()
+		version, err := plugin.GetLatestVersion(ctx)
 		if err != nil {
 			return fmt.Errorf("could not get latest version for plugin %s: %w", plugin.Name, err)
 		}
@@ -330,7 +330,7 @@ func installPlugin(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	tarball, err := workspace.DownloadToFile(plugin, withDownloadProgress, retry)
+	tarball, err := workspace.DownloadToFile(ctx, plugin, withDownloadProgress, retry)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}

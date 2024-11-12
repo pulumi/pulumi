@@ -512,7 +512,13 @@ func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
 func (d *Deployment) SameProvider(res *resource.State) error {
-	return d.providers.Same(res)
+	var ctx context.Context
+	if d.ctx == nil {
+		ctx = context.Background()
+	} else {
+		ctx = d.ctx.Base()
+	}
+	return d.providers.Same(ctx, res)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes

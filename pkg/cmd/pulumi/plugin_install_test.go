@@ -61,7 +61,7 @@ func TestBundledDev(t *testing.T) {
 		env: env.NewEnv(
 			env.MapStore{"PULUMI_DEV": "true"},
 		),
-		pluginGetLatestVersion: func(ps workspace.PluginSpec) (*semver.Version, error) {
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			getLatestVersionCalled = true
 			assert.Equal(t, "nodejs", ps.Name)
 			assert.Equal(t, apitype.LanguagePlugin, ps.Kind)
