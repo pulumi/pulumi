@@ -131,7 +131,9 @@ secret value, and should wrap any resource output values that are always sensiti
 
 #### Property Paths
 
-TODO: write this up
+A `Property Path` represents a path to one or more properties within a set of values.
+See the [type system documentation](property-paths) for
+more information.
 
 ## Schema
 
