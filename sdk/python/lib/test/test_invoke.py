@@ -15,6 +15,7 @@
 import pytest
 
 import pulumi
+from pulumi import InvokeOptions
 
 
 class MyMocks(pulumi.runtime.Mocks):
@@ -89,3 +90,17 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
     props = {"empty": True} if empty else {}
     opts = pulumi.InvokeOptions(version=version) if version else None
     assert pulumi.runtime.invoke(tok, props, opts).value == expected
+
+
+@pytest.mark.parametrize(
+    "a,b,expected",
+    [
+        (InvokeOptions(version="1.0.0"), InvokeOptions(version="2.0.0"), "2.0.0"),
+        (None, InvokeOptions(version="2.0.0"), "2.0.0"),
+        (InvokeOptions(version="1.0.0"), None, "1.0.0"),
+    ]
+)
+def test_invoke_merge(a: InvokeOptions, b: InvokeOptions, expected: str) -> None:
+    if a is not None:
+        assert a.merge(b).version == expected
+    assert InvokeOptions.merge(a, b).version == expected
