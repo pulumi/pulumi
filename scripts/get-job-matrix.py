@@ -144,10 +144,9 @@ MINIMUM_SUPPORTED_VERSION_SET = {
 }
 
 ALL_VERSION_SET = {
-    "name": ["all"],
-    "dotnet": ["6", "7", "8"],
+    "dotnet": ["6", "8"],
     "go": ["1.22.x", "1.23.x"],
-    "nodejs": ["18.x", "19.x", "20.x", "21.x", "22.x", "23.x"],
+    "nodejs": ["18.x", "20.x", "22.x", "23.x"],
     "python": ["3.8.x", "3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
 }
 
@@ -465,6 +464,8 @@ def get_version_sets(args: argparse.Namespace):
             longest = len(ALL_VERSION_SET[max(ALL_VERSION_SET, key=lambda k: len(ALL_VERSION_SET[k]))])
             for i in range(0, longest):
                 this_set = {**MINIMUM_SUPPORTED_VERSION_SET}
+                # Set the name.  This will be shown in the name of the CI job.
+                this_set["name"] = f"all-{i}"
                 for lang, versions in ALL_VERSION_SET.items():
                     if len(versions) > i:
                         this_set[lang] = versions[i]
