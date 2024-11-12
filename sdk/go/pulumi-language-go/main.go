@@ -1264,7 +1264,7 @@ func (host *goLanguageHost) GenerateProject(
 		if err != nil {
 			return nil, err
 		}
-		req.LocalDependencies[name] = filepath.Join(sdksPath, name)
+		req.LocalDependencies[name] = fmt.Sprint("./sdks/", name)
 	}
 
 	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)

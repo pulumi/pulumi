@@ -1123,6 +1123,13 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		mod = pkg
 	}
 
+	if descriptor, ok := g.program.PackageDescriptors()[pkg]; ok &&
+		descriptor.Name == "terraform-provider" && mod == "index/resource" {
+			logging.V(4).Infof("Resource %s is a Terraform resource", resName)
+			originalMod = mod
+			mod = pkg
+	}
+
 	// Compute resource options
 	options, temps := g.lowerResourceOptions(r.Options)
 	g.genTemps(w, temps)

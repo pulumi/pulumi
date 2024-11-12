@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/natefinch/atomic"
 
@@ -223,7 +224,8 @@ func LoadPackageReferenceV2(
 
 	name := descriptor.Name
 	if descriptor.Parameterization != nil {
-		name = descriptor.Parameterization.Name
+		nameParts := strings.Split(ref.Name(), "/")
+		name = nameParts[len(nameParts)-1]
 	}
 	version := descriptor.Version
 	if descriptor.Parameterization != nil {
@@ -374,9 +376,11 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		if err != nil {
 			return nil, nil, err
 		}
-		if resp.Name != descriptor.Parameterization.Name {
+		namePkgPath := strings.Split(resp.Name, "/")
+		nameExpectedResponse := namePkgPath[len(namePkgPath)-1]
+		if resp.Name != nameExpectedResponse {
 			return nil, nil, fmt.Errorf(
-				"unexpected parameterization response: %s != %s", resp.Name, descriptor.Parameterization.Name)
+				"unexpected parameterization response: %s != %s", resp.Name, nameExpectedResponse)
 		}
 		if !resp.Version.EQ(descriptor.Parameterization.Version) {
 			return nil, nil, fmt.Errorf(
