@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -792,7 +793,6 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 func (g *generator) collectImports(program *pcl.Program) (helpers codegen.StringSet) {
 	helpers = codegen.NewStringSet()
 
-	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
@@ -944,7 +944,12 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// module named IndexToken.
 	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
 	importPath := func(mod string) string {
-		importBasePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		var importBasePath string
+		if descriptor, ok := g.program.PackageDescriptors()[pkg]; ok && descriptor.Name == "terraform-provider" {
+			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-terraform-provider/sdks/go/%s/v3", pkg)
+		} else {
+			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		}
 		if info.ImportBasePath != "" {
 			importBasePath = info.ImportBasePath
 		} else {
@@ -1700,6 +1705,8 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
+	logging.V(4).Infof("getModOrAlias: pkg: %s, mod: %s, originalMod: %s", pkg, mod, originalMod)
+
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")

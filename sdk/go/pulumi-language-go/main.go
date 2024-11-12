@@ -1252,18 +1252,34 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
-	if err != nil {
-		return nil, err
-	}
-
 	sdksPath := filepath.Join(req.TargetDirectory, "sdks")
 	externalPackages := program.PackageDescriptors()
+	// Generate SDKs for all explicitly declared external packages.
+	if req.LocalDependencies == nil {
+		req.LocalDependencies = make(map[string]string)
+	}
 	for name, pkg := range externalPackages {
 		logging.V(3).Infof("Generating SDK for package %s", name)
 		err = genSdkForPackage(ctx, name, pkg, sdksPath)
 		if err != nil {
 			return nil, err
+		}
+		req.LocalDependencies[name] = filepath.Join(sdksPath, name)
+	}
+
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate all go.mod changes (now that the go.mod file is available).
+	for name, pkg := range externalPackages {
+		if pkg.Name == "terraform-provider" {
+			logging.V(3).Infof("Adding replace directive for locally converted sdk: %s", name)
+			err := addReplaceClauseToMod(req.TargetDirectory, "./sdks", name)
+			if err != nil {
+				return nil, fmt.Errorf("mod file modification: %w", err)
+			}
 		}
 	}
 
@@ -1467,7 +1483,39 @@ func genSdkForPackage(ctx context.Context, name string, pkg *schema.PackageDescr
 		return fmt.Errorf("failed to remove temporary directory: %w", err)
 	}
 
-	// TODO print instructions or do it automatically (go mod tidy).
+	return nil
+}
+
+func addReplaceClauseToMod(targetDirectory, sdksPath, name string) error {
+	modFile, err := os.ReadFile(filepath.Join(targetDirectory, "go.mod"))
+	if err != nil {
+		return fmt.Errorf("read go.mod: %w", err)
+	}
+
+	mod, err := modfile.Parse("go.mod", modFile, nil)
+	if err != nil {
+		return fmt.Errorf("modfile parse error: %w", err)
+	}
+
+	err = mod.AddReplace(
+		fmt.Sprintf("github.com/pulumi/pulumi-terraform-provider/sdks/go/%s/v3", name),
+		"",
+		fmt.Sprintf("%s/%s", sdksPath, name),
+		"")
+	if err != nil {
+		return fmt.Errorf("add replace: %w", err)
+	}
+
+	writeBack, err := mod.Format()
+	if err != nil {
+		return fmt.Errorf("gomod format: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(targetDirectory, "go.mod"), writeBack, 0o600)
+	if err != nil {
+		return fmt.Errorf("write go.mod: %w", err)
+	}
+
 	return nil
 }
 
