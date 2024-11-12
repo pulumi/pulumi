@@ -787,7 +787,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
