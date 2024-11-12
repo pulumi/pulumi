@@ -16,7 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
-import { InvokeOptions, InvokeOptionsOutput } from "../invoke";
+import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
@@ -104,7 +104,7 @@ export function invoke(
 export function invokeOutput<T>(
     tok: string,
     props: Inputs,
-    opts: InvokeOptionsOutput = {},
+    opts: InvokeOutputOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
@@ -222,7 +222,7 @@ export async function streamInvoke(
 async function invokeAsync(
     tok: string,
     props: Inputs,
-    opts: InvokeOptionsOutput,
+    opts: InvokeOutputOptions,
     packageRef?: Promise<string | undefined>,
 ): Promise<{
     result: Inputs | undefined;

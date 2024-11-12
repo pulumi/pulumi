@@ -17,7 +17,7 @@ export interface UnitArgs {
 export interface UnitResult {
     readonly result: string;
 }
-export function unitOutput(opts?: pulumi.InvokeOptionsOutput): pulumi.Output<UnitResult> {
+export function unitOutput(opts?: pulumi.InvokeOutputOptions): pulumi.Output<UnitResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("simple-invoke:index:unit", {
     }, opts);

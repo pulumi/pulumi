@@ -21,7 +21,7 @@ export interface ArgFunctionArgs {
 export interface ArgFunctionResult {
     readonly result?: Resource;
 }
-export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<ArgFunctionResult> {
+export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<ArgFunctionResult> {
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("example::argFunction", {

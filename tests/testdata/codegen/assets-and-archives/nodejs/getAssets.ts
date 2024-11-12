@@ -21,7 +21,7 @@ export interface GetAssetsResult {
     readonly archive: pulumi.asset.Archive;
     readonly source: pulumi.asset.Asset | pulumi.asset.Archive;
 }
-export function getAssetsOutput(args: GetAssetsOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<GetAssetsResult> {
+export function getAssetsOutput(args: GetAssetsOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<GetAssetsResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("example::GetAssets", {
         "archive": args.archive,

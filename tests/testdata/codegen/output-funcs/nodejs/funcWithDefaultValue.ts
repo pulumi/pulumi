@@ -26,7 +26,7 @@ export interface FuncWithDefaultValueResult {
 /**
  * Check codegen of functions with default values.
  */
-export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<FuncWithDefaultValueResult> {
+export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FuncWithDefaultValueResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithDefaultValue", {
         "a": args.a,

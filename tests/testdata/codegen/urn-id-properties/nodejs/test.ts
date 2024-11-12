@@ -27,7 +27,7 @@ export interface TestResult {
 /**
  * It's fine for invokes to use urn and id
  */
-export function testOutput(args: TestOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<TestResult> {
+export function testOutput(args: TestOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<TestResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("urnid:index:Test", {
         "id": args.id,

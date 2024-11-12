@@ -19,7 +19,7 @@ export interface GetCustomDbRolesArgs {
 export interface GetCustomDbRolesResult {
     readonly result?: outputs.GetCustomDbRolesResult;
 }
-export function getCustomDbRolesOutput(opts?: pulumi.InvokeOptionsOutput): pulumi.Output<GetCustomDbRolesResult> {
+export function getCustomDbRolesOutput(opts?: pulumi.InvokeOutputOptions): pulumi.Output<GetCustomDbRolesResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mongodbatlas::getCustomDbRoles", {
     }, opts);

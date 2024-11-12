@@ -1261,7 +1261,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 
 	invokeOptionsType := "pulumi.InvokeOptions"
 	if !plain {
-		invokeOptionsType = "pulumi.InvokeOptionsOutput"
+		invokeOptionsType = "pulumi.InvokeOutputOptions"
 	}
 	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {

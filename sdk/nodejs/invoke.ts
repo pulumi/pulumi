@@ -56,10 +56,10 @@ export interface InvokeOptions {
 }
 
 /**
- * {@link InvokeOptionsOutput} is a bag of options that control the behavior of a call
+ * {@link InvokeOutputOptions} is a bag of options that control the behavior of a call
  * to `runtime.invokeOutput`.
  */
-export interface InvokeOptionsOutput extends InvokeOptions {
+export interface InvokeOutputOptions extends InvokeOptions {
     /**
      * An optional set of additional explicit dependencies on other resources.
      */

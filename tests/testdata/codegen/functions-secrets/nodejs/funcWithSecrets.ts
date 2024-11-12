@@ -23,7 +23,7 @@ export interface FuncWithSecretsResult {
     readonly id: string;
     readonly plaintext: string;
 }
-export function funcWithSecretsOutput(args: FuncWithSecretsOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<FuncWithSecretsResult> {
+export function funcWithSecretsOutput(args: FuncWithSecretsOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FuncWithSecretsResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithSecrets", {
         "cryptoKey": args.cryptoKey,

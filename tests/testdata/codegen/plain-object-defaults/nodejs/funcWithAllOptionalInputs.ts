@@ -35,7 +35,7 @@ export interface FuncWithAllOptionalInputsResult {
 /**
  * Check codegen of functions with all optional inputs.
  */
-export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOptionsOutput): pulumi.Output<FuncWithAllOptionalInputsResult> {
+export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FuncWithAllOptionalInputsResult> {
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("example::funcWithAllOptionalInputs", {
