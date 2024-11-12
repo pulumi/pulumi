@@ -741,6 +741,60 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
+	t.Run("GitHub Releases with disallowed", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", token)
+		version := semver.MustParse("5.32.0")
+		spec := PluginSpec{
+			PluginDownloadURL: "",
+			Name:              "mockdl",
+			Version:           &version,
+			Kind:              apitype.PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		attempts := 0
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			attempts++
+
+			if req.Header.Get("Authorization") == "token "+token {
+				// Fail with a 403 Forbidden
+				return nil, -1, &downloadError{
+					code:   403,
+					header: http.Header{"x-ratelimit-remaining": []string{"42"}},
+				}
+			}
+
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v5.32.0" {
+				assert.Equal(t, "", req.Header.Get("Authorization"))
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"assets": [
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
+						"name": "pulumi-mockdl_5.32.0_checksums.txt"
+					  },
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
+						"name": "pulumi-resource-mockdl-v5.32.0-darwin-amd64.tar.gz"
+					  }
+					]
+				  }
+				`)
+			}
+
+			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, 3, attempts) // Failed attempt, then two successful attempts, first for the tag then the asset.
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
 }
 
 //nolint:paralleltest // mutates environment variables

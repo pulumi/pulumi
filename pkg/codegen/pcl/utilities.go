@@ -282,3 +282,22 @@ func VariableAccessed(variableName string, expr model.Expression) bool {
 	contract.Assertf(len(diags) == 0, "expected no diagnostics from VisitExpression")
 	return accessed
 }
+
+// LiteralValueString evaluates the given expression and returns the string value if it is a literal value expression
+// otherwise returns an empty string for anything else.
+func LiteralValueString(x model.Expression) string {
+	switch x := x.(type) {
+	case *model.LiteralValueExpression:
+		if model.StringType.AssignableFrom(x.Type()) {
+			return x.Value.AsString()
+		}
+	case *model.TemplateExpression:
+		if len(x.Parts) == 1 {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
+				return lit.Value.AsString()
+			}
+		}
+	}
+
+	return ""
+}

@@ -233,6 +233,8 @@ func parseOptions(root string, programDir string, options map[string]interface{}
 				pythonOptions.Toolchain = toolchain.Pip
 			case "poetry":
 				pythonOptions.Toolchain = toolchain.Poetry
+			case "uv":
+				pythonOptions.Toolchain = toolchain.Uv
 			default:
 				return pythonOptions, fmt.Errorf("unsupported toolchain option: %s", tc)
 			}
@@ -255,7 +257,7 @@ func newLanguageHost(exec, engineAddress, tracing, typechecker string,
 }
 
 func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -392,7 +394,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 // createEngineWriters creates a pair of writers that can be used to log messages to the engine.
 func (host *pythonLanguageHost) createEngineWriters(ctx context.Context) (io.Writer, io.Writer, error) {
 	// Make a connection to the real engine that we will log messages to.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -1165,7 +1167,7 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		}
 		// Pip is always available in a Python installation or virtual environment.
 		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
-		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry")...)
+		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",

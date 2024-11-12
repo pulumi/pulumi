@@ -40,7 +40,7 @@ var _ ReferenceLoader = (*LoaderClient)(nil)
 func NewLoaderClient(target string) (*LoaderClient, error) {
 	contract.Assertf(target != "", "unexpected empty target for loader")
 
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),

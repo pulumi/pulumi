@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: docs
-  description: Fix spacing and formatting of `stack init` command's long doc

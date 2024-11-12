@@ -97,7 +97,7 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
-    timeout-minutes: 60
+    timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       - if: contains(inputs.platform, 'ubuntu')
@@ -228,6 +228,8 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Install poetry
         run: pipx install poetry
+      - name: Install uv
+        run: pipx install uv
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -280,7 +282,7 @@ jobs:
         if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v4
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
           path: artifacts/cli
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}

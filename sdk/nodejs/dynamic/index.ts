@@ -119,10 +119,52 @@ export interface UpdateResult<Outputs = any> {
 }
 
 /**
+ * {@link Config} is a bag of configuration values that can be passed to a provider's
+ * configure method.
+ *
+ * Use the Config.get and Config.require methods to retrieve a configuration
+ * value by key.
+ */
+export interface Config {
+    /**
+     * get retrieves a configuration value by key. Returns undefined if the key is not present.
+     *
+     * @param key
+     *  The key to lookup in the configuration. If no namespace is provided in the key, the project
+     *  name will be used as the namespace.
+     */
+    get(key: string): string | undefined;
+
+    /**
+     * require retrieves a configuration value by key. Returns an error if the key is not present.
+     *
+     * @param key
+     *  The key to lookup in the configuration. If no namespace is provided in the key, the project
+     *  name will be used as the namespace.
+     */
+    require(key: string): string;
+}
+
+/**
+ * {@link ConfigureRequest} is the input to a provider's configure method.
+ */
+export interface ConfigureRequest {
+    /**
+     * The stack's configuration.
+     */
+    config: Config;
+}
+
+/**
  * {@link ResourceProvider} represents an object that provides CRUD operations
  * for a particular type of resource.
  */
 export interface ResourceProvider<Inputs = any, Outputs = any> {
+    /**
+     * Configures the resource provider.
+     */
+    configure?: (req: ConfigureRequest) => Promise<void>;
+
     /**
      * Validates that the given property bag is valid for a resource of the given type.
      *

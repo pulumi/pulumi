@@ -43,6 +43,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/blang/semver"
@@ -77,6 +78,9 @@ const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
+
+	// The path to the NodeJS plugin launcher.
+	defaultRunPluginPath = "@pulumi/pulumi/cmd/run-plugin"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -154,17 +158,21 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
+func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin bool) (string, error) {
+	installCommand := "pulumi install"
+	if isPlugin {
+		installCommand = "npm install in " + programDir
+	}
 	script := fmt.Sprintf(`try {
 		console.log(require.resolve('%s'));
 	} catch (error) {
 		if (error.code === 'MODULE_NOT_FOUND') {
-			console.error("It looks like the Pulumi SDK has not been installed. Have you run pulumi install?")
+			console.error("It looks like the Pulumi SDK has not been installed. Have you run %s?")
 		} else {
 			console.error(error.message);
 		}
 		process.exit(1);
-	}`, mod)
+	}`, mod, installCommand)
 	// The Volta package manager installs shim executables that route to the user's chosen nodejs
 	// version. On Windows this does not properly handle arguments with newlines, so we need to
 	// ensure that the script is a single line.
@@ -282,7 +290,7 @@ func newLanguageHost(
 }
 
 func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -601,7 +609,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	defer contract.IgnoreClose(closer)
 
 	// Make a connection to the real monitor that we will forward messages to.
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		req.GetMonitorAddress(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -658,7 +666,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		req.Info.ProgramDirectory = filepath.Join(programDirectory, "bin")
 	}
 
-	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
+	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin, false)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
@@ -1345,7 +1353,84 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	return errors.New("not supported")
+	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
+	ctx := context.Background()
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		return err
+	}
+
+	if logging.V(5) {
+		commandStr := strings.Join(req.Args, " ")
+		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
+	}
+
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return err
+	}
+
+	env := os.Environ()
+	if opts.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
+	if opts.tsconfigpath != "" {
+		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
+	}
+
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPluginPath
+	}
+
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
+	if err != nil {
+		return err
+	}
+
+	args := []string{runPath}
+
+	nodeargs, err := shlex.Split(opts.nodeargs)
+	if err != nil {
+		return err
+	}
+
+	nodeargs = append(nodeargs, req.Info.EntryPoint)
+
+	args = append(args, nodeargs...)
+
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	cmd := exec.Command(nodeBin, args...)
+	cmd.Dir = req.Pwd
+	cmd.Env = env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	if err := cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// The program ran, but exited with a non-zero error code.  This will happen often, since user
+			// errors will trigger this.  So, the error message should look as nice as possible.
+			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				return fmt.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+			}
+			return fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+		}
+		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+		return fmt.Errorf("Problem executing plugin program (could not run language executor): %w", err)
+	}
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (host *nodeLanguageHost) GenerateProject(

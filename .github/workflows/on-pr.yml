@@ -14,7 +14,7 @@ on:
       - "sdk/.version"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 # The jobs in this workflow are only run on branches. The `on-community-pr.yml` job provides
@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: read
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       is-snapshot: true
     secrets: inherit
 
@@ -67,17 +67,12 @@ jobs:
       # To sign artifacts.
       id-token: write
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      # codegen tests take quite a while to run.
-      # Run them only if ci/test is set,
-      # or if one of the codegen files changed.
-      test-codegen: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
-          (needs.inspect.outputs.test-codegen == 'true')
-        }}
+      # codegen tests are not the fastest, but we want to run them
+      # on PR to get correct coverage numbers.
+      test-codegen: true
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
@@ -91,8 +86,7 @@ jobs:
           && 'macos-latest windows-latest'
           || 'windows-latest'
         }}
-      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
-      enable-coverage: false
+      enable-coverage: true
     secrets: inherit
 
   performance-gate:
@@ -107,28 +101,6 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       test-version-sets: 'minimum current'
       performance-test-platforms: ubuntu-latest
-    secrets: inherit
-
-  prepare-release:
-    name: prepare
-    if: >- # No newlines or trailing newline.
-      ${{
-        github.event.pull_request.head.repo.full_name == github.repository
-        && contains(github.event.pull_request.labels.*.name, 'ci/test')
-      }}
-    needs: [info, ci]
-    uses: ./.github/workflows/ci-prepare-release.yml
-    permissions:
-      contents: write
-      # To sign artifacts.
-      id-token: write
-    with:
-      ref: ${{ github.ref }}
-      version: ${{ needs.info.outputs.version }}
-      release-notes: ${{ needs.info.outputs.release-notes }}
-      project: ${{ github.repository }}
-      draft: true
-      prerelease: true
     secrets: inherit
 
   ci-ok:

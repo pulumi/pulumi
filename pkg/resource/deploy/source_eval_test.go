@@ -2505,6 +2505,11 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
@@ -2517,6 +2522,15 @@ func TestCall(t *testing.T) {
 				},
 			}
 			wg.Done()
+		}()
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
 		}()
 
 		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
@@ -2592,6 +2606,20 @@ func TestCall(t *testing.T) {
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
+
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
+		}()
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
 			"test": resource.NewStringProperty("test-value"),
@@ -3379,7 +3407,7 @@ func TestValidationFailures(t *testing.T) {
 		{
 			name: "bad request",
 			err:  badRequestError,
-			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request:\n" +
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
 				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
 				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
 		},

@@ -16,6 +16,7 @@ package pcl_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"os"
 	"path/filepath"
 	"testing"
@@ -617,6 +618,52 @@ func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
 	require.Contains(t, diags.Error(), "cannot bind component example from the same directory as the parent program")
 }
 
+func TestParsingPackageDescriptorsWorks(t *testing.T) {
+	t.Parallel()
+	source := `
+// basic package
+package "aws" { }
+
+// package with version
+package "azure" { baseProviderVersion = "1.2.3" }
+
+// parameterized package
+package "random" {
+	baseProviderName = "terraform-provider"
+	baseProviderVersion = "0.1.0"
+    baseProviderDownloadUrl = "https://example.com/terraform-provider.zip"
+    parameterization {
+ 		name = "random"
+        version = "4.5.6"
+        value = "SGVsbG8=" // base64 encoded "Hello"
+    }
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
+	require.NoError(t, err)
+	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.Equal(t, 3, len(packageDescriptors), "There are two package descriptors")
+
+	require.Equal(t, "aws", packageDescriptors["aws"].Name)
+	require.Nil(t, packageDescriptors["aws"].Version)
+	require.Equal(t, "", packageDescriptors["aws"].DownloadURL)
+	require.Nil(t, packageDescriptors["aws"].Parameterization)
+
+	require.Equal(t, "azure", packageDescriptors["azure"].Name)
+	require.Equal(t, "1.2.3", packageDescriptors["azure"].Version.String())
+
+	assert.Equal(t, "terraform-provider", packageDescriptors["random"].Name)
+	assert.Equal(t, "0.1.0", packageDescriptors["random"].Version.String())
+	assert.Equal(t, "https://example.com/terraform-provider.zip", packageDescriptors["random"].DownloadURL)
+	require.NotNil(t, packageDescriptors["random"].Parameterization)
+	assert.Equal(t, "random", packageDescriptors["random"].Parameterization.Name)
+	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
+	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
+	assert.Equal(t, "SGVsbG8=", base64Value)
+}
+
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := `
@@ -637,6 +684,67 @@ resource "defaultVpc" "aws:ec2/vpc:Vpc" {
 }
 `
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingElementFunctionWithSplatExpression(t *testing.T) {
+	t.Parallel()
+	source := `
+config "randomPrefixes" "list(object({ prefix: string }))" {
+	default = []
+}
+
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	options { range = length(randomPrefixes) }
+	prefix = element(randomPrefixes[*].prefix, range.value)
+}
+`
+	// binding in strict mode
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+
+	// binding in non-strict mode
+	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
+	t.Parallel()
+	source := `
+azs = invoke("aws:index:getAvailabilityZones", {})
+
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	options { range = length(azs.filters) }
+	prefix = element(azs.filters[*].name, range.value)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.PreferOutputVersionedInvokes)
+	require.NoError(t, err)
+	assert.Empty(t, diags, "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingElementFunctionWithDynamicInput(t *testing.T) {
+	t.Parallel()
+	source := `
+config "data" "any" {}
+value = element(data, 0)
+`
+	// strict mode produces an error: the first argument to 'element' must be a list or tuple
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "the first argument to 'element' must be a list or tuple")
+	require.Nil(t, program)
+
+	// non-strict mode should bind without errors
+	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
 	assert.NotNil(t, program)

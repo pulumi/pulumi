@@ -528,6 +528,14 @@ func CopyTemplateFiles(
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
 				// Create the destination directory.
+				if force {
+					info, _ := os.Stat(dest)
+					if info != nil && !info.IsDir() {
+						os.Remove(dest)
+					}
+					// MkdirAll will not error out if dest is a directory that already exists
+					return os.MkdirAll(dest, 0o700)
+				}
 				return os.Mkdir(dest, 0o700)
 			}
 
@@ -553,7 +561,7 @@ func CopyTemplateFiles(
 			// Originally we just wrote in 0600 mode, but
 			// this does not preserve the executable bit.
 			// With the new logic below, we try to be at
-			// least as permissive as 0600 and whathever
+			// least as permissive as 0600 and whatever
 			// permissions the source file or symlink had.
 			var mode os.FileMode
 			sourceStat, err := os.Lstat(source)
@@ -734,6 +742,16 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 		flag = flag | os.O_TRUNC
 	} else {
 		flag = flag | os.O_EXCL
+	}
+
+	if overwrite {
+		info, _ := os.Stat(filename)
+		if info != nil && info.IsDir() {
+			err := os.RemoveAll(filename)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	f, err := os.OpenFile(filename, flag, mode)

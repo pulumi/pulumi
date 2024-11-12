@@ -152,7 +152,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 	address := string(stdoutBytes)
 
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
@@ -240,6 +240,7 @@ func TestLanguage(t *testing.T) {
 		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
 			tt := tt
+
 			t.Run(tt, func(t *testing.T) {
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,

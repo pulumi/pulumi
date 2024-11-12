@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -103,6 +104,15 @@ func NewContextWithContext(
 		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
 
+	var projectName tokens.PackageName
+	projPath, err := workspace.DetectProjectPath()
+	if err == nil && projPath != "" {
+		project, err := workspace.LoadProject(projPath)
+		if err == nil {
+			projectName = project.Name
+		}
+	}
+
 	pctx := &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
@@ -115,7 +125,7 @@ func NewContextWithContext(
 		baseContext:     ctx,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(pctx, runtimeOptions, disableProviderPreview, plugins, config, debugging)
+		h, err := NewDefaultHost(pctx, runtimeOptions, disableProviderPreview, plugins, config, debugging, projectName)
 		if err != nil {
 			return nil, err
 		}

@@ -58,6 +58,8 @@ general principles may be useful:
   resource state. Lifecycle tests allow mocking providers and specifying
   programs directly without an intermediate language host, and provide the best
   means to consistently reproduce an issue or specify a desired behaviour.
+  The lifecycle test suite's [fuzzing](lifecycle-fuzzing) capabilities may help
+  when tracking down hard-to-find issues.
 
 * *Avoid realising [deletions](step-generation-deletions) until the end of an
   operation.* Many snapshot integrity issues arise from resources ending up in

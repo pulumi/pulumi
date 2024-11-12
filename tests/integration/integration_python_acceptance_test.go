@@ -404,6 +404,110 @@ func TestPoetryInstallWithMainAndParent(t *testing.T) {
 	}
 }
 
+func TestUv(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		template     string
+		cwd          string
+		expectedVenv string
+	}{
+		{
+			template:     "uv",
+			expectedVenv: "my-venv",
+		},
+		{
+			template:     "uv-main",
+			expectedVenv: "my-venv",
+		},
+		{
+			template:     "uv-parent",
+			cwd:          "subfolder",
+			expectedVenv: "subfolder/my-venv",
+		},
+		{
+			template:     "uv-no-venv-option",
+			expectedVenv: ".venv",
+		},
+		{
+			template:     "uv-no-venv-option-parent",
+			cwd:          "subfolder",
+			expectedVenv: ".venv", // The virtualenv is relative to pyproject.toml
+		},
+	} {
+		test := test
+		// On windows, when running in parallel, we can run into issues when Uv tries
+		// to write the same cache file concurrently. This is the same issue we see
+		// for Poetry https://github.com/pulumi/pulumi/pull/17337
+		//nolint:paralleltest
+		t.Run(test.template, func(t *testing.T) {
+			if runtime.GOOS != "windows" {
+				t.Parallel()
+			}
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			e.ImportDirectory(filepath.Join("python", test.template))
+
+			if test.cwd != "" {
+				e.CWD = filepath.Join(e.RootPath, test.cwd)
+			}
+
+			e.RunCommand("pulumi", "install")
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+			e.RunCommand("pulumi", "preview")
+
+			venv := filepath.Join(e.RootPath, test.expectedVenv)
+			if !toolchain.IsVirtualEnv(venv) {
+				t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+			}
+		})
+	}
+
+	t.Run("convert requirements.txt", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Parallel()
+		}
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		e.ImportDirectory(filepath.Join("python", "uv-convert-requirements"))
+
+		e.RunCommand("pulumi", "install")
+
+		venv := filepath.Join(e.RootPath, "my-venv")
+		if !toolchain.IsVirtualEnv(venv) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+		}
+
+		require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml should have been created")
+		require.False(t, e.PathExists("requirements.txt"), "requirements.txt should have been deleted")
+	})
+
+	t.Run("convert requirements.txt subfolder", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Parallel()
+		}
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		e.ImportDirectory(filepath.Join("python", "uv-convert-requirements-subfolder"))
+		e.CWD = filepath.Join(e.RootPath, "subfolder")
+
+		e.RunCommand("pulumi", "install")
+
+		venv := filepath.Join(e.RootPath, "subfolder", "my-venv")
+		if !toolchain.IsVirtualEnv(venv) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there", venv)
+		}
+
+		e.CWD = e.RootPath // Reset the CWD so we can use e.PathExists
+		require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml should have been created")
+		require.False(t, e.PathExists("requirements.txt"), "requirements.txt should have been deleted")
+	})
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMypySupport(t *testing.T) {
 	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -549,6 +653,38 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
+//nolint:paralleltest // Modifies env
+func TestNewPythonChooseUv(t *testing.T) {
+	// The windows acceptance tests are run using git bash, but the survey library does not support this
+	// https://github.com/AlecAivazis/survey/issues/148
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping: survey library does not support git bash on Windows")
+	}
+
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.Stdin = strings.NewReader("uv\n")
+	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using uv as toolchain",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain": "uv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+
+	e.RunCommand("pulumi", "install")
+
+	require.True(t, e.PathExists(".venv"))
+	require.True(t, e.PathExists("uv.lock"))
+	require.True(t, e.PathExists("pyproject.toml"))
+	require.False(t, e.PathExists("requirements.txt"))
+}
+
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestNewPythonRuntimeOptions(t *testing.T) {
 	if runtime.GOOS != "windows" {
@@ -592,13 +728,14 @@ in-project = true`
 	template := "python"
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
+	out, _ := e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
 		"--name", "test_project",
 		"--description", "A python test using poetry as toolchain",
 		"--stack", "test",
 		"--runtime-options", "toolchain=poetry",
 	)
 
+	require.Contains(t, out, "Deleted requirements.txt")
 	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
 	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
 

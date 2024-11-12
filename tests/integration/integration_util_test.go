@@ -102,7 +102,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
-			conn, err := grpc.Dial(
+			conn, err := grpc.NewClient(
 				"127.0.0.1:"+port,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				rpcutil.GrpcChannelOptions(),
@@ -604,8 +604,52 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
-			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason:
+			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
     		- property foo with value '{bar}' has a problem: the failure reason`
+
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
+// Test failures returned from call.
+func testCallFailures(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "call_component_failures"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:
+    		- property foo has a problem: the failure reason`
 
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),

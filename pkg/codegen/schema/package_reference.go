@@ -534,6 +534,15 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	pkg.functionTable = p.types.functionDefs
 	pkg.typeTable = p.types.typeDefs
 	pkg.resourceTypeTable = p.types.resources
+	if p.spec.Parameterization != nil {
+		pkg.Parameterization = &Parameterization{
+			BaseProvider: BaseProvider{
+				Name:    p.spec.Parameterization.BaseProvider.Name,
+				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
+			},
+			Parameter: p.spec.Parameterization.Parameter,
+		}
+	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err
 	}

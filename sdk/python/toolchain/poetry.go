@@ -113,7 +113,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 		pyprojectToml := filepath.Join(requirementsTxtDir, "pyproject.toml")
-		if err := p.convertRequirementsTxt(requirementsTxt, pyprojectToml); err != nil {
+		if err := p.convertRequirementsTxt(requirementsTxt, pyprojectToml, showOutput, infoWriter); err != nil {
 			return err
 		}
 	}
@@ -249,7 +249,9 @@ func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
 	return virtualenvPath, nil
 }
 
-func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string) error {
+func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, showOutput bool,
+	infoWriter io.Writer,
+) error {
 	f, err := os.Open(requirementsTxt)
 	if err != nil {
 		return fmt.Errorf("failed to open %q", requirementsTxt)
@@ -278,6 +280,12 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string) e
 
 	if err := os.Remove(requirementsTxt); err != nil {
 		return fmt.Errorf("failed to remove %q", requirementsTxt)
+	}
+	if showOutput {
+		if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
+			"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
+			return fmt.Errorf("failed to write to infoWriter: %w", err)
+		}
 	}
 
 	return nil
@@ -353,18 +361,4 @@ func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 	}
 
 	return deps, nil
-}
-
-func searchup(currentDir, fileToFind string) (string, error) {
-	if _, err := os.Stat(filepath.Join(currentDir, fileToFind)); err == nil {
-		return currentDir, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	parentDir := filepath.Dir(currentDir)
-	if currentDir == parentDir {
-		// Reached the root directory, file not found
-		return "", os.ErrNotExist
-	}
-	return searchup(parentDir, fileToFind)
 }

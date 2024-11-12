@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"golang.org/x/exp/maps"
@@ -33,6 +34,24 @@ type SnapshotSpec struct {
 
 	// The set of resources in the snapshot.
 	Resources []*ResourceSpec
+}
+
+// Creates a SnapshotSpec from the ResourceV3s in the given DeploymentV3.
+func FromDeploymentV3(d *apitype.DeploymentV3) *SnapshotSpec {
+	ss := &SnapshotSpec{
+		Providers: map[tokens.Package]*ResourceSpec{},
+	}
+
+	for _, r := range d.Resources {
+		rs := FromResourceV3(r)
+		if providers.IsProviderType(rs.Type) {
+			ss.AddProvider(rs)
+		} else {
+			ss.AddResource(rs)
+		}
+	}
+
+	return ss
 }
 
 // Adds the given provider to the snapshot's lookup table and list of resources.
@@ -181,13 +200,25 @@ var stateDependencyTypes = []resource.StateDependencyType{
 
 // A set of options for configuring the generation of a SnapshotSpec.
 type SnapshotSpecOptions struct {
+	// A source DeploymentV3 from which resources should be taken literally,
+	// skipping the generation process.
+	SourceDeploymentV3 *apitype.DeploymentV3
+
+	// A generator for the maximum number of resources to generate in the snapshot.
 	ResourceCount *rapid.Generator[int]
-	Action        *rapid.Generator[SnapshotSpecAction]
-	ResourceOpts  ResourceSpecOptions
+
+	// A generator for actions that should be taken when generating a snapshot.
+	Action *rapid.Generator[SnapshotSpecAction]
+
+	// A set of options for configuring the generation of resources in the snapshot.
+	ResourceOpts ResourceSpecOptions
 }
 
 // Returns a copy of the given SnapshotSpecOptions with the given overrides applied.
 func (sso SnapshotSpecOptions) With(overrides SnapshotSpecOptions) SnapshotSpecOptions {
+	if overrides.SourceDeploymentV3 != nil {
+		sso.SourceDeploymentV3 = overrides.SourceDeploymentV3
+	}
 	if overrides.ResourceCount != nil {
 		sso.ResourceCount = overrides.ResourceCount
 	}
@@ -215,9 +246,10 @@ const (
 // equal probability that each resource will be new, old, or a provider. Resources will be created using the default set
 // of ResourceSpecOptions.
 var defaultSnapshotSpecOptions = SnapshotSpecOptions{
-	ResourceCount: rapid.IntRange(2, 5),
-	Action:        rapid.SampledFrom(snapshotSpecActions),
-	ResourceOpts:  defaultResourceSpecOptions,
+	SourceDeploymentV3: nil,
+	ResourceCount:      rapid.IntRange(2, 5),
+	Action:             rapid.SampledFrom(snapshotSpecActions),
+	ResourceOpts:       defaultResourceSpecOptions,
 }
 
 var snapshotSpecActions = []SnapshotSpecAction{
@@ -232,6 +264,14 @@ func GeneratedSnapshotSpec(sso StackSpecOptions, snso SnapshotSpecOptions) *rapi
 	snso = defaultSnapshotSpecOptions.With(snso)
 
 	return rapid.Custom(func(t *rapid.T) *SnapshotSpec {
+		if snso.SourceDeploymentV3 != nil {
+			// Rapid insists that all generators must draw at least one bit of entropy. Therefore, if we were given a source
+			// to draw resources from literally, we'll use the Just generator to explicitly draw one bit by returning those
+			// resources as-is.
+			ss := rapid.Just(FromDeploymentV3(snso.SourceDeploymentV3)).Draw(t, "SnapshotSpec.SourceDeploymentV3")
+			return ss
+		}
+
 		ss := &SnapshotSpec{}
 
 		newResource := generatedNewResourceSpec(ss, sso, snso.ResourceOpts)

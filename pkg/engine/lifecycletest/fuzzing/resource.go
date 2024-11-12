@@ -21,6 +21,7 @@ import (
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"golang.org/x/exp/maps"
@@ -53,6 +54,33 @@ type ResourceSpec struct {
 	Tags map[string]bool
 }
 
+// Creates a ResourceSpec from the given ResourceV3.
+func FromResourceV3(r apitype.ResourceV3) *ResourceSpec {
+	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
+	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
+	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
+
+	return &ResourceSpec{
+		Project:              r.URN.Project(),
+		Stack:                r.URN.Stack(),
+		Type:                 r.Type,
+		Name:                 r.URN.Name(),
+		Custom:               r.Custom,
+		Delete:               r.Delete,
+		ID:                   r.ID,
+		Protect:              r.Protect,
+		PendingReplacement:   r.PendingReplacement,
+		RetainOnDelete:       r.RetainOnDelete,
+		Provider:             r.Provider,
+		Parent:               r.Parent,
+		Dependencies:         deps,
+		PropertyDependencies: propDeps,
+		DeletedWith:          r.DeletedWith,
+		Aliases:              aliases,
+		Tags:                 map[string]bool{},
+	}
+}
+
 // AddTag adds the given tag to the given ResourceSpec. Ideally this would be a generic method on ResourceSpec itself,
 // but Go doesn't support generic methods yet.
 func AddTag[T ~string](r *ResourceSpec, tag T) {
@@ -71,7 +99,7 @@ func AddTag[T ~string](r *ResourceSpec, tag T) {
 func (r *ResourceSpec) URN() resource.URN {
 	var parentType tokens.Type
 	if r.Parent != "" {
-		parentType = r.Parent.Type()
+		parentType = r.Parent.QualifiedType()
 	}
 
 	return resource.NewURN(r.Stack, r.Project, parentType, r.Type, r.Name)

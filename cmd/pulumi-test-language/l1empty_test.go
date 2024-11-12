@@ -150,7 +150,7 @@ func (h *L1EmptyLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 
 	if !h.skipStack {
-		conn, err := grpc.Dial(
+		conn, err := grpc.NewClient(
 			req.MonitorAddress,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),

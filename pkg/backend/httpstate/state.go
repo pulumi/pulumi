@@ -159,6 +159,24 @@ func (b *cloudBackend) newQuery(ctx context.Context,
 	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
 }
 
+func RenewLeaseFunc(
+	client *client.Client, update client.UpdateIdentifier, assumedExpires func() time.Time,
+) func(ctx context.Context, duration time.Duration, currentToken string) (string, time.Time, error) {
+	return func(ctx context.Context, duration time.Duration, currentToken string) (string, time.Time, error) {
+		tok, err := client.RenewUpdateLease(
+			ctx, update, currentToken, duration)
+		if err != nil {
+			// Translate 403 status codes to expired token errors to stop the token refresh loop.
+			var apierr *apitype.ErrorResponse
+			if errors.As(err, &apierr) && apierr.Code == 403 {
+				return "", time.Time{}, expiredTokenError{err}
+			}
+			return "", time.Time{}, err
+		}
+		return tok, assumedExpires(), err
+	}
+}
+
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
 	update client.UpdateIdentifier, token string,
 ) (*cloudUpdate, error) {
@@ -173,23 +191,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 			return time.Now().Add(duration)
 		}
 
-		renewLease := func(
-			ctx context.Context,
-			duration time.Duration,
-			currentToken string,
-		) (string, time.Time, error) {
-			tok, err := b.Client().RenewUpdateLease(
-				ctx, update, currentToken, duration)
-			if err != nil {
-				// Translate 403 status codes to expired token errors to stop the token refresh loop.
-				var apierr apitype.ErrorResponse
-				if errors.As(err, &apierr) && apierr.Code == 403 {
-					return "", time.Time{}, expiredTokenError{err}
-				}
-				return "", time.Time{}, err
-			}
-			return tok, assumedExpires(), err
-		}
+		renewLease := RenewLeaseFunc(b.Client(), update, assumedExpires)
 
 		ts, err := newTokenSource(ctx, clockwork.NewRealClock(), token, assumedExpires(), duration, renewLease)
 		if err != nil {
@@ -234,7 +236,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	if !backend.DisableIntegrityChecking {
 		if err := snapshot.VerifyIntegrity(); err != nil {
 			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead())
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)

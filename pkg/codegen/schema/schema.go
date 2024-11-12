@@ -2100,4 +2100,6 @@ type PartialPackageSpec struct {
 	Resources map[string]json.RawMessage `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
+	// Parameterization contains parameterization information about the package.
+	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }

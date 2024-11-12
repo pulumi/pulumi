@@ -1,0 +1,14 @@
+<{%fg 2%}>+ pkgA:modA:type0: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type0::res0]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:modA:type1: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type1::res1]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:modA:type2: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pkgA:modA:type2::res2]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:modA:type3: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:modA:type1$pkgA:modA:type3::res3]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -104,47 +104,73 @@ func printDecryptError(e engine.DecryptError) {
 // prints out a panic-like banner with information about the error and how to
 // report it.
 func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
-	readOrWrite := ""
-	if sie.Op == deploy.SnapshotIntegrityRead {
-		readOrWrite = `
-NOTE: This error occurred while reading a snaphot. This error was introduced by
-a previous operation when it wrote the snapshot. If you have details about that
-operation, please include them in your report as well.
-`
-	}
-
-	cmdutil.Diag().Errorf(diag.RawMessage(
-		"", /*urn*/
-		fmt.Sprintf(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
+	var message strings.Builder
+	message.WriteString(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
 
 ================================================================================
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
-%s
+`)
+
+	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata == nil {
+		message.WriteString(`
+NOTE: This error occurred while reading a snaphot. This error was introduced by
+a previous operation when it wrote the snapshot. If you have details about that
+operation, please include them in your report as well.
+`)
+	}
+
+	message.WriteString(fmt.Sprintf(`
 Please provide all of the text below in your report.
 ================================================================================
-Pulumi Version:    %s
 Go Version:        %s
 Go Compiler:       %s
 Architecture:      %s
-Operating System:  %s
+Operating System:  %s`,
+		runtime.Version(),
+		runtime.Compiler,
+		runtime.GOARCH,
+		runtime.GOOS,
+	))
+
+	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata != nil {
+		message.WriteString(fmt.Sprintf(`
+
+Write Version:     %s
+Write Command:     %s
+Write Error:       %s
+
+Read Version:      %s
+Read Command:      %s
+Read Error:        %s`,
+			sie.Metadata.Version,
+			sie.Metadata.Command,
+			sie.Metadata.Error,
+			version.Version,
+			strings.Join(os.Args, " "),
+			err,
+		))
+	} else {
+		message.WriteString(fmt.Sprintf(`
+
+Pulumi Version:    %s
 Command:           %s
-Error:             %s
+Error:             %s`,
+			version.Version,
+			strings.Join(os.Args, " "),
+			err,
+		))
+	}
+
+	message.WriteString(fmt.Sprintf(`
 
 Stack Trace:
 
 %s
 `,
-			readOrWrite,
-			version.Version,
-			runtime.Version(),
-			runtime.Compiler,
-			runtime.GOARCH,
-			runtime.GOOS,
-			strings.Join(os.Args, " "),
-			err,
-			string(sie.Stack),
-		),
+		string(sie.Stack),
 	))
+
+	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, message.String()))
 }
 
 // Quick and dirty utility function for printing to writers that we know will never fail.

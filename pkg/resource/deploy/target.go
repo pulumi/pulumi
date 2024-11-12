@@ -29,6 +29,18 @@ type Target struct {
 	Snapshot     *Snapshot        // the last snapshot deployed to the target.
 }
 
+const (
+	// The package name for the NodeJS dynamic provider.
+	nodejsDynamicProviderPackage = "pulumi-nodejs"
+	// The package name for the Python dynamic provider.
+	pythonDynamicProviderPackage = "pulumi-python"
+)
+
+// Returns true if the given package refers to a dynamic provider.
+func isDynamicProvider(pkg tokens.Package) bool {
+	return pkg == tokens.Package(nodejsDynamicProviderPackage) || pkg == tokens.Package(pythonDynamicProviderPackage)
+}
+
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
 func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
 	result := resource.PropertyMap{}
@@ -37,7 +49,8 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 	}
 
 	for k, c := range t.Config {
-		if tokens.Package(k.Namespace()) != pkg {
+		// For dynamic providers, we always pass the full configuration.
+		if !isDynamicProvider(pkg) && tokens.Package(k.Namespace()) != pkg {
 			continue
 		}
 
@@ -50,7 +63,12 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 		if c.Secure() {
 			propertyValue = resource.MakeSecret(propertyValue)
 		}
-		result[resource.PropertyKey(k.Name())] = propertyValue
+		if isDynamicProvider(pkg) {
+			// For dynamic providers, we want to maintain the namespace.
+			result[resource.PropertyKey(k.String())] = propertyValue
+		} else {
+			result[resource.PropertyKey(k.Name())] = propertyValue
+		}
 	}
 	return result, nil
 }
