@@ -153,7 +153,7 @@ def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence
                        name_regex: Optional[pulumi.Input[Optional[str]]] = None,
                        owners: Optional[pulumi.Input[Sequence[str]]] = None,
                        sort_ascending: Optional[pulumi.Input[Optional[bool]]] = None,
-                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetAmiIdsResult]:
+                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetAmiIdsResult]:
     """
     Taken from pulumi-AWS to regress an issue
 
@@ -178,7 +178,7 @@ def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence
     __args__['nameRegex'] = name_regex
     __args__['owners'] = owners
     __args__['sortAscending'] = sort_ascending
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('mypkg::getAmiIds', __args__, opts=opts, typ=GetAmiIdsResult)
     return __ret__.apply(lambda __response__: GetAmiIdsResult(
         executable_users=pulumi.get(__response__, 'executable_users'),

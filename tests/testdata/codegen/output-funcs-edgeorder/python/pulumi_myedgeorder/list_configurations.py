@@ -90,7 +90,7 @@ def list_configurations(configuration_filters: Optional[Sequence[pulumi.InputTyp
 def list_configurations_output(configuration_filters: Optional[pulumi.Input[Sequence[pulumi.InputType['ConfigurationFilters']]]] = None,
                                customer_subscription_details: Optional[pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetails']]]] = None,
                                skip_token: Optional[pulumi.Input[Optional[str]]] = None,
-                               opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListConfigurationsResult]:
+                               opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ListConfigurationsResult]:
     """
     The list of configurations.
     API Version: 2020-12-01-preview.
@@ -104,7 +104,7 @@ def list_configurations_output(configuration_filters: Optional[pulumi.Input[Sequ
     __args__['configurationFilters'] = configuration_filters
     __args__['customerSubscriptionDetails'] = customer_subscription_details
     __args__['skipToken'] = skip_token
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('myedgeorder::listConfigurations', __args__, opts=opts, typ=ListConfigurationsResult)
     return __ret__.apply(lambda __response__: ListConfigurationsResult(
         next_link=pulumi.get(__response__, 'next_link'),

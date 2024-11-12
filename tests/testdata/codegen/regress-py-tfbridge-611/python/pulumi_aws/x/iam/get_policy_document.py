@@ -77,13 +77,13 @@ def get_policy_document(statements: Optional[Sequence[Union['_x.GetPolicyDocumen
         json=pulumi.get(__ret__, 'json'),
         statements=pulumi.get(__ret__, 'statements'))
 def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]]]] = None,
-                               opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetPolicyDocumentResult]:
+                               opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetPolicyDocumentResult]:
     """
     Use this data source to access information about an existing resource.
     """
     __args__ = dict()
     __args__['statements'] = statements
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('aws:x/iam/getPolicyDocument:getPolicyDocument', __args__, opts=opts, typ=GetPolicyDocumentResult)
     return __ret__.apply(lambda __response__: GetPolicyDocumentResult(
         id=pulumi.get(__response__, 'id'),

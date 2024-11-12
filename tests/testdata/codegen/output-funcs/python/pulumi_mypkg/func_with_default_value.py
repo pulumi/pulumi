@@ -59,14 +59,14 @@ def func_with_default_value(a: Optional[str] = None,
         r=pulumi.get(__ret__, 'r'))
 def func_with_default_value_output(a: Optional[pulumi.Input[str]] = None,
                                    b: Optional[pulumi.Input[Optional[str]]] = None,
-                                   opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithDefaultValueResult]:
+                                   opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithDefaultValueResult]:
     """
     Check codegen of functions with default values.
     """
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithDefaultValue', __args__, opts=opts, typ=FuncWithDefaultValueResult)
     return __ret__.apply(lambda __response__: FuncWithDefaultValueResult(
         r=pulumi.get(__response__, 'r')))

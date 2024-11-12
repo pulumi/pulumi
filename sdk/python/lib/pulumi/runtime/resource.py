@@ -40,6 +40,7 @@ from .. import urn as urn_util
 from ..output import Input, Output
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
+from ._depends_on import _resolve_depends_on_urns
 from .rpc import _expand_dependencies
 from .settings import (
     _get_callbacks,
@@ -180,7 +181,7 @@ async def prepare_resource(
     explicit_urn_dependencies: Set[str] = set()
     if opts is not None and opts.depends_on is not None:
         explicit_urn_dependencies = await _resolve_depends_on_urns(
-            opts, from_resource=res
+            opts._depends_on_list(), from_resource=res
         )
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
@@ -1219,34 +1220,6 @@ def convert_providers(
         result[p.package] = p
 
     return result
-
-
-async def _resolve_depends_on_urns(
-    options: "ResourceOptions",
-    from_resource: Optional["Resource"] = None,
-) -> Set[str]:
-    """
-    Resolves the set of all dependent resources implied by
-    `depends_on`, either directly listed or implied in the Input
-    layer. Returns a deduplicated URN list.
-    """
-
-    if options.depends_on is None:
-        return set()
-
-    outer = Output._from_input_shallow(options._depends_on_list())
-    all_deps = await outer.resources()
-    inner_list = await outer.future() or []
-
-    for i in inner_list:
-        inner = Output.from_input(i)
-        more_deps = await inner.resources()
-        all_deps = all_deps | more_deps
-        direct_dep = await inner.future()
-        if direct_dep is not None:
-            all_deps.add(direct_dep)
-
-    return await rpc._expand_dependencies(all_deps, from_resource)
 
 
 def _pkg_from_type(ty: str) -> Optional[str]:

@@ -59,14 +59,14 @@ def func_with_list_param(a: Optional[Sequence[str]] = None,
         r=pulumi.get(__ret__, 'r'))
 def func_with_list_param_output(a: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
                                 b: Optional[pulumi.Input[Optional[str]]] = None,
-                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithListParamResult]:
+                                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithListParamResult]:
     """
     Check codegen of functions with a List parameter.
     """
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithListParam', __args__, opts=opts, typ=FuncWithListParamResult)
     return __ret__.apply(lambda __response__: FuncWithListParamResult(
         r=pulumi.get(__response__, 'r')))

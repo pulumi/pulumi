@@ -92,7 +92,7 @@ def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulum
                                                     integration_runtime_name: Optional[pulumi.Input[str]] = None,
                                                     metadata_path: Optional[pulumi.Input[Optional[str]]] = None,
                                                     resource_group_name: Optional[pulumi.Input[str]] = None,
-                                                    opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
+                                                    opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
     """
     Another failing example. A list of SSIS object metadata.
     API Version: 2018-06-01.
@@ -108,7 +108,7 @@ def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulum
     __args__['integrationRuntimeName'] = integration_runtime_name
     __args__['metadataPath'] = metadata_path
     __args__['resourceGroupName'] = resource_group_name
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('mypkg::getIntegrationRuntimeObjectMetadatum', __args__, opts=opts, typ=GetIntegrationRuntimeObjectMetadatumResult)
     return __ret__.apply(lambda __response__: GetIntegrationRuntimeObjectMetadatumResult(
         next_link=pulumi.get(__response__, 'next_link'),

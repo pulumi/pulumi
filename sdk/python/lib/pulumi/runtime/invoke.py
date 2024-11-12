@@ -25,6 +25,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Union,
     overload,
 )
 
@@ -34,9 +35,10 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo
 
 from .. import _types, log
-from ..invoke import InvokeOptions
+from ..invoke import InvokeOptions, InvokeOutputOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
+from ._depends_on import _resolve_depends_on_urns
 from .settings import (
     _get_rpc_manager,
     get_monitor,
@@ -131,7 +133,7 @@ def invoke(
 def invoke_output(
     tok: str,
     props: "Inputs",
-    opts: Optional[InvokeOptions] = None,
+    opts: Optional[Union[InvokeOptions, InvokeOutputOptions]] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> "Output[Any]":
@@ -194,7 +196,7 @@ async def invoke_async(
 def _invoke(
     tok: str,
     props: "Inputs",
-    opts: Optional[InvokeOptions],
+    opts: Optional[Union[InvokeOptions, InvokeOutputOptions]],
     typ: Optional[type],
     package_ref: Optional[Awaitable[Optional[str]]],
 ) -> Awaitable[InvokeResult]:
@@ -314,6 +316,11 @@ def _invoke(
         )
 
     async def do_rpc():
+        # Await any dependencies before invoking our RPC.
+        await _resolve_depends_on_urns(
+            opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
+        )
+
         resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such
