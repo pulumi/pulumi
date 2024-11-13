@@ -1953,7 +1953,6 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
 		}
 		// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-
 		fmt.Fprintf(w, "    opts = pulumi.%s.merge(_utilities.get_invoke_opts_defaults(), opts)\n", optionsClass)
 
 		// Now simply invoke the runtime function with the arguments.

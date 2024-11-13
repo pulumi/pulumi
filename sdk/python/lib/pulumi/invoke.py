@@ -72,7 +72,7 @@ class InvokeOptions:
                URL will be used to service the invocation. This will override the URL sourced from the host package, and
                should be rarely used.
         """
-        # Expose 'merge' again this this object, but this time as an instance method.
+        # Expose 'merge' on this object as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
         self.merge = self._merge_instance  # type: ignore
         self.merge.__func__.__doc__ = InvokeOptions.merge.__doc__  # type: ignore
@@ -149,7 +149,7 @@ class InvokeOutputOptions(InvokeOptions):
 
     depends_on: Optional["Input[Union[Sequence[Input[Resource]], Resource]]"]
     """
-    If provided, declares that the currently-constructing resource depends on the given resources.
+    If provided, declares that the currently-executing invoke depends on the given resources.
     """
 
     def __init__(
@@ -165,13 +165,13 @@ class InvokeOutputOptions(InvokeOptions):
         super().__init__(parent, provider, version, plugin_download_url)
         self.depends_on = depends_on
 
-        # Expose 'merge' again this this object, but this time as an instance method.
+        # Expose 'merge' on this object as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
         self.merge = self._merge_instance  # type: ignore
         self.merge.__func__.__doc__ = InvokeOptions.merge.__doc__  # type: ignore
 
-    def _merge_instance(self, opts: "InvokeOptions") -> "InvokeOptions":
-        return InvokeOptions.merge(self, opts)
+    def _merge_instance(self, opts: "Union[InvokeOptions, InvokeOutputOptions]") -> "InvokeOutputOptions":
+        return InvokeOutputOptions.merge(self, opts)
 
     @staticmethod
     def merge(
@@ -199,7 +199,7 @@ class InvokeOutputOptions(InvokeOptions):
 
         4. Attributes with value 'None' will not be copied over.
 
-        This method can be called either as static-method like `InvokeOptions.merge(opts1, opts2)`
+        This method can be called either as static-method like `InvokeOutputOptions.merge(opts1, opts2)`
         or as an instance-method like `opts1.merge(opts2)`.  The former is useful for cases where
         `opts1` may be `None` so the caller does not need to check for this case.
         """
@@ -210,14 +210,14 @@ class InvokeOutputOptions(InvokeOptions):
             opts1, InvokeOutputOptions
         ):
             raise TypeError(
-                "Expected opts1 to be a InvokeOptions or InvokeOutputOptions instance"
+                "Expected opts1 to be an InvokeOptions or InvokeOutputOptions instance"
             )
 
         if not isinstance(opts2, InvokeOptions) and not isinstance(
             opts2, InvokeOutputOptions
         ):
             raise TypeError(
-                "Expected opts2 to be a InvokeOptions or InvokeOutputOptions instance"
+                "Expected opts2 to be an InvokeOptions or InvokeOutputOptions instance"
             )
 
         dest = InvokeOutputOptions(
