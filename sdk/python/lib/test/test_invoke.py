@@ -142,12 +142,20 @@ async def test_invoke_depends_on() -> None:
         (InvokeOptions(version="1.0.0"), None, "1.0.0"),
         (InvokeOptions(version="1.0.0"), InvokeOptions(version=""), ""),
         (InvokeOutputOptions(version="1.0.0"), InvokeOptions(version="2.0.0"), "2.0.0"),
-        (InvokeOutputOptions(version="1.0.0"), InvokeOutputOptions(version="2.0.0"), "2.0.0"),
+        (
+            InvokeOutputOptions(version="1.0.0"),
+            InvokeOutputOptions(version="2.0.0"),
+            "2.0.0",
+        ),
         (None, InvokeOutputOptions(version="2.0.0"), "2.0.0"),
         (InvokeOutputOptions(version="1.0.0"), None, "1.0.0"),
-    ]
+    ],
 )
-def test_invoke_merge(a: Union[InvokeOptions, InvokeOutputOptions], b: Union[InvokeOptions, InvokeOutputOptions], expected: str) -> None:
+def test_invoke_merge(
+    a: Union[InvokeOptions, InvokeOutputOptions],
+    b: Union[InvokeOptions, InvokeOutputOptions],
+    expected: str,
+) -> None:
     if a is not None:
         assert a.merge(b).version == expected
     if isinstance(a, InvokeOutputOptions):
