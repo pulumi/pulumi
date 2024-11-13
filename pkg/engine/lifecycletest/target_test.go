@@ -3851,6 +3851,118 @@ func TestUntargetedProviderChange(t *testing.T) {
 	assert.Equal(t, providerRef, unrelated.Provider)
 }
 
+// TestUntargetedAliasedProviderChanges tests that a provider can be renamed in a targeting update as long as there is
+// an alias that enables Pulumi to spot the rename. In the absence of such an alias, Pulumi would attempt to create a
+// new provider, which in the context of a targeted update could lead to an error if untargeted resources depend on the
+// old provider (by its old URN) -- see TestTargetChangeProviderVersion for a test case for this.
+func TestUntargetedAliasedProviderChanges(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{Project: "test", Stack: "test"}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgParent", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var setupProvURN resource.URN
+	var setupProvID resource.ID
+
+	// Set up the initial program:
+	//
+	// * Parent, which is a component that will be used a parent in the next step
+	// * Prov, an explicit provider instance for pkgA that we will reparent and alias in the next step
+	// * Res, a resource which references Prov as its provider
+	setupProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgParent:pulumi:typParent", "parent", false)
+		assert.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true)
+		require.NoError(t, err)
+
+		setupProvURN = prov.URN
+		setupProvID = prov.ID
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "res", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupOptions := lt.TestUpdateOptions{T: t, HostF: setupHostF}
+
+	setupSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), setupOptions, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Set up the test program:
+	//
+	// * Reparent Prov to Parent
+	// * Alias Prov to its old URN
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgParent:pulumi:typParent", "parent", false)
+		assert.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Parent:    parent.URN,
+			AliasURNs: []resource.URN{setupProvURN},
+		})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:typA", "res", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	// Run a targeted update that does not target any resources. Since providers are implicitly targeted, and since we
+	// gave Prov an alias, it should be renamed to its new URN (and subsequently, the set of resources that we didn't
+	// target should have their provider references updated to reflect the new URN).
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproOptions := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"**non-existing**"}),
+		},
+	}
+
+	reproSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOptions, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, len(reproSnap.Resources))
+
+	expectedProvRef, err := providers.NewReference(
+		resource.NewURN(
+			tokens.QName(p.Stack),
+			tokens.PackageName(p.Project),
+			"pkgParent:pulumi:typParent",
+			"pulumi:providers:pkgA",
+			"prov",
+		),
+		setupProvID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, expectedProvRef.String(), reproSnap.Resources[2].Provider)
+}
+
 // TestUntargetedSameStepsAcceptDeletedResources tests that if untargeted resources depend on partially-replaced
 // resources (that is, those with Delete: true) that those resources are skipped (since creating SameSteps would panic)
 // and copied over as usual by the snapshot persistence layer.

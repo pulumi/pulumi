@@ -587,6 +587,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	sg.deployment.goals.Store(urn, goal)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
+		for _, aliasURN := range aliasUrns {
+			sg.providers[aliasURN] = new
+		}
 	}
 
 	// Fetch the provider for this resource.
