@@ -54,7 +54,7 @@ class InvokeOptions:
         self,
         parent: Optional["Resource"] = None,
         provider: Optional["ProviderResource"] = None,
-        version: Optional[str] = "",
+        version: Optional[str] = None,
         plugin_download_url: Optional[str] = None,
     ) -> None:
         """
@@ -131,9 +131,7 @@ class InvokeOptions:
             if source.plugin_download_url is None
             else source.plugin_download_url
         )
-        dest.version = (
-            dest.version if (source.version in [None, ""]) else source.version
-        )
+        dest.version = dest.version if source.version is None else source.version
 
         return dest
 
