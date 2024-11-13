@@ -106,6 +106,8 @@ brew::
 .PHONY: lint_%
 lint:: golangci-lint.ensure lint_golang
 
+lint_fix:: lint_golang_fix
+
 lint_golang:: lint_deps
 	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
 	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
@@ -114,6 +116,17 @@ lint_golang:: lint_deps
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--timeout 5m \
 			--path-prefix $(pkg)) \
+		&&) true
+
+lint_golang_fix::
+	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
+	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
+		echo "[golangci-lint] Linting $(pkg)..." && \
+		golangci-lint run $(GOLANGCI_LINT_ARGS) \
+			--config $(GOLANGCI_LINT_CONFIG) \
+			--timeout 5m \
+			--path-prefix $(pkg) \
+			--fix) \
 		&&) true
 
 lint_deps:
