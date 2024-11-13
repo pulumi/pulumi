@@ -511,6 +511,9 @@ describe("rpc", () => {
                 assert.strictEqual(/logging via (.*) works/.test(message), true);
             },
         },
+        runtime_sxs_mocks: {
+            pwd: path.join(base, "015.runtime_sxs_mocks"),
+        },
         // Test that leaked debuggable promises fail the deployment.
         promise_leak: {
             pwd: path.join(base, "016.promise_leak"),
