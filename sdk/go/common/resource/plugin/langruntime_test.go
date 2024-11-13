@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -129,12 +130,13 @@ func (m *MockLanguageRuntimeClient) Pack(
 func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	t.Parallel()
 
+	returnErr := errors.New("erroring so we don't need to implement the whole thing")
 	mockLanguageRuntime := &MockLanguageRuntimeClient{
 		RunPluginF: func(
 			ctx context.Context, info *pulumirpc.RunPluginRequest,
 		) (pulumirpc.LanguageRuntime_RunPluginClient, error) {
 			require.Equal(t, "/tmp", info.Pwd)
-			return nil, nil
+			return nil, returnErr
 		},
 	}
 
@@ -151,5 +153,5 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	_, _, _, err = host.RunPlugin(RunPluginInfo{
 		WorkingDirectory: "/tmp",
 	})
-	require.NoError(t, err)
+	require.Equal(t, returnErr, err)
 }
