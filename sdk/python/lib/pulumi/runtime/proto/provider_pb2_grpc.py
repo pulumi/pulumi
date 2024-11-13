@@ -20,6 +20,11 @@ class ResourceProviderStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Handshake',
+                request_serializer=pulumi_dot_provider__pb2.HandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.HandshakeResponse.FromString,
+                )
         self.Parameterize = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Parameterize',
                 request_serializer=pulumi_dot_provider__pb2.ParameterizeRequest.SerializeToString,
@@ -128,6 +133,12 @@ class ResourceProviderServicer(object):
     operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
     as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
+
+    def Handshake(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Parameterize(self, request, context):
         """`Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
@@ -380,6 +391,11 @@ class ResourceProviderServicer(object):
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_provider__pb2.HandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.HandshakeResponse.SerializeToString,
+            ),
             'Parameterize': grpc.unary_unary_rpc_method_handler(
                     servicer.Parameterize,
                     request_deserializer=pulumi_dot_provider__pb2.ParameterizeRequest.FromString,
@@ -493,6 +509,23 @@ class ResourceProvider(object):
     operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
     as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Handshake',
+            pulumi_dot_provider__pb2.HandshakeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.HandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def Parameterize(request,

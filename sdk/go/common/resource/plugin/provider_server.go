@@ -131,6 +131,18 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 	}, nil
 }
 
+func (p *providerServer) Handshake(
+	ctx context.Context,
+	req *pulumirpc.HandshakeRequest,
+) (*pulumirpc.HandshakeResponse, error) {
+	_, err := p.provider.Handshake(ctx, HandshakeRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.HandshakeResponse{}, nil
+}
+
 func (p *providerServer) Parameterize(
 	ctx context.Context, req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {

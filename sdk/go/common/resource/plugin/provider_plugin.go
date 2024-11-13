@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -78,18 +79,49 @@ type provider struct {
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 
+	// Protocol information for the provider.
+	protocol *pluginProtocol
+
+	// The source for the provider's configuration. You should *not* access this field directly when checking
+	// configuration, since some of its fields have been deprecated in favour of handshake. Instead, use the
+	// getPluginConfig method, which will return both the handshake and a pluginConfig consistent with the handshake.
 	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
+}
+
+type pluginProtocol struct {
+	// True if the provider accepts strongly-typed secrets. This is always true for providers that implement Handshake,
+	// since Handshake was added to the provider protocol after the acceptSecrets flag.
+	acceptSecrets bool
+
+	// True if the provider accepts strongly-typed resource references.
+	acceptResources bool
+
+	// True if this plugin accepts output values.
+	acceptOutputs bool
+
+	// True if this plugin supports previews for Create and Update.
+	supportsPreview bool
 }
 
 // pluginConfig holds the configuration of the provider
 // as specified by the Configure call.
 type pluginConfig struct {
 	known bool // true if all configuration values are known.
+}
 
-	acceptSecrets   bool // true if this plugin accepts strongly-typed secrets.
-	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
-	acceptOutputs   bool // true if this plugin accepts output values.
-	supportsPreview bool // true if this plugin supports previews for Create and Update.
+func (p *provider) getPluginConfig(ctx context.Context) (pluginProtocol, pluginConfig, error) {
+	pcfg, err := p.configSource.Promise().Result(ctx)
+	if err != nil {
+		return pluginProtocol{}, pluginConfig{}, err
+	}
+
+	if p.protocol == nil {
+		return pluginProtocol{}, pluginConfig{}, errors.New(
+			"Protocol must be configured by the time plugin configuration has been resolved",
+		)
+	}
+
+	return *p.protocol, pcfg, nil
 }
 
 // Checks PULUMI_DEBUG_PROVIDERS environment variable for any overrides for the provider identified
@@ -129,6 +161,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
+	var handshakeRes *pulumirpc.HandshakeResponse
 
 	attachPort, err := GetProviderAttachPort(pkg)
 	if err != nil {
@@ -140,7 +173,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	if attachPort != nil {
 		port := *attachPort
 
-		conn, err := dialPlugin(port, pkg.String(), prefix, providerPluginDialOptions(ctx, pkg, ""))
+		var conn *grpc.ClientConn
+		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
+			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -180,8 +215,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
-		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
+		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
+			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -201,6 +237,15 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 
+	if handshakeRes != nil {
+		p.protocol = &pluginProtocol{
+			acceptSecrets:   true,
+			acceptResources: true,
+			supportsPreview: true,
+			acceptOutputs:   true,
+		}
+	}
+
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
 	if plug.Bin == "" {
 		err := p.Attach(host.ServerAddr())
@@ -210,6 +255,27 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 
 	return p, nil
+}
+
+func handshake(
+	ctx context.Context,
+	bin string,
+	prefix string,
+	conn *grpc.ClientConn,
+) (*pulumirpc.HandshakeResponse, error) {
+	client := pulumirpc.NewResourceProviderClient(conn)
+	res, err := client.Handshake(ctx, &pulumirpc.HandshakeRequest{})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			// If the provider doesn't implement Handshake, that's fine -- we'll fall back to existing behaviour.
+			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+			return nil, nil
+		}
+	}
+
+	logging.V(7).Infof("Handshake: success [%v]", bin)
+	return res, err
 }
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
@@ -240,8 +306,9 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
-		apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
+	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
+		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
+		handshake, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
 	}
@@ -255,6 +322,15 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
 		configSource:  &promise.CompletionSource[pluginConfig]{},
+	}
+
+	if handshakeRes != nil {
+		p.protocol = &pluginProtocol{
+			acceptSecrets:   true,
+			acceptResources: true,
+			supportsPreview: true,
+			acceptOutputs:   true,
+		}
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -316,6 +392,15 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	}
 
 	return false
+}
+
+func (p *provider) Handshake(ctx context.Context, req HandshakeRequest) (HandshakeResponse, error) {
+	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.HandshakeRequest{})
+	if err != nil {
+		return HandshakeResponse{}, err
+	}
+
+	return HandshakeResponse{}, nil
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
@@ -750,10 +835,12 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		}
 
 		if v.ContainsUnknowns() {
+			if p.protocol == nil {
+				p.protocol = &pluginProtocol{}
+			}
+
 			p.configSource.MustFulfill(pluginConfig{
-				known:           false,
-				acceptSecrets:   false,
-				acceptResources: false,
+				known: false,
 			})
 			return ConfigureResponse{}, nil
 		}
@@ -805,12 +892,17 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			return
 		}
 
+		if p.protocol == nil {
+			p.protocol = &pluginProtocol{
+				acceptSecrets:   resp.GetAcceptSecrets(),
+				acceptResources: resp.GetAcceptResources(),
+				supportsPreview: resp.GetSupportsPreview(),
+				acceptOutputs:   resp.GetAcceptOutputs(),
+			}
+		}
+
 		p.configSource.MustFulfill(pluginConfig{
-			known:           true,
-			acceptSecrets:   resp.GetAcceptSecrets(),
-			acceptResources: resp.GetAcceptResources(),
-			supportsPreview: resp.GetSupportsPreview(),
-			acceptOutputs:   resp.GetAcceptOutputs(),
+			known: true,
 		})
 	}()
 
@@ -830,7 +922,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return CheckResponse{}, err
 	}
@@ -844,8 +936,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
 		Label:         label + ".olds",
 		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -853,8 +945,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
 		Label:         label + ".news",
 		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -892,7 +984,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !pcfg.acceptSecrets {
+	if !protocol.acceptSecrets {
 		annotateSecrets(inputs, req.News)
 	}
 
@@ -926,7 +1018,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -945,8 +1037,8 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		Label:              label + ".oldInputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -956,8 +1048,8 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		Label:              label + ".oldOutputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -967,8 +1059,8 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		Label:              label + ".newInputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1035,7 +1127,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return CreateResponse{}, err
 	}
@@ -1058,7 +1150,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 			}
 			return CreateResponse{}, nil
 		}
-		if !pcfg.supportsPreview || p.disableProviderPreview {
+		if !protocol.supportsPreview || p.disableProviderPreview {
 			return CreateResponse{Properties: req.Properties}, nil
 		}
 	}
@@ -1069,8 +1161,8 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
 		Label:         label + ".inputs",
 		KeepUnknowns:  req.Preview,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1120,7 +1212,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !pcfg.acceptSecrets {
+	if !protocol.acceptSecrets {
 		annotateSecrets(outs, req.Properties)
 	}
 
@@ -1149,7 +1241,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
@@ -1168,8 +1260,8 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		m, err := MarshalProperties(req.Inputs, MarshalOptions{
 			Label:              label,
 			ElideAssetContents: true,
-			KeepSecrets:        pcfg.acceptSecrets,
-			KeepResources:      pcfg.acceptResources,
+			KeepSecrets:        protocol.acceptSecrets,
+			KeepResources:      protocol.acceptResources,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1179,8 +1271,8 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	mstate, err := MarshalProperties(req.State, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1246,7 +1338,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !pcfg.acceptSecrets {
+	if !protocol.acceptSecrets {
 		annotateSecrets(newInputs, req.Inputs)
 		annotateSecrets(newState, req.State)
 	}
@@ -1283,7 +1375,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, err
 	}
@@ -1306,7 +1398,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 			}
 			return UpdateResponse{Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
 		}
-		if !pcfg.supportsPreview || p.disableProviderPreview {
+		if !protocol.supportsPreview || p.disableProviderPreview {
 			return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 		}
 	}
@@ -1317,8 +1409,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
 		Label:              label + ".oldInputs",
 		ElideAssetContents: true,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1326,8 +1418,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
 		Label:              label + ".oldOutputs",
 		ElideAssetContents: true,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1335,8 +1427,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
 		Label:         label + ".newInputs",
 		KeepUnknowns:  req.Preview,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1383,7 +1475,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !pcfg.acceptSecrets {
+	if !protocol.acceptSecrets {
 		annotateSecrets(outs, req.NewInputs)
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
@@ -1407,7 +1499,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return DeleteResponse{}, err
 	}
@@ -1418,8 +1510,8 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1428,8 +1520,8 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	moutputs, err := MarshalProperties(req.Outputs, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
-		KeepSecrets:        pcfg.acceptSecrets,
-		KeepResources:      pcfg.acceptResources,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1468,7 +1560,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(ctx)
+	protocol, pcfg, err := p.getPluginConfig(ctx)
 	if err != nil {
 		return ConstructResult{}, err
 	}
@@ -1500,7 +1592,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		}, nil
 	}
 
-	if !pcfg.acceptSecrets {
+	if !protocol.acceptSecrets {
 		return ConstructResult{}, errors.New("plugins that can construct components must support secrets")
 	}
 
@@ -1508,11 +1600,11 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
 		Label:         label + ".inputs",
 		KeepUnknowns:  true,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: pcfg.acceptOutputs,
+		KeepOutputValues: protocol.acceptOutputs,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1625,7 +1717,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(ctx)
+	protocol, pcfg, err := p.getPluginConfig(ctx)
 	if err != nil {
 		return InvokeResponse{}, err
 	}
@@ -1637,8 +1729,8 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
 		Label:         label + ".args",
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -1688,7 +1780,7 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return StreamInvokeResponse{}, err
 	}
@@ -1700,8 +1792,8 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
 		Label:         label + ".args",
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
 	})
 	if err != nil {
 		return StreamInvokeResponse{}, err
@@ -1763,7 +1855,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.configSource.Promise().Result(context.Background())
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
 		return CallResult{}, err
 	}
@@ -1780,7 +1872,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		KeepResources: true,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: pcfg.acceptOutputs,
+		KeepOutputValues: protocol.acceptOutputs,
 	})
 	if err != nil {
 		return CallResult{}, err

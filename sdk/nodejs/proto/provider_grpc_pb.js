@@ -242,6 +242,28 @@ function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
   return pulumi_provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_HandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.HandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.HandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_HandshakeRequest(buffer_arg) {
+  return pulumi_provider_pb.HandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_HandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.HandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.HandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_HandshakeResponse(buffer_arg) {
+  return pulumi_provider_pb.HandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
@@ -358,6 +380,17 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
 // as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
 var ResourceProviderService = exports.ResourceProviderService = {
+  handshake: {
+    path: '/pulumirpc.ResourceProvider/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.HandshakeRequest,
+    responseType: pulumi_provider_pb.HandshakeResponse,
+    requestSerialize: serialize_pulumirpc_HandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_HandshakeRequest,
+    responseSerialize: serialize_pulumirpc_HandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_HandshakeResponse,
+  },
   // `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 // a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
 // subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider

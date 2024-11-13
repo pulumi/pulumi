@@ -33,6 +33,26 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
+class HandshakeRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___HandshakeRequest = HandshakeRequest
+
+@typing_extensions.final
+class HandshakeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___HandshakeResponse = HandshakeResponse
+
+@typing_extensions.final
 class ParameterizeRequest(google.protobuf.message.Message):
     """`ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
     `ParameterizeRequest` may contain either:

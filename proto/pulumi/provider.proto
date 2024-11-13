@@ -27,6 +27,8 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
 // as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
 service ResourceProvider {
+    rpc Handshake(HandshakeRequest) returns (HandshakeResponse) {}
+
     // `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
     // a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
     // subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
@@ -193,6 +195,12 @@ service ResourceProvider {
     // implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
     // If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
+}
+
+message HandshakeRequest {
+}
+
+message HandshakeResponse {
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
