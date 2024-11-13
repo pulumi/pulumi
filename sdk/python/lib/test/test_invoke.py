@@ -98,6 +98,7 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
         (InvokeOptions(version="1.0.0"), InvokeOptions(version="2.0.0"), "2.0.0"),
         (None, InvokeOptions(version="2.0.0"), "2.0.0"),
         (InvokeOptions(version="1.0.0"), None, "1.0.0"),
+        (InvokeOptions(version="1.0.0"), InvokeOptions(version=""), ""),
     ],
 )
 def test_invoke_merge(a: InvokeOptions, b: InvokeOptions, expected: str) -> None:
