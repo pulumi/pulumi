@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -23,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -84,10 +84,20 @@ func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer)
 	if err != nil {
 		return nil, err
 	}
-	// Next, we try to read the name of the file from stdout.
-	// packfile is the name of the file containing the tarball,
-	// as produced by `pnpm pack`.
-	packFilename := strings.TrimSpace(stdout.String())
+	// Next, we try to read the name of the file from stdout. packfile is the name
+	// of the file containing the tarball, as produced by `pnpm pack`. For pnpm
+	// versions <9.13, pnpm pack outputs a single line with the name of the
+	// tarball. On pnpm versions >=9.13, pnpm pack lists all the packed files, and
+	// the last line is the tarball.
+	packFilename := ""
+	scanner := bufio.NewScanner(bytes.NewReader(stdout.Bytes()))
+	for scanner.Scan() {
+		packFilename = scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read the output of 'pnpm pack': %w", err)
+	}
+
 	packfile := filepath.Join(dir, packFilename)
 	defer os.Remove(packfile)
 
