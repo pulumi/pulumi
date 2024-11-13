@@ -144,7 +144,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
 }
 
 ALL_VERSION_SET = {
-    "dotnet": ["6", "8"],
+    "dotnet": ["6", "8", "9"],
     "go": ["1.22.x", "1.23.x"],
     "nodejs": ["18.x", "20.x", "22.x", "23.x"],
     "python": ["3.8.x", "3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
@@ -152,7 +152,7 @@ ALL_VERSION_SET = {
 
 CURRENT_VERSION_SET = {
     "name": "current",
-    "dotnet": "8",
+    "dotnet": "9",
     "go": "1.23.x",
     "nodejs": "23.x",
     "python": "3.13.x",
