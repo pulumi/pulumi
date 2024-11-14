@@ -1041,11 +1041,6 @@ func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
 }
 
-// GetAllConfigFromFile returns the full config map for a provided file.
-func (s *Stack) GetAllConfigFromFile(ctx context.Context, path string) (ConfigMap, error) {
-	return s.Workspace().GetAllConfigFromFile(ctx, s.Name(), path)
-}
-
 // SetConfig sets the specified config key-value pair.
 func (s *Stack) SetConfig(ctx context.Context, key string, val ConfigValue) error {
 	return s.Workspace().SetConfig(ctx, s.Name(), key, val)
