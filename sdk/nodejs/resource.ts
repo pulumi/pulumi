@@ -146,6 +146,12 @@ export function allAliases(
     return aliases;
 }
 
+import { AsyncLocalStorage } from 'async_hooks';
+const resourceContext = new AsyncLocalStorage<{
+    parent: Resource;
+    name: string;
+}>();
+
 /**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
@@ -420,7 +426,18 @@ export abstract class Resource {
         remote: boolean = false,
         dependency: boolean = false,
         packageRef?: Promise<string | undefined>,
-    ) {
+    ) {        
+        // Get parent from context if not explicitly provided
+        const context = resourceContext.getStore();
+        if (context && !opts.parent && !(this instanceof ComponentResource)) {
+            opts = {
+                ...opts,
+                parent: context.parent
+            };
+            // Only prefix name if we're automatically setting the parent
+            name = `${context.name}-${name}`;
+        }
+
         this.__pulumiType = t;
 
         if (dependency) {
@@ -549,6 +566,10 @@ export abstract class Resource {
             }
             readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
         } else {
+            if (this instanceof ComponentResource && t !== "pulumi:pulumi:Stack") {
+                resourceContext.enterWith({ parent: this, name });
+            }
+
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
