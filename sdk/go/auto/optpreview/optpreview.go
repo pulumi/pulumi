@@ -150,6 +150,13 @@ func AttachDebugger() Option {
 	})
 }
 
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -202,6 +209,8 @@ type Options struct {
 	ImportFile string
 	// Run the process under a debugger, and pause until a debugger is attached
 	AttachDebugger bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
 }
 
 type optionFunc func(*Options)

@@ -204,6 +204,9 @@ func (l *LocalWorkspace) GetConfigWithOptions(
 		if opts.Path {
 			args = append(args, "--path")
 		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
 	}
 	args = append(args, key, "--json", "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -232,6 +235,21 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (Co
 	return val, nil
 }
 
+// GetAllConfigFromFile returns the config map for the specified stack name, scoped to the current workspace.
+// LocalWorkspace reads this config from the matching file.
+func (l *LocalWorkspace) GetAllConfigFromFile(ctx context.Context, stackName string, path string) (ConfigMap, error) {
+	var val ConfigMap
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json", "--stack", stackName, "--config-file", path)
+	if err != nil {
+		return val, newAutoError(fmt.Errorf("unable to read config: %w", err), stdout, stderr, errCode)
+	}
+	err = json.Unmarshal([]byte(stdout), &val)
+	if err != nil {
+		return val, fmt.Errorf("unable to unmarshal config value: %w", err)
+	}
+	return val, nil
+}
+
 // SetConfig sets the specified key-value pair on the provided stack name.
 // LocalWorkspace writes this value to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key string, val ConfigValue) error {
@@ -247,6 +265,9 @@ func (l *LocalWorkspace) SetConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	secretArg := "--plaintext"
@@ -278,6 +299,9 @@ func (l *LocalWorkspace) SetAllConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	for k, v := range config {
@@ -311,6 +335,9 @@ func (l *LocalWorkspace) RemoveConfigWithOptions(
 		if opts.Path {
 			args = append(args, "--path")
 		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
 	}
 	args = append(args, key, "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -336,6 +363,9 @@ func (l *LocalWorkspace) RemoveAllConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	args = append(args, keys...)

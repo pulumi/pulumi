@@ -66,7 +66,7 @@ type mockPulumiCommand struct {
 	stderr       string
 	exitCode     int
 	err          error
-	capturedArgs []string
+	capturedArgs [][]string
 }
 
 func (m *mockPulumiCommand) Version() semver.Version {
@@ -81,7 +81,7 @@ func (m *mockPulumiCommand) Run(ctx context.Context,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
-	m.capturedArgs = args
+	m.capturedArgs = append(m.capturedArgs, args)
 	return m.stdout, m.stderr, m.exitCode, m.err
 }
 
@@ -1439,7 +1439,10 @@ func TestConfigWithOptions(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	// initialize
+
+	configYaml := ptesting.RandomStackName() + ".yaml"
+	configJson := ptesting.RandomStackName() + ".json"
+
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
@@ -1450,6 +1453,10 @@ func TestConfigWithOptions(t *testing.T) {
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
 		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJson))
+		assert.NoError(t, err, "failed to remove test.json. File has leaked.")
+		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYaml))
+		assert.NoError(t, err, "failed to remove test.yaml. File has leaked.")
 	}()
 
 	// test backward compatibility
@@ -1494,6 +1501,17 @@ func TestConfigWithOptions(t *testing.T) {
 	}
 	// test subPath
 	err = s.SetConfigWithOptions(ctx, "key7.subKey3", ConfigValue{"value9", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test config file with json
+	err = s.SetConfigWithOptions(ctx, "key8", ConfigValue{"value10", false}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJson)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.SetConfigWithOptions(ctx, "key9", ConfigValue{"value11", false}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1550,6 +1568,16 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
+	cv10, err := s.GetConfigWithOptions(ctx, "key8", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJson)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	cv11, err := s.GetConfigWithOptions(ctx, "key9", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
+	if err != nil {
+		t.Error(err)
+	}
+
 	assert.Equalf(t, "value1", cv1.Value, "wrong key")
 	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
 	assert.Equalf(t, "value2", cv2.Value, "wrong key")
@@ -1568,6 +1596,8 @@ func TestConfigWithOptions(t *testing.T) {
 	assert.Equalf(t, false, cv8.Secret, "key should be secret")
 	assert.Equalf(t, "value9", cv9.Value, "wrong key")
 	assert.Equalf(t, false, cv9.Secret, "key should be secret")
+	assert.Equalf(t, "value10", cv10.Value, "wrong key")
+	assert.Equalf(t, "value11", cv11.Value, "wrong key")
 
 	err = s.RemoveConfigWithOptions(ctx, "key1", nil)
 	if err != nil {
@@ -1600,6 +1630,16 @@ func TestConfigWithOptions(t *testing.T) {
 	}
 
 	err = s.RemoveConfigWithOptions(ctx, "key7.subKey1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key8", &ConfigOptions{Path: false, ConfigFile: filepath.Join(".", configJson)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key9", &ConfigOptions{Path: false, ConfigFile: filepath.Join(".", configYaml)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1709,6 +1749,113 @@ func TestConfigAllWithOptions(t *testing.T) {
 	}
 
 	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t,
+		"{\"subKey3\":\"value5\"}", cfg["testproj:key3"].Value, "key subKey3 has been removed")
+}
+
+func TestConfigAllWithOptionsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	configFile := ptesting.RandomStackName() + ".yaml"
+
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configFile))
+		assert.NoError(t, err, "failed to remove config file. File has leaked.")
+	}()
+
+	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
+		"key1": ConfigValue{
+			Value:  "value1",
+			Secret: false,
+		},
+		"key2": ConfigValue{
+			Value:  "value2",
+			Secret: true,
+		},
+		"key3.subKey1": ConfigValue{
+			Value:  "value3",
+			Secret: false,
+		},
+		"key3.subKey2": ConfigValue{
+			Value:  "value4",
+			Secret: false,
+		},
+		"key3.subKey3": ConfigValue{
+			Value:  "value5",
+			Secret: false,
+		},
+		"key4.subKey1": ConfigValue{
+			Value:  "value6",
+			Secret: true,
+		},
+	}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the first item
+	cv1, err := s.GetConfigWithOptions(ctx, "key1", &ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the second item
+	cv2, err := s.GetConfigWithOptions(ctx, "key2", &ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv4, err := s.GetConfigWithOptions(ctx, "key3.subKey2", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the fourth item
+	cv5, err := s.GetConfigWithOptions(ctx, "key4.subKey1", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equalf(t, "value1", cv1.Value, "wrong key")
+	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
+	assert.Equalf(t, "value2", cv2.Value, "wrong key")
+	assert.Equalf(t, true, cv2.Secret, "key should be secret")
+	assert.Equalf(t, "value3", cv3.Value, "wrong key")
+	assert.Equalf(t, false, cv3.Secret, "key should not be secret")
+	assert.Equalf(t, "value4", cv4.Value, "wrong key")
+	assert.Equalf(t, false, cv4.Secret, "key should not be secret")
+	assert.Equalf(t, "value6", cv5.Value, "wrong key")
+	assert.Equalf(t, true, cv5.Secret, "key should be secret")
+
+	err = s.RemoveAllConfigWithOptions(ctx,
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	if err != nil {
+		t.Error(err)
+	}
+
+	cfg, err := s.GetAllConfigFromFile(ctx, filepath.Join(".", configFile))
 	if err != nil {
 		t.Error(err)
 	}
@@ -2893,7 +3040,7 @@ func TestListStacksCorrectArgs(t *testing.T) {
 	_, err = workspace.ListStacks(ctx)
 
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs)
+	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs[0])
 }
 
 func TestListAllStacks(t *testing.T) {
@@ -2953,7 +3100,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 	_, err = workspace.ListStacks(ctx, optlist.All())
 
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
+	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs[0])
 }
 
 func TestInstallWithOptions(t *testing.T) {
@@ -2999,31 +3146,31 @@ func TestInstallOptions(t *testing.T) {
 
 	err = workspace.Install(ctx, &InstallOptions{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install"}, m.capturedArgs)
+	require.Equal(t, []string{"install"}, m.capturedArgs[0])
 
 	err = workspace.Install(ctx, &InstallOptions{
 		UseLanguageVersionTools: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs[1])
 
 	err = workspace.Install(ctx, &InstallOptions{
 		NoPlugins: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs)
+	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs[2])
 
 	err = workspace.Install(ctx, &InstallOptions{
 		NoDependencies: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs)
+	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs[3])
 
 	err = workspace.Install(ctx, &InstallOptions{
 		Reinstall: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
+	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs[4])
 
 	err = workspace.Install(ctx, &InstallOptions{
 		UseLanguageVersionTools: true,
@@ -3038,7 +3185,7 @@ func TestInstallOptions(t *testing.T) {
 		"--no-plugins",
 		"--no-dependencies",
 		"--reinstall",
-	}, m.capturedArgs)
+	}, m.capturedArgs[5])
 }
 
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
@@ -3069,7 +3216,7 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 		UseLanguageVersionTools: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs[0])
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {

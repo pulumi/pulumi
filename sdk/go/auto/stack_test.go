@@ -17,11 +17,14 @@ package auto
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -171,4 +174,93 @@ func TestAlwaysReadsCompleteLine(t *testing.T) {
 	require.NoError(t, event2.Error)
 	assert.Equal(t, "world", event2.StdoutEvent.Message)
 	assert.Equal(t, "red", event2.StdoutEvent.Color)
+}
+
+func TestPreviewOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := mockPulumiCommand{
+		stdout: "",
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
+	require.NoError(t, err)
+
+	stack.Preview(ctx, optpreview.ConfigFile(filepath.Join(".", "test.yaml")))
+
+	assert.Contains(t, m.capturedArgs[1], "preview")
+	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
+}
+func TestUpOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := mockPulumiCommand{
+		stdout: "",
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
+	require.NoError(t, err)
+
+	stack.Up(ctx, optup.ConfigFile(filepath.Join(".", "test.yaml")))
+
+	assert.Contains(t, m.capturedArgs[1], "up")
+	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
+}
+func TestDestroyOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := mockPulumiCommand{
+		stdout: "",
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
+	require.NoError(t, err)
+
+	stack.Destroy(ctx, optdestroy.ConfigFile(filepath.Join(".", "test.yaml")))
+
+	assert.Contains(t, m.capturedArgs[1], "destroy")
+	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
+}
+func TestRefreshOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	m := mockPulumiCommand{
+		stdout: "",
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
+	require.NoError(t, err)
+
+	stack.Refresh(ctx, optrefresh.ConfigFile(filepath.Join(".", "test.yaml")))
+
+	assert.Contains(t, m.capturedArgs[1], "refresh")
+	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
 }
