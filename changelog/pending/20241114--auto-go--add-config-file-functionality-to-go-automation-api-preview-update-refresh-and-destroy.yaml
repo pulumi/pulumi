@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Add --config-file functionality to Go Automation API preview, update, refresh, and destroy
