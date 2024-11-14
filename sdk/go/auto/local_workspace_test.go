@@ -1441,7 +1441,7 @@ func TestConfigWithOptions(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	configYaml := ptesting.RandomStackName() + ".yaml"
-	configJson := ptesting.RandomStackName() + ".json"
+	configJSON := ptesting.RandomStackName() + ".json"
 
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
@@ -1453,7 +1453,7 @@ func TestConfigWithOptions(t *testing.T) {
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
 		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
-		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJson))
+		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON))
 		assert.NoError(t, err, "failed to remove test.json. File has leaked.")
 		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYaml))
 		assert.NoError(t, err, "failed to remove test.yaml. File has leaked.")
@@ -1506,12 +1506,14 @@ func TestConfigWithOptions(t *testing.T) {
 	}
 
 	// test config file with json
-	err = s.SetConfigWithOptions(ctx, "key8", ConfigValue{"value10", false}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJson)})
+	err = s.SetConfigWithOptions(ctx, "key8", ConfigValue{"value10", false},
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJSON)})
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = s.SetConfigWithOptions(ctx, "key9", ConfigValue{"value11", false}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
+	err = s.SetConfigWithOptions(ctx, "key9", ConfigValue{"value11", false},
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1568,12 +1570,14 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	cv10, err := s.GetConfigWithOptions(ctx, "key8", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJson)})
+	cv10, err := s.GetConfigWithOptions(ctx, "key8",
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJSON)})
 	if err != nil {
 		t.Error(err)
 	}
 
-	cv11, err := s.GetConfigWithOptions(ctx, "key9", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
+	cv11, err := s.GetConfigWithOptions(ctx, "key9",
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYaml)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1634,7 +1638,7 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = s.RemoveConfigWithOptions(ctx, "key8", &ConfigOptions{Path: false, ConfigFile: filepath.Join(".", configJson)})
+	err = s.RemoveConfigWithOptions(ctx, "key8", &ConfigOptions{Path: false, ConfigFile: filepath.Join(".", configJSON)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1743,7 +1747,8 @@ func TestConfigAllWithOptions(t *testing.T) {
 	assert.Equalf(t, true, cv5.Secret, "key should be secret")
 
 	err = s.RemoveAllConfigWithOptions(ctx,
-		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true})
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"},
+		&ConfigOptions{Path: true})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1809,31 +1814,36 @@ func TestConfigAllWithOptionsConfigFile(t *testing.T) {
 	}
 
 	// test the SetAllConfigWithOptions configured the first item
-	cv1, err := s.GetConfigWithOptions(ctx, "key1", &ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
+	cv1, err := s.GetConfigWithOptions(ctx, "key1",
+		&ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// test the SetAllConfigWithOptions configured the second item
-	cv2, err := s.GetConfigWithOptions(ctx, "key2", &ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
+	cv2, err := s.GetConfigWithOptions(ctx, "key2",
+		&ConfigOptions{ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// test the SetAllConfigWithOptions configured the third item
-	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1",
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// test the SetAllConfigWithOptions configured the third item
-	cv4, err := s.GetConfigWithOptions(ctx, "key3.subKey2", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	cv4, err := s.GetConfigWithOptions(ctx, "key3.subKey2",
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// test the SetAllConfigWithOptions configured the fourth item
-	cv5, err := s.GetConfigWithOptions(ctx, "key4.subKey1", &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+	cv5, err := s.GetConfigWithOptions(ctx, "key4.subKey1",
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1850,7 +1860,8 @@ func TestConfigAllWithOptionsConfigFile(t *testing.T) {
 	assert.Equalf(t, true, cv5.Secret, "key should be secret")
 
 	err = s.RemoveAllConfigWithOptions(ctx,
-		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"},
+		&ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configFile)})
 	if err != nil {
 		t.Error(err)
 	}

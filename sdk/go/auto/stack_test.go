@@ -181,7 +181,7 @@ func TestPreviewOptsConfigFile(t *testing.T) {
 
 	ctx := context.Background()
 	m := mockPulumiCommand{
-		stdout: "",
+		stdout:   "",
 		stderr:   "",
 		exitCode: 0,
 		err:      nil,
@@ -193,17 +193,19 @@ func TestPreviewOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
 	require.NoError(t, err)
 
-	stack.Preview(ctx, optpreview.ConfigFile(filepath.Join(".", "test.yaml")))
+	_, err = stack.Preview(ctx, optpreview.ConfigFile(filepath.Join(".", "test.yaml")))
+	require.NoError(t, err)
 
 	assert.Contains(t, m.capturedArgs[1], "preview")
 	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
 }
+
 func TestUpOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	m := mockPulumiCommand{
-		stdout: "",
+		stdout:   "",
 		stderr:   "",
 		exitCode: 0,
 		err:      nil,
@@ -215,17 +217,19 @@ func TestUpOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
 	require.NoError(t, err)
 
-	stack.Up(ctx, optup.ConfigFile(filepath.Join(".", "test.yaml")))
+	_, err = stack.Up(ctx, optup.ConfigFile(filepath.Join(".", "test.yaml")))
+	require.NoError(t, err)
 
 	assert.Contains(t, m.capturedArgs[1], "up")
 	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
 }
+
 func TestDestroyOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	m := mockPulumiCommand{
-		stdout: "",
+		stdout:   "",
 		stderr:   "",
 		exitCode: 0,
 		err:      nil,
@@ -237,17 +241,19 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
 	require.NoError(t, err)
 
-	stack.Destroy(ctx, optdestroy.ConfigFile(filepath.Join(".", "test.yaml")))
+	_, err = stack.Destroy(ctx, optdestroy.ConfigFile(filepath.Join(".", "test.yaml")))
+	require.NoError(t, err)
 
 	assert.Contains(t, m.capturedArgs[1], "destroy")
 	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")
 }
+
 func TestRefreshOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	m := mockPulumiCommand{
-		stdout: "",
+		stdout:   "",
 		stderr:   "",
 		exitCode: 0,
 		err:      nil,
@@ -259,7 +265,8 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir, Pulumi(&m))
 	require.NoError(t, err)
 
-	stack.Refresh(ctx, optrefresh.ConfigFile(filepath.Join(".", "test.yaml")))
+	_, err = stack.Refresh(ctx, optrefresh.ConfigFile(filepath.Join(".", "test.yaml")))
+	require.NoError(t, err)
 
 	assert.Contains(t, m.capturedArgs[1], "refresh")
 	assert.Contains(t, m.capturedArgs[1], "--config-file=test.yaml")

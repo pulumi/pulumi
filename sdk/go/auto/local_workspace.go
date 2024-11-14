@@ -239,7 +239,8 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (Co
 // LocalWorkspace reads this config from the matching file.
 func (l *LocalWorkspace) GetAllConfigFromFile(ctx context.Context, stackName string, path string) (ConfigMap, error) {
 	var val ConfigMap
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json", "--stack", stackName, "--config-file", path)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx,
+		"config", "--show-secrets", "--json", "--stack", stackName, "--config-file", path)
 	if err != nil {
 		return val, newAutoError(fmt.Errorf("unable to read config: %w", err), stdout, stderr, errCode)
 	}
