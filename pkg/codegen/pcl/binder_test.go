@@ -59,6 +59,12 @@ func TestBindProgram(t *testing.T) {
 		if !v.IsDir() {
 			continue
 		}
+
+		if v.Name() == "self-referencing-components-pp" {
+			// skip this test as it is handled separately and is known to error out
+			continue
+		}
+
 		folderPath := filepath.Join(testdataPath, v.Name())
 		files, err := os.ReadDir(folderPath)
 		if err != nil {
@@ -99,7 +105,7 @@ func TestBindProgram(t *testing.T) {
 
 				assert.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
-					t.Fatalf("failed to bind program: %v", diags)
+					t.Fatalf("failed to bind program %s: %v", v.Name(), diags)
 				}
 			})
 		}
