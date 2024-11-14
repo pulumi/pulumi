@@ -1,5 +1,9 @@
 name: Run full language matrix of tests daily
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   schedule:
     - cron: "27 5 * * *"

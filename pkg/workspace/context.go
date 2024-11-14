@@ -32,11 +32,11 @@ type Context interface {
 	GetStoredCredentials() (workspace.Credentials, error)
 }
 
-var Instance Context = &context{}
+var Instance Context = &workspaceContext{}
 
-type context struct{}
+type workspaceContext struct{}
 
-func (c *context) ReadProject() (*workspace.Project, string, error) {
+func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
 	proj, path, err := workspace.DetectProjectAndPath()
 	if err != nil {
 		return nil, "", err
@@ -45,6 +45,6 @@ func (c *context) ReadProject() (*workspace.Project, string, error) {
 	return proj, filepath.Dir(path), nil
 }
 
-func (c *context) GetStoredCredentials() (workspace.Credentials, error) {
+func (c *workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {
 	return workspace.GetStoredCredentials()
 }

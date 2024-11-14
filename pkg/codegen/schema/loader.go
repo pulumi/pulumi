@@ -289,7 +289,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			l.host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(spec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log)
 		if err != nil {
 			return nil, nil, err
 		}

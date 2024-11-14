@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Don't copy deleted dependencies of untargeted resources

@@ -377,7 +377,15 @@ class LocalWorkspace(Workspace):
         if ver >= VersionInfo(3, 58):
             result = self._run_pulumi_cmd_sync(["whoami", "--json"])
             who_am_i_json = json.loads(result.stdout)
-            return WhoAmIResult(**who_am_i_json)
+            return WhoAmIResult(
+                user=who_am_i_json["user"],
+                url=who_am_i_json["url"] if "url" in who_am_i_json else None,
+                organizations=(
+                    who_am_i_json["organizations"]
+                    if "organizations" in who_am_i_json
+                    else None
+                ),
+            )
 
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
@@ -541,7 +549,10 @@ class LocalWorkspace(Workspace):
             ["stack", "export", "--show-secrets", "--stack", stack_name]
         )
         state_json = json.loads(result.stdout)
-        return Deployment(**state_json)
+        return Deployment(
+            version=state_json["version"] if "version" in state_json else None,
+            deployment=state_json["deployment"] if "deployment" in state_json else None,
+        )
 
     def import_stack(self, stack_name: str, state: Deployment) -> None:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as file:

@@ -15,11 +15,13 @@
 package workspace
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -109,5 +111,55 @@ func TestInstallPluginErrorText(t *testing.T) {
 			t.Parallel()
 			assert.EqualError(t, &tt.Err, tt.ExpectedError)
 		})
+	}
+}
+
+func TestPluginInstallCancellation(t *testing.T) {
+	t.Parallel()
+
+	// Create a new cancellable context.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Now proceed to try various ways of installing plugins, all of which should promptly
+	// fail because we are operating on an already-cancelled context.
+	v4 := semver.MustParse("4.0.0")
+	spec := workspace.PluginSpec{
+		Name:    "random",
+		Kind:    apitype.ResourcePlugin,
+		Version: &v4,
+	}
+
+	// On the first pass, test that everything succeeds; then trigger cancellation, and
+	// test that everything fails.
+	for _, canceled := range []bool{false, true} {
+		t.Logf("Canceled: %v", canceled)
+
+		if canceled {
+			cancel()
+		}
+
+		assertCorrectFailureMode := func(err error) {
+			if canceled {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		}
+
+		t.Logf("InstallPlugin")
+		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {})
+		assertCorrectFailureMode(err)
+
+		t.Logf("GetLatestVersion")
+		_, err = spec.GetLatestVersion(ctx)
+		assertCorrectFailureMode(err)
+
+		t.Logf("Download")
+		rc, _, err := spec.Download(ctx)
+		assertCorrectFailureMode(err)
+		if rc != nil {
+			rc.Close()
+		}
 	}
 }
