@@ -195,7 +195,9 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	)
 
 	assert.Contains(t, args, "destroy")
-	assert.Contains(t, args, "--config-file="+stack.workspace.WorkDir()+"/test.yaml")
+
+	configFilePath := filepath.Join(stack.workspace.WorkDir(), "test.yaml")
+	assert.Contains(t, args, "--config-file="+configFilePath)
 }
 
 func TestRefreshOptsConfigFile(t *testing.T) {
@@ -216,6 +218,9 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 		&stack,
 		true,
 	)
+
 	assert.Contains(t, args, "refresh")
-	assert.Contains(t, args, "--config-file="+stack.workspace.WorkDir()+"/test.yaml")
+
+	configFilePath := filepath.Join(stack.workspace.WorkDir(), "test.yaml")
+	assert.Contains(t, args, "--config-file="+configFilePath)
 }
