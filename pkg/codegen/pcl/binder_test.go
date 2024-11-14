@@ -750,7 +750,39 @@ value = element(data, 0)
 	assert.NotNil(t, program)
 }
 
-func TestBindingSelfReferencingComponentFailsWithCircularReference(t *testing.T) {
+func TestBindingSelfReferencingResourceFailWithCircularReferenceError(t *testing.T) {
+	t.Parallel()
+	source := `
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	prefix = randomPet.prefix
+}`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "circular reference")
+}
+
+func TestBindingMutuallyDependantResourcesFailsWithCircularReferenceError(t *testing.T) {
+	t.Parallel()
+	source := `
+resource "randomPetA" "random:index/randomPet:RandomPet" { 
+	prefix = randomPetB.prefix
+}
+
+resource "randomPetB" "random:index/randomPet:RandomPet" {
+	prefix = randomPetA.prefix
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "circular reference")
+}
+
+// Binding a component block that references itself in the same block should fail with a circular reference error
+func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testing.T) {
 	t.Parallel()
 	componentDir := filepath.Join(testdataPath, "self-referencing-components-pp")
 	files, err := os.ReadDir(componentDir)
