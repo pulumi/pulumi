@@ -59,6 +59,12 @@ func TestBindProgram(t *testing.T) {
 		if !v.IsDir() {
 			continue
 		}
+
+		if v.Name() == "self-referencing-components-pp" {
+			// skip this test as it is handled separately and is known to error out
+			continue
+		}
+
 		folderPath := filepath.Join(testdataPath, v.Name())
 		files, err := os.ReadDir(folderPath)
 		if err != nil {
@@ -99,7 +105,7 @@ func TestBindProgram(t *testing.T) {
 
 				assert.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
-					t.Fatalf("failed to bind program: %v", diags)
+					t.Fatalf("failed to bind program %s: %v", v.Name(), diags)
 				}
 			})
 		}
@@ -748,4 +754,117 @@ value = element(data, 0)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
 	assert.NotNil(t, program)
+}
+
+func TestBindingSelfReferencingResourceFailWithCircularReferenceError(t *testing.T) {
+	t.Parallel()
+	source := `
+resource "randomPet" "random:index/randomPet:RandomPet" {
+	prefix = randomPet.prefix
+}`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "circular reference")
+}
+
+func TestBindingMutuallyDependantResourcesFailsWithCircularReferenceError(t *testing.T) {
+	t.Parallel()
+	source := `
+resource "randomPetA" "random:index/randomPet:RandomPet" { 
+	prefix = randomPetB.prefix
+}
+
+resource "randomPetB" "random:index/randomPet:RandomPet" {
+	prefix = randomPetA.prefix
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.NotNil(t, err)
+	require.True(t, diags.HasErrors(), "There are error diagnostics")
+	require.Contains(t, diags.Error(), "circular reference")
+}
+
+// Binding a component block that references itself in the same block should fail with a circular reference error
+func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testing.T) {
+	t.Parallel()
+	componentDir := filepath.Join(testdataPath, "self-referencing-components-pp")
+	files, err := os.ReadDir(componentDir)
+	if err != nil {
+		t.Fatalf("could not read test data: %v", err)
+	}
+	parser := syntax.NewParser()
+	for _, fileName := range files {
+		fileName := fileName.Name()
+		if filepath.Ext(fileName) != ".pp" {
+			continue
+		}
+
+		path := filepath.Join(componentDir, fileName)
+		contents, err := os.ReadFile(path)
+		require.NoErrorf(t, err, "could not read %v", path)
+
+		err = parser.ParseFile(bytes.NewReader(contents), fileName)
+		require.NoErrorf(t, err, "could not read %v", path)
+		require.False(t, parser.Diagnostics.HasErrors(), "failed to parse files")
+	}
+
+	var bindError error
+	var diags hcl.Diagnostics
+	absoluteProgramPath, err := filepath.Abs(componentDir)
+	if err != nil {
+		t.Fatalf("failed to bind program: unable to find the absolute path of %v", componentDir)
+	}
+
+	program, diags, bindError := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absoluteProgramPath),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	assert.Nil(t, program)
+	assert.NotNil(t, bindError)
+	assert.True(t, diags.HasErrors(), "There are error diagnostics")
+	assert.Contains(t, diags.Error(), "circular reference")
+}
+
+func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
+	t.Parallel()
+	componentDir := filepath.Join(testdataPath, "mutually-dependant-components-pp")
+	files, err := os.ReadDir(componentDir)
+	if err != nil {
+		t.Fatalf("could not read test data: %v", err)
+	}
+	parser := syntax.NewParser()
+	for _, fileName := range files {
+		fileName := fileName.Name()
+		if filepath.Ext(fileName) != ".pp" {
+			continue
+		}
+
+		path := filepath.Join(componentDir, fileName)
+		contents, err := os.ReadFile(path)
+		require.NoErrorf(t, err, "could not read %v", path)
+
+		err = parser.ParseFile(bytes.NewReader(contents), fileName)
+		require.NoErrorf(t, err, "could not read %v", path)
+		require.False(t, parser.Diagnostics.HasErrors(), "failed to parse files")
+	}
+
+	var bindError error
+	var diags hcl.Diagnostics
+	absoluteProgramPath, err := filepath.Abs(componentDir)
+	if err != nil {
+		t.Fatalf("failed to bind program: unable to find the absolute path of %v", componentDir)
+	}
+
+	program, diags, bindError := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absoluteProgramPath),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	assert.NotNil(t, program)
+	assert.Nil(t, bindError)
+	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 }
