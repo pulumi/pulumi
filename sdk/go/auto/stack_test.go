@@ -187,10 +187,15 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := destroyOptsToCmd(&optdestroy.Options{ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml")}, &stack)
+	args := destroyOptsToCmd(
+		&optdestroy.Options{
+			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
+		},
+		&stack,
+	)
 
 	assert.Contains(t, args, "destroy")
-	assert.Contains(t, args, "--config-file=" + stack.workspace.WorkDir() + "/test.yaml")
+	assert.Contains(t, args, "--config-file="+stack.workspace.WorkDir()+"/test.yaml")
 }
 
 func TestRefreshOptsConfigFile(t *testing.T) {
@@ -204,8 +209,13 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := refreshOptsToCmd(&optrefresh.Options{ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml")}, &stack, true)
-
+	args := refreshOptsToCmd(
+		&optrefresh.Options{
+			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
+		},
+		&stack,
+		true,
+	)
 	assert.Contains(t, args, "refresh")
-	assert.Contains(t, args, "--config-file=" + stack.workspace.WorkDir() + "/test.yaml")
+	assert.Contains(t, args, "--config-file="+stack.workspace.WorkDir()+"/test.yaml")
 }
