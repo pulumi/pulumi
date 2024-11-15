@@ -526,6 +526,12 @@ type InvokeOptions struct {
 	// should be downloaded.
 	// This will be blank if the URL was inferred automatically.
 	PluginDownloadURL string
+	// DependsOn lists additional explicit dependencies for the resource
+	// in addition to those tracked automatically by Pulumi.
+	DependsOn []Resource
+	// DependsOnInputs holds explicit dependencies for the resource
+	// that may not be fully known yet.
+	DependsOnInputs []ResourceArrayInput
 }
 
 // NewInvokeOptions builds a preview of the effect of the provided options.
@@ -546,15 +552,39 @@ type invokeOptions struct {
 	Provider          ProviderResource
 	Version           string
 	PluginDownloadURL string
+	DependsOn         []dependencySet
 	Parameterization  []byte
 }
 
 func invokeOptionsSnapshot(io *invokeOptions) *InvokeOptions {
+	var (
+		dependsOn       []Resource
+		dependsOnInputs []ResourceArrayInput
+	)
+	for _, d := range io.DependsOn {
+		switch d := d.(type) {
+		case resourceDependencySet:
+			dependsOn = append(dependsOn, []Resource(d)...)
+		case *resourceArrayInputDependencySet:
+			dependsOnInputs = append(dependsOnInputs, d.input)
+		default:
+			// Unreachable.
+			// We control all implementations of dependencySet.
+			contract.Failf("Unknown dependencySet %T", d)
+		}
+	}
+
+	sort.Slice(dependsOn, func(i, j int) bool {
+		return dependsOn[i].getName() < dependsOn[j].getName()
+	})
+
 	return &InvokeOptions{
 		Parent:            io.Parent,
 		Provider:          io.Provider,
 		Version:           io.Version,
 		PluginDownloadURL: io.PluginDownloadURL,
+		DependsOn:         dependsOn,
+		DependsOnInputs:   dependsOnInputs,
 	}
 }
 
@@ -666,9 +696,14 @@ type dependencySet interface {
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
-func DependsOn(o []Resource) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, resourceDependencySet(o))
+func DependsOn(o []Resource) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(o))
+		case io != nil:
+			io.DependsOn = append(io.DependsOn, resourceDependencySet(o))
+		}
 	})
 }
 
@@ -695,9 +730,14 @@ func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet, from R
 //	var ro ResourceOutput
 //	allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
 //	DependsOnInputs(allDeps)
-func DependsOnInputs(o ResourceArrayInput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, &resourceArrayInputDependencySet{o})
+func DependsOnInputs(o ResourceArrayInput) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.DependsOn = append(ro.DependsOn, &resourceArrayInputDependencySet{o})
+		case io != nil:
+			io.DependsOn = append(io.DependsOn, &resourceArrayInputDependencySet{o})
+		}
 	})
 }
 
