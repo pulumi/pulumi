@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Log a message about deleting requirements.txt when converting to using Poetry

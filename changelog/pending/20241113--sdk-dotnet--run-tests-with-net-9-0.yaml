@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/dotnet
-  description: Run tests with .NET 9.0

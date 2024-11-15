@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Allow PCL function element to take a dynamic expression as input in non-strict mode

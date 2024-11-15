@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Support renaming providers in targeted operations

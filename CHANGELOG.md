@@ -1,5 +1,69 @@
 # Changelog
 
+## 3.139.0 (2024-11-14)
+
+
+### Features
+
+- [pkg] Allow generating docs in parallel
+  [#17711](https://github.com/pulumi/pulumi/pull/17711)
+
+- [programgen] Allow specifying mutually dependant components in PCL
+
+- [programgen/{dotnet,go,nodejs,python}] Support generating invokes options from PCL for invokes
+  [#17696](https://github.com/pulumi/pulumi/pull/17696)
+
+- [sdk/nodejs] Allow accessing configuration in Node.js dynamic providers
+  [#17697](https://github.com/pulumi/pulumi/pull/17697)
+
+- [sdk/nodejs] Implement RunPlugin for the NodeJS language runtime
+  [#17724](https://github.com/pulumi/pulumi/pull/17724)
+
+- [sdk/nodejs] Support parameterization for TypeScript providers
+  [#17738](https://github.com/pulumi/pulumi/pull/17738)
+
+- [sdk/python] Add Uv as a Python toolchain
+  [#17609](https://github.com/pulumi/pulumi/pull/17609)
+
+- [sdk/python] Allow accessing configuration in Python dynamic providers
+  [#17673](https://github.com/pulumi/pulumi/pull/17673)
+
+
+### Bug Fixes
+
+- [engine] Make plugin downloads/installation cancellable
+  [#17621](https://github.com/pulumi/pulumi/pull/17621)
+
+- [engine] Fix frequent retries on 403 errors when the update token expires
+  [#17714](https://github.com/pulumi/pulumi/pull/17714)
+
+- [engine] Don't copy deleted dependencies of untargeted resources
+  [#17743](https://github.com/pulumi/pulumi/pull/17743)
+
+- [engine] Support renaming providers in targeted operations
+  [#17746](https://github.com/pulumi/pulumi/pull/17746)
+
+- [engine] Pass correct working directory to RunPlugin
+  [#17763](https://github.com/pulumi/pulumi/pull/17763)
+
+- [programgen] Allow PCL function element to take a dynamic expression as input in non-strict mode
+  [#17587](https://github.com/pulumi/pulumi/pull/17587)
+
+- [sdk/nodejs] Fix pnpm pack for pnpm@9.13
+  [#17766](https://github.com/pulumi/pulumi/pull/17766)
+
+- [sdk/python] Log a message about deleting requirements.txt when converting to using Poetry
+  [#17716](https://github.com/pulumi/pulumi/pull/17716)
+
+- [sdk/python] Fix an exception in automation api when reading `whoami` results.
+  [#17770](https://github.com/pulumi/pulumi/pull/17770)
+
+
+### Miscellaneous
+
+- [sdk/dotnet] Run tests with .NET 9.0
+  [#17768](https://github.com/pulumi/pulumi/pull/17768)
+
 ## 3.138.0 (2024-11-06)
 
 
