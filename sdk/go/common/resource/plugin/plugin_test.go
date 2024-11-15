@@ -58,6 +58,8 @@ func TestLogFlowArgumentPropagation(t *testing.T) {
 }
 
 func TestParsePort(t *testing.T) {
+	t.Parallel()
+
 	for _, port := range []string{
 		"1234",
 		" 1234",
