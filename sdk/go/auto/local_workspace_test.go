@@ -66,7 +66,7 @@ type mockPulumiCommand struct {
 	stderr       string
 	exitCode     int
 	err          error
-	capturedArgs [][]string
+	capturedArgs []string
 }
 
 func (m *mockPulumiCommand) Version() semver.Version {
@@ -81,7 +81,7 @@ func (m *mockPulumiCommand) Run(ctx context.Context,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
-	m.capturedArgs = append(m.capturedArgs, args)
+	m.capturedArgs = args
 	return m.stdout, m.stderr, m.exitCode, m.err
 }
 
@@ -1703,8 +1703,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 	assert.Equalf(t, true, cv5.Secret, "key should be secret")
 
 	err = s.RemoveAllConfigWithOptions(ctx,
-		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"},
-		&ConfigOptions{Path: true})
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true})
 	if err != nil {
 		t.Error(err)
 	}
@@ -2894,7 +2893,7 @@ func TestListStacksCorrectArgs(t *testing.T) {
 	_, err = workspace.ListStacks(ctx)
 
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs[0])
+	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs)
 }
 
 func TestListAllStacks(t *testing.T) {
@@ -2954,7 +2953,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 	_, err = workspace.ListStacks(ctx, optlist.All())
 
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs[0])
+	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
 }
 
 func TestInstallWithOptions(t *testing.T) {
@@ -3000,31 +2999,31 @@ func TestInstallOptions(t *testing.T) {
 
 	err = workspace.Install(ctx, &InstallOptions{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install"}, m.capturedArgs[0])
+	require.Equal(t, []string{"install"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		UseLanguageVersionTools: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs[1])
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		NoPlugins: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs[2])
+	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		NoDependencies: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs[3])
+	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		Reinstall: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs[4])
+	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		UseLanguageVersionTools: true,
@@ -3039,7 +3038,7 @@ func TestInstallOptions(t *testing.T) {
 		"--no-plugins",
 		"--no-dependencies",
 		"--reinstall",
-	}, m.capturedArgs[5])
+	}, m.capturedArgs)
 }
 
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
@@ -3070,7 +3069,7 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 		UseLanguageVersionTools: true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs[0])
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
