@@ -296,7 +296,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, fmt.Errorf(
-			"%v plugin [%v] wrote a non-numeric port to stdout ('%v'): %w", prefix, bin, port, err)
+			"%v plugin [%v] wrote a non-numeric port to stdout: %w", prefix, bin, err)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
