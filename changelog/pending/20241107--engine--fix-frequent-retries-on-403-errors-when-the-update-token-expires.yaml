@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix frequent retries on 403 errors when the update token expires

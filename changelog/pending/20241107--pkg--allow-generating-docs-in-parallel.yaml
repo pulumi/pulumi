@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg
-  description: Allow generating docs in parallel
