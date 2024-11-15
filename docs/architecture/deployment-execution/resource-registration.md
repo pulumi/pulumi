@@ -214,7 +214,7 @@ const d = new Resource("d", { input: b.output })
 
 The dependency graph for this program is as follows:
 
-```{mermaid}
+```mermaid
 flowchart TD
     b --> a
     c --> a
@@ -253,7 +253,7 @@ necessary.
 
 ### Creating a resource
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram
@@ -278,7 +278,7 @@ sequenceDiagram
 
 ### Updating a resource
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram
@@ -305,7 +305,7 @@ sequenceDiagram
 
 ### Replacing a resource (create-before-replace)
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram
@@ -339,7 +339,7 @@ sequenceDiagram
 
 ### Replacing a resource (delete-before-replace)
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram
@@ -368,7 +368,7 @@ sequenceDiagram
 
 ### Importing a resource
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram
@@ -395,7 +395,7 @@ sequenceDiagram
 
 ### Leaving a resource unchanged
 
-```{mermaid}
+```mermaid
 :zoom:
 
 sequenceDiagram

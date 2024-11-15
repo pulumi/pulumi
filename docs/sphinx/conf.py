@@ -41,6 +41,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosectionlabel",
+    "sphinx.ext.intersphinx",
     "sphinx_tabs.tabs",
     "sphinxcontrib.mermaid",
     "sphinxcontrib.programoutput",
@@ -56,6 +57,17 @@ myst_enable_extensions = [
 ]
 
 myst_links_external_new_tab = True
+
+# Languages listed here will be interpreted as directives when encountered after
+# a code fence. For instance, if MyST sees the string "```mermaid", and mermaid
+# is configured here, it will interpret it as if it had been written as a
+# directive, e.g. "```{mermaid}".
+#
+# This is useful for interoperability with tools that have special support for
+# certain languages. GitHub, for instance, will render Mermaid diagrams if it
+# encounters them, so it's beneficial for us to be able to write them as
+# "normal" code blocks rather than as directives.
+myst_fence_as_directive = ["mermaid"]
 
 # Configure some custom MyST URL schemes for easy linking to GitHub files and
 # issues.
@@ -75,6 +87,23 @@ myst_url_schemes = {
         "classes": ["github"],
     },
 }
+
+# Intersphinx enables linking to references and the like in other Sphinx
+# documentation sites. We configure it here so that we can link to the various
+# Pulumi projects that are all hosted under the root Pulumi site.
+intersphinx_mapping = {
+    # Terrafom Bridge developer documentation
+    # https://github.com/pulumi/pulumi-terraform-bridge
+    "tfbridge": ("https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/", None),
+}
+
+# Sphinx defaults to trying to automatically resolve *unresolved* labels using
+# Intersphinx mappings. This can have unintended side effects, such as local
+# references suddenly resolving to external locations. As a result we disable
+# this behaviour here. See
+# https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#confval-intersphinx_disabled_reftypes
+# for more information.
+intersphinx_disabled_reftypes = ["*"]
 
 # The types of source files and suffixes that Sphinx should recognise and parse.
 source_suffix = {

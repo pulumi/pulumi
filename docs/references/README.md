@@ -9,4 +9,5 @@ TypeDocs from the NodeJS/TypeScript SDK, and so on).
 :titlesonly:
 
 /proto/README
+Terraform Bridge <https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/docs/README.html>
 :::
