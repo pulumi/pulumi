@@ -49,7 +49,7 @@ of operations:
 If all of these steps succeed, the user is left with a definition for `R` in
 their Pulumi program that matches that in the stack's state exactly.
 
-```{mermaid}
+```mermaid
 :caption: Importing a resource using the `import` resource option
 :zoom:
 
@@ -122,7 +122,7 @@ representation of `R`'s desired state in the language used by the destination
 stack's Pulumi program. The user can then copy the generated definition into
 their Pulumi program.
 
-```{mermaid}
+```mermaid
 :caption: Importing a resource using the `pulumi import` CLI
 :zoom:
 

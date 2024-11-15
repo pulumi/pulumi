@@ -2,7 +2,7 @@
 
 MyST supports [Mermaid](https://mermaid.js.org) diagrams. Mermaid is a
 diagramming and charting tool that renders Markdown-inspired text definitions to
-create and modify diagrams dynamically. Use the ```` ```{mermaid} ```` language
+create and modify diagrams dynamically. Use the ```` ```mermaid ```` language
 type to create a diagram. This page gives some examples (taken from the official
 site at the time of writing) but as always you can find more comprehensive
 information in the official documentation.
@@ -10,7 +10,7 @@ information in the official documentation.
 ## Flow charts
 
 ````markdown
-```{mermaid}
+```mermaid
 graph TD;
     A-->B;
     A-->C;
@@ -19,7 +19,7 @@ graph TD;
 ```
 ````
 
-```{mermaid}
+```mermaid
 graph TD;
     A-->B;
     A-->C;
@@ -30,7 +30,7 @@ graph TD;
 ## Sequence diagrams
 
 ````markdown
-```{mermaid}
+```mermaid
 sequenceDiagram
     participant Alice
     participant Bob
@@ -45,7 +45,7 @@ sequenceDiagram
 ```
 ````
 
-```{mermaid}
+```mermaid
 sequenceDiagram
     participant Alice
     participant Bob
@@ -62,7 +62,7 @@ sequenceDiagram
 ## Gantt charts
 
 ````markdown
-```{mermaid}
+```mermaid
 gantt
 dateFormat YYYY-MM-DD
 title      Adding GANTT charts to Mermaid
@@ -76,7 +76,7 @@ Future task2               :         des4, after des3, 5d
 ```
 ````
 
-```{mermaid}
+```mermaid
 gantt
 dateFormat YYYY-MM-DD
 title      Adding GANTT charts to Mermaid
@@ -92,7 +92,7 @@ Future task2               :         des4, after des3, 5d
 ## Class diagrams
 
 ````markdown
-```{mermaid}
+```mermaid
 classDiagram
 Class01 <|-- AveryLongClass : Cool
 Class03 *-- Class04
@@ -110,7 +110,7 @@ Class08 <--> C2: Cool label
 ```
 ````
 
-```{mermaid}
+```mermaid
 classDiagram
 Class01 <|-- AveryLongClass : Cool
 Class03 *-- Class04
@@ -130,7 +130,7 @@ Class08 <--> C2: Cool label
 ## Commit graphs and trees (Git graphs)
 
 ````markdown
-```{mermaid}
+```mermaid
     gitGraph
        commit
        commit
@@ -144,7 +144,7 @@ Class08 <--> C2: Cool label
 ```
 ````
 
-```{mermaid}
+```mermaid
     gitGraph
        commit
        commit
@@ -160,7 +160,7 @@ Class08 <--> C2: Cool label
 ## Entity-relationship (ER) diagrams
 
 ````markdown
-```{mermaid}
+```mermaid
 erDiagram
     CUSTOMER ||--o{ ORDER : places
     ORDER ||--|{ LINE-ITEM : contains
@@ -168,7 +168,7 @@ erDiagram
 ```
 ````
 
-```{mermaid}
+```mermaid
 erDiagram
     CUSTOMER ||--o{ ORDER : places
     ORDER ||--|{ LINE-ITEM : contains
@@ -178,7 +178,7 @@ erDiagram
 ## User journey diagrams
 
 ````markdown
-```{mermaid}
+```mermaid
 journey
     title My working day
     section Go to work
@@ -191,7 +191,7 @@ journey
 ```
 ````
 
-```{mermaid}
+```mermaid
 journey
     title My working day
     section Go to work

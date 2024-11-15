@@ -110,7 +110,7 @@ Python. This function works as follows:
   * Assertions are verified and the next test is processed until there are no
     more remaining.
 
-```{mermaid}
+```mermaid
 :caption: The lifecycle of a language conformance test suite
 :zoom:
 
