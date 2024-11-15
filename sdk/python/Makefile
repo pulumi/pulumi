@@ -54,6 +54,10 @@ lint:: ensure
 	. venv/*/activate && \
 		python -m pyright
 
+lint_fix:: ensure
+	make format
+	make lint
+
 format:: ensure
 	. venv/*/activate && \
 		python -m black $(BLACK_FLAGS)
