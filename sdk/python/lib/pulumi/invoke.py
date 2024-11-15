@@ -54,7 +54,7 @@ class InvokeOptions:
         self,
         parent: Optional["Resource"] = None,
         provider: Optional["ProviderResource"] = None,
-        version: Optional[str] = "",
+        version: Optional[str] = None,
         plugin_download_url: Optional[str] = None,
     ) -> None:
         """
