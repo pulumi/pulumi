@@ -25,6 +25,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
