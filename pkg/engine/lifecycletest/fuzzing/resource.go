@@ -54,6 +54,33 @@ type ResourceSpec struct {
 	Tags map[string]bool
 }
 
+// Creates a ResourceSpec from the given resource.State.
+func FromResource(r *resource.State) *ResourceSpec {
+	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
+	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
+	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
+
+	return &ResourceSpec{
+		Project:              r.URN.Project(),
+		Stack:                r.URN.Stack(),
+		Type:                 r.Type,
+		Name:                 r.URN.Name(),
+		Custom:               r.Custom,
+		Delete:               r.Delete,
+		ID:                   r.ID,
+		Protect:              r.Protect,
+		PendingReplacement:   r.PendingReplacement,
+		RetainOnDelete:       r.RetainOnDelete,
+		Provider:             r.Provider,
+		Parent:               r.Parent,
+		Dependencies:         deps,
+		PropertyDependencies: propDeps,
+		DeletedWith:          r.DeletedWith,
+		Aliases:              aliases,
+		Tags:                 map[string]bool{},
+	}
+}
+
 // Creates a ResourceSpec from the given ResourceV3.
 func FromResourceV3(r apitype.ResourceV3) *ResourceSpec {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
@@ -185,103 +212,90 @@ func (r *ResourceSpec) AsResource() *resource.State {
 //	Dependencies (1):
 //	  <urn>
 func (r *ResourceSpec) Pretty(indent string) string {
-	var providerHint string
+	var b strings.Builder
+	b.WriteString(Colored(r.URN()))
+	b.WriteString(" [")
+
 	if providers.IsProviderType(r.Type) {
-		providerHint = "provider, "
+		b.WriteString("provider, ")
 	}
 
-	var customOrComponent string
 	if r.Custom {
-		customOrComponent = "custom"
+		b.WriteString("custom")
 	} else {
-		customOrComponent = "component"
+		b.WriteString("component")
 	}
 
-	var deleted string
 	if r.Delete {
-		deleted = ", deleted"
+		b.WriteString(", deleted")
 	}
 
-	var tags string
+	b.WriteRune(']')
+
 	if len(r.Tags) > 0 {
 		ks := maps.Keys(r.Tags)
 		slices.Sort(ks)
-		tags = fmt.Sprintf("\n%s  Tags:                %s\n", indent, strings.Join(ks, ", "))
+		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
 	}
 
-	var provider string
+	if r.ID != "" {
+		b.WriteString(fmt.Sprintf("\n%s  ID:                  %s", indent, r.ID))
+	}
+
+	if r.Protect {
+		b.WriteString(fmt.Sprintf("\n%s  Protect:             true", indent))
+	}
+
+	if r.PendingReplacement {
+		b.WriteString(fmt.Sprintf("\n%s  Pending replacement: true", indent))
+	}
+
+	if r.RetainOnDelete {
+		b.WriteString(fmt.Sprintf("\n%s  Retain on delete:    true", indent))
+	}
+
 	if r.Provider != "" {
 		provRef, err := providers.ParseReference(r.Provider)
 		if err != nil {
-			provider = fmt.Sprintf("\n%s  Provider:            %s", indent, r.Provider)
+			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s", indent, r.Provider))
 		} else {
-			provider = fmt.Sprintf("\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID())
+			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID()))
 		}
 	}
 
-	var parent string
 	if r.Parent != "" {
-		parent = fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent))
+		b.WriteString(fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent)))
 	}
 
-	var deps string
 	if len(r.Dependencies) > 0 {
-		deps = fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies))
+		b.WriteString(fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies)))
 		for _, d := range r.Dependencies {
-			deps += fmt.Sprintf("\n%s    %s", indent, Colored(d))
+			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(d)))
 		}
 	}
 
-	var propDeps string
 	if len(r.PropertyDependencies) > 0 {
-		propDeps = fmt.Sprintf("\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies))
+		b.WriteString(fmt.Sprintf("\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies)))
 		for k, deps := range r.PropertyDependencies {
-			propDeps += fmt.Sprintf("\n%s    %s", indent, k)
+			b.WriteString(fmt.Sprintf("\n%s    %s", indent, k))
 			for _, d := range deps {
-				propDeps += fmt.Sprintf("\n%s      %s", indent, Colored(d))
+				b.WriteString(fmt.Sprintf("\n%s      %s", indent, Colored(d)))
 			}
 		}
 	}
 
-	var deletedWith string
 	if r.DeletedWith != "" {
-		deletedWith = fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith))
+		b.WriteString(fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith)))
 	}
 
-	var aliases string
 	if len(r.Aliases) > 0 {
-		aliases = fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases))
+		b.WriteString(fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases)))
 		for _, a := range r.Aliases {
-			aliases += fmt.Sprintf("\n%s    %s", indent, Colored(a))
+			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(a)))
 		}
 	}
 
-	rendered := fmt.Sprintf(`%[1]s%[2]s [%[3]s%[4]s%[5]s]%[6]s
-%[1]s  Protect:             %[7]v
-%[1]s  Pending replacement: %[8]v
-%[1]s  Retain on delete:    %[9]v%[10]s%[11]s%[12]s%[13]s%[14]s%[15]s`,
-		indent,
-
-		Colored(r.URN()),
-		providerHint,
-		customOrComponent,
-		deleted,
-
-		tags,
-
-		r.Protect,
-		r.PendingReplacement,
-		r.RetainOnDelete,
-
-		provider,
-		parent,
-		deps,
-		propDeps,
-		deletedWith,
-		aliases,
-	)
-
-	return rendered
+	return b.String()
 }
 
 // Given a package name, returns a rapid.Generator that yields random resource types within that package.

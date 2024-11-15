@@ -36,6 +36,24 @@ type SnapshotSpec struct {
 	Resources []*ResourceSpec
 }
 
+// Creates a SnapshotSpec from the given deploy.Snapshot.
+func FromSnapshot(s *deploy.Snapshot) *SnapshotSpec {
+	ss := &SnapshotSpec{
+		Providers: map[tokens.Package]*ResourceSpec{},
+	}
+
+	for _, r := range s.Resources {
+		rs := FromResource(r)
+		if providers.IsProviderType(rs.Type) {
+			ss.AddProvider(rs)
+		} else {
+			ss.AddResource(rs)
+		}
+	}
+
+	return ss
+}
+
 // Creates a SnapshotSpec from the ResourceV3s in the given DeploymentV3.
 func FromDeploymentV3(d *apitype.DeploymentV3) *SnapshotSpec {
 	ss := &SnapshotSpec{
@@ -90,7 +108,7 @@ func (s *SnapshotSpec) Pretty(indent string) string {
 	} else {
 		rendered += fmt.Sprintf("\n%s  Resources (%d):", indent, len(s.Resources))
 		for _, r := range s.Resources {
-			rendered += fmt.Sprintf("\n%s%s", indent, r.Pretty(indent+"    "))
+			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
