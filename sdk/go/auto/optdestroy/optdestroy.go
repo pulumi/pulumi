@@ -130,6 +130,13 @@ func Remove() Option {
 	})
 }
 
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -173,6 +180,8 @@ type Options struct {
 	// Remove the stack and its configuration after all resources in the stack
 	// have been deleted.
 	Remove bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
 }
 
 type optionFunc func(*Options)

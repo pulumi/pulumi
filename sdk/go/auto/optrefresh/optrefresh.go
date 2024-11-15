@@ -108,6 +108,13 @@ func SuppressOutputs() Option {
 	})
 }
 
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -144,6 +151,8 @@ type Options struct {
 	SuppressProgress bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
 	SuppressOutputs bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
 }
 
 type optionFunc func(*Options)
