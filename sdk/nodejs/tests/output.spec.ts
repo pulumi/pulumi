@@ -1345,7 +1345,8 @@ describe("output", () => {
             assert.strictEqual(await output.promise(), "Hello");
             assert.strictEqual(await output.isKnown, true);
             assert.strictEqual(await output.isSecret, false);
-            assert.strictEqual(await output.allResources!(), new Set());
+            const resources = await output.allResources!();
+            assert.strictEqual([...resources], []);
         });
     });
 });
