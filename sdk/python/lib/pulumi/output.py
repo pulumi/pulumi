@@ -999,3 +999,26 @@ def _map2_input(
 async def _gather_from_dict(tasks: dict) -> dict:
     results = await asyncio.gather(*tasks.values())
     return dict(zip(tasks.keys(), results))
+
+def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
+    """
+    Creates an Output[T] of which its value can be resolved/assigned later from another Output[T] instance.    
+    """
+    # Setup the futures for the output.
+    resolve_value: "asyncio.Future" = asyncio.Future()
+    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+
+    def resolve(o: Output[T]) -> None:
+        nonlocal resolve_value
+        nonlocal resolve_is_known
+        nonlocal resolve_is_secret
+        nonlocal resolve_deps
+        resolve_value = o._future
+        resolve_is_known = o._is_known
+        resolve_is_secret = o._is_secret
+        resolve_deps = o._resources
+
+    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    return out, resolve

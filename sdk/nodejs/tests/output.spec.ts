@@ -27,6 +27,7 @@ import {
     secret,
     unknown,
     unsecret,
+    deferredOutput,
 } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
@@ -1326,4 +1327,25 @@ describe("output", () => {
             assert.strictEqual(await (<any>result18).promise(/*withUnknowns*/ true), unknown);
         });
     });
+
+    describe("deferred", () => {
+        it("can be created", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+            
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, false);
+            assert.strictEqual(await output.allResources!(), new Set());
+        })
+    })
 });

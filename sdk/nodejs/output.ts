@@ -364,6 +364,52 @@ To manipulate the value of this Output, use '.apply' instead.`);
 }
 
 /**
+ * Creates an Output<T> of which its value can be resolved/assigned later from another Output<T> instance
+ * @returns 
+ */
+export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
+    let resolveValue: (v: T) => void;
+    let rejectValue: (err: Error) => void;
+    let resolveIsKnown: (v: boolean) => void;
+    let rejectIsKnown: (err: Error) => void;
+    let resolveIsSecret: (v: boolean) => void;
+    let rejectIsSecret: (err: Error) => void;
+    let resolveDeps: (v: Set<Resource>) => void;
+    let rejectDeps: (err: Error) => void;
+
+    let resolve = (source: Output<T>) => {
+        source.promise().then(resolveValue, rejectValue);
+        source.isKnown.then(resolveIsKnown, rejectIsKnown);
+        source.isSecret.then(resolveIsSecret, rejectIsSecret);
+        if (source.allResources) {
+            source.allResources().then(resolveDeps, rejectDeps);
+        }
+    };
+
+    const output = new Output(
+        new Set(),
+        new Promise<T>((res, rej) => {
+            resolveValue = res;
+            rejectValue = rej;
+        }),
+        new Promise<boolean>((res, rej) => {
+            resolveIsKnown = res;
+            rejectIsKnown = rej;
+        }),
+        new Promise<boolean>((res, rej) => {
+            resolveIsSecret = res;
+            rejectIsSecret = rej;
+        }),
+        new Promise<Set<Resource>>((res, rej) => {
+            resolveDeps = res;
+            rejectDeps = rej;
+        }),
+    );
+
+    return [output, resolve];
+}
+
+/**
  * @Internal
  */
 export function getAllResources<T>(op: OutputInstance<T>): Promise<Set<Resource>> {

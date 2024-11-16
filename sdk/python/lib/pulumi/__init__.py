@@ -86,6 +86,7 @@ from .output import (
     InputType,
     UNKNOWN,
     contains_unknowns,
+    deferred_output,
 )
 
 from .log import (
@@ -167,6 +168,7 @@ __all__ = [
     "InputType",
     "UNKNOWN",
     "contains_unknowns",
+    "deferred_output",
     # log
     "debug",
     "info",
