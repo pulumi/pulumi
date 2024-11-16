@@ -1331,7 +1331,7 @@ describe("output", () => {
     describe("deferred", () => {
         it("can be created", async () => {
             const [output, resolveFrom] = deferredOutput<string>();
-            
+
             const source = new Output(
                 new Set(),
                 Promise.resolve("Hello"),
@@ -1346,6 +1346,6 @@ describe("output", () => {
             assert.strictEqual(await output.isKnown, true);
             assert.strictEqual(await output.isSecret, false);
             assert.strictEqual(await output.allResources!(), new Set());
-        })
-    })
+        });
+    });
 });

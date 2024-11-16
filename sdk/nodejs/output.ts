@@ -364,8 +364,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 }
 
 /**
- * Creates an Output<T> of which its value can be resolved/assigned later from another Output<T> instance
- * @returns 
+ * Creates an Output<T> of which its value can be resolved/assigned later from another Output<T> instance.
  */
 export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
     let resolveValue: (v: T) => void;
@@ -377,7 +376,7 @@ export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
     let resolveDeps: (v: Set<Resource>) => void;
     let rejectDeps: (err: Error) => void;
 
-    let resolve = (source: Output<T>) => {
+    const resolve = (source: Output<T>) => {
         source.promise().then(resolveValue, rejectValue);
         source.isKnown.then(resolveIsKnown, rejectIsKnown);
         source.isSecret.then(resolveIsSecret, rejectIsSecret);
