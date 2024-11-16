@@ -1000,9 +1000,10 @@ async def _gather_from_dict(tasks: dict) -> dict:
     results = await asyncio.gather(*tasks.values())
     return dict(zip(tasks.keys(), results))
 
+
 def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
     """
-    Creates an Output[T] of which its value can be resolved/assigned later from another Output[T] instance.    
+    Creates an Output[T] of which its value can be resolved/assigned later from another Output[T] instance.
     """
     # Setup the futures for the output.
     resolve_value: "asyncio.Future" = asyncio.Future()

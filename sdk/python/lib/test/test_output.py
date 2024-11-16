@@ -566,6 +566,7 @@ class OutputSerializationTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, expected_msg("is_secret")):
             i.is_secret()
 
+
 class DeferredOutputTests(unittest.TestCase):
     @pulumi_test
     async def test_deferred_output(self):
