@@ -880,7 +880,7 @@ func NewPluginSpec(
 		versionStr = s[1]
 	}
 
-	urlRegex := regexp.MustCompile(`[^\.].*\..+/.+$`)
+	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9]$`)
 	if urlRegex.MatchString(name) {
 		u, err := url.Parse(name)
 		// If we don't have a URL, we just treat it as a normal plugin name.
