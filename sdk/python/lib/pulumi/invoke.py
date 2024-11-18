@@ -170,7 +170,9 @@ class InvokeOutputOptions(InvokeOptions):
         self.merge = self._merge_instance  # type: ignore
         self.merge.__func__.__doc__ = InvokeOptions.merge.__doc__  # type: ignore
 
-    def _merge_instance(self, opts: "Union[InvokeOptions, InvokeOutputOptions]") -> "InvokeOutputOptions":
+    def _merge_instance(
+        self, opts: "Union[InvokeOptions, InvokeOutputOptions]"
+    ) -> "InvokeOutputOptions":
         return InvokeOutputOptions.merge(self, opts)
 
     @staticmethod

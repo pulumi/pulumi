@@ -315,7 +315,9 @@ def _invoke(
                 dependencies.add(dep)
         return (
             InvokeResult(
-                value=result, is_secret=invoke_output_secret, dependencies=list(dependencies)
+                value=result,
+                is_secret=invoke_output_secret,
+                dependencies=list(dependencies),
             ),
             None,
         )
