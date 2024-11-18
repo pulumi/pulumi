@@ -1006,10 +1006,10 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
     Creates an Output[T] of which its value can be resolved/assigned later from another Output[T] instance.
     """
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: Awaitable[T] = asyncio.Future()
+    resolve_is_known: Awaitable[bool] = asyncio.Future()
+    resolve_is_secret: Awaitable[bool] = asyncio.Future()
+    resolve_deps: Awaitable[Set[Resource]] = asyncio.Future()
 
     def resolve(o: Output[T]) -> None:
         nonlocal resolve_value
