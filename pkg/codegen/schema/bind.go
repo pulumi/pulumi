@@ -190,6 +190,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
+	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
@@ -1287,6 +1289,52 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	})
 
 	return typeList, diags, nil
+}
+
+func checkDuplicates(
+	resources map[string]ResourceSpec, functions map[string]FunctionSpec,
+) hcl.Diagnostics {
+	type schemaPath = string
+	type token = string
+	names := make(map[token][]schemaPath, len(resources)+len(functions))
+	duplicates := map[token]struct{}{}
+
+	process := func(token token, schemaPath schemaPath) {
+		v := append(names[token], schemaPath)
+		names[token] = v
+		if len(v) > 1 {
+			duplicates[token] = struct{}{}
+		}
+	}
+
+	for r := range resources {
+		process(strings.ToLower(r), memberPath("resources", r))
+	}
+	for f := range functions {
+		process(strings.ToLower(f), memberPath("functions", f))
+	}
+
+	diags := slice.Prealloc[*hcl.Diagnostic](len(duplicates))
+
+	for _, dup := range sortedKeys(duplicates) {
+		paths := names[dup]
+		contract.Assertf(len(paths) > 1, "this should only include duplicates")
+		slices.Sort(paths)
+
+		others := make([]schemaPath, len(paths)-1)
+		copy(others, paths[1:])
+
+		for i, tk := range paths {
+			err := errorf(tk, "multiple tokens map to %s", dup)
+			err.Detail = "other paths(s) are " + strings.Join(others, ", ")
+			if i < len(others) {
+				others[i] = paths[i]
+			}
+			diags = append(diags, err)
+		}
+	}
+
+	return diags
 }
 
 func bindMethods(path, resourceToken string, methods map[string]string,

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: Reject schemas with duplicate paths across resources and functions
