@@ -192,7 +192,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
+	repo, err := workspace.RetrieveTemplates(ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
 		return err
 	}
@@ -523,9 +523,9 @@ func newNewCmd() *cobra.Command {
 		promptRuntimeOptions: promptRuntimeOptions,
 	}
 
-	getTemplates := func() ([]workspace.Template, error) {
+	getTemplates := func(ctx context.Context) ([]workspace.Template, error) {
 		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
+		repo, err := workspace.RetrieveTemplates(ctx, "", false /*offline*/, workspace.TemplateKindPulumiProject)
 		if err != nil {
 			logging.Warningf("could not retrieve templates: %v", err)
 			return []workspace.Template{}, err
@@ -590,7 +590,7 @@ func newNewCmd() *cobra.Command {
 				args.templateNameOrURL = cliArgs[0]
 			}
 			if args.listTemplates {
-				templates, err := getTemplates()
+				templates, err := getTemplates(ctx)
 				if err != nil {
 					logging.Warningf("could not list templates: %v", err)
 					return err
@@ -616,7 +616,7 @@ func newNewCmd() *cobra.Command {
 		// Show default help.
 		defaultHelp(cmd, args)
 
-		templates, err := getTemplates()
+		templates, err := getTemplates(cmd.Context())
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)
 			return

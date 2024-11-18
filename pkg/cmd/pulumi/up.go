@@ -228,7 +228,7 @@ func newUpCmd() *cobra.Command {
 		cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
+		repo, err := workspace.RetrieveTemplates(ctx, templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
 			return err
 		}

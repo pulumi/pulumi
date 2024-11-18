@@ -15,6 +15,7 @@
 package gitutil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -429,14 +430,14 @@ func expandHomeDir(path string) (string, error) {
 }
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
-func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) error {
+func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
 
 	u, auth, err := parseAuthURL(url)
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainClone(path, false, &git.CloneOptions{
+	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
 		URL:  u,
 		Auth: auth,
 	})
@@ -455,20 +456,20 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 	})
 }
 
-func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func GitCloneOrPull(ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 
 	// TODO: https://github.com/go-git/go-git/pull/613 should have resolved the issue preventing this from cloning.
 	if u, err := parseGitRepoURLParts(rawurl); err == nil && u.Hostname == AzureDevOpsHostName {
 		// system-installed git is used to clone Azure DevOps repositories
 		// due to https://github.com/go-git/go-git/issues/64
-		return gitCloneOrPullSystemGit(rawurl, referenceName, path, shallow)
+		return gitCloneOrPullSystemGit(ctx, rawurl, referenceName, path, shallow)
 	}
-	return gitCloneOrPull(rawurl, referenceName, path, shallow)
+	return gitCloneOrPull(ctx, rawurl, referenceName, path, shallow)
 }
 
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPull(ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {
@@ -480,7 +481,7 @@ func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 		return err
 	}
 	// Attempt to clone the repo.
-	_, cloneErr := git.PlainClone(path, false, &git.CloneOptions{
+	_, cloneErr := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
 		URL:           u,
 		Auth:          auth,
 		ReferenceName: referenceName,
@@ -564,7 +565,9 @@ func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 }
 
 // gitCloneOrPullSystemGit uses the `git` command to pull or clone repositories.
-func gitCloneOrPullSystemGit(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPullSystemGit(
+	ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool,
+) error {
 	// Assume repo already exists, pull changes.
 	gitArgs := []string{
 		"pull",
@@ -581,7 +584,7 @@ func gitCloneOrPullSystemGit(url string, referenceName plumbing.ReferenceName, p
 		}
 	}
 
-	cmd := exec.Command("git", gitArgs...)
+	cmd := exec.CommandContext(ctx, "git", gitArgs...)
 	cmd.Dir = path
 
 	if err := cmd.Run(); err != nil {
