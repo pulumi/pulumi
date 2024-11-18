@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"cmp"
 	_ "embed"
 	"fmt"
 	"io"
@@ -22,8 +23,8 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -52,13 +53,12 @@ func init() {
 	MetaSchema = compiler.MustCompile("blob://pulumi.json")
 }
 
-func sortedKeys(m interface{}) []string {
-	rv := reflect.ValueOf(m)
-	keys := slice.Prealloc[string](rv.Len())
-	for it := rv.MapRange(); it.Next(); {
-		keys = append(keys, it.Key().String())
+func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
+	keys := slice.Prealloc[K](len(m))
+	for key := range m {
+		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	return keys
 }
 
