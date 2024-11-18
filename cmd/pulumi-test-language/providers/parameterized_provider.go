@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 
+	gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -74,6 +75,13 @@ func (p *ParameterizedProvider) GetSchema(
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
 
+	goPkgInfo, err := json.Marshal(gen.GoPackageInfo{
+		AppendPath: subpackage,
+	})
+	if err != nil {
+		return plugin.GetSchemaResponse{}, fmt.Errorf("marshal: %w", err)
+	}
+	
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
 		Version: version,
@@ -91,6 +99,9 @@ func (p *ParameterizedProvider) GetSchema(
 					Required: []string{"parameterValue"},
 				},
 			},
+		},
+		Language: map[string]schema.RawMessage{
+			"go": goPkgInfo,
 		},
 		Parameterization: &schema.ParameterizationSpec{
 			BaseProvider: schema.BaseProviderSpec{

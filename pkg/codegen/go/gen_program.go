@@ -582,9 +582,23 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					packagePaths[p.Name] = info.ModulePath
-					err = gomod.AddRequire(info.ModulePath, p.Version.String())
-					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
+					modulePath := info.ModulePath
+					if info.AppendPath != "" {
+						modulePath = path.Join(modulePath, info.AppendPath)
+					}
+					packagePaths[p.Name] = modulePath
+					version := p.Version.String()
+					if p.Parameterization != nil {
+						version = "v" + p.Parameterization.BaseProvider.Version.String()
+					} 
+
+					err = gomod.AddRequire(modulePath, version)
+					contract.AssertNoErrorf(
+						err,
+						"could not add require statement for %s with version %s to go.mod",
+						modulePath,
+						version,
+					)
 				}
 			}
 			continue
@@ -598,7 +612,10 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		packageName := extractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ImportBasePath != "" {
+			if goInfo.AppendPath != "" {
+				packageName = path.Join(packageName, goInfo.AppendPath)
+				localDependencies[p.Name] += "/" + goInfo.AppendPath
+			} else if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
 				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
@@ -610,6 +627,9 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		version := ""
 		if p.Version != nil {
 			version = "v" + p.Version.String()
+		}
+		if p.Parameterization != nil {
+			version = "v" + p.Parameterization.BaseProvider.Version.String()
 		}
 		if packageName != "" {
 			packagePaths[p.Name] = packageName
@@ -1747,6 +1767,13 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 		// If mod is empty, then the package is the root package.
 		pkgName = pkg
 	}
+
+	if path == "" && info.AppendPath != "" {
+		// Path is empty so the module must be the one provided with the appended path.
+		// This occurs when a parameterized provider changes the package path.
+		return pkgName
+	}
+
 	return g.importer.Import(path, pkgName)
 }
 

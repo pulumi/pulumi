@@ -38,6 +38,9 @@ type GoPackageInfo struct {
 	// Explicit package name, which may be different to the import path.
 	RootPackageName string `json:"rootPackageName,omitempty"`
 
+	// Append to module path for overridding package pack to submodules on parameterization
+	AppendPath string `json:"appendPath,omitempty"`
+
 	// Map from module -> package name
 	//
 	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
