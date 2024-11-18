@@ -57,10 +57,12 @@ func (StringResourceState) ElementType() reflect.Type {
 }
 
 type stringResourceArgs struct {
+	Text *string `pulumi:"text"`
 }
 
 // The set of arguments for constructing a StringResource resource.
 type StringResourceArgs struct {
+	Text pulumi.StringPtrInput
 }
 
 func (StringResourceArgs) ElementType() reflect.Type {

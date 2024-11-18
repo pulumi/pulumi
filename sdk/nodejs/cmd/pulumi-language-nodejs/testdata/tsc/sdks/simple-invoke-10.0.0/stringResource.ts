@@ -31,7 +31,7 @@ export class StringResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === StringResource.__pulumiType;
     }
 
-    public /*out*/ readonly text!: pulumi.Output<string>;
+    public readonly text!: pulumi.Output<string>;
 
     /**
      * Create a StringResource resource with the given unique name, arguments, and options.
@@ -44,7 +44,7 @@ export class StringResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["text"] = undefined /*out*/;
+            resourceInputs["text"] = args ? args.text : undefined;
         } else {
             resourceInputs["text"] = undefined /*out*/;
         }
@@ -57,4 +57,5 @@ export class StringResource extends pulumi.CustomResource {
  * The set of arguments for constructing a StringResource resource.
  */
 export interface StringResourceArgs {
+    text?: pulumi.Input<string>;
 }
