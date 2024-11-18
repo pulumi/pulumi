@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -149,22 +148,12 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	descriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind: apitype.ResourcePlugin,
-			Name: packageSource,
-		},
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, "", nil)
+	if err != nil {
+		return nil, err
 	}
 
-	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
-		descriptor.Name = s[0]
-		v, err := semver.ParseTolerant(s[1])
-		if err != nil {
-			return nil, fmt.Errorf("VERSION must be valid semver: %w", err)
-		}
-		descriptor.Version = &v
-	}
-
+	descriptor := workspace.PackageDescriptor{PluginSpec: pluginSpec}
 	isExecutable := func(info fs.FileInfo) bool {
 		// Windows doesn't have executable bits to check
 		if runtime.GOOS == "windows" {
