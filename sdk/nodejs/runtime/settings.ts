@@ -381,7 +381,8 @@ export function _setStack(val: string | undefined) {
  * Returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
-    return (!!monitor && !!options().monitorAddr) || options().monitorAddr === "mock";
+    const { settings } = getStore();
+    return (!!monitor && !!options().monitorAddr) || !!settings.monitor;
 }
 
 /**
