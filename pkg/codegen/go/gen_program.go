@@ -582,8 +582,15 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					packagePaths[p.Name] = info.ModulePath
-					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+					var modulePath string
+					if p.Parameterization != nil {
+						modulePath = fmt.Sprintf("%s/%s", info.ModulePath, p.Name)
+					} else {
+						modulePath = info.ModulePath
+					}
+
+					packagePaths[p.Name] = modulePath
+					err = gomod.AddRequire(modulePath, p.Version.String())
 					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
@@ -612,7 +619,16 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			packagePaths[p.Name] = packageName
+			var modulePath string
+			if p.Parameterization != nil {
+				modulePath = fmt.Sprintf("%s/%s", packageName, p.Name)
+				packageName = fmt.Sprintf("%s/%s", packageName, p.Name)
+				version = fmt.Sprintf("v%s", p.Parameterization.BaseProvider.Version.String())
+			} else {
+				modulePath = packageName
+			}
+
+			packagePaths[p.Name] = modulePath
 			err = gomod.AddRequire(packageName, version)
 			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}

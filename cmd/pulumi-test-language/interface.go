@@ -571,7 +571,14 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 				}
-				localDependencies[pkg.Name] = sdkArtifact
+
+				if pkg.Parameterization != nil {
+					localDependencies[pkg.Name] = fmt.Sprintf("%s/%s", sdkArtifact, pkg.Parameterization.Parameter)
+				} else {
+					localDependencies[pkg.Name] = sdkArtifact
+				}
+				fmt.Fprintf(os.Stderr, "HUMPH Generating local dep for %s %s\n", pkg.Name, localDependencies[pkg.Name])
+
 				return nil, nil
 			}
 
@@ -623,7 +630,11 @@ func (eng *languageTestServer) RunLanguageTest(
 			if err != nil {
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 			}
-			localDependencies[pkg.Name] = sdkArtifact
+			if pkg.Parameterization != nil {
+				localDependencies[pkg.Name] = fmt.Sprintf("%s/%s", sdkArtifact, pkg.Name)
+			} else {
+				localDependencies[pkg.Name] = sdkArtifact
+			}
 
 			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
 			// Again we need to make a snapshot edit for this.
