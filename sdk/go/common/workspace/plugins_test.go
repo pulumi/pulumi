@@ -1786,6 +1786,32 @@ func TestNewPluginSpec(t *testing.T) {
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: abcd"),
 		},
+		{
+			name:   "local plugin",
+			source: "./test/plugin",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "./test/plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+				isGitPlugin:       false,
+			},
+		},
+		{
+			name:   "local plugin absolute path",
+			source: "/test/plugin",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "/test/plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+				isGitPlugin:       false,
+			},
+		},
 	}
 
 	for _, c := range cases {
