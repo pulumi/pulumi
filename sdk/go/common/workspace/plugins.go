@@ -901,7 +901,9 @@ func NewPluginSpec(
 // Dir gets the expected plugin directory for this plugin.
 func (spec PluginSpec) Dir() string {
 	dir := fmt.Sprintf("%s-%s", spec.Kind, spec.Name)
-	dir = strings.ReplaceAll(dir, "/", "_")
+	if spec.isGitPlugin {
+		dir = strings.ReplaceAll(dir, "/", "_")
+	}
 	if spec.Version != nil {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
