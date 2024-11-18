@@ -171,11 +171,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
-// Add test names here that are expected to fail and the reason why they are failing
-var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on": "not implemented yet",
-}
-
 func TestLanguage(t *testing.T) {
 	t.Parallel()
 
@@ -241,10 +236,6 @@ func TestLanguage(t *testing.T) {
 				tt := tt
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
-
-					if expected, ok := expectedFailures[tt]; ok {
-						t.Skipf("Skipping known failure: %s", expected)
-					}
 
 					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,

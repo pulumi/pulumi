@@ -239,7 +239,7 @@ async function invokeAsync(
     const done = rpcKeepAlive();
     try {
         // Wait for any explicit dependencies to complete before proceeding.
-        await gatherExplicitDependencies(opts.dependsOn);
+        const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
 
         const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
         if (containsUnknownValues(serialized)) {
@@ -291,10 +291,12 @@ async function invokeAsync(
             label,
         );
 
-        const flatDependencies: Resource[] = [];
+        const flatDependencies: Resource[] = dependsOnDeps;
         for (const dep of deps.values()) {
             for (const d of dep) {
-                flatDependencies.push(d);
+                if (!flatDependencies.includes(d)) {
+                    flatDependencies.push(d);
+                }
             }
         }
 
