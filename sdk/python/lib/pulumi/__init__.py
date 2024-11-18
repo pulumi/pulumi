@@ -137,6 +137,7 @@ __all__ = [
     "InputPropertyErrorDetails",
     # invoke
     "InvokeOptions",
+    "InvokeOutputOptions",
     "InvokeTransform",
     "InvokeTransformArgs",
     "InvokeTransformResult",
