@@ -1586,6 +1586,46 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-resource-secret": {
+		providers: []plugin.Provider{&providers.SecretProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:secret", provider.Type.String(), "expected secret provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "secret:index:Resource", simple.Type.String(), "expected secret resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"public":  "open",
+						"private": resource.MakeSecret(resource.NewStringProperty("closed")),
+						"publicData": map[string]interface{}{
+							"public": "open",
+							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
+							// but currently _all_ the SDKs send it as a plain value and the engine doesn't
+							// fix it. We should fix the engine to ensure this ends up as secret as well.
+							"private": "closed",
+						},
+						"privateData": resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"public":  "open",
+							"private": "closed",
+						}))),
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 }
 
 // Like assert.Equal but also permits the actual value to be the JSON-serialized string form of the expected value.
