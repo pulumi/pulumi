@@ -38,7 +38,7 @@ from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
-from ._depends_on import _resolve_depends_on_urns
+from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
     _get_rpc_manager,
     get_monitor,
@@ -245,6 +245,11 @@ def _invoke(
             inputs
         )
 
+        # keep track of the dependencies from depends_on
+        depends_on_dependencies: Set["Resource"] = set()
+        if isinstance(opts, InvokeOutputOptions):
+            depends_on_dependencies = await _resolve_depends_on(opts._depends_on_list())
+
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
         accept_resources = not (
@@ -304,13 +309,13 @@ def _invoke(
             )
 
         invoke_output_secret = is_secret or inputs_contain_secrets
-        dependencies: List["Resource"] = []
+        dependencies: Set["Resource"] = depends_on_dependencies
         for _, property_deps in property_dependencies.items():
             for dep in property_deps:
-                dependencies.append(dep)
+                dependencies.add(dep)
         return (
             InvokeResult(
-                value=result, is_secret=invoke_output_secret, dependencies=dependencies
+                value=result, is_secret=invoke_output_secret, dependencies=list(dependencies)
             ),
             None,
         )
