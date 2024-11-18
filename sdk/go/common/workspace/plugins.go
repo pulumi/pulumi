@@ -894,16 +894,12 @@ func NewPluginSpec(
 		Version:           version,
 		PluginDownloadURL: pluginDownloadURL,
 		Checksums:         checksums,
-		isGitPlugin:       isGitPlugin,
 	}, nil
 }
 
 // Dir gets the expected plugin directory for this plugin.
 func (spec PluginSpec) Dir() string {
 	dir := fmt.Sprintf("%s-%s", spec.Kind, spec.Name)
-	if spec.isGitPlugin {
-		dir = strings.ReplaceAll(dir, "/", "_")
-	}
 	if spec.Version != nil {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
@@ -956,10 +952,6 @@ func (spec PluginSpec) String() string {
 		version = fmt.Sprintf("-%s", v)
 	}
 	return spec.Name + version
-}
-
-func (spec PluginSpec) RemotePlugin() bool {
-	return spec.isGitPlugin
 }
 
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
