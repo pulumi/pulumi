@@ -192,7 +192,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
+	repo, err := workspace.RetrieveTemplates(
+		ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
 		return err
 	}

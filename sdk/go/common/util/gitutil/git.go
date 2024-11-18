@@ -456,7 +456,9 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	})
 }
 
-func GitCloneOrPull(ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func GitCloneOrPull(
+	ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool,
+) error {
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 
 	// TODO: https://github.com/go-git/go-git/pull/613 should have resolved the issue preventing this from cloning.
@@ -469,7 +471,9 @@ func GitCloneOrPull(ctx context.Context, rawurl string, referenceName plumbing.R
 }
 
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func gitCloneOrPull(ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPull(
+	ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool,
+) error {
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {

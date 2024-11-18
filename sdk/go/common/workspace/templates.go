@@ -298,7 +298,9 @@ func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offlin
 }
 
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
-func retrieveURLTemplates(ctx context.Context, rawurl string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
+func retrieveURLTemplates(
+	ctx context.Context, rawurl string, offline bool, templateKind TemplateKind,
+) (TemplateRepository, error) {
 	if offline {
 		return TemplateRepository{}, fmt.Errorf("cannot use %s offline", rawurl)
 	}
