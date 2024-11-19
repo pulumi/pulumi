@@ -454,6 +454,143 @@ func TestEnums(t *testing.T) {
 	}
 }
 
+func TestRejectDuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		spec     PackageSpec
+		expected hcl.Diagnostics
+	}{
+		{
+			"resource function no duplicate",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Res": {},
+				},
+				Functions: map[string]FunctionSpec{
+					"test:index:Fun": {},
+				},
+			},
+			hcl.Diagnostics(nil),
+		},
+		{
+			"resource function duplicate",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Duplicate": {},
+					"test:index:Res2":      {},
+				},
+				Functions: map[string]FunctionSpec{
+					"test:index:Duplicate": {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/functions/test:index:Duplicate",
+				},
+			},
+		},
+		{
+			"resource function type duplicate",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Duplicate": {},
+				},
+				Functions: map[string]FunctionSpec{
+					"test:index:Duplicate": {},
+				},
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Duplicate": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/functions/test:index:Duplicate",
+				},
+			},
+		},
+		{
+			"difference by case",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Duplicate": {},
+					"test:index:duplicatE": {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/resources/test:index:duplicatE",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:duplicatE: multiple tokens map to test:index:duplicate",
+					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+				},
+			},
+		},
+		{
+			"difference by case across kinds",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:DupeName": {},
+				},
+				Functions: map[string]FunctionSpec{
+					"test:index:dupeName": {},
+				},
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Dupename": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:index:dupeName: multiple tokens map to test:index:dupename",
+					Detail:   "other paths(s) are #/resources/test:index:DupeName",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:DupeName: multiple tokens map to test:index:dupename",
+					Detail:   "other paths(s) are #/functions/test:index:dupeName",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)))
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expected, diags)
+		})
+	}
+}
+
 //nolint:paralleltest // needs to set plugin acquisition env var
 func TestImportResourceRef(t *testing.T) {
 	tests := []struct {
