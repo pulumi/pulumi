@@ -601,12 +601,58 @@ class CheckRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class AutonamingOptions(google.protobuf.message.Message):
+        """Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
+        handles resource names, including proposed names and naming modes.
+        """
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        class _Mode:
+            ValueType = typing.NewType("ValueType", builtins.int)
+            V: typing_extensions.TypeAlias = ValueType
+
+        class _ModeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[CheckRequest.AutonamingOptions._Mode.ValueType], builtins.type):  # noqa: F821
+            DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+            PROPOSE: CheckRequest.AutonamingOptions._Mode.ValueType  # 0
+            ENFORCE: CheckRequest.AutonamingOptions._Mode.ValueType  # 1
+            DISABLE: CheckRequest.AutonamingOptions._Mode.ValueType  # 2
+
+        class Mode(_Mode, metaclass=_ModeEnumTypeWrapper):
+            """The mode that controls how the provider handles the proposed name. If not specified, defaults to `PROPOSE`.
+            - `PROPOSE`: The provider may use the proposed name as a suggestion but is free to modify it.
+            - `ENFORCE`: The provider must use exactly the proposed name or return an error.
+            - `DISABLE`: The provider should disable automatic naming and return an error if no explicit name
+              is provided by user's program.
+            """
+
+        PROPOSE: CheckRequest.AutonamingOptions.Mode.ValueType  # 0
+        ENFORCE: CheckRequest.AutonamingOptions.Mode.ValueType  # 1
+        DISABLE: CheckRequest.AutonamingOptions.Mode.ValueType  # 2
+
+        PROPOSED_NAME_FIELD_NUMBER: builtins.int
+        MODE_FIELD_NUMBER: builtins.int
+        proposed_name: builtins.str
+        """The proposed name for the resource being checked. This may be used by the provider as a suggestion
+        for the final resource name, depending on the specified mode.
+        """
+        mode: global___CheckRequest.AutonamingOptions.Mode.ValueType
+        def __init__(
+            self,
+            *,
+            proposed_name: builtins.str = ...,
+            mode: global___CheckRequest.AutonamingOptions.Mode.ValueType = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["mode", b"mode", "proposed_name", b"proposed_name"]) -> None: ...
+
     URN_FIELD_NUMBER: builtins.int
     OLDS_FIELD_NUMBER: builtins.int
     NEWS_FIELD_NUMBER: builtins.int
     RANDOMSEED_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    AUTONAMING_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource whose inputs are being checked. In the case of
     [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
@@ -637,6 +683,8 @@ class CheckRequest(google.protobuf.message.Message):
     """The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    @property
+    def autonaming(self) -> global___CheckRequest.AutonamingOptions: ...
     def __init__(
         self,
         *,
@@ -646,9 +694,10 @@ class CheckRequest(google.protobuf.message.Message):
         randomSeed: builtins.bytes = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        autonaming: global___CheckRequest.AutonamingOptions | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["autonaming", b"autonaming", "news", b"news", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["autonaming", b"autonaming", "name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckRequest = CheckRequest
 
