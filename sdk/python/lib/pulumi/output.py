@@ -1010,12 +1010,17 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
     resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
     resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
     resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    already_resolved = False
 
     def resolve(o: Output[T]) -> None:
         nonlocal resolve_value
         nonlocal resolve_is_known
         nonlocal resolve_is_secret
         nonlocal resolve_deps
+        nonlocal already_resolved
+        if already_resolved:
+            raise Exception("Deferred Output has already been resolved")
+        already_resolved = True
 
         def value_callback(fut: asyncio.Future) -> None:
             if fut.exception() is not None:
