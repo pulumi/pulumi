@@ -43,17 +43,18 @@ type SecretInvokeResult struct {
 }
 
 func SecretInvokeOutput(ctx *pulumi.Context, args SecretInvokeOutputArgs, opts ...pulumi.InvokeOption) SecretInvokeResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (SecretInvokeResultOutput, error) {
 			args := v.(SecretInvokeArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv SecretInvokeResult
-			secret, err := ctx.InvokePackageRaw("simple-invoke:index:secretInvoke", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("simple-invoke:index:secretInvoke", args, &rv, "", opts...)
 			if err != nil {
 				return SecretInvokeResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(SecretInvokeResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(SecretInvokeResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(SecretInvokeResultOutput), nil
 			}

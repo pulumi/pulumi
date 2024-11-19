@@ -40,17 +40,18 @@ type UnitResult struct {
 }
 
 func UnitOutput(ctx *pulumi.Context, args UnitOutputArgs, opts ...pulumi.InvokeOption) UnitResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (UnitResultOutput, error) {
 			args := v.(UnitArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv UnitResult
-			secret, err := ctx.InvokePackageRaw("simple-invoke:index:unit", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("simple-invoke:index:unit", args, &rv, "", opts...)
 			if err != nil {
 				return UnitResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(UnitResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(UnitResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(UnitResultOutput), nil
 			}

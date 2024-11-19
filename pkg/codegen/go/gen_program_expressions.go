@@ -358,6 +358,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
 					case "pluginDownloadUrl":
 						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+					case "dependsOn":
+						destType := model.NewListType(resourceType)
+						value, temps := g.lowerExpression(item.Value, destType)
+						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+						if isInputty(value.Type()) {
+							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+						} else {
+							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
+						}
 					}
 
 					if !last {

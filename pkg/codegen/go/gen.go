@@ -3159,17 +3159,18 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	if f.Inputs != nil {
 		code = `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (${outputType}, error) {
 			args := v.(${fn}Args)
 			opts = ${internalModule}.PkgInvokeDefaultOpts(opts)
 			var rv ${fn}Result
-			secret, err := ctx.InvokePackageRaw("${token}", ${args}, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("${token}", ${args}, &rv, "", opts...)
 			if err != nil {
 				return ${outputType}{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(${outputType})
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(${outputType})
 			if secret {
 				return pulumi.ToSecret(output).(${outputType}), nil
 			}
