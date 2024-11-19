@@ -5,6 +5,7 @@ package simpleinvoke
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"example.com/pulumi-simple-invoke/sdk/go/v10/simpleinvoke/internal"
@@ -13,6 +14,16 @@ import (
 
 func SecretInvoke(ctx *pulumi.Context, args *SecretInvokeArgs, opts ...pulumi.InvokeOption) (*SecretInvokeResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &SecretInvokeResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &SecretInvokeResult{}, errors.New("DependsOn is not supported for direct form invoke SecretInvoke, use SecretInvokeOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &SecretInvokeResult{}, errors.New("DependsOnInputs is not supported for direct form invoke SecretInvoke, use SecretInvokeOutput instead")
+	}
 	var rv SecretInvokeResult
 	err := ctx.Invoke("simple-invoke:index:secretInvoke", args, &rv, opts...)
 	if err != nil {

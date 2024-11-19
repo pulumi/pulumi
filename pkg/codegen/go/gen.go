@@ -2814,7 +2814,7 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	goInfo := goPackageInfo(pkg.pkg)
 	var imports []string
 	if f.ReturnType != nil {
-		imports = []string{"context", "reflect"}
+		imports = []string{"context", "errors", "reflect"}
 		if goInfo.Generics == GenericsSettingSideBySide {
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 		}
@@ -2909,6 +2909,11 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		return err
 	}
 
+	err = pkg.genValidatePlainInvokeOptions(w, f)
+	if err != nil {
+		return err
+	}
+
 	// If this is a parameterized resource we need the package ref.
 	def, err := pkg.pkg.Definition()
 	if err != nil {
@@ -2985,6 +2990,11 @@ func (pkg *pkgContext) functionName(f *schema.Function) string {
 	return name
 }
 
+func (pkg *pkgContext) functionOutputName(f *schema.Function) string {
+	originalName := pkg.functionName(f)
+	return originalName + "Output"
+}
+
 func (pkg *pkgContext) functionArgsTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
 	return name + "Args"
@@ -3005,7 +3015,7 @@ func genericTypeNeedsExplicitCasting(outputType string) bool {
 
 func (pkg *pkgContext) genFunctionOutputGenericVersion(w io.Writer, f *schema.Function) {
 	originalName := pkg.functionName(f)
-	name := originalName + "Output"
+	name := pkg.functionOutputName(f)
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := originalResultTypeName + "Output"
 
@@ -5304,6 +5314,25 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	}
 
 	return nil
+}
+
+func (pkg *pkgContext) genValidatePlainInvokeOptions(w io.Writer, f *schema.Function) error {
+	directName := pkg.functionName(f)
+	outputName := pkg.functionOutputName(f)
+	directResultTypeName := pkg.functionResultTypeName(f)
+	errorResultValue := "&" + directResultTypeName + "{}"
+	_, err := fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return %[1]s, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return %[1]s, errors.New("DependsOn is not supported for direct form invoke %[2]s, use %[3]s instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return %[1]s, errors.New("DependsOnInputs is not supported for direct form invoke %[2]s, use %[3]s instead")
+	}
+`, errorResultValue, directName, outputName)
+	return err
 }
 
 // GenPkgGetPackageRefCall generates a call to PkgGetPackageRef.
