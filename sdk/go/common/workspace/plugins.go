@@ -831,8 +831,6 @@ type PluginSpec struct {
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
-
-	isGitPlugin bool
 }
 
 func NewPluginSpec(
