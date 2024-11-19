@@ -79,6 +79,7 @@ func (p *SimpleInvokeProvider) GetSchema(
 					Required:   resourceRequired,
 				},
 				InputProperties: resourceProperties,
+				RequiredInputs:  resourceRequired,
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
@@ -283,9 +284,9 @@ func (p *SimpleInvokeProvider) Check(
 		}, nil
 	}
 
-	if len(req.News) > 1 {
+	if len(req.News) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected at most one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
 		}, nil
 	}
 
