@@ -417,11 +417,19 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		verbose:         logging.Verbose,
 	})
 
+	pluginDir := filepath.Dir(bin)
+	if len(env) == 0 {
+		// If no environment is provided, use the current environment.
+		env = os.Environ()
+	}
+	// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
+	// its own directory structure.
+	env = append(env, "PULUMI_ROOT_DIRECTORY="+pluginDir)
+	env = append(env, "PULUMI_PROGRAM_DIRECTORY="+pluginDir)
+
 	// Check to see if we have a binary we can invoke directly
 	if _, err := os.Stat(bin); os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
-		pluginDir := filepath.Dir(bin)
-
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
@@ -476,9 +484,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
-	if len(env) > 0 {
-		cmd.Env = env
-	}
+	cmd.Env = env
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
 	err, _ := cmd.StderrPipe()

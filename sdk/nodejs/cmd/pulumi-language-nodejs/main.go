@@ -1424,15 +1424,13 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	env := os.Environ()
+	env := req.Env
 	if opts.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
 	}
 	if opts.tsconfigpath != "" {
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
-
-	env = append(env, "PULUMI_PLUGIN_LOCATION="+req.Info.ProgramDirectory)
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {
