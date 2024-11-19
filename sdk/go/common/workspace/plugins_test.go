@@ -1715,7 +1715,6 @@ func TestNewPluginSpec(t *testing.T) {
 				PluginDownloadURL: "",
 				PluginDir:         "",
 				Checksums:         nil,
-				isGitPlugin:       false,
 			},
 		},
 		{
@@ -1729,7 +1728,6 @@ func TestNewPluginSpec(t *testing.T) {
 				PluginDownloadURL: "",
 				PluginDir:         "",
 				Checksums:         nil,
-				isGitPlugin:       false,
 			},
 		},
 		{
@@ -1749,7 +1747,6 @@ func TestNewPluginSpec(t *testing.T) {
 				PluginDownloadURL: "github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
-				isGitPlugin:       true,
 			},
 		},
 		{
@@ -1763,7 +1760,6 @@ func TestNewPluginSpec(t *testing.T) {
 				PluginDownloadURL: "github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
-				isGitPlugin:       true,
 			},
 		},
 		{
@@ -1777,7 +1773,6 @@ func TestNewPluginSpec(t *testing.T) {
 				PluginDownloadURL: "github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
-				isGitPlugin:       true,
 			},
 		},
 		{
@@ -1796,7 +1791,6 @@ func TestNewPluginSpec(t *testing.T) {
 				Version:           nil,
 				PluginDownloadURL: "",
 				Checksums:         nil,
-				isGitPlugin:       false,
 			},
 		},
 		{
@@ -1809,7 +1803,6 @@ func TestNewPluginSpec(t *testing.T) {
 				Version:           nil,
 				PluginDownloadURL: "",
 				Checksums:         nil,
-				isGitPlugin:       false,
 			},
 		},
 	}
