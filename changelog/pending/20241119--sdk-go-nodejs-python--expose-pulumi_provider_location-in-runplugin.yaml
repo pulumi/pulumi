@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go,nodejs,python
+  description: Expose PULUMI_PROVIDER_LOCATION in RunPlugin
