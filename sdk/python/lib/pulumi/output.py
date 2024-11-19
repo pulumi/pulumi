@@ -1006,20 +1006,48 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
     Creates an Output[T] of which its value can be resolved/assigned later from another Output[T] instance.
     """
     # Setup the futures for the output.
-    resolve_value: Awaitable[T] = asyncio.Future()
-    resolve_is_known: Awaitable[bool] = asyncio.Future()
-    resolve_is_secret: Awaitable[bool] = asyncio.Future()
-    resolve_deps: Awaitable[Set[Resource]] = asyncio.Future()
+    resolve_value: "asyncio.Future" = asyncio.Future()
+    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
 
     def resolve(o: Output[T]) -> None:
         nonlocal resolve_value
         nonlocal resolve_is_known
         nonlocal resolve_is_secret
         nonlocal resolve_deps
-        resolve_value = o._future
-        resolve_is_known = o._is_known
-        resolve_is_secret = o._is_secret
-        resolve_deps = o._resources
+
+        def value_callback(fut: asyncio.Future) -> None:
+            if fut.exception() is not None:
+                resolve_value.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_value.set_result(fut.result())
+
+        asyncio.ensure_future(o.future()).add_done_callback(value_callback)
+
+        def is_known_callback(fut: asyncio.Future[bool]) -> None:
+            if fut.exception() is not None:
+                resolve_is_known.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_is_known.set_result(fut.result())
+
+        asyncio.ensure_future(o.is_known()).add_done_callback(is_known_callback)
+
+        def is_secret_callback(fut: asyncio.Future[bool]) -> None:
+            if fut.exception() is not None:
+                resolve_is_secret.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_is_secret.set_result(fut.result())
+
+        asyncio.ensure_future(o.is_secret()).add_done_callback(is_secret_callback)
+
+        def deps_callback(fut: asyncio.Future[Set["Resource"]]) -> None:
+            if fut.exception() is not None:
+                resolve_deps.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_deps.set_result(fut.result())
+
+        asyncio.ensure_future(o.resources()).add_done_callback(deps_callback)
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
     return out, resolve
