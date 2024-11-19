@@ -1289,7 +1289,6 @@ func (host *pythonLanguageHost) RunPlugin(
 	defer closer.Close()
 
 	env := append(cmd.Env, req.Env...)
-	env = append(env, "PULUMI_PLUGIN_LOCATION="+req.Info.ProgramDirectory)
 
 	cmd.Dir = req.Pwd
 	cmd.Env = env
