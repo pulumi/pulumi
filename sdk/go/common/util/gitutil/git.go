@@ -456,6 +456,9 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	})
 }
 
+// GitCloneOrPull pulls the repo located at rawurl into the directory specified by path.  If the repo already
+// exists, it will be updated to referenceName, otherwise it will be cloned, and referenceName will be checked
+// out. If shallow is true, a shallow clone will be performed.
 func GitCloneOrPull(
 	ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool,
 ) error {
