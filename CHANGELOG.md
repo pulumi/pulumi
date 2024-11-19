@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.140.0 (2024-11-19)
+
+
+### Features
+
+- [pkg] Reject schemas with duplicate paths across resources and functions
+  [#17797](https://github.com/pulumi/pulumi/pull/17797)
+
+- [auto/go] Add --config-file functionality to Go Automation API preview, update, refresh, and destroy
+  [#17774](https://github.com/pulumi/pulumi/pull/17774)
+
+
+### Bug Fixes
+
+- [cli/plugin] Workaround for escape codes in output from .NET 9
+  [#17783](https://github.com/pulumi/pulumi/pull/17783)
+
+- [sdk/python] Fix merging InvokeOptions.version
+  [#17750](https://github.com/pulumi/pulumi/pull/17750)
+
 ## 3.139.0 (2024-11-14)
 
 
