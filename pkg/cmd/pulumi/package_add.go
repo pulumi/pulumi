@@ -233,20 +233,36 @@ func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 	options := proj.Runtime.Options()
 	if toolchain, ok := options["toolchain"]; ok {
 		if tc, ok := toolchain.(string); ok {
+			var depAddCmd *exec.Cmd
 			switch tc {
 			case "pip":
-				pipInstructions()
+				if err := modifyRequirements(); err != nil {
+					return err
+				}
 			case "poetry":
-				fmt.Println("  poetry add " + packageSpecifier)
+				depAddCmd = exec.Command("poetry", "add", packageSpecifier)
+			case "uv":
+				depAddCmd = exec.Command("uv", "add", packageSpecifier)
 			default:
 				return fmt.Errorf("unsupported package manager: %s", tc)
+			}
+
+			if depAddCmd != nil {
+				depAddCmd.Stderr = os.Stderr
+				depAddCmd.Stdout = os.Stdout
+				err = depAddCmd.Run()
+				if err != nil {
+					return fmt.Errorf("error running %s: %w", depAddCmd.String(), err)
+				}
 			}
 		} else {
 			return fmt.Errorf("packagemanager option must be a string: %v", toolchain)
 		}
 	} else {
 		// Assume pip if no packagemanager is specified
-		pipInstructions()
+		if err := modifyRequirements(); err != nil {
+			return err
+		}
 	}
 
 	pyInfo, ok := pkg.Language["python"].(python.PackageInfo)
