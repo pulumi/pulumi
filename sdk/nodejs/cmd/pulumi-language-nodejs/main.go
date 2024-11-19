@@ -1432,6 +1432,8 @@ func (host *nodeLanguageHost) RunPlugin(
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
+	env = append(env, "PULUMI_PLUGIN_LOCATION="+req.Info.ProgramDirectory)
+
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {
 		runPath = defaultRunPluginPath
@@ -1449,7 +1451,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	nodeargs = append(nodeargs, req.Info.EntryPoint)
+	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
 	args = append(args, nodeargs...)
 	args = append(args, req.Args...)

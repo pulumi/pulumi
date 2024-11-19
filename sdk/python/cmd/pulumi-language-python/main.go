@@ -1317,8 +1317,11 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
+	env := append(cmd.Env, req.Env...)
+	env = append(env, "PULUMI_PLUGIN_LOCATION="+req.Info.ProgramDirectory)
+
 	cmd.Dir = req.Pwd
-	cmd.Env = append(cmd.Env, req.Env...)
+	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err = cmd.Run(); err != nil {

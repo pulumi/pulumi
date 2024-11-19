@@ -1212,9 +1212,11 @@ func (host *goLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
+	env := append(req.Env, "PULUMI_PLUGIN_LOCATION="+req.Info.ProgramDirectory)
+
 	cmd := exec.Command(program, req.Args...)
 	cmd.Dir = req.Pwd
-	cmd.Env = req.Env
+	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err = cmd.Run(); err != nil {
