@@ -292,6 +292,7 @@ class ConfigureResponse(google.protobuf.message.Message):
     SUPPORTSPREVIEW_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     ACCEPTOUTPUTS_FIELD_NUMBER: builtins.int
+    SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider.
@@ -309,6 +310,8 @@ class ConfigureResponse(google.protobuf.message.Message):
     """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
     to the provider where possible.
     """
+    supports_autonaming_configuration: builtins.bool
+    """True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user."""
     def __init__(
         self,
         *,
@@ -316,8 +319,9 @@ class ConfigureResponse(google.protobuf.message.Message):
         supportsPreview: builtins.bool = ...,
         acceptResources: builtins.bool = ...,
         acceptOutputs: builtins.bool = ...,
+        supports_autonaming_configuration: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptOutputs", b"acceptOutputs", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "supportsPreview", b"supportsPreview"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptOutputs", b"acceptOutputs", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "supportsPreview", b"supportsPreview", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ConfigureResponse = ConfigureResponse
 

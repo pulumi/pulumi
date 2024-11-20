@@ -2322,7 +2322,8 @@ proto.pulumirpc.ConfigureResponse.toObject = function(includeInstance, msg) {
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
     supportspreview: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2374,6 +2375,10 @@ proto.pulumirpc.ConfigureResponse.deserializeBinaryFromReader = function(msg, re
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptoutputs(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsAutonamingConfiguration(value);
       break;
     default:
       reader.skipField();
@@ -2429,6 +2434,13 @@ proto.pulumirpc.ConfigureResponse.serializeBinaryToWriter = function(message, wr
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getSupportsAutonamingConfiguration();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -2504,6 +2516,24 @@ proto.pulumirpc.ConfigureResponse.prototype.getAcceptoutputs = function() {
  */
 proto.pulumirpc.ConfigureResponse.prototype.setAcceptoutputs = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool supports_autonaming_configuration = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureResponse.prototype.getSupportsAutonamingConfiguration = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConfigureResponse} returns this
+ */
+proto.pulumirpc.ConfigureResponse.prototype.setSupportsAutonamingConfiguration = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

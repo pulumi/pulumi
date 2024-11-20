@@ -217,6 +217,8 @@ export class ConfigureResponse extends jspb.Message {
     setAcceptresources(value: boolean): ConfigureResponse;
     getAcceptoutputs(): boolean;
     setAcceptoutputs(value: boolean): ConfigureResponse;
+    getSupportsAutonamingConfiguration(): boolean;
+    setSupportsAutonamingConfiguration(value: boolean): ConfigureResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureResponse.AsObject;
@@ -234,6 +236,7 @@ export namespace ConfigureResponse {
         supportspreview: boolean,
         acceptresources: boolean,
         acceptoutputs: boolean,
+        supportsAutonamingConfiguration: boolean,
     }
 }
 

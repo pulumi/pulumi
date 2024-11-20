@@ -333,6 +333,9 @@ message ConfigureResponse {
     // True if and only if the provider supports output values as inputs. If true, the engine should pass output values
     // to the provider where possible.
     bool acceptOutputs = 4;
+
+    // True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user.
+    bool supports_autonaming_configuration = 5;
 }
 
 // `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
