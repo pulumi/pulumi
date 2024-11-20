@@ -111,7 +111,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Retrieve the templates-policy repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPolicyPack)
+	repo, err := workspace.RetrieveTemplates(ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPolicyPack)
 	if err != nil {
 		return err
 	}

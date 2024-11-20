@@ -27,8 +27,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// GenerateReproTest generates a string containing Go code for a lifecycle test that reproduces the scenario captured by
-// the given *Specs.
+// GenerateReproTest generates a string containing Go code for a set of lifecycle tests that reproduce the scenario
+// captured by the given *Specs.
 func GenerateReproTest(
 	t lt.TB,
 	sso StackSpecOptions,
@@ -43,7 +43,9 @@ func GenerateReproTest(
 	writePackageImports(&b)
 
 	g := &generator{b: &b}
-	writeTestFunction(t, g, sso, snapSpec, progSpec, provSpec, planSpec)
+	writeSnapshotTestFunction(t, g, sso, snapSpec, progSpec, provSpec, planSpec)
+	g.writeLine("")
+	writeFrameworkTestFunction(t, g, sso, snapSpec, progSpec, provSpec, planSpec)
 
 	return b.String()
 }
@@ -75,6 +77,7 @@ func writePackageImports(b *strings.Builder) {
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -116,6 +119,12 @@ func (g *generator) writeLine(s string) {
 	g.b.WriteString("\n" + g.prefix + s)
 }
 
+// writeLinef writes a formatted newline-prefixed line of Go code to the generator's strings.Builder, prefixed by the
+// current indentation level.
+func (g *generator) writeLinef(format string, args ...interface{}) {
+	g.writeLine(fmt.Sprintf(format, args...))
+}
+
 // writeBlock writes a newline-prefixed block of Go code to the generator's strings.Builder. The block's prefix and
 // suffix will be indented at the current level, while the block's contents will be indented one level deeper. For
 // example, the call:
@@ -145,8 +154,10 @@ func (g *generator) writeBlock(
 	g.writeLine(suffix)
 }
 
-// writeTestFunction writes a Go test function that reproduces the scenario captured by the given *Specs.
-func writeTestFunction(
+// writeSnapshotTestFunction writes a Go test function that reproduces the scenario captured by the given *Specs using
+// a hard-coded initial snapshot. This is useful for reducing a fuzzed test case to a minimal reproduction, which can
+// then be mocked up as a test case using only methods from the lifecycle test framework.
+func writeSnapshotTestFunction(
 	t require.TestingT,
 	g *generator,
 	sso StackSpecOptions,
@@ -155,8 +166,9 @@ func writeTestFunction(
 	provSpec *ProviderSpec,
 	planSpec *PlanSpec,
 ) {
+	g.writeLine("// TestReproSnapshot reproduces a failing fuzz test using a hard-coded starting snapshot.")
 	g.writeBlock(
-		"func TestRepro(t *testing.T) {",
+		"func TestReproSnapshot(t *testing.T) {",
 		func(g *generator) {
 			g.writeLine("t.Parallel()")
 
@@ -164,8 +176,140 @@ func writeTestFunction(
 			g.writeBlock(
 				"p := &lt.TestPlan{",
 				func(g *generator) {
-					g.writeLine(fmt.Sprintf(`Project: "%s",`, sso.Project))
-					g.writeLine(fmt.Sprintf(`Stack: "%s",`, sso.Stack))
+					g.writeLinef(`Project: "%s",`, sso.Project)
+					g.writeLinef(`Stack: "%s",`, sso.Stack)
+				},
+				"}",
+			)
+			g.writeLine("project := p.GetProject()")
+
+			g.writeLine("")
+			g.writeLine("// Set up the initial snapshot.")
+			g.writeBlock(
+				"setupSnap := func() *deploy.Snapshot {",
+				writeSnapshotStatements(t, snapSpec),
+				"}()",
+			)
+			g.writeLine("require.NoError(t, setupSnap.VerifyIntegrity(), \"initial snapshot is not valid\")")
+
+			g.writeLine("")
+			g.writeLine("// Set up the reproduction providers and program.")
+			g.writeBlock(
+				"createF := func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {",
+				writeCreateFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"deleteF := func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {",
+				writeDeleteFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"diffF := func(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {",
+				writeDiffFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {",
+				writeReadFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"updateF := func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {",
+				writeUpdateFStatements(provSpec),
+				"}",
+			)
+
+			g.writeLine("")
+			g.writeBlock(
+				"reproLoaders := []*deploytest.ProviderLoader{",
+				writeReproLoaderElements(provSpec),
+				"}",
+			)
+
+			g.writeLine("")
+			g.writeBlock(
+				"reproProgramF := deploytest.NewLanguageRuntimeF("+
+					"func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {",
+				writeResourceRegistrationStatements(t, progSpec.ResourceRegistrations),
+				"})",
+			)
+
+			g.writeLine("")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeBlock(
+				"reproOpts := lt.TestUpdateOptions{",
+				func(g *generator) {
+					g.writeLine("T: t,")
+					g.writeLine("HostF: reproHostF,")
+					g.writeBlock(
+						"UpdateOptions: engine.UpdateOptions{",
+						func(g *generator) {
+							if len(planSpec.TargetURNs) > 0 {
+								g.writeBlock(
+									"Targets: deploy.NewUrnTargets([]string{",
+									func(g *generator) {
+										for _, urn := range planSpec.TargetURNs {
+											g.writeLinef(`"%s",`, urn)
+										}
+									},
+									"}),",
+								)
+							}
+						},
+						"},",
+					)
+				},
+				"}",
+			)
+
+			var operation string
+			switch planSpec.Operation {
+			case PlanOperationUpdate:
+				operation = "engine.Update"
+			case PlanOperationRefresh:
+				operation = "engine.Refresh"
+			case PlanOperationDestroy:
+				operation = "engine.Destroy"
+			}
+
+			g.writeLine("")
+			g.writeLine("// Trigger the reproduction.")
+			g.writeLinef(
+				"reproSnap, err := "+
+					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
+				operation,
+			)
+			g.writeLine("require.NoError(t, err)")
+		},
+		"}",
+	)
+}
+
+// writeFrameworkTestFunction writes a Go test function that reproduces the scenario captured by the given *Specs using
+// only methods from the lifecycle test framework. That is, it uses a test resource monitor to register resources to
+// build an initial snapshot, before triggering a deployment.
+func writeFrameworkTestFunction(
+	t require.TestingT,
+	g *generator,
+	sso StackSpecOptions,
+	snapSpec *SnapshotSpec,
+	progSpec *ProgramSpec,
+	provSpec *ProviderSpec,
+	planSpec *PlanSpec,
+) {
+	g.writeLine("// TestReproFramework reproduces a failing fuzz test using only the lifecycle test framework.")
+	g.writeBlock(
+		"func TestReproFramework(t *testing.T) {",
+		func(g *generator) {
+			g.writeLine("t.Parallel()")
+
+			g.writeLine("")
+			g.writeBlock(
+				"p := &lt.TestPlan{",
+				func(g *generator) {
+					g.writeLinef(`Project: "%s",`, sso.Project)
+					g.writeLinef(`Stack: "%s",`, sso.Stack)
 				},
 				"}",
 			)
@@ -260,7 +404,7 @@ func writeTestFunction(
 									"Targets: deploy.NewUrnTargets([]string{",
 									func(g *generator) {
 										for _, urn := range planSpec.TargetURNs {
-											g.writeLine(fmt.Sprintf(`"%s",`, urn))
+											g.writeLinef(`"%s",`, urn)
 										}
 									},
 									"}),",
@@ -285,90 +429,120 @@ func writeTestFunction(
 
 			g.writeLine("")
 			g.writeLine("// Trigger the reproduction.")
-			g.writeLine(fmt.Sprintf(
+			g.writeLinef(
 				"reproSnap, err := "+
 					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
 				operation,
-			))
+			)
 			g.writeLine("require.NoError(t, err)")
 		},
 		"}",
 	)
 }
 
-func writeSetupLoaderElements(provSpec *ProviderSpec) func(g *generator) {
-	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
-
-		for _, pkg := range pkgs {
-			g.writeBlock(
-				fmt.Sprintf(
-					"deploytest.NewProviderLoader(\"%s\", semver.MustParse(\"1.0.0\"), func() (plugin.Provider, error) {",
-					pkg,
-				),
-				func(g *generator) {
-					g.writeLine("return &deploytest.Provider{}, nil")
-				},
-				"}),",
-			)
-		}
-	}
-}
-
-func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec) func(g *generator) {
+// writeSnapshotStatements writes a series of Go statements that build a deploy.Snapshot according to the given
+// SnapshotSpec.
+//
+//	s := &deploy.Snapshot{}
+//
+//	res0 := &resource.State{
+//	  Type: ...,
+//	  URN: ...,
+//	  ...
+//	}
+//	s.Resources = append(s.Resources, res0)
+//
+//	...
+//
+//	return s
+func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g *generator) {
 	return func(g *generator) {
 		indicesByURN := map[resource.URN]int{}
 		varFor := func(urn resource.URN) string {
+			if urn == "" {
+				return ""
+			}
+
 			if i, has := indicesByURN[urn]; has {
+				if providers.IsProviderType(urn.Type()) {
+					return fmt.Sprintf("prov%d", i)
+				}
+
 				return fmt.Sprintf("res%d", i)
 			}
 
-			return "resUnknown"
+			return "unknownVar"
 		}
 
-		for i, r := range rs {
-			indicesByURN[r.URN()] = i
-
-			if r.Provider != "" {
-				ref, err := providers.ParseReference(r.Provider)
-				require.NoError(t, err)
-
-				g.writeLine(fmt.Sprintf(
-					"res%dProvRef, err := providers.NewReference(%[2]s.URN, %[2]s.ID)",
-					i, varFor(ref.URN()),
-				))
-				g.writeLine("require.NoError(t, err)")
+		provRefVarsByRef := map[string]string{}
+		provRefVarFor := func(refStr string) string {
+			if refStr == "" {
+				return ""
 			}
 
+			if refVar, has := provRefVarsByRef[refStr]; has {
+				return refVar
+			}
+
+			ref, err := providers.ParseReference(refStr)
+			require.NoError(t, err)
+
+			if i, has := indicesByURN[ref.URN()]; has {
+				refVar := fmt.Sprintf("provRef%d", i)
+				provRefVarsByRef[refStr] = refVar
+
+				g.writeLine("")
+				g.writeLinef(
+					"%s, err := providers.NewReference(%s.URN, %s.ID)",
+					refVar, varFor(ref.URN()), varFor(ref.URN()),
+				)
+				g.writeLine("require.NoError(t, err)")
+
+				return refVar
+			}
+
+			return "unknownProvRef"
+		}
+
+		g.writeLine("s := &deploy.Snapshot{}")
+
+		for i, r := range snapSpec.Resources {
+			indicesByURN[r.URN()] = i
+
+			provRefVar := provRefVarFor(r.Provider)
+
+			g.writeLine("")
 			g.writeBlock(
-				fmt.Sprintf(
-					"res%d, err := monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
-					i, r.Type, r.Name, r.Custom,
-				),
+				varFor(r.URN())+" := &resource.State{",
 				func(g *generator) {
+					g.writeLinef("Type:               \"%s\",", r.Type)
+					g.writeLinef("URN:                \"%s\",", r.URN())
+					g.writeLinef("Custom:             %v,", r.Custom)
+
 					if r.Delete {
-						g.writeLine("// You'll need to set up a means for Delete: true to be set on this resource")
-						g.writeLine("// Delete: true,")
-					}
-					if r.PendingReplacement {
-						g.writeLine("// You'll need to set up a means for PendingReplacement: true to be set on this resource")
-						g.writeLine("// PendingReplacement: true,")
+						g.writeLine("Delete:             true,")
 					}
 
+					g.writeLinef("ID:                 \"%s\",", r.ID)
+
 					if r.Protect {
-						g.writeLine("Protect: true,")
+						g.writeLine("Protect:            true,")
 					}
+
+					if r.PendingReplacement {
+						g.writeLine("PendingReplacement: true,")
+					}
+
 					if r.RetainOnDelete {
-						g.writeLine("RetainOnDelete: true,")
+						g.writeLine("RetainOnDelete:     true,")
 					}
 
 					if r.Provider != "" {
-						g.writeLine(fmt.Sprintf("Provider: res%dProvRef.String(),", i))
+						g.writeLinef("Provider: %s.String(),", provRefVar)
 					}
 
 					if r.Parent != "" {
-						g.writeLine(fmt.Sprintf("Parent: %s.URN,", varFor(r.Parent)))
+						g.writeLinef("Parent: %s.URN,", varFor(r.Parent))
 					}
 
 					if len(r.Dependencies) > 0 {
@@ -404,7 +578,194 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 					}
 
 					if r.DeletedWith != "" {
-						g.writeLine(fmt.Sprintf("DeletedWith: %s.URN,", varFor(r.DeletedWith)))
+						g.writeLinef("DeletedWith: %s.URN,", varFor(r.DeletedWith))
+					}
+
+					if len(r.Aliases) > 0 {
+						g.writeBlock(
+							"Aliases: []resource.URN{",
+							func(g *generator) {
+								for _, alias := range r.Aliases {
+									g.writeLinef("\"%s\",", alias)
+								}
+							},
+							"},",
+						)
+					}
+
+					if !providers.IsProviderType(r.Type) {
+						g.writeBlock(
+							"Inputs: resource.PropertyMap{",
+							func(g *generator) {
+								g.writeLinef("\"__id\": resource.NewStringProperty(\"%s\"),", r.ID.String())
+							},
+							"},",
+						)
+					}
+				},
+				"}",
+			)
+
+			g.writeLinef("s.Resources = append(s.Resources, %s)", varFor(r.URN()))
+		}
+
+		g.writeLine("")
+		g.writeLine("return s")
+	}
+}
+
+// writeSetupLoaderElements writes a series of Go expressions that set up a series of deploytest.ProviderLoaders
+// according to the given ProviderSpec. These expressions are designed to be used in an array constructor.
+//
+//	deploytest.NewProviderLoader("pkg0", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+//	  return &deploytest.Provider{...}, nil
+//	}),
+//	...
+func writeSetupLoaderElements(provSpec *ProviderSpec) func(g *generator) {
+	return func(g *generator) {
+		pkgs := maps.Keys(provSpec.Packages)
+		slices.Sort(pkgs)
+
+		for _, pkg := range pkgs {
+			g.writeBlock(
+				fmt.Sprintf(
+					"deploytest.NewProviderLoader(\"%s\", semver.MustParse(\"1.0.0\"), func() (plugin.Provider, error) {",
+					pkg,
+				),
+				func(g *generator) {
+					g.writeLine("return &deploytest.Provider{}, nil")
+				},
+				"}),",
+			)
+		}
+	}
+}
+
+// writeResourceRegistrationStatements writes a series of Go statements that register a series of resources with a
+// deploytest.ResourceMonitor according to the given ProgramSpec.
+//
+//	res0, err := monitor.RegisterResource("pkg0:typ0", "res0", false, deploytest.ResourceOptions{...})
+//	require.NoError(t, err)
+//
+//	...
+func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec) func(g *generator) {
+	return func(g *generator) {
+		indicesByURN := map[resource.URN]int{}
+		varFor := func(urn resource.URN) string {
+			if urn == "" {
+				return ""
+			}
+
+			if i, has := indicesByURN[urn]; has {
+				if providers.IsProviderType(urn.Type()) {
+					return fmt.Sprintf("prov%d", i)
+				}
+
+				return fmt.Sprintf("res%d", i)
+			}
+
+			return "unknownVar"
+		}
+
+		provRefVarsByRef := map[string]string{}
+		provRefVarFor := func(refStr string) string {
+			if refStr == "" {
+				return ""
+			}
+
+			if refVar, has := provRefVarsByRef[refStr]; has {
+				return refVar
+			}
+
+			ref, err := providers.ParseReference(refStr)
+			require.NoError(t, err)
+
+			if i, has := indicesByURN[ref.URN()]; has {
+				refVar := fmt.Sprintf("provRef%d", i)
+				provRefVarsByRef[refStr] = refVar
+
+				g.writeLine(fmt.Sprintf(
+					"%s, err := providers.NewReference(%s.URN, %s.ID)",
+					refVar, varFor(ref.URN()), varFor(ref.URN()),
+				))
+				g.writeLine("require.NoError(t, err)")
+				g.writeLine("")
+
+				return refVar
+			}
+
+			return "unknownProvRef"
+		}
+
+		for i, r := range rs {
+			indicesByURN[r.URN()] = i
+
+			provRefVar := provRefVarFor(r.Provider)
+
+			g.writeBlock(
+				fmt.Sprintf(
+					"%s, err := monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
+					varFor(r.URN()), r.Type, r.Name, r.Custom,
+				),
+				func(g *generator) {
+					if r.Delete {
+						g.writeLine("// You'll need to set up a means for Delete: true to be set on this resource")
+						g.writeLine("// Delete: true,")
+					}
+					if r.PendingReplacement {
+						g.writeLine("// You'll need to set up a means for PendingReplacement: true to be set on this resource")
+						g.writeLine("// PendingReplacement: true,")
+					}
+
+					if r.Protect {
+						g.writeLine("Protect: true,")
+					}
+					if r.RetainOnDelete {
+						g.writeLine("RetainOnDelete: true,")
+					}
+
+					if r.Provider != "" {
+						g.writeLinef("Provider: %s.String(),", provRefVar)
+					}
+
+					if r.Parent != "" {
+						g.writeLinef("Parent: %s.URN,", varFor(r.Parent))
+					}
+
+					if len(r.Dependencies) > 0 {
+						g.writeBlock(
+							"Dependencies: []resource.URN{",
+							func(g *generator) {
+								for _, dep := range r.Dependencies {
+									g.writeLine(varFor(dep) + ".URN,")
+								}
+							},
+							"},",
+						)
+					}
+
+					if len(r.PropertyDependencies) > 0 {
+						g.writeBlock(
+							"PropertyDeps: map[resource.PropertyKey][]resource.URN{",
+							func(g *generator) {
+								for k, deps := range r.PropertyDependencies {
+									g.writeBlock(
+										fmt.Sprintf("\"%s\": {", k),
+										func(g *generator) {
+											for _, dep := range deps {
+												g.writeLine(varFor(dep) + ".URN,")
+											}
+										},
+										"},",
+									)
+								}
+							},
+							"},",
+						)
+					}
+
+					if r.DeletedWith != "" {
+						g.writeLinef("DeletedWith: %s.URN,", varFor(r.DeletedWith))
 					}
 
 					if len(r.Aliases) > 0 {
@@ -412,7 +773,7 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 							"AliasURNs: []resource.URN{",
 							func(g *generator) {
 								for _, alias := range r.Aliases {
-									g.writeLine(fmt.Sprintf("\"%s\",", alias))
+									g.writeLinef("\"%s\",", alias)
 								}
 							},
 							"},",

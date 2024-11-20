@@ -74,7 +74,7 @@ export interface GetAmiIdsResult {
  * Taken from pulumi-AWS to regress an issue
  */
 /** @deprecated aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds */
-export function getAmiIdsOutput(args: GetAmiIdsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetAmiIdsResult> {
+export function getAmiIdsOutput(args: GetAmiIdsOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<GetAmiIdsResult> {
     pulumi.log.warn("getAmiIds is deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds")
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::getAmiIds", {

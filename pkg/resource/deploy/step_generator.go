@@ -587,6 +587,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	sg.deployment.goals.Store(urn, goal)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
+		for _, aliasURN := range aliasUrns {
+			sg.providers[aliasURN] = new
+		}
 	}
 
 	// Fetch the provider for this resource.
@@ -994,9 +997,36 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			//
 			// * "Dependencies" here includes parents, dependencies, property
 			//   dependencies, and deleted-with relationships.
+			//
+			// * There is at least one edge case where we might see a resource that is
+			//   marked for deletion (that is, with Delete: true). Such resources are
+			//   produced as part of create-before-replace operations -- once a new
+			//   resource has been created, the old is marked as Delete: true before a
+			//   provider Delete() is attempted. This means that, in the event
+			//   deletion fails, the resource can safely remain in the state so that
+			//   Pulumi can retry the deletion in a subsequent operation. Setting
+			//   Delete: true is done in-place on the old resource. Ordinarily, this
+			//   is of no consequence -- the resource won't be examined again until it
+			//   is time to persist the snapshot, at which point everything is fine.
+			//
+			//   In our scenario, however, where we are manually traversing
+			//   dependencies "back up" the state, we might revisit an old resource
+			//   that was marked for deletion. In such cases, NewSameStep will panic,
+			//   since it does not permit copying resources that are marked for
+			//   deletion. Indeed, there is no need -- as just mentioned, they will be
+			//   handled by the snapshot persistence layer. In the case that we
+			//   identify a resource marked for deletion then, we skip it. Its
+			//   dependencies (if there are any) must also be marked for deletion
+			//   (something old cannot depend on something new), so skipping them is
+			//   also safe/necessary.
 
 			var getDependencySteps func(old *resource.State, event RegisterResourceEvent) ([]Step, error)
 			getDependencySteps = func(old *resource.State, event RegisterResourceEvent) ([]Step, error) {
+				var steps []Step
+				if old.Delete {
+					return steps, nil
+				}
+
 				// We need to track old URNs for the following reasons:
 				//
 				// * In sg.urns, in order to allow checkParent to find parents that may
@@ -1010,8 +1040,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 				sg.sames[urn] = true
 				sg.sames[old.URN] = true
-
-				var steps []Step
 
 				_, allDeps := old.GetAllDependencies()
 				for _, dep := range allDeps {

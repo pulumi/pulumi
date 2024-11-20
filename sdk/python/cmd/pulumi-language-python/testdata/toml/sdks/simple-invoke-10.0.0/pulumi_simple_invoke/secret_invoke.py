@@ -69,14 +69,14 @@ def secret_invoke(secret_response: Optional[bool] = None,
         secret=pulumi.get(__ret__, 'secret'))
 def secret_invoke_output(secret_response: Optional[pulumi.Input[bool]] = None,
                          value: Optional[pulumi.Input[str]] = None,
-                         opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[SecretInvokeResult]:
+                         opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[SecretInvokeResult]:
     """
     Use this data source to access information about an existing resource.
     """
     __args__ = dict()
     __args__['secretResponse'] = secret_response
     __args__['value'] = value
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('simple-invoke:index:secretInvoke', __args__, opts=opts, typ=SecretInvokeResult)
     return __ret__.apply(lambda __response__: SecretInvokeResult(
         response=pulumi.get(__response__, 'response'),

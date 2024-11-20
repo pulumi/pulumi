@@ -1110,6 +1110,7 @@ var languageTests = map[string]languageTest{
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1133,6 +1134,89 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-invoke-options": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 2, "expected 2 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+					outputs := stack.Outputs
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+				},
+			},
+		},
+	},
+	"l2-invoke-options-depends-on": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 5, "expected 5 resources")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+					outputs := stack.Outputs
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+
+					var first *resource.State
+					var second *resource.State
+					for _, r := range snap.Resources {
+						if r.URN.Name() == "first" {
+							first = r
+						}
+						if r.URN.Name() == "second" {
+							second = r
+						}
+					}
+
+					require.NotNil(l, first, "expected first resource")
+					require.NotNil(l, second, "expected second resource")
+					require.Empty(l, first.Dependencies, "expected no dependencies")
+					require.Len(l, second.Dependencies, 1, "expected one dependency")
+					dependencies, ok := second.PropertyDependencies["text"]
+					require.True(l, ok, "expected dependency on property 'text'")
+					require.Len(l, dependencies, 1, "expected one dependency")
+					require.Equal(l, first.URN, dependencies[0], "expected second to depend on first")
+					require.Equal(l, first.URN, second.Dependencies[0], "expected second to depend on first")
+				},
+			},
+		},
+	},
 	"l2-invoke-variants": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
 		runs: []testRun{
@@ -1144,6 +1228,7 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1552,6 +1637,46 @@ var languageTests = map[string]languageTest{
 					})
 					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-resource-secret": {
+		providers: []plugin.Provider{&providers.SecretProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:secret", provider.Type.String(), "expected secret provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "secret:index:Resource", simple.Type.String(), "expected secret resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"public":  "open",
+						"private": resource.MakeSecret(resource.NewStringProperty("closed")),
+						"publicData": map[string]interface{}{
+							"public": "open",
+							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
+							// but currently _all_ the SDKs send it as a plain value and the engine doesn't
+							// fix it. We should fix the engine to ensure this ends up as secret as well.
+							"private": "closed",
+						},
+						"privateData": resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"public":  "open",
+							"private": "closed",
+						}))),
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

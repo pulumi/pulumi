@@ -30,7 +30,7 @@ import * as stack from "../../runtime/stack";
 //
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
-// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+// https://nodejs.org/api/process.html#process_exit_codes
 const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 /**
@@ -141,8 +141,6 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
 /** @internal */
 export interface RunOpts {
-    // TODO: Explicitly pass `main` in here instead of just argv.
-
     argv: minimist.ParsedArgs;
     programStarted: () => void;
     reportLoggedError: (err: Error) => void;

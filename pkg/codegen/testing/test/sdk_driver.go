@@ -286,11 +286,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
-		Directory:   "docs-collision",
-		Description: "Tests that resources and functions with the same name do not clobber each other.",
-		Skip:        allLanguages.Except("docs/any"),
-	},
-	{
 		Directory:   "using-shared-types-in-config",
 		Description: "Tests that shared types can be used in config.",
 	},

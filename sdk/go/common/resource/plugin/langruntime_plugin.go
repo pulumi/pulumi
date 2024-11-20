@@ -444,7 +444,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	ctx, kill := context.WithCancel(h.ctx.Request())
 
 	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
-		Pwd:  minfo.GetProgramDirectory(),
+		Pwd:  info.WorkingDirectory,
 		Args: info.Args,
 		Env:  info.Env,
 		Info: minfo,

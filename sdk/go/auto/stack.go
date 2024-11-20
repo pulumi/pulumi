@@ -283,6 +283,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.AttachDebugger {
 		sharedArgs = append(sharedArgs, "--attach-debugger")
 	}
+	if preOpts.ConfigFile != "" {
+		sharedArgs = append(sharedArgs, "--config-file="+preOpts.ConfigFile)
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -419,6 +422,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.AttachDebugger {
 		sharedArgs = append(sharedArgs, "--attach-debugger")
+	}
+	if upOpts.ConfigFile != "" {
+		sharedArgs = append(sharedArgs, "--config-file="+upOpts.ConfigFile)
 	}
 
 	// Apply the remote args, if needed.
@@ -746,6 +752,9 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	if o.SuppressProgress {
 		args = append(args, "--suppress-progress")
 	}
+	if o.ConfigFile != "" {
+		args = append(args, "--config-file="+o.ConfigFile)
+	}
 
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
@@ -934,6 +943,9 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	}
 	if destroyOpts.ContinueOnError {
 		args = append(args, "--continue-on-error")
+	}
+	if destroyOpts.ConfigFile != "" {
+		args = append(args, "--config-file="+destroyOpts.ConfigFile)
 	}
 
 	execKind := constant.ExecKindAutoLocal

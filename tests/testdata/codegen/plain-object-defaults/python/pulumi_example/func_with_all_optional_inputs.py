@@ -64,7 +64,7 @@ def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'Helm
         r=pulumi.get(__ret__, 'r'))
 def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[Union['HelmReleaseSettings', 'HelmReleaseSettingsDict']]]] = None,
                                          b: Optional[pulumi.Input[Optional[str]]] = None,
-                                         opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
+                                         opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
     """
     Check codegen of functions with all optional inputs.
 
@@ -75,7 +75,7 @@ def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[Union
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('example::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult)
     return __ret__.apply(lambda __response__: FuncWithAllOptionalInputsResult(
         r=pulumi.get(__response__, 'r')))

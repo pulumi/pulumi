@@ -84,26 +84,13 @@ func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplaceme
 			}
 
 			src := string(data)
-			for len(src) > 0 {
-				// Find a line of text
-				i := strings.Index(src, "\n")
-				text := src
-				if i == -1 {
-					// Last line, process text (set to src above) then exit the loop
-					src = ""
-				} else {
-					// Extract the line of text _including_ the newline and remove it from src
-					text = src[:i+1]
-					src = src[i+1:]
-				}
+			for _, edit := range editsToApply {
+				src = edit.Pattern.ReplaceAllString(src, edit.Replacement)
+			}
 
-				for _, edit := range editsToApply {
-					text = edit.Pattern.ReplaceAllString(text, edit.Replacement)
-				}
-				_, err = dstFile.WriteString(text)
-				if err != nil {
-					return fmt.Errorf("write file %s: %w", dstPath, err)
-				}
+			n, err := dstFile.WriteString(src)
+			if err != nil || n != len(src) {
+				return fmt.Errorf("write file %s: %w", dstPath, err)
 			}
 		} else {
 			// Can just do a straight copy

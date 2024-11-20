@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -38,7 +39,7 @@ type pluginRunCmd struct {
 	kind string
 }
 
-func (cmd *pluginRunCmd) run(args []string) error {
+func (cmd *pluginRunCmd) run(ctx context.Context, args []string) error {
 	if !apitype.IsPluginKind(cmd.kind) {
 		return fmt.Errorf("unrecognized plugin kind: %s", cmd.kind)
 	}
@@ -87,7 +88,7 @@ func (cmd *pluginRunCmd) run(args []string) error {
 			d.Logf(sev, diag.RawMessage("", msg))
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
 		if err != nil {
 			return err
 		}
@@ -137,7 +138,7 @@ func newPluginRunCmd() *cobra.Command {
 			"Directly executes a plugin binary, if VERSION is not specified " +
 			"the latest installed plugin will be used.",
 		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
-			return c.run(args)
+			return c.run(cmd.Context(), args)
 		}),
 	}
 

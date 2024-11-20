@@ -58,6 +58,15 @@ func (p *SimpleInvokeProvider) GetPluginInfo(context.Context) (workspace.PluginI
 func (p *SimpleInvokeProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
+	resourceProperties := map[string]schema.PropertySpec{
+		"text": {
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+	}
+	resourceRequired := []string{"text"}
+
 	pkg := schema.PackageSpec{
 		Name:    "simple-invoke",
 		Version: "10.0.0",
@@ -65,16 +74,12 @@ func (p *SimpleInvokeProvider) GetSchema(
 			// A small resource that just has a single string property.
 			"simple-invoke:index:StringResource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"text": {
-							TypeSpec: schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-					Required: []string{"text"},
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
 				},
+				InputProperties: resourceProperties,
+				RequiredInputs:  resourceRequired,
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
@@ -279,9 +284,9 @@ func (p *SimpleInvokeProvider) Check(
 		}, nil
 	}
 
-	if len(req.News) != 0 {
+	if len(req.News) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
 		}, nil
 	}
 

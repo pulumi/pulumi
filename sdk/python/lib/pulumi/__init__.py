@@ -49,6 +49,7 @@ from .errors import (
 
 from .invoke import (
     InvokeOptions,
+    InvokeOutputOptions,
     InvokeTransform,
     InvokeTransformArgs,
     InvokeTransformResult,
@@ -136,6 +137,7 @@ __all__ = [
     "InputPropertyErrorDetails",
     # invoke
     "InvokeOptions",
+    "InvokeOutputOptions",
     "InvokeTransform",
     "InvokeTransformArgs",
     "InvokeTransformResult",

@@ -318,19 +318,19 @@ func TestInvokeOptionComposite(t *testing.T) {
 	tests := []struct {
 		name  string
 		input []InvokeOption
-		want  *InvokeOptions
+		want  *invokeOptions
 	}{
 		{
 			name:  "no options",
 			input: []InvokeOption{},
-			want:  &InvokeOptions{},
+			want:  &invokeOptions{},
 		},
 		{
 			name: "single option",
 			input: []InvokeOption{
 				Version("test"),
 			},
-			want: &InvokeOptions{
+			want: &invokeOptions{
 				Version: "test",
 			},
 		},
@@ -340,7 +340,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test1"),
 				Version("test2"),
 			},
-			want: &InvokeOptions{
+			want: &invokeOptions{
 				Version: "test2",
 			},
 		},
@@ -351,7 +351,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test2"),
 				Version("test1"),
 			},
-			want: &InvokeOptions{
+			want: &invokeOptions{
 				Version: "test1",
 			},
 		},
@@ -361,7 +361,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test"),
 				PluginDownloadURL("url"),
 			},
-			want: &InvokeOptions{
+			want: &invokeOptions{
 				Version:           "test",
 				PluginDownloadURL: "url",
 			},
@@ -373,7 +373,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			opts := &InvokeOptions{}
+			opts := &invokeOptions{}
 			CompositeInvoke(tt.input...).applyInvokeOption(opts)
 			assert.Equal(t, tt.want, opts)
 		})

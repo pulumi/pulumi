@@ -13,11 +13,21 @@ __all__ = ['StringResourceArgs', 'StringResource']
 
 @pulumi.input_type
 class StringResourceArgs:
-    def __init__(__self__):
+    def __init__(__self__, *,
+                 text: pulumi.Input[str]):
         """
         The set of arguments for constructing a StringResource resource.
         """
-        pass
+        pulumi.set(__self__, "text", text)
+
+    @property
+    @pulumi.getter
+    def text(self) -> pulumi.Input[str]:
+        return pulumi.get(self, "text")
+
+    @text.setter
+    def text(self, value: pulumi.Input[str]):
+        pulumi.set(self, "text", value)
 
 
 class StringResource(pulumi.CustomResource):
@@ -25,6 +35,7 @@ class StringResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 text: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
         Create a StringResource resource with the given unique name, props, and options.
@@ -35,7 +46,7 @@ class StringResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[StringResourceArgs] = None,
+                 args: StringResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a StringResource resource with the given unique name, props, and options.
@@ -54,6 +65,7 @@ class StringResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 text: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -63,7 +75,9 @@ class StringResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = StringResourceArgs.__new__(StringResourceArgs)
 
-            __props__.__dict__["text"] = None
+            if text is None and not opts.urn:
+                raise TypeError("Missing required property 'text'")
+            __props__.__dict__["text"] = text
         super(StringResource, __self__).__init__(
             'simple-invoke:index:StringResource',
             resource_name,

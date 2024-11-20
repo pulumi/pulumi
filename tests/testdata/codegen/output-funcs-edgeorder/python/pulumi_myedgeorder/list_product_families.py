@@ -94,7 +94,7 @@ def list_product_families_output(customer_subscription_details: Optional[pulumi.
                                  expand: Optional[pulumi.Input[Optional[str]]] = None,
                                  filterable_properties: Optional[pulumi.Input[Mapping[str, Sequence[pulumi.InputType['FilterableProperty']]]]] = None,
                                  skip_token: Optional[pulumi.Input[Optional[str]]] = None,
-                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListProductFamiliesResult]:
+                                 opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ListProductFamiliesResult]:
     """
     The list of product families.
     API Version: 2020-12-01-preview.
@@ -110,7 +110,7 @@ def list_product_families_output(customer_subscription_details: Optional[pulumi.
     __args__['expand'] = expand
     __args__['filterableProperties'] = filterable_properties
     __args__['skipToken'] = skip_token
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('myedgeorder::listProductFamilies', __args__, opts=opts, typ=ListProductFamiliesResult)
     return __ret__.apply(lambda __response__: ListProductFamiliesResult(
         next_link=pulumi.get(__response__, 'next_link'),

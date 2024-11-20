@@ -518,37 +518,36 @@ type InvokeOptions struct {
 	// should be downloaded.
 	// This will be blank if the URL was inferred automatically.
 	PluginDownloadURL string
-
-	// This is an internal write only field that is used to store the parameterization from the default options.
-	parameterization []byte
 }
-
-// NOTE:
-// InvokeOptions is part of the public API.
-// If you introduce a new option,
-// consider what its "snapshot" should look like,
-// not the internal representation.
-// For example, a list of resources should be []Resource,
-// even if it's stored as a map[string]Resource.
-// If the snapshot representation diverges from the internal,
-// mirror this struct into a private invokeOptions struct.
-// See resourceOptions for an example.
 
 // NewInvokeOptions builds a preview of the effect of the provided options.
 //
 // Use this to get a read-only snapshot of the collective effect
 // of a list of [InvokeOption]s.
 func NewInvokeOptions(opts ...InvokeOption) (*InvokeOptions, error) {
-	var options InvokeOptions
-	for _, o := range opts {
-		if o != nil {
-			o.applyInvokeOption(&options)
-		}
-	}
 	// The error return is currently unused,
 	// but it's foreseeable that we'll need it
 	// if we begin doing option validation at option merge time.
-	return &options, nil
+	return invokeOptionsSnapshot(mergeInvokeOptions(opts...)), nil
+}
+
+// invokeOptions is the internal representation of the effect of
+// [InvokeOptions]s.
+type invokeOptions struct {
+	Parent            Resource
+	Provider          ProviderResource
+	Version           string
+	PluginDownloadURL string
+	Parameterization  []byte
+}
+
+func invokeOptionsSnapshot(io *invokeOptions) *InvokeOptions {
+	return &InvokeOptions{
+		Parent:            io.Parent,
+		Provider:          io.Provider,
+		Version:           io.Version,
+		PluginDownloadURL: io.PluginDownloadURL,
+	}
 }
 
 type ResourceOption interface {
@@ -556,7 +555,7 @@ type ResourceOption interface {
 }
 
 type InvokeOption interface {
-	applyInvokeOption(*InvokeOptions)
+	applyInvokeOption(*invokeOptions)
 }
 
 type ResourceOrInvokeOption interface {
@@ -570,19 +569,19 @@ func (o resourceOption) applyResourceOption(opts *resourceOptions) {
 	o(opts)
 }
 
-type invokeOption func(*InvokeOptions)
+type invokeOption func(*invokeOptions)
 
-func (o invokeOption) applyInvokeOption(opts *InvokeOptions) {
+func (o invokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(opts)
 }
 
-type resourceOrInvokeOption func(ro *resourceOptions, io *InvokeOptions)
+type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
 
 func (o resourceOrInvokeOption) applyResourceOption(opts *resourceOptions) {
 	o(opts, nil)
 }
 
-func (o resourceOrInvokeOption) applyInvokeOption(opts *InvokeOptions) {
+func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(nil, opts)
 }
 
@@ -594,6 +593,16 @@ func merge(opts ...ResourceOption) *resourceOptions {
 	for _, o := range opts {
 		if o != nil {
 			o.applyResourceOption(options)
+		}
+	}
+	return options
+}
+
+func mergeInvokeOptions(opts ...InvokeOption) *invokeOptions {
+	options := &invokeOptions{}
+	for _, o := range opts {
+		if o != nil {
+			o.applyInvokeOption(options)
 		}
 	}
 	return options
@@ -631,7 +640,7 @@ func Composite(opts ...ResourceOption) ResourceOption {
 
 // CompositeInvoke is an invoke option that contains other invoke options.
 func CompositeInvoke(opts ...InvokeOption) InvokeOption {
-	return invokeOption(func(ro *InvokeOptions) {
+	return invokeOption(func(ro *invokeOptions) {
 		for _, o := range opts {
 			o.applyInvokeOption(ro)
 		}
@@ -734,7 +743,7 @@ func Import(o IDInput) ResourceOption {
 
 // Parent sets the parent resource to which this resource or invoke belongs.
 func Parent(r Resource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Parent = r
@@ -800,7 +809,7 @@ func Protect(o bool) ResourceOption {
 
 // Provider sets the provider resource to use for a resource's CRUD operations or an invoke's call.
 func Provider(r ProviderResource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Provider = r
@@ -877,7 +886,7 @@ func URN_(o string) ResourceOption {
 // operating on this resource. This version overrides the version information inferred from the current package and
 // should rarely be used.
 func Version(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Version = o
@@ -891,7 +900,7 @@ func Version(o string) ResourceOrInvokeOption {
 // that should be used when operating on this resource. This url overrides the url information
 // inferred from the current package and should rarely be used.
 func PluginDownloadURL(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.PluginDownloadURL = o
@@ -918,12 +927,12 @@ func DeletedWith(r Resource) ResourceOption {
 
 // If set this resource will be parameterized with the given package reference.
 func Parameterization(parameter []byte) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Parameterization = parameter
 		case io != nil:
-			io.parameterization = parameter
+			io.Parameterization = parameter
 		}
 	})
 }

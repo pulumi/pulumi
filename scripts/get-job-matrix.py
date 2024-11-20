@@ -143,9 +143,16 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "python": "3.8.x",
 }
 
+ALL_VERSION_SET = {
+    "dotnet": ["6", "8", "9"],
+    "go": ["1.22.x", "1.23.x"],
+    "nodejs": ["18.x", "20.x", "22.x", "23.x"],
+    "python": ["3.8.x", "3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
+}
+
 CURRENT_VERSION_SET = {
     "name": "current",
-    "dotnet": "8",
+    "dotnet": "9",
     "go": "1.23.x",
     "nodejs": "23.x",
     "python": "3.13.x",
@@ -453,6 +460,16 @@ def get_version_sets(args: argparse.Namespace):
             version_sets.append(MINIMUM_SUPPORTED_VERSION_SET)
         elif named_version_set == "current":
             version_sets.append(CURRENT_VERSION_SET)
+        elif named_version_set == "all":
+            longest = len(ALL_VERSION_SET[max(ALL_VERSION_SET, key=lambda k: len(ALL_VERSION_SET[k]))])
+            for i in range(0, longest):
+                this_set = {**MINIMUM_SUPPORTED_VERSION_SET}
+                # Set the name.  This will be shown in the name of the CI job.
+                this_set["name"] = f"all-{i}"
+                for lang, versions in ALL_VERSION_SET.items():
+                    if len(versions) > i:
+                        this_set[lang] = versions[i]
+                version_sets.append(this_set)
         else:
             raise argparse.ArgumentError(argument=None, message=f"Unknown version set {named_version_set}")
 
@@ -568,7 +585,7 @@ def add_generate_matrix_args(parser: argparse.ArgumentParser):
         action="store",
         nargs="*",
         default=["minimum"],
-        choices=["minimum", "current"],
+        choices=["minimum", "current", "all"],
         help="Named set of versions to use. Defaults to minimum supported versions. Available sets: minimum, current",
     )
     default_versions = ",".join(

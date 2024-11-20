@@ -17,11 +17,14 @@ package auto
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -171,4 +174,53 @@ func TestAlwaysReadsCompleteLine(t *testing.T) {
 	require.NoError(t, event2.Error)
 	assert.Equal(t, "world", event2.StdoutEvent.Message)
 	assert.Equal(t, "red", event2.StdoutEvent.Color)
+}
+
+func TestDestroyOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	args := destroyOptsToCmd(
+		&optdestroy.Options{
+			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
+		},
+		&stack,
+	)
+
+	assert.Contains(t, args, "destroy")
+
+	configFilePath := filepath.Join(stack.workspace.WorkDir(), "test.yaml")
+	assert.Contains(t, args, "--config-file="+configFilePath)
+}
+
+func TestRefreshOptsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	args := refreshOptsToCmd(
+		&optrefresh.Options{
+			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
+		},
+		&stack,
+		true,
+	)
+
+	assert.Contains(t, args, "refresh")
+
+	configFilePath := filepath.Join(stack.workspace.WorkDir(), "test.yaml")
+	assert.Contains(t, args, "--config-file="+configFilePath)
 }

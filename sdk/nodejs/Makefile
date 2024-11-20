@@ -30,6 +30,10 @@ lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
 	yarn biome ci .
 
+lint_fix:: ensure
+	yarn run eslint -c .eslintrc.js --ext .ts --fix .
+	yarn biome format --write .
+
 build_package:: ensure
 	yarn run tsc
 	mkdir -p bin/tests/automation/data/

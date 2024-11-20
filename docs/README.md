@@ -1,4 +1,4 @@
-# Home
+# Pulumi developer documentation
 
 Welcome to the Pulumi developer documentation! This site is designed to provide
 complete documentation for maintainers of and contributors to Pulumi.
@@ -7,7 +7,7 @@ complete documentation for maintainers of and contributors to Pulumi.
 :maxdepth: 2
 :titlesonly:
 
-self
+Home <self>
 /docs/documentation
 /docs/architecture/README
 /docs/references/README

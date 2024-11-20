@@ -198,7 +198,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 				host.Log(sev, "", msg, 0)
 			}
 
-			_, err = pkgWorkspace.InstallPlugin(descriptor.PluginSpec, log)
+			_, err = pkgWorkspace.InstallPlugin(pCtx.Base(), descriptor.PluginSpec, log)
 			if err != nil {
 				return nil, err
 			}

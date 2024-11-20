@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,7 +46,7 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := RetrieveTemplates(templateName, false, tt.templateKind)
+			_, err := RetrieveTemplates(context.Background(), templateName, false, tt.templateKind)
 			assert.EqualError(t, err, fmt.Sprintf("template '%s' not found", templateName))
 		})
 	}
@@ -73,7 +74,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(tt.templateName, false, tt.templateKind)
+			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
 			assert.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
@@ -117,7 +118,7 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(tt.templateURL, false, tt.templateKind)
+			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
 			assert.NoError(t, err)
 			assert.Equal(t, true, repository.ShouldDelete)
 
@@ -169,7 +170,7 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := RetrieveTemplates(tt.templateURL, true, tt.templateKind)
+			_, err := RetrieveTemplates(context.Background(), tt.templateURL, true, tt.templateKind)
 			assert.EqualError(t, err, fmt.Sprintf("cannot use %s offline", tt.templateURL))
 		})
 	}
@@ -194,7 +195,7 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(".", false, tt.templateKind)
+			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
 			assert.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 

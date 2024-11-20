@@ -1288,7 +1288,7 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
                      string1: Optional[pulumi.Input[Optional[str]]] = None,
                      string2: Optional[pulumi.Input[Optional[str]]] = None,
                      string3: Optional[pulumi.Input[Optional[str]]] = None,
-                     opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ToSecretResult]:
+                     opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ToSecretResult]:
     """
     Use this data source to access information about an existing resource.
     """
@@ -1389,7 +1389,7 @@ def to_secret_output(bool1: Optional[pulumi.Input[Optional[bool]]] = None,
     __args__['string1'] = string1
     __args__['string2'] = string2
     __args__['string3'] = string3
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('config-grpc:index:toSecret', __args__, opts=opts, typ=ToSecretResult)
     return __ret__.apply(lambda __response__: ToSecretResult(
         bool1=pulumi.get(__response__, 'bool1'),

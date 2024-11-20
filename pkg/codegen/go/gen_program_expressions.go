@@ -345,7 +345,26 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		var optionsBag string
 		var buf bytes.Buffer
 		if len(expr.Args) == 3 {
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				g.Fgen(&buf, ", ")
+				for i, item := range invokeOptions.Items {
+					last := i == len(invokeOptions.Items)-1
+					switch pcl.LiteralValueString(item.Key) {
+					case "provider":
+						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
+					case "parent":
+						g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
+					case "version":
+						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
+					case "pluginDownloadUrl":
+						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+					}
+
+					if !last {
+						g.Fgen(&buf, ", ")
+					}
+				}
+			}
 		} else {
 			g.Fgenf(&buf, ", nil")
 		}
