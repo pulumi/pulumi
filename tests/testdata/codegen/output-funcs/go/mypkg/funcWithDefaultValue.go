@@ -5,6 +5,7 @@ package mypkg
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,6 +16,16 @@ import (
 // Check codegen of functions with default values.
 func FuncWithDefaultValue(ctx *pulumi.Context, args *FuncWithDefaultValueArgs, opts ...pulumi.InvokeOption) (*FuncWithDefaultValueResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &FuncWithDefaultValueResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &FuncWithDefaultValueResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithDefaultValue, use FuncWithDefaultValueOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &FuncWithDefaultValueResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithDefaultValue, use FuncWithDefaultValueOutput instead")
+	}
 	var rv FuncWithDefaultValueResult
 	err := ctx.Invoke("mypkg::funcWithDefaultValue", args.Defaults(), &rv, opts...)
 	if err != nil {
@@ -46,17 +57,18 @@ type FuncWithDefaultValueResult struct {
 }
 
 func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithDefaultValueResultOutput, error) {
 			args := v.(FuncWithDefaultValueArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv FuncWithDefaultValueResult
-			secret, err := ctx.InvokePackageRaw("mypkg::funcWithDefaultValue", args.Defaults(), &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithDefaultValue", args.Defaults(), &rv, "", opts...)
 			if err != nil {
 				return FuncWithDefaultValueResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(FuncWithDefaultValueResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithDefaultValueResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(FuncWithDefaultValueResultOutput), nil
 			}

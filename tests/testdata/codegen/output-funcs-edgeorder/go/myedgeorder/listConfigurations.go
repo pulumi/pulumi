@@ -5,6 +5,7 @@ package myedgeorder
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"example.com/pulumi-myedgeorder/sdk/go/myedgeorder/internal"
@@ -15,6 +16,16 @@ import (
 // API Version: 2020-12-01-preview.
 func ListConfigurations(ctx *pulumi.Context, args *ListConfigurationsArgs, opts ...pulumi.InvokeOption) (*ListConfigurationsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &ListConfigurationsResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &ListConfigurationsResult{}, errors.New("DependsOn is not supported for direct form invoke ListConfigurations, use ListConfigurationsOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &ListConfigurationsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ListConfigurations, use ListConfigurationsOutput instead")
+	}
 	var rv ListConfigurationsResult
 	err := ctx.Invoke("myedgeorder::listConfigurations", args, &rv, opts...)
 	if err != nil {
@@ -41,17 +52,18 @@ type ListConfigurationsResult struct {
 }
 
 func ListConfigurationsOutput(ctx *pulumi.Context, args ListConfigurationsOutputArgs, opts ...pulumi.InvokeOption) ListConfigurationsResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ListConfigurationsResultOutput, error) {
 			args := v.(ListConfigurationsArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv ListConfigurationsResult
-			secret, err := ctx.InvokePackageRaw("myedgeorder::listConfigurations", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("myedgeorder::listConfigurations", args, &rv, "", opts...)
 			if err != nil {
 				return ListConfigurationsResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(ListConfigurationsResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ListConfigurationsResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(ListConfigurationsResultOutput), nil
 			}

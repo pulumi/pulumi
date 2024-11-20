@@ -5,6 +5,7 @@ package urnid
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -14,6 +15,16 @@ import (
 // It's fine for invokes to use urn and id
 func Test(ctx *pulumi.Context, args *TestArgs, opts ...pulumi.InvokeOption) (*TestResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &TestResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &TestResult{}, errors.New("DependsOn is not supported for direct form invoke Test, use TestOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &TestResult{}, errors.New("DependsOnInputs is not supported for direct form invoke Test, use TestOutput instead")
+	}
 	var rv TestResult
 	err := ctx.Invoke("urnid:index:Test", args, &rv, opts...)
 	if err != nil {
@@ -33,17 +44,18 @@ type TestResult struct {
 }
 
 func TestOutput(ctx *pulumi.Context, args TestOutputArgs, opts ...pulumi.InvokeOption) TestResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (TestResultOutput, error) {
 			args := v.(TestArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv TestResult
-			secret, err := ctx.InvokePackageRaw("urnid:index:Test", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("urnid:index:Test", args, &rv, "", opts...)
 			if err != nil {
 				return TestResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(TestResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(TestResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(TestResultOutput), nil
 			}

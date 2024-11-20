@@ -5,6 +5,7 @@ package configgrpc
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"example.com/pulumi-config-grpc/sdk/go/configgrpc/internal"
@@ -13,6 +14,16 @@ import (
 
 func ToSecret(ctx *pulumi.Context, args *ToSecretArgs, opts ...pulumi.InvokeOption) (*ToSecretResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &ToSecretResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &ToSecretResult{}, errors.New("DependsOn is not supported for direct form invoke ToSecret, use ToSecretOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &ToSecretResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ToSecret, use ToSecretOutput instead")
+	}
 	var rv ToSecretResult
 	err := ctx.Invoke("config-grpc:index:toSecret", args, &rv, opts...)
 	if err != nil {
@@ -220,17 +231,18 @@ type ToSecretResult struct {
 }
 
 func ToSecretOutput(ctx *pulumi.Context, args ToSecretOutputArgs, opts ...pulumi.InvokeOption) ToSecretResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ToSecretResultOutput, error) {
 			args := v.(ToSecretArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv ToSecretResult
-			secret, err := ctx.InvokePackageRaw("config-grpc:index:toSecret", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("config-grpc:index:toSecret", args, &rv, "", opts...)
 			if err != nil {
 				return ToSecretResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(ToSecretResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ToSecretResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(ToSecretResultOutput), nil
 			}

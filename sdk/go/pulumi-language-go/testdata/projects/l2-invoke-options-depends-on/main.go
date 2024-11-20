@@ -7,7 +7,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		explicitProvider, err := simpleinvoke.NewProvider(ctx, "explicitProvider", nil)
+		_, err := simpleinvoke.NewProvider(ctx, "explicitProvider", nil)
 		if err != nil {
 			return err
 		}
@@ -19,7 +19,7 @@ func main() {
 		}
 		data := simpleinvoke.MyInvokeOutput(ctx, simpleinvoke.MyInvokeOutputArgs{
 			Value: pulumi.String("hello"),
-		}, pulumi.Provider(explicitProvider), pulumi.Parent(explicitProvider), pulumi.Version("10.0.0"), pulumi.PluginDownloadURL("https://example.com/github/example"), pulumi.DependsOn([]pulumi.Resource{
+		}, pulumi.DependsOn([]pulumi.Resource{
 			pulumi.Resource(first),
 		}))
 		_, err = simpleinvoke.NewStringResource(ctx, "second", &simpleinvoke.StringResourceArgs{

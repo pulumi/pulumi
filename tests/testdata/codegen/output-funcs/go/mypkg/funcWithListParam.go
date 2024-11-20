@@ -5,6 +5,7 @@ package mypkg
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,6 +16,16 @@ import (
 // Check codegen of functions with a List parameter.
 func FuncWithListParam(ctx *pulumi.Context, args *FuncWithListParamArgs, opts ...pulumi.InvokeOption) (*FuncWithListParamResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &FuncWithListParamResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &FuncWithListParamResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithListParam, use FuncWithListParamOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &FuncWithListParamResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithListParam, use FuncWithListParamOutput instead")
+	}
 	var rv FuncWithListParamResult
 	err := ctx.Invoke("mypkg::funcWithListParam", args, &rv, opts...)
 	if err != nil {
@@ -33,17 +44,18 @@ type FuncWithListParamResult struct {
 }
 
 func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithListParamResultOutput, error) {
 			args := v.(FuncWithListParamArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv FuncWithListParamResult
-			secret, err := ctx.InvokePackageRaw("mypkg::funcWithListParam", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithListParam", args, &rv, "", opts...)
 			if err != nil {
 				return FuncWithListParamResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(FuncWithListParamResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithListParamResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(FuncWithListParamResultOutput), nil
 			}

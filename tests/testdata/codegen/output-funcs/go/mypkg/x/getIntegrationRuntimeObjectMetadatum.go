@@ -16,6 +16,16 @@ import (
 // API Version: 2018-06-01.
 func GetIntegrationRuntimeObjectMetadatum(ctx *pulumi.Context, args *GetIntegrationRuntimeObjectMetadatumArgs, opts ...pulumi.InvokeOption) (*GetIntegrationRuntimeObjectMetadatumResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, errors.New("DependsOn is not supported for direct form invoke GetIntegrationRuntimeObjectMetadatum, use GetIntegrationRuntimeObjectMetadatumOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, errors.New("DependsOnInputs is not supported for direct form invoke GetIntegrationRuntimeObjectMetadatum, use GetIntegrationRuntimeObjectMetadatumOutput instead")
+	}
 	var rv GetIntegrationRuntimeObjectMetadatumResult
 	err := ctx.Invoke("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, opts...)
 	if err != nil {

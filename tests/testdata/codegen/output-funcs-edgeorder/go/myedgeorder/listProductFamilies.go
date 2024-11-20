@@ -5,6 +5,7 @@ package myedgeorder
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"example.com/pulumi-myedgeorder/sdk/go/myedgeorder/internal"
@@ -15,6 +16,16 @@ import (
 // API Version: 2020-12-01-preview.
 func ListProductFamilies(ctx *pulumi.Context, args *ListProductFamiliesArgs, opts ...pulumi.InvokeOption) (*ListProductFamiliesResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &ListProductFamiliesResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &ListProductFamiliesResult{}, errors.New("DependsOn is not supported for direct form invoke ListProductFamilies, use ListProductFamiliesOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &ListProductFamiliesResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ListProductFamilies, use ListProductFamiliesOutput instead")
+	}
 	var rv ListProductFamiliesResult
 	err := ctx.Invoke("myedgeorder::listProductFamilies", args, &rv, opts...)
 	if err != nil {
@@ -43,17 +54,18 @@ type ListProductFamiliesResult struct {
 }
 
 func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutputArgs, opts ...pulumi.InvokeOption) ListProductFamiliesResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ListProductFamiliesResultOutput, error) {
 			args := v.(ListProductFamiliesArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv ListProductFamiliesResult
-			secret, err := ctx.InvokePackageRaw("myedgeorder::listProductFamilies", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("myedgeorder::listProductFamilies", args, &rv, "", opts...)
 			if err != nil {
 				return ListProductFamiliesResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(ListProductFamiliesResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ListProductFamiliesResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(ListProductFamiliesResultOutput), nil
 			}

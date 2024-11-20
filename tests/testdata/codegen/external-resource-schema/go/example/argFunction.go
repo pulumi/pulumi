@@ -5,6 +5,7 @@ package example
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"external-resource-schema/example/internal"
@@ -14,6 +15,16 @@ import (
 
 func ArgFunction(ctx *pulumi.Context, args *ArgFunctionArgs, opts ...pulumi.InvokeOption) (*ArgFunctionResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &ArgFunctionResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &ArgFunctionResult{}, errors.New("DependsOn is not supported for direct form invoke ArgFunction, use ArgFunctionOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &ArgFunctionResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ArgFunction, use ArgFunctionOutput instead")
+	}
 	var rv ArgFunctionResult
 	err := ctx.Invoke("example::argFunction", args, &rv, opts...)
 	if err != nil {
@@ -31,17 +42,18 @@ type ArgFunctionResult struct {
 }
 
 func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ArgFunctionResultOutput, error) {
 			args := v.(ArgFunctionArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv ArgFunctionResult
-			secret, err := ctx.InvokePackageRaw("example::argFunction", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("example::argFunction", args, &rv, "", opts...)
 			if err != nil {
 				return ArgFunctionResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(ArgFunctionResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ArgFunctionResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(ArgFunctionResultOutput), nil
 			}

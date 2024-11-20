@@ -15,6 +15,16 @@ import (
 // Check codegen of functions with a Dict<str,str> parameter.
 func FuncWithDictParam(ctx *pulumi.Context, args *FuncWithDictParamArgs, opts ...pulumi.InvokeOption) (*FuncWithDictParamResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &FuncWithDictParamResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &FuncWithDictParamResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithDictParam, use FuncWithDictParamOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &FuncWithDictParamResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithDictParam, use FuncWithDictParamOutput instead")
+	}
 	var rv FuncWithDictParamResult
 	err := ctx.Invoke("mypkg::funcWithDictParam", args, &rv, opts...)
 	if err != nil {

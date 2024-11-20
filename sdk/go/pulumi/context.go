@@ -686,8 +686,9 @@ func (ctx *Context) invokePackageRaw(
 			}
 			resources, ok := value.([]Resource)
 			if !ok {
-				return nil, []Resource{}, fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
-					reflect.TypeOf(value))
+				return nil, []Resource{},
+					fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+						reflect.TypeOf(value))
 			}
 			deps = append(deps, resources...)
 		default:

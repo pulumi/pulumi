@@ -5,6 +5,7 @@ package mypkg
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"functions-secrets/mypkg/internal"
@@ -13,6 +14,16 @@ import (
 
 func FuncWithSecrets(ctx *pulumi.Context, args *FuncWithSecretsArgs, opts ...pulumi.InvokeOption) (*FuncWithSecretsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &FuncWithSecretsResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &FuncWithSecretsResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithSecrets, use FuncWithSecretsOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &FuncWithSecretsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithSecrets, use FuncWithSecretsOutput instead")
+	}
 	var rv FuncWithSecretsResult
 	err := ctx.Invoke("mypkg::funcWithSecrets", args, &rv, opts...)
 	if err != nil {
@@ -34,17 +45,18 @@ type FuncWithSecretsResult struct {
 }
 
 func FuncWithSecretsOutput(ctx *pulumi.Context, args FuncWithSecretsOutputArgs, opts ...pulumi.InvokeOption) FuncWithSecretsResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithSecretsResultOutput, error) {
 			args := v.(FuncWithSecretsArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv FuncWithSecretsResult
-			secret, err := ctx.InvokePackageRaw("mypkg::funcWithSecrets", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithSecrets", args, &rv, "", opts...)
 			if err != nil {
 				return FuncWithSecretsResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(FuncWithSecretsResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithSecretsResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(FuncWithSecretsResultOutput), nil
 			}

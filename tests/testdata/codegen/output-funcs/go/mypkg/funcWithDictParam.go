@@ -5,6 +5,7 @@ package mypkg
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,6 +16,16 @@ import (
 // Check codegen of functions with a Dict<str,str> parameter.
 func FuncWithDictParam(ctx *pulumi.Context, args *FuncWithDictParamArgs, opts ...pulumi.InvokeOption) (*FuncWithDictParamResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &FuncWithDictParamResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &FuncWithDictParamResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithDictParam, use FuncWithDictParamOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &FuncWithDictParamResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithDictParam, use FuncWithDictParamOutput instead")
+	}
 	var rv FuncWithDictParamResult
 	err := ctx.Invoke("mypkg::funcWithDictParam", args, &rv, opts...)
 	if err != nil {
@@ -33,17 +44,18 @@ type FuncWithDictParamResult struct {
 }
 
 func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithDictParamResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithDictParamResultOutput, error) {
 			args := v.(FuncWithDictParamArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv FuncWithDictParamResult
-			secret, err := ctx.InvokePackageRaw("mypkg::funcWithDictParam", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithDictParam", args, &rv, "", opts...)
 			if err != nil {
 				return FuncWithDictParamResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(FuncWithDictParamResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithDictParamResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(FuncWithDictParamResultOutput), nil
 			}

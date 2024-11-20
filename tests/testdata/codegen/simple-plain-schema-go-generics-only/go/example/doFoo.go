@@ -10,6 +10,16 @@ import (
 
 func DoFoo(ctx *pulumi.Context, args *DoFooArgs, opts ...pulumi.InvokeOption) error {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &DoFooResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &DoFooResult{}, errors.New("DependsOn is not supported for direct form invoke DoFoo, use DoFooOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &DoFooResult{}, errors.New("DependsOnInputs is not supported for direct form invoke DoFoo, use DoFooOutput instead")
+	}
 	var rv struct{}
 	err := ctx.Invoke("example::doFoo", args, &rv, opts...)
 	return err

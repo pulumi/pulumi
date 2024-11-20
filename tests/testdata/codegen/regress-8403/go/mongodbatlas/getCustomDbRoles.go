@@ -5,6 +5,7 @@ package mongodbatlas
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -13,6 +14,16 @@ import (
 
 func LookupCustomDbRoles(ctx *pulumi.Context, args *LookupCustomDbRolesArgs, opts ...pulumi.InvokeOption) (*LookupCustomDbRolesResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &LookupCustomDbRolesResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &LookupCustomDbRolesResult{}, errors.New("DependsOn is not supported for direct form invoke LookupCustomDbRoles, use LookupCustomDbRolesOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &LookupCustomDbRolesResult{}, errors.New("DependsOnInputs is not supported for direct form invoke LookupCustomDbRoles, use LookupCustomDbRolesOutput instead")
+	}
 	var rv LookupCustomDbRolesResult
 	err := ctx.Invoke("mongodbatlas::getCustomDbRoles", args, &rv, opts...)
 	if err != nil {
@@ -29,17 +40,18 @@ type LookupCustomDbRolesResult struct {
 }
 
 func LookupCustomDbRolesOutput(ctx *pulumi.Context, args LookupCustomDbRolesOutputArgs, opts ...pulumi.InvokeOption) LookupCustomDbRolesResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (LookupCustomDbRolesResultOutput, error) {
 			args := v.(LookupCustomDbRolesArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv LookupCustomDbRolesResult
-			secret, err := ctx.InvokePackageRaw("mongodbatlas::getCustomDbRoles", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mongodbatlas::getCustomDbRoles", args, &rv, "", opts...)
 			if err != nil {
 				return LookupCustomDbRolesResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(LookupCustomDbRolesResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(LookupCustomDbRolesResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(LookupCustomDbRolesResultOutput), nil
 			}

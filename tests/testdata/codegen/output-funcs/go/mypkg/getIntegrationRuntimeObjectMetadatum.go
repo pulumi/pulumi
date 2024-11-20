@@ -5,6 +5,7 @@ package mypkg
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -16,6 +17,16 @@ import (
 // API Version: 2018-06-01.
 func GetIntegrationRuntimeObjectMetadatum(ctx *pulumi.Context, args *GetIntegrationRuntimeObjectMetadatumArgs, opts ...pulumi.InvokeOption) (*GetIntegrationRuntimeObjectMetadatumResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, errors.New("DependsOn is not supported for direct form invoke GetIntegrationRuntimeObjectMetadatum, use GetIntegrationRuntimeObjectMetadatumOutput instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return &GetIntegrationRuntimeObjectMetadatumResult{}, errors.New("DependsOnInputs is not supported for direct form invoke GetIntegrationRuntimeObjectMetadatum, use GetIntegrationRuntimeObjectMetadatumOutput instead")
+	}
 	var rv GetIntegrationRuntimeObjectMetadatumResult
 	err := ctx.Invoke("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, opts...)
 	if err != nil {
@@ -44,17 +55,18 @@ type GetIntegrationRuntimeObjectMetadatumResult struct {
 }
 
 func GetIntegrationRuntimeObjectMetadatumOutput(ctx *pulumi.Context, args GetIntegrationRuntimeObjectMetadatumOutputArgs, opts ...pulumi.InvokeOption) GetIntegrationRuntimeObjectMetadatumResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetIntegrationRuntimeObjectMetadatumResultOutput, error) {
 			args := v.(GetIntegrationRuntimeObjectMetadatumArgs)
 			opts = internal.PkgInvokeDefaultOpts(opts)
 			var rv GetIntegrationRuntimeObjectMetadatumResult
-			secret, err := ctx.InvokePackageRaw("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, "", opts...)
+			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, "", opts...)
 			if err != nil {
 				return GetIntegrationRuntimeObjectMetadatumResultOutput{}, err
 			}
 
 			output := pulumi.ToOutput(rv).(GetIntegrationRuntimeObjectMetadatumResultOutput)
+			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(GetIntegrationRuntimeObjectMetadatumResultOutput)
 			if secret {
 				return pulumi.ToSecret(output).(GetIntegrationRuntimeObjectMetadatumResultOutput), nil
 			}
