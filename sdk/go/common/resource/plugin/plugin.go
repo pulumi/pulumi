@@ -348,19 +348,23 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		verbose:         logging.Verbose,
 	})
 
-	pluginDir := filepath.Dir(bin)
-	if len(env) == 0 {
-		// If no environment is provided, use the current environment.
-		env = os.Environ()
-	}
-	// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
-	// its own directory structure.
-	env = append(env, "PULUMI_ROOT_DIRECTORY="+pluginDir)
-	env = append(env, "PULUMI_PROGRAM_DIRECTORY="+pluginDir)
-
 	// Check to see if we have a binary we can invoke directly
 	if _, err := os.Stat(bin); os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
+		pluginDir := filepath.Dir(bin)
+		// Ensure the plugin directory is an absolute path.
+		pluginDir, err := filepath.Abs(pluginDir)
+		if err != nil {
+			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
+		}
+		if len(env) == 0 {
+			// If no environment is provided, use the current environment.
+			env = os.Environ()
+		}
+		// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
+		// its own directory structure.
+		env = append(env, "PULUMI_ROOT_DIRECTORY="+pluginDir)
+
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
@@ -379,12 +383,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
-
-		// ProgramInfo needs pluginDir to be an absolute path
-		pluginDir, err = filepath.Abs(pluginDir)
-		if err != nil {
-			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
-		}
 
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
@@ -412,13 +410,15 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}, nil
 	}
 
+	env = append(env, "PULUMI_ROOT_DIRECTORY="+pwd)
+
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
 	cmd.Env = env
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	errpipe, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
@@ -461,7 +461,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Kill:   kill,
 		Stdin:  in,
 		Stdout: out,
-		Stderr: err,
+		Stderr: errpipe,
 	}, nil
 }
 

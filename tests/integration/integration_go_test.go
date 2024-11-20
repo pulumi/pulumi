@@ -1400,3 +1400,27 @@ func TestLogDebugGo(t *testing.T) {
 		},
 	})
 }
+
+// Test that we can successfully start up a shimless provider and it gets the right environment
+// variables set.
+func TestRunPlugin(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("run_plugin"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
+	e.RunCommand("npm", "install")
+
+	e.CWD = filepath.Join(e.RootPath, "go")
+	sdkPath, err := filepath.Abs("../../sdk/")
+	require.NoError(t, err)
+
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("pulumi", "stack", "init", "debugger-test")
+	e.RunCommand("pulumi", "stack", "select", "debugger-test")
+	e.RunCommand("pulumi", "preview")
+}
