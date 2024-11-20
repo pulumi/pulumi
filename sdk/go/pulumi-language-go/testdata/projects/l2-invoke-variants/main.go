@@ -7,7 +7,9 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		res, err := simpleinvoke.NewStringResource(ctx, "res", nil)
+		res, err := simpleinvoke.NewStringResource(ctx, "res", &simpleinvoke.StringResourceArgs{
+			Text: pulumi.String("hello"),
+		})
 		if err != nil {
 			return err
 		}

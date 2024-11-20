@@ -360,7 +360,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
 			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
+				if isOut {
+					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
+				} else {
+					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
+				}
 				for i, item := range invokeOptions.Items {
 					last := i == len(invokeOptions.Items)-1
 					key := PyName(pcl.LiteralValueString(item.Key))

@@ -25,6 +25,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Union,
     overload,
 )
 
@@ -34,9 +35,10 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo
 
 from .. import _types, log
-from ..invoke import InvokeOptions
+from ..invoke import InvokeOptions, InvokeOutputOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
+from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
     _get_rpc_manager,
     get_monitor,
@@ -131,7 +133,7 @@ def invoke(
 def invoke_output(
     tok: str,
     props: "Inputs",
-    opts: Optional[InvokeOptions] = None,
+    opts: Optional[Union[InvokeOptions, InvokeOutputOptions]] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> "Output[Any]":
@@ -194,7 +196,7 @@ async def invoke_async(
 def _invoke(
     tok: str,
     props: "Inputs",
-    opts: Optional[InvokeOptions],
+    opts: Optional[Union[InvokeOptions, InvokeOutputOptions]],
     typ: Optional[type],
     package_ref: Optional[Awaitable[Optional[str]]],
 ) -> Awaitable[InvokeResult]:
@@ -242,6 +244,11 @@ def _invoke(
         plain_inputs, inputs_contain_secrets = rpc._unwrap_rpc_secret_struct_properties(
             inputs
         )
+
+        # keep track of the dependencies from depends_on
+        depends_on_dependencies: Set["Resource"] = set()
+        if isinstance(opts, InvokeOutputOptions):
+            depends_on_dependencies = await _resolve_depends_on(opts._depends_on_list())
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
@@ -302,18 +309,25 @@ def _invoke(
             )
 
         invoke_output_secret = is_secret or inputs_contain_secrets
-        dependencies: List["Resource"] = []
+        dependencies: Set["Resource"] = depends_on_dependencies
         for _, property_deps in property_dependencies.items():
             for dep in property_deps:
-                dependencies.append(dep)
+                dependencies.add(dep)
         return (
             InvokeResult(
-                value=result, is_secret=invoke_output_secret, dependencies=dependencies
+                value=result,
+                is_secret=invoke_output_secret,
+                dependencies=list(dependencies),
             ),
             None,
         )
 
     async def do_rpc():
+        # Await any dependencies before invoking our RPC.
+        await _resolve_depends_on_urns(
+            opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
+        )
+
         resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such

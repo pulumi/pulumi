@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"errors"
 	"example.com/pulumi-simple-invoke/sdk/go/v10/simpleinvoke/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -21,9 +22,12 @@ type StringResource struct {
 func NewStringResource(ctx *pulumi.Context,
 	name string, args *StringResourceArgs, opts ...pulumi.ResourceOption) (*StringResource, error) {
 	if args == nil {
-		args = &StringResourceArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.Text == nil {
+		return nil, errors.New("invalid value for required argument 'Text'")
+	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource StringResource
 	err := ctx.RegisterResource("simple-invoke:index:StringResource", name, args, &resource, opts...)
@@ -57,10 +61,12 @@ func (StringResourceState) ElementType() reflect.Type {
 }
 
 type stringResourceArgs struct {
+	Text string `pulumi:"text"`
 }
 
 // The set of arguments for constructing a StringResource resource.
 type StringResourceArgs struct {
+	Text pulumi.StringInput
 }
 
 func (StringResourceArgs) ElementType() reflect.Type {

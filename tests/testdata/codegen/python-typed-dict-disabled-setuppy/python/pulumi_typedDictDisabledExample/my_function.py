@@ -67,14 +67,14 @@ def my_function(my_type: Optional[pulumi.InputType['MyType']] = None,
         simple_output=pulumi.get(__ret__, 'simple_output'))
 def my_function_output(my_type: Optional[pulumi.Input[pulumi.InputType['MyType']]] = None,
                        simple_prop: Optional[pulumi.Input[Optional[str]]] = None,
-                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[MyFunctionResult]:
+                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[MyFunctionResult]:
     """
     Use this data source to access information about an existing resource.
     """
     __args__ = dict()
     __args__['myType'] = my_type
     __args__['simpleProp'] = simple_prop
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('typedDictDisabledExample:index:MyFunction', __args__, opts=opts, typ=MyFunctionResult)
     return __ret__.apply(lambda __response__: MyFunctionResult(
         my_output=pulumi.get(__response__, 'my_output'),

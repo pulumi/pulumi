@@ -1110,6 +1110,7 @@ var languageTests = map[string]languageTest{
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1143,6 +1144,7 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1163,6 +1165,58 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-invoke-options-depends-on": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 5, "expected 5 resources")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
+					// TODO: the root stack must be the first resource to be registered
+					// such that snap.Resources[0].Type == resource.RootStackType
+					// however with the python SDK, that is not the case, instead the default
+					// provider gets registered first. This is indicating that something might be wrong
+					// with the how python SDK registers resources
+					var stack *resource.State
+					for _, r := range snap.Resources {
+						if r.Type == resource.RootStackType {
+							stack = r
+							break
+						}
+					}
+
+					require.NotNil(l, stack, "expected a stack resource")
+					outputs := stack.Outputs
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+
+					var first *resource.State
+					var second *resource.State
+					for _, r := range snap.Resources {
+						if r.URN.Name() == "first" {
+							first = r
+						}
+						if r.URN.Name() == "second" {
+							second = r
+						}
+					}
+
+					require.NotNil(l, first, "expected first resource")
+					require.NotNil(l, second, "expected second resource")
+					require.Empty(l, first.Dependencies, "expected no dependencies")
+					require.Len(l, second.Dependencies, 1, "expected one dependency")
+					dependencies, ok := second.PropertyDependencies["text"]
+					require.True(l, ok, "expected dependency on property 'text'")
+					require.Len(l, dependencies, 1, "expected one dependency")
+					require.Equal(l, first.URN, dependencies[0], "expected second to depend on first")
+					require.Equal(l, first.URN, second.Dependencies[0], "expected second to depend on first")
+				},
+			},
+		},
+	},
 	"l2-invoke-variants": {
 		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
 		runs: []testRun{
@@ -1174,6 +1228,7 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default

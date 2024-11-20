@@ -57,13 +57,13 @@ def arg_function(arg1: Optional['Resource'] = None,
     return AwaitableArgFunctionResult(
         result=pulumi.get(__ret__, 'result'))
 def arg_function_output(arg1: Optional[pulumi.Input[Optional['Resource']]] = None,
-                        opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
+                        opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ArgFunctionResult]:
     """
     Use this data source to access information about an existing resource.
     """
     __args__ = dict()
     __args__['arg1'] = arg1
-    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
+    opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke_output('example::argFunction', __args__, opts=opts, typ=ArgFunctionResult)
     return __ret__.apply(lambda __response__: ArgFunctionResult(
         result=pulumi.get(__response__, 'result')))

@@ -1936,12 +1936,14 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	genFunctionDef := func(returnTypeName string, plain bool) error {
 		fnName := name
 		resultType := returnTypeName
+		optionsClass := "InvokeOptions"
 		if !plain {
 			fnName += "_output"
 			resultType, _ = awaitableTypeNames(returnType.Token)
+			optionsClass = "InvokeOutputOptions"
 		}
 
-		mod.genFunDef(w, fnName, returnTypeName, args, !plain /* wrapInput */)
+		mod.genFunDef(w, fnName, returnTypeName, args, !plain /* wrapInput */, plain)
 		mod.genFunDocstring(w, fun)
 		mod.genFunDeprecationMessage(w, fun)
 		// Copy the function arguments into a dictionary.
@@ -1951,7 +1953,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
 		}
 		// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-		fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
+		fmt.Fprintf(w, "    opts = pulumi.%s.merge(_utilities.get_invoke_opts_defaults(), opts)\n", optionsClass)
 
 		// Now simply invoke the runtime function with the arguments.
 		trailingArgs := ""
@@ -2066,7 +2068,7 @@ func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Functio
 }
 
 // Generates the function signature line `def fn(...):` without the body.
-func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*schema.Property, wrapInput bool) {
+func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*schema.Property, wrapInput, plain bool) {
 	def := fmt.Sprintf("def %s(", name)
 	var indent string
 	if len(args) > 0 {
@@ -2094,7 +2096,11 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 		ty := mod.typeString(argType, true /*input*/, true /*acceptMapping*/, false /*forDict*/)
 		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
 	}
-	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
+	if plain {
+		fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
+	} else {
+		fmt.Fprintf(w, "%sopts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None", indent)
+	}
 	if retTypeName != "" {
 		fmt.Fprintf(w, ") -> %s:\n", retTypeName)
 	} else {

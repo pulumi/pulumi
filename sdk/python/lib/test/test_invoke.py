@@ -14,8 +14,13 @@
 
 import pytest
 
+from typing import Awaitable, Optional, Union
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import time
+
 import pulumi
-from pulumi import InvokeOptions
+from pulumi import InvokeOptions, InvokeOutputOptions
 
 
 class MyMocks(pulumi.runtime.Mocks):
@@ -24,6 +29,11 @@ class MyMocks(pulumi.runtime.Mocks):
 
     def call(self, args: pulumi.runtime.MockCallArgs):
         return {} if args.args.get("empty") else {"result": "mock"}
+
+
+class MockResource(pulumi.CustomResource):
+    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+        super().__init__("python:test:MockResource", name, {}, opts)
 
 
 @pytest.mark.parametrize(
@@ -92,6 +102,38 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
     assert pulumi.runtime.invoke(tok, props, opts).value == expected
 
 
+@pulumi.runtime.test
+async def test_invoke_depends_on() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    dep: pulumi.Resource = MockResource(name="dep1")
+    dep_future = asyncio.Future()
+    dep_output = pulumi.Output.from_input(dep_future)
+
+    # This function will sleep for 1 second and then resolve dep_future with the
+    # resource, which in turn resolves the output.
+    def resolve():
+        time.sleep(1)
+        dep_future.set_result(dep)
+
+    # Run the resolve function in a separate thread.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        f = executor.submit(resolve)
+
+        assert not dep_future.done(), "dep_future should not be done yet"
+
+        opts = pulumi.InvokeOutputOptions(depends_on=[dep_output])
+        o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
+
+        def check(invoke_result):
+            assert (
+                dep_future.done()
+            ), "invoke_output should wait for dep_future to be done"
+            assert invoke_result == {"result": "mock"}
+
+        return o.apply(check)
+
+
 @pytest.mark.parametrize(
     "a,b,expected",
     [
@@ -99,9 +141,24 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
         (None, InvokeOptions(version="2.0.0"), "2.0.0"),
         (InvokeOptions(version="1.0.0"), None, "1.0.0"),
         (InvokeOptions(version="1.0.0"), InvokeOptions(version=""), ""),
+        (InvokeOutputOptions(version="1.0.0"), InvokeOptions(version="2.0.0"), "2.0.0"),
+        (
+            InvokeOutputOptions(version="1.0.0"),
+            InvokeOutputOptions(version="2.0.0"),
+            "2.0.0",
+        ),
+        (None, InvokeOutputOptions(version="2.0.0"), "2.0.0"),
+        (InvokeOutputOptions(version="1.0.0"), None, "1.0.0"),
     ],
 )
-def test_invoke_merge(a: InvokeOptions, b: InvokeOptions, expected: str) -> None:
+def test_invoke_merge(
+    a: Union[InvokeOptions, InvokeOutputOptions],
+    b: Union[InvokeOptions, InvokeOutputOptions],
+    expected: str,
+) -> None:
     if a is not None:
         assert a.merge(b).version == expected
-    assert InvokeOptions.merge(a, b).version == expected
+    if isinstance(a, InvokeOutputOptions):
+        assert InvokeOutputOptions.merge(a, b).version == expected
+    else:
+        assert InvokeOptions.merge(a, b).version == expected

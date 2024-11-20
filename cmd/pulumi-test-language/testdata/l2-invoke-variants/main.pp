@@ -1,4 +1,5 @@
 resource "res" "simple-invoke:index:StringResource" {
+    text = "hello"
 }
 
 output "outputInput" {

@@ -176,6 +176,7 @@ func invokeOptionsType() model.Type {
 		"parent":            model.NewOptionalType(model.DynamicType),
 		"version":           model.NewOptionalType(model.StringType),
 		"pluginDownloadUrl": model.NewOptionalType(model.StringType),
+		"dependsOn":         model.NewOptionalType(model.NewListType(model.DynamicType)),
 	})
 }
 
