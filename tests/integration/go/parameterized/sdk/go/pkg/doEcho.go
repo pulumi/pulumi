@@ -36,14 +36,20 @@ type DoEchoResult struct {
 
 func DoEchoOutput(ctx *pulumi.Context, args DoEchoOutputArgs, opts ...pulumi.InvokeOption) DoEchoResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (DoEchoResult, error) {
+		ApplyT(func(v interface{}) (DoEchoResultOutput, error) {
 			args := v.(DoEchoArgs)
-			r, err := DoEcho(ctx, &args, opts...)
-			var s DoEchoResult
-			if r != nil {
-				s = *r
+			opts = internal.PkgInvokeDefaultOpts(opts)
+			var rv DoEchoResult
+			secret, err := ctx.InvokePackageRaw("pkg:index:doEcho", args, &rv, "", opts...)
+			if err != nil {
+				return DoEchoResultOutput{}, err
 			}
-			return s, err
+
+			output := pulumi.ToOutput(rv).(DoEchoResultOutput)
+			if secret {
+				return pulumi.ToSecret(output).(DoEchoResultOutput), nil
+			}
+			return output, nil
 		}).(DoEchoResultOutput)
 }
 

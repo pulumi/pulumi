@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Fix go package generation for paramaterized providers that duplicate go.mod generation unnecessarily
