@@ -175,7 +175,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
+func newPlugin(ctx *Context, rootDir, pwd, bin, prefix string, kind apitype.PluginKind,
 	args, env []string, dialOptions []grpc.DialOption,
 ) (*plugin, error) {
 	if logging.V(9) {
@@ -202,7 +202,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, rootDir, pwd, env)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -338,7 +338,7 @@ func parsePort(portString string) (int, error) {
 
 // execPlugin starts the plugin executable.
 func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string,
+	pluginArgs []string, rootDir, pwd string, env []string,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
@@ -352,18 +352,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if _, err := os.Stat(bin); os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
 		pluginDir := filepath.Dir(bin)
-		// Ensure the plugin directory is an absolute path.
-		pluginDir, err := filepath.Abs(pluginDir)
-		if err != nil {
-			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
-		}
-		if len(env) == 0 {
-			// If no environment is provided, use the current environment.
-			env = os.Environ()
-		}
-		// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
-		// its own directory structure.
-		env = append(env, "PULUMI_ROOT_DIRECTORY="+pluginDir)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
@@ -384,7 +372,22 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
-		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
+		// Ensure the plugin directory is an absolute path.
+		pluginDir, err := filepath.Abs(pluginDir)
+		if err != nil {
+			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
+		}
+		if len(env) == 0 {
+			// If no environment is provided, use the current environment.
+			env = os.Environ()
+		}
+		info := NewProgramInfo(rootDir, pluginDir, ".", runtimeInfo.Options())
+
+		// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
+		// its own directory structure.
+		env = append(env, "PULUMI_ROOT_DIRECTORY="+info.RootDirectory())
+		env = append(env, "PULUMI_PROGRAM_DIRECTORY="+info.ProgramDirectory())
+
 		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
@@ -410,7 +413,12 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}, nil
 	}
 
-	env = append(env, "PULUMI_ROOT_DIRECTORY="+pwd)
+	if len(env) == 0 {
+		// If no environment is provided, use the current environment.
+		env = os.Environ()
+	}
+	env = append(env, "PULUMI_ROOT_DIRECTORY="+rootDir)
+	env = append(env, "PULUMI_PROGRAM_DIRECTORY="+pwd)
 
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)

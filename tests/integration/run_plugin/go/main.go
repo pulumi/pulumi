@@ -57,6 +57,10 @@ func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, n
 	if readResult.Outputs["PULUMI_ROOT_DIRECTORY"].StringValue() != rootDirectory {
 		return fmt.Errorf("expected PULUMI_ROOT_DIRECTORY to be %s, got %s", rootDirectory, readResult.Outputs["PULUMI_ROOT_DIRECTORY"])
 	}
+	if readResult.Outputs["PULUMI_PROGRAM_DIRECTORY"].StringValue() != rootDirectory {
+		return fmt.Errorf("expected PULUMI_PROGRAM_DIRECTORY to be %s, got %s", rootDirectory, readResult.Outputs["PULUMI_PROGRAM_DIRECTORY"])
+	}
+
 	return nil
 }
 

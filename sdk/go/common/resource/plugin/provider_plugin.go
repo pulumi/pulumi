@@ -180,7 +180,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
-		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+		plug, err = newPlugin(ctx, ctx.Pwd, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
@@ -240,7 +240,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
+	plug, err := newPlugin(ctx, ctx.Pwd, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err

@@ -68,7 +68,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		return nil, err
 	}
 
-	plug, err := newPlugin(ctx, workingDirectory, path, runtime,
+	plug, err := newPlugin(ctx, info.RootDirectory(), workingDirectory, path, runtime,
 		apitype.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
