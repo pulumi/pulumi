@@ -375,7 +375,7 @@ export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
     let rejectIsSecret: (err: Error) => void;
     let resolveDeps: (v: Set<Resource>) => void;
     let rejectDeps: (err: Error) => void;
-    var alreadyResolved = false;
+    let alreadyResolved = false;
 
     const resolve = (source: Output<T>) => {
         if (alreadyResolved) {
