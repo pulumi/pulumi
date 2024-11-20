@@ -160,7 +160,12 @@ class InvokeOutputOptions(InvokeOptions):
             "Input[Union[Sequence[Input[Resource]], Resource]]"
         ] = None,
     ) -> None:
-        super().__init__(parent, provider, version, plugin_download_url)
+        super().__init__(
+            parent=parent,
+            provider=provider,
+            version=version,
+            plugin_download_url=plugin_download_url,
+        )
         self.depends_on = depends_on
 
         # Expose 'merge' on this object as an instance method.
