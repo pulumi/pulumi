@@ -385,6 +385,11 @@ class LocalWorkspace(Workspace):
                     if "organizations" in who_am_i_json
                     else None
                 ),
+                token_information=(
+                    who_am_i_json["tokenInformation"]
+                    if "tokenInformation" in who_am_i_json
+                    else None
+                ),
             )
 
         result = self._run_pulumi_cmd_sync(["whoami"])

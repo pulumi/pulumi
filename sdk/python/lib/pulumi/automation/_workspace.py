@@ -64,21 +64,20 @@ class WhoAmIResult:
     user: str
     url: Optional[str]
     organizations: Optional[List[str]]
-    tokenInformation: Optional[TokenInformation]
+    token_information: Optional[TokenInformation]
     
     def __init__(
         self,
         user: str,
         url: Optional[str] = None,
         organizations: Optional[List[str]] = None,
-        tokenInformation: Optional[TokenInformation] = None,
+        token_information: Optional[TokenInformation] = None,
         
     ) -> None:
         self.user = user
         self.url = url
         self.organizations = organizations
-        self.tokenInformation = tokenInformation
-
+        self.token_information = token_information
 
 class PluginInfo:
     name: str
