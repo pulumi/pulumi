@@ -1110,6 +1110,7 @@ var languageTests = map[string]languageTest{
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1143,6 +1144,7 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1173,6 +1175,7 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 5, "expected 5 resources")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
@@ -1225,6 +1228,7 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
 					// however with the python SDK, that is not the case, instead the default
