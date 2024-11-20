@@ -2812,9 +2812,9 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	buffer := &bytes.Buffer{}
 	goInfo := goPackageInfo(pkg.pkg)
-	var imports []string
+	imports := []string{"errors"}
 	if f.ReturnType != nil {
-		imports = []string{"context", "errors", "reflect"}
+		imports = append(imports, "context", "reflect")
 		if goInfo.Generics == GenericsSettingSideBySide {
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 		}
@@ -2840,9 +2840,9 @@ func (pkg *pkgContext) genGenericVariantFunctionCodeFile(f *schema.Function) (st
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	buffer := &bytes.Buffer{}
 
-	var imports []string
+	imports := []string{"errors"}
 	if NeedsGoOutputVersion(f) {
-		imports = []string{"context", "reflect"}
+		imports = append(imports, "context", "reflect")
 	}
 
 	pkg.genHeader(buffer, imports, importsAndAliases, false /* isUtil */)
@@ -2909,7 +2909,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		return err
 	}
 
-	err = pkg.genValidatePlainInvokeOptions(w, f)
+	err = pkg.genValidatePlainInvokeOptions(w, f, objectReturnType != nil)
 	if err != nil {
 		return err
 	}
@@ -5317,12 +5317,15 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	return nil
 }
 
-func (pkg *pkgContext) genValidatePlainInvokeOptions(w io.Writer, f *schema.Function) error {
+func (pkg *pkgContext) genValidatePlainInvokeOptions(w io.Writer, f *schema.Function, objectReturnType bool) error {
 	directName := pkg.functionName(f)
 	outputName := pkg.functionOutputName(f)
 	directResultTypeName := pkg.functionResultTypeName(f)
 	errorResultValue := "&" + directResultTypeName + "{}"
-	_, err := fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+
+	var err error
+	if objectReturnType {
+		_, err = fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
 	if optsErr != nil {
 		return %[1]s, optsErr
 	}
@@ -5333,6 +5336,19 @@ func (pkg *pkgContext) genValidatePlainInvokeOptions(w io.Writer, f *schema.Func
 		return %[1]s, errors.New("DependsOnInputs is not supported for direct form invoke %[2]s, use %[3]s instead")
 	}
 `, errorResultValue, directName, outputName)
+	} else {
+		_, err = fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return errors.New("DependsOn is not supported for direct form invoke %[1]s, use %[2]s instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return errors.New("DependsOnInputs is not supported for direct form invoke %[1]s, use %[2]s instead")
+	}
+`, directName, outputName)
+	}
 	return err
 }
 

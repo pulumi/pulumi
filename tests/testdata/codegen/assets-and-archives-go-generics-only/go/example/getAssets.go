@@ -5,6 +5,7 @@ package example
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"assets-and-archives-go-generics-only/example/internal"

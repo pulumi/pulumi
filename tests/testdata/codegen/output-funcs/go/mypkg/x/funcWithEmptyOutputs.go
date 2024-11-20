@@ -4,6 +4,8 @@
 package mypkg
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"output-funcs/mypkg/internal"
 )
@@ -13,13 +15,13 @@ func FuncWithEmptyOutputs(ctx *pulumi.Context, args *FuncWithEmptyOutputsArgs, o
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
 	if optsErr != nil {
-		return &FuncWithEmptyOutputsResult{}, optsErr
+		return optsErr
 	}
 	if len(invokeOpts.DependsOn) > 0 {
-		return &FuncWithEmptyOutputsResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithEmptyOutputs, use FuncWithEmptyOutputsOutput instead")
+		return errors.New("DependsOn is not supported for direct form invoke FuncWithEmptyOutputs, use FuncWithEmptyOutputsOutput instead")
 	}
 	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &FuncWithEmptyOutputsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithEmptyOutputs, use FuncWithEmptyOutputsOutput instead")
+		return errors.New("DependsOnInputs is not supported for direct form invoke FuncWithEmptyOutputs, use FuncWithEmptyOutputsOutput instead")
 	}
 	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithEmptyOutputs", args, &rv, opts...)

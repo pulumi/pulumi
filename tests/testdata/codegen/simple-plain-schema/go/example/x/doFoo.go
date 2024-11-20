@@ -4,6 +4,8 @@
 package example
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"simple-plain-schema/example/internal"
 )
@@ -12,13 +14,13 @@ func DoFoo(ctx *pulumi.Context, args *DoFooArgs, opts ...pulumi.InvokeOption) er
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
 	if optsErr != nil {
-		return &DoFooResult{}, optsErr
+		return optsErr
 	}
 	if len(invokeOpts.DependsOn) > 0 {
-		return &DoFooResult{}, errors.New("DependsOn is not supported for direct form invoke DoFoo, use DoFooOutput instead")
+		return errors.New("DependsOn is not supported for direct form invoke DoFoo, use DoFooOutput instead")
 	}
 	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &DoFooResult{}, errors.New("DependsOnInputs is not supported for direct form invoke DoFoo, use DoFooOutput instead")
+		return errors.New("DependsOnInputs is not supported for direct form invoke DoFoo, use DoFooOutput instead")
 	}
 	var rv struct{}
 	err := ctx.Invoke("example::doFoo", args, &rv, opts...)

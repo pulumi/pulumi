@@ -4,6 +4,8 @@
 package mypkg
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"output-funcs-go-generics-only/mypkg/internal"
 )
@@ -13,13 +15,13 @@ func FuncWithConstInput(ctx *pulumi.Context, args *FuncWithConstInputArgs, opts 
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
 	if optsErr != nil {
-		return &FuncWithConstInputResult{}, optsErr
+		return optsErr
 	}
 	if len(invokeOpts.DependsOn) > 0 {
-		return &FuncWithConstInputResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithConstInput, use FuncWithConstInputOutput instead")
+		return errors.New("DependsOn is not supported for direct form invoke FuncWithConstInput, use FuncWithConstInputOutput instead")
 	}
 	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &FuncWithConstInputResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithConstInput, use FuncWithConstInputOutput instead")
+		return errors.New("DependsOnInputs is not supported for direct form invoke FuncWithConstInput, use FuncWithConstInputOutput instead")
 	}
 	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithConstInput", args, &rv, opts...)
