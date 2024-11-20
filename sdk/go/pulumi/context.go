@@ -674,7 +674,12 @@ func (ctx *Context) invokePackageRaw(
 	}
 	options := mergeInvokeOptions(opts...)
 	deps := []Resource{}
+	depSet := urnSet{} // Only used for `addURNs` below.
 	for _, d := range options.DependsOn {
+		// This will await the resources, ensuring that we don't call the invoke before the dependencies are ready.
+		if err := d.addURNs(ctx.ctx, depSet, nil); err != nil {
+			return nil, []Resource{}, err
+		}
 		switch d := d.(type) {
 		case resourceDependencySet:
 			deps = append(deps, d...)
