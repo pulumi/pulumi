@@ -56,7 +56,7 @@ export interface GetIntegrationRuntimeObjectMetadatumResult {
  * Another failing example. A list of SSIS object metadata.
  * API Version: 2018-06-01.
  */
-export function getIntegrationRuntimeObjectMetadatumOutput(args: GetIntegrationRuntimeObjectMetadatumOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
+export function getIntegrationRuntimeObjectMetadatumOutput(args: GetIntegrationRuntimeObjectMetadatumOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::getIntegrationRuntimeObjectMetadatum", {
         "factoryName": args.factoryName,
