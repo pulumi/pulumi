@@ -16,10 +16,12 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -55,33 +57,129 @@ type langhost struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
 ) (LanguageRuntime, error) {
-	path, err := workspace.GetPluginPath(ctx.Diag,
-		apitype.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
+	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
 		return nil, err
 	}
 
-	contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
+	var plug *plugin
+	var client pulumirpc.LanguageRuntimeClient
+	if attachPort != nil {
+		port := *attachPort
 
-	args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
-	if err != nil {
-		return nil, err
+		handshake := func(
+			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+		) (*pulumirpc.LanguageHandshakeResponse, error) {
+			req := &pulumirpc.LanguageHandshakeRequest{
+				EngineAddress: host.ServerAddr(),
+				// If we're attaching then we don't know the root or program directory.
+				RootDirectory:    nil,
+				ProgramDirectory: nil,
+			}
+			return languageHandshake(ctx, bin, prefix, conn, req)
+		}
+
+		conn, handshakeResponse, err := dialPlugin(
+			port,
+			"pulumi-language-"+runtime,
+			runtime+" (Language Plugin)",
+			handshake,
+			langRuntimePluginDialOptions(ctx, runtime),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if handshakeResponse == nil {
+			return nil, errors.New("language did not return handshake response, attaching via " +
+				"an attach port is not yet supported for this language",
+			)
+		}
+
+		plug = &plugin{
+			Conn: conn,
+			// Nothing to kill.
+			Kill: func() error {
+				return nil
+			},
+		}
+
+		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
+	} else {
+		path, err := workspace.GetPluginPath(
+			ctx.Diag,
+			apitype.LanguagePlugin,
+			strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
+			nil,
+			host.GetProjectPlugins(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
+
+		args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
+		if err != nil {
+			return nil, err
+		}
+
+		plug, _, err = newPlugin(
+			ctx,
+			workingDirectory,
+			path,
+			runtime,
+			apitype.LanguagePlugin,
+			args,
+			nil, /*env*/
+			testConnection,
+			langRuntimePluginDialOptions(ctx, runtime),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
 	}
 
-	plug, _, err := newPlugin(ctx, workingDirectory, path, runtime,
-		apitype.LanguagePlugin, args, nil, /*env*/
-		testConnection, langRuntimePluginDialOptions(ctx, runtime))
-	if err != nil {
-		return nil, err
-	}
 	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
 		ctx:     ctx,
 		runtime: runtime,
 		plug:    plug,
-		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
+		client:  client,
 	}, nil
+}
+
+// Checks PULUMI_DEBUG_LANGUAGES environment variable for any overrides for the
+// language identified by name. If the user has requested to attach to a live
+// language plugin, returns the port number from the env var.
+//
+// For example, `PULUMI_DEBUG_LANGUAGES=go:12345,dotnet:678` will result in 12345 for go and 678 for dotnet.
+func GetLanguageAttachPort(runtime string) (*int, error) {
+	var optAttach string
+
+	if languagesEnvVar, has := os.LookupEnv("PULUMI_DEBUG_LANGUAGES"); has {
+		for _, provider := range strings.Split(languagesEnvVar, ",") {
+			parts := strings.SplitN(provider, ":", 2)
+
+			if parts[0] == runtime {
+				optAttach = parts[1]
+				break
+			}
+		}
+	}
+
+	if optAttach == "" {
+		return nil, nil
+	}
+
+	port, err := strconv.Atoi(optAttach)
+	if err != nil {
+		return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_LANGUAGES: %w",
+			optAttach, err)
+	}
+	return &port, nil
 }
 
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
@@ -689,4 +787,31 @@ func (h *langhost) Pack(
 
 	logging.V(7).Infof("%s success: artifactPath=%s", label, req.ArtifactPath)
 	return req.ArtifactPath, nil
+}
+
+func languageHandshake(
+	ctx context.Context,
+	bin string,
+	prefix string,
+	conn *grpc.ClientConn,
+	req *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	client := pulumirpc.NewLanguageRuntimeClient(conn)
+	_, err := client.Handshake(ctx, &pulumirpc.LanguageHandshakeRequest{
+		EngineAddress:    req.EngineAddress,
+		RootDirectory:    req.RootDirectory,
+		ProgramDirectory: req.ProgramDirectory,
+	})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			// If the language host doesn't implement Handshake, that's fine -- we'll
+			// fall back to existing behaviour.
+			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+			return nil, nil
+		}
+	}
+
+	logging.V(7).Infof("Handshake: success [%v]", bin)
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }

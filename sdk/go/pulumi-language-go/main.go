@@ -133,9 +133,10 @@ func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 	// Pluck out the engine so we can do logging, etc.
 	args = flag.Args()
 	if len(args) == 0 {
-		return nil, errors.New("missing required engine RPC address argument")
+		fmt.Fprintln(os.Stderr, "Warning: launching without arguments, only for debugging")
+	} else {
+		p.engineAddress = args[0]
 	}
-	p.engineAddress = args[0]
 
 	return &p, nil
 }
@@ -186,9 +187,12 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		cancel() // deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
-	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
-	if err != nil {
-		return fmt.Errorf("could not start health check host RPC server: %w", err)
+	if p.engineAddress != "" {
+		// We must be debugging, wait to be informed of the engine address.
+		err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
+		if err != nil {
+			return fmt.Errorf("could not start health check host RPC server: %w", err)
+		}
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
@@ -935,6 +939,10 @@ func runProgram(
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if host.engineAddress == "" {
+		return nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
+	}
+
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return nil, err
@@ -1401,4 +1409,28 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	return &pulumirpc.PackResponse{
 		ArtifactPath: artifactPath,
 	}, nil
+}
+
+func (host *goLanguageHost) Handshake(
+	ctx context.Context,
+	req *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	if req == nil || req.EngineAddress == "" {
+		return nil, errors.New("Must contain address in request")
+	}
+	host.engineAddress = req.EngineAddress
+
+	ctx, cancel := context.WithCancel(ctx)
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
+	}
+
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }

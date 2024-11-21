@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add PULUMI_DEBUG_LANGUAGES much like PULUMI_DEBUG_PROVIDERS so we can attach debuggers to languages easily

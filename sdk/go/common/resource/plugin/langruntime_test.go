@@ -133,6 +133,12 @@ func (m *MockLanguageRuntimeClient) Pack(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) Handshake(
+	ctx context.Context, req *pulumirpc.LanguageHandshakeRequest, opts ...grpc.CallOption,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	panic("not implemented")
+}
+
 func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	t.Parallel()
 

@@ -902,3 +902,47 @@ class PackResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
 
 global___PackResponse = PackResponse
+
+@typing_extensions.final
+class LanguageHandshakeRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    engine_address: builtins.str
+    """The grpc address for the engine."""
+    root_directory: builtins.str
+    """The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located.
+    This can't be sent when the engine is attaching to a language via a port number.
+    """
+    program_directory: builtins.str
+    """The optional absolute path to the directory of the language program to execute. Generally, but not
+    required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+    language via a port number.
+    """
+    def __init__(
+        self,
+        *,
+        engine_address: builtins.str = ...,
+        root_directory: builtins.str | None = ...,
+        program_directory: builtins.str | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_root_directory", b"_root_directory"]) -> typing_extensions.Literal["root_directory"] | None: ...
+
+global___LanguageHandshakeRequest = LanguageHandshakeRequest
+
+@typing_extensions.final
+class LanguageHandshakeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___LanguageHandshakeResponse = LanguageHandshakeResponse
