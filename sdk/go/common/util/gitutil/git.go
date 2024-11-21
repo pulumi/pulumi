@@ -655,7 +655,6 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 		// We want to allow "naked" URLs, such as github.com/pulumi/pulumi-provider in addition to
 		// full URLs such as https://github.com/pulumi/pulumi-provider for convenience.  Prefix
 		// https:// to these URLs, as we assume that protocol.
-		fmt.Println("matched", rawurl)
 		rawurl = "https://" + rawurl
 	}
 	endpoint, err := transport.NewEndpoint(rawurl)
