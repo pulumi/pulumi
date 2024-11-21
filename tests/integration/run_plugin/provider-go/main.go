@@ -24,6 +24,7 @@ func (p *Provider) Configure(ctx context.Context, req plugin.ConfigureRequest) (
 func (p *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 	propMap := resource.NewPropertyMap(nil)
 	propMap["PULUMI_ROOT_DIRECTORY"] = resource.NewStringProperty(os.Getenv("PULUMI_ROOT_DIRECTORY"))
+	propMap["PULUMI_PROGRAM_DIRECTORY"] = resource.NewStringProperty(os.Getenv("PULUMI_ROOT_DIRECTORY"))
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
