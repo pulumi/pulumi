@@ -15,6 +15,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, List, Mapping, Optional, Awaitable
+from dataclasses import dataclass
 
 from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
@@ -52,6 +53,7 @@ class StackSummary:
         self.resource_count = resource_count
         self.url = url
 
+@dataclass
 class TokenInformation:
     """Information about the token that was used to authenticate the current user."""
     name: str
