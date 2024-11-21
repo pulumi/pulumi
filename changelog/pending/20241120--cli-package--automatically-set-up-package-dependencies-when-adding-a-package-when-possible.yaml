@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Automatically set up package dependencies when adding a package when possible
