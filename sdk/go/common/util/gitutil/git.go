@@ -660,10 +660,6 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 		// parses these as local (file) repositories.  Since we never want to allow those, we prefix
 		// https:// to these URLs, and assume that protocol.
 		rawurl = "https://" + rawurl
-		endpoint, err = transport.NewEndpoint(rawurl)
-		if err != nil {
-			return gitRepoURLParts{}, err
-		}
 	} else if endpoint.Protocol == "ssh" {
 		// Normalize SSH URLs (including scp-style git@github.com URLs) into
 		// ssh:// format so we can parse them the same as https:// URLs.

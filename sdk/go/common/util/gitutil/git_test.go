@@ -144,8 +144,8 @@ func TestParseGitRepoURL(t *testing.T) {
 	// No owner.
 	testError("https://github.com", "invalid Git URL")
 	testError("https://github.com/", "invalid Git URL")
-	testError("git@github.com", "invalid URL scheme: ")
-	testError("git@github.com/", "invalid URL scheme: ")
+	testError("git@github.com", "invalid Git URL")
+	testError("git@github.com/", "invalid Git URL")
 	testError("ssh://git@github.com", "invalid Git URL")
 	testError("ssh://git@github.com/", "invalid Git URL")
 
