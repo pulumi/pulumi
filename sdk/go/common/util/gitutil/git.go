@@ -650,6 +650,14 @@ type gitRepoURLParts struct {
 }
 
 func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
+	urlRegex := regexp.MustCompile(`^[^\./][a-zA-Z0-9-]*\.[a-z]+/[a-zA-Z0-9-/]+$`)
+	if urlRegex.MatchString(rawurl) {
+		// We want to allow "naked" URLs, such as github.com/pulumi/pulumi-provider in addition to
+		// full URLs such as https://github.com/pulumi/pulumi-provider for convenience.  Prefix
+		// https:// to these URLs, as we assume that protocol.
+		fmt.Println("matched", rawurl)
+		rawurl = "https://" + rawurl
+	}
 	endpoint, err := transport.NewEndpoint(rawurl)
 	if err != nil {
 		return gitRepoURLParts{}, err

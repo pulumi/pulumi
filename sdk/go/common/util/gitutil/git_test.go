@@ -160,6 +160,13 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git", "invalid URL scheme: http")
 	testError("http://github.com/pulumi/templates", "invalid URL scheme: http")
+
+	// "Naked" URLs.
+	pre = "github.com/pulumi/templates"
+	exp = "https://" + pre + ".git"
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
+	test(exp, "templates", pre+"/templates")
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
