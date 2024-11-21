@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -137,13 +139,13 @@ func printLinkInstructions(
 ) error {
 	switch language {
 	case "nodejs":
-		return printNodejsLinkInstructions(ws, root, pkg, out)
+		return linkNodeJsPackage(ws, root, pkg, out)
 	case "python":
-		return printPythonLinkInstructions(ws, root, pkg, out)
+		return linkPythonPackage(ws, root, pkg, out)
 	case "go":
-		return printGoLinkInstructions(root, pkg, out)
+		return linkGoPackage(root, pkg, out)
 	case "dotnet":
-		return printDotnetLinkInstructions(root, pkg, out)
+		return linkDotnetPackage(root, pkg, out)
 	case "java":
 		return printJavaLinkInstructions(root, pkg, out)
 	default:
@@ -154,11 +156,8 @@ func printLinkInstructions(
 
 // Prints instructions for linking a locally generated SDK to an existing NodeJS
 // project, in the absence of us attempting to perform this linking automatically.
-func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
+func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
-	fmt.Println()
-	fmt.Println("To use this SDK in your Nodejs project, run the following command:")
-	fmt.Println()
 	proj, _, err := ws.ReadProject()
 	if err != nil {
 		return err
@@ -168,7 +167,7 @@ func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 		return err
 	}
 	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg.Name, relOut)
-	var addCmd string
+	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
 		if pm, ok := packagemanager.(string); ok {
@@ -178,7 +177,7 @@ func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 			case "yarn":
 				fallthrough
 			case "pnpm":
-				addCmd = pm + " add " + packageSpecifier
+				addCmd = exec.Command(pm, "add", packageSpecifier)
 			default:
 				return fmt.Errorf("unsupported package manager: %s", pm)
 			}
@@ -188,10 +187,16 @@ func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 		}
 	} else {
 		// Assume npm if no packagemanager is specified
-		addCmd = "npm add " + packageSpecifier
+		addCmd = exec.Command("npm", "add", packageSpecifier)
 	}
-	fmt.Println("  " + addCmd)
-	fmt.Println()
+
+	addCmd.Stdout = os.Stdout
+	addCmd.Stderr = os.Stderr
+	err = addCmd.Run()
+	if err != nil {
+		return fmt.Errorf("error executing node package manager command %s: %w", addCmd.String(), err)
+	}
+
 	useTypescript := true
 	if typescript, ok := options["typescript"]; ok {
 		if val, ok := typescript.(bool); ok {
@@ -213,10 +218,8 @@ func printNodejsLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
-func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
+func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
-	fmt.Println()
-	fmt.Println("To use this SDK in your Python project, run the following command:")
 	fmt.Println()
 	proj, _, err := ws.ReadProject()
 	if err != nil {
@@ -226,9 +229,32 @@ func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 	if err != nil {
 		return err
 	}
-	pipInstructions := func() {
-		fmt.Printf("  echo %s >> requirements.txt\n\n", packageSpecifier)
-		fmt.Printf("  pulumi install\n")
+
+	modifyRequirements := func() error {
+		f, err := os.OpenFile(
+			filepath.Join(root, "requirements.txt"),
+			os.O_CREATE|os.O_APPEND|os.O_RDWR,
+			0o600,
+		)
+		if err != nil {
+			return fmt.Errorf("error opening requirments.txt: %w", err)
+		}
+		defer f.Close()
+
+		_, err = f.WriteString(packageSpecifier + "\n")
+		if err != nil {
+			return fmt.Errorf("error appending to requirments: %w", err)
+		}
+
+		cmd := exec.Command("pulumi", "install")
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("error running %s: %w", cmd.String(), err)
+		}
+
+		return nil
 	}
 	options := proj.Runtime.Options()
 	if toolchain, ok := options["toolchain"]; ok {
@@ -283,11 +309,8 @@ func printPythonLinkInstructions(ws pkgWorkspace.Context, root string, pkg *sche
 
 // Prints instructions for linking a locally generated SDK to an existing Go
 // project, in the absence of us attempting to perform this linking automatically.
-func printGoLinkInstructions(root string, pkg *schema.Package, out string) error {
+func linkGoPackage(root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg.Name, out)
-	fmt.Println()
-	fmt.Println("To use this SDK in your Go project, run the following command:")
-	fmt.Println()
 
 	// All go code is placed under a relative package root so it is nested one
 	// more directory deep equal to the package name.  This extra path is equal
@@ -319,17 +342,39 @@ func printGoLinkInstructions(root string, pkg *schema.Package, out string) error
 		return errors.New("failed to import go language info")
 	}
 
+	gomodFilepath := filepath.Join(root, "go.mod")
+	gomodFileContent, err := os.ReadFile(gomodFilepath)
+	if err != nil {
+		return fmt.Errorf("cannot read mod file: %w", err)
+	}
+
+	gomod, err := modfile.Parse("go.mod", gomodFileContent, nil)
+	if err != nil {
+		return fmt.Errorf("mod parse: %w", err)
+	}
+
 	modulePath := goInfo.ModulePath
 	if modulePath == "" {
 		modulePath = extractModulePath(pkg.Reference())
 	}
 
-	fmt.Printf("   go mod edit -replace %s=%s\n", modulePath, relOut)
-	fmt.Println()
-	fmt.Println("You can then use the SDK in your Go code with:")
-	fmt.Println()
-	fmt.Printf("  import \"%s\"\n", modulePath)
-	fmt.Println()
+	err = gomod.AddReplace(modulePath, "", relOut, "")
+	if err != nil {
+		return fmt.Errorf("could not add replace statement: %w", err)
+	}
+
+	b, err := gomod.Format()
+	if err != nil {
+		return fmt.Errorf("error formatting gomod: %w", err)
+	}
+
+	err = os.WriteFile(gomodFilepath, b, 0o600)
+	if err != nil {
+		return fmt.Errorf("error writing go.mod: %w", err)
+	}
+
+	fmt.Printf("Go mod file updated to use local sdk for %s\n", pkg.Name)
+
 	return nil
 }
 
@@ -346,18 +391,22 @@ func csharpPackageName(pkgName string) string {
 
 // Prints instructions for linking a locally generated SDK to an existing .NET
 // project, in the absence of us attempting to perform this linking automatically.
-func printDotnetLinkInstructions(root string, pkg *schema.Package, out string) error {
+func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
-	fmt.Println("To use this SDK in your .NET project, run the following command:")
-	fmt.Println()
+
 	relOut, err := filepath.Rel(root, out)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("  dotnet add reference %s\n", filepath.Join(".", relOut))
-	fmt.Println()
+	cmd := exec.Command("dotnet", "add", "reference", relOut)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("dotnet error: %w", err)
+	}
+
 	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
 	fmt.Println()
 	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
