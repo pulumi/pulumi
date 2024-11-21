@@ -865,17 +865,24 @@ type PluginSpec struct {
 }
 
 func NewPluginSpec(
-	source string, kind apitype.PluginKind, pluginDownloadURL string, checksums map[string][]byte,
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
 ) (PluginSpec, error) {
 	name := source
 	isGitPlugin := false
 	versionStr := ""
 
 	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
-	var version *semver.Version
 	if s := strings.SplitN(source, "@", 2); len(s) == 2 {
 		name = s[0]
 		versionStr = s[1]
+	}
+
+	if versionStr != "" && version != nil {
+		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
 	}
 
 	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9]$`)

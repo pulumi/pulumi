@@ -1700,6 +1700,7 @@ func TestNewPluginSpec(t *testing.T) {
 	cases := []struct {
 		name               string
 		source             string
+		version            *semver.Version
 		kind               apitype.PluginKind
 		ExpectedPluginSpec PluginSpec
 		Error              error
@@ -1805,6 +1806,26 @@ func TestNewPluginSpec(t *testing.T) {
 				Checksums:         nil,
 			},
 		},
+		{
+			name:    "conflicting versions error",
+			source:  "plugin@v1.0.0",
+			version: &v1,
+			kind:    apitype.ResourcePlugin,
+			Error:   errors.New("cannot specify a version when the version is part of the name"),
+		},
+		{
+			name:    "passed in version is used",
+			source:  "plugin",
+			kind:    apitype.ResourcePlugin,
+			version: &v1,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -1812,7 +1833,7 @@ func TestNewPluginSpec(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := NewPluginSpec(c.source, c.kind, "", nil)
+			spec, err := NewPluginSpec(c.source, c.kind, c.version, "", nil)
 			if c.Error != nil {
 				require.EqualError(t, err, c.Error.Error())
 				return

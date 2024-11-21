@@ -138,11 +138,10 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(args[1], apitype.PluginKind(args[0]), cmd.serverURL, checksums)
+		pluginSpec, err := workspace.NewPluginSpec(args[1], apitype.PluginKind(args[0]), version, cmd.serverURL, checksums)
 		if err != nil {
 			return err
 		}
-		pluginSpec.Version = version
 
 		// Bundled plugins are generally not installable with this command. They are expected to be
 		// distributed with Pulumi itself. But we turn this check off if PULUMI_DEV is set so we can
