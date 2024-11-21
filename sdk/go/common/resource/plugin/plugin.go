@@ -373,15 +373,11 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
 		// Ensure the plugin directory is an absolute path.
-		pluginDir, err := filepath.Abs(pluginDir)
+		pluginDir, err = filepath.Abs(pluginDir)
 		if err != nil {
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
-		if len(env) == 0 {
-			// If no environment is provided, use the current environment.
-			env = os.Environ()
-		}
-		info := NewProgramInfo(rootDir, pluginDir, ".", runtimeInfo.Options())
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 
 		// Expose the Pulumi plugin directory as an environment variable so that the plugin can find
 		// its own directory structure.

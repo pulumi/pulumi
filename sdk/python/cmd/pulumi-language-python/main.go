@@ -1288,10 +1288,8 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	env := append(cmd.Env, req.Env...)
-
 	cmd.Dir = req.Pwd
-	cmd.Env = env
+	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err = cmd.Run(); err != nil {
