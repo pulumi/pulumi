@@ -169,11 +169,13 @@ export function setMockOptions(
         stack || opts.stack || "stack",
         opts.parallel || -1,
         opts.engineAddr || "",
-        opts.monitorAddr || "",
+        "mock",
         preview || false,
         organization || "",
     );
 
+    const { settings } = getStore();
+    settings.monitor = mockMonitor;
     monitor = mockMonitor;
 }
 
@@ -379,7 +381,8 @@ export function _setStack(val: string | undefined) {
  * Returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
-    return !!monitor && !!options().monitorAddr;
+    const { settings } = getStore();
+    return (!!monitor && !!options().monitorAddr) || !!settings.monitor;
 }
 
 /**
@@ -389,7 +392,7 @@ export function hasMonitor(): boolean {
 export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
     const { settings } = getStore();
     const addr = options().monitorAddr;
-    if (getLocalStore() === undefined) {
+    if (getLocalStore() === undefined && addr !== "mock") {
         if (monitor === undefined) {
             if (addr) {
                 // Lazily initialize the RPC connection to the monitor.
