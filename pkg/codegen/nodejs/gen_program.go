@@ -47,9 +47,10 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
-	asyncMain     bool
-	configCreated bool
-	isComponent   bool
+	asyncMain               bool
+	configCreated           bool
+	isComponent             bool
+	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -1108,8 +1109,14 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				g.Fgenf(w, fmtString, propertyName,
-					g.lowerExpression(attr.Value, attr.Value.Type()))
+				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(
+					g.program,
+					component,
+					loweredExpression)
+
+				g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+				g.Fgenf(w, fmtString, propertyName, expr)
 			}
 		})
 		if len(component.Inputs) > 1 {

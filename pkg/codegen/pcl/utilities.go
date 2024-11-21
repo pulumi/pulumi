@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -56,10 +57,25 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 	return components[0], components[1], components[2], nil
 }
 
+func hasDependencyOn(a, b Node) bool {
+	for _, d := range a.getDependencies() {
+		if d.Name() == b.Name() {
+			return true
+		}
+	}
+	return false
+}
+
+func mutuallyDependant(a, b Node) bool {
+	return hasDependencyOn(a, b) && hasDependencyOn(b, a)
+}
+
 func linearizeNode(n Node, done codegen.Set, list *[]Node) {
 	if !done.Has(n) {
 		for _, d := range n.getDependencies() {
-			linearizeNode(d, done, list)
+			if !mutuallyDependant(n, d) {
+				linearizeNode(d, done, list)
+			}
 		}
 
 		*list = append(*list, n)
@@ -300,4 +316,90 @@ func LiteralValueString(x model.Expression) string {
 	}
 
 	return ""
+}
+
+// inferVariableName infers a variable name from the given traversal expression.
+// for example if you have component.firstName.lastName it will become componentFirstNameLastName
+func inferVariableName(traversal *model.ScopeTraversalExpression) string {
+	if len(traversal.Parts) == 1 {
+		return traversal.RootName
+	}
+
+	parts := make([]string, 0, len(traversal.Parts))
+	for _, part := range traversal.Traversal {
+		switch part := part.(type) {
+		case hcl.TraverseAttr:
+			parts = append(parts, titleCase(part.Name))
+		case hcl.TraverseIndex:
+			var key string
+			if part.Key.Type().Equals(cty.String) {
+				key = titleCase(part.Key.AsString())
+			}
+
+			if part.Key.Type().Equals(cty.Number) {
+				key = part.Key.AsBigFloat().String()
+			}
+
+			parts = append(parts, "At"+key)
+		}
+	}
+
+	return traversal.RootName + strings.Join(parts, "")
+}
+
+type DeferredOutputVariable struct {
+	Name            string
+	Expr            model.Expression
+	SourceComponent *Component
+}
+
+func ExtractDeferredOutputVariables(
+	program *Program,
+	component *Component,
+	expr model.Expression,
+) (model.Expression, []*DeferredOutputVariable) {
+	var deferredOutputs []*DeferredOutputVariable
+
+	nodeOrder := map[string]int{}
+	for i, node := range program.Nodes {
+		nodeOrder[node.Name()] = i
+	}
+
+	isComponentReference := func(root string) (*Component, bool) {
+		for _, node := range program.Nodes {
+			if c, ok := node.(*Component); ok && c.Name() == root {
+				return c, true
+			}
+		}
+
+		return nil, false
+	}
+
+	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
+		if traversal, ok := subExpr.(*model.ScopeTraversalExpression); ok {
+			if componentRef, ok := isComponentReference(traversal.RootName); ok {
+				if mutuallyDependantComponents(component, componentRef) {
+					if nodeOrder[componentRef.Name()] > nodeOrder[component.Name()] {
+						// we found a reference to component that appears later in the program
+						variableName := inferVariableName(traversal)
+						deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
+							Name:            variableName,
+							Expr:            subExpr,
+							SourceComponent: componentRef,
+						})
+
+						return model.VariableReference(&model.Variable{
+							Name:         variableName,
+							VariableType: model.NewOutputType(subExpr.Type()),
+						}), nil
+					}
+				}
+			}
+		}
+		return subExpr, nil
+	}
+
+	modifiedExpr, diags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	contract.Assertf(len(diags) == 0, "expected no diagnostics from VisitExpression")
+	return modifiedExpr, deferredOutputs
 }

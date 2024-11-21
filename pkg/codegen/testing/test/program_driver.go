@@ -275,6 +275,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages, // because the schema is synthetic
 	},
 	{
+		Directory:   "deferred-outputs",
+		Description: "Tests program with mutually dependant components that emit deferred outputs",
+		Skip:        allProgLanguages.Except(TestNodeJS),
+		SkipCompile: allProgLanguages,
+	},
+	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{

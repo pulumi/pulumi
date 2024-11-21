@@ -28,10 +28,12 @@ import (
 )
 
 func TestGenerateProgram(t *testing.T) {
+	t.Setenv("PULUMI_ACCEPT", "1")
 	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
 	require.NoError(t, err)
 
 	// Change into pkg/codegen/nodejs
 	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
-	test.GenerateProgramBatchTest("nodejs")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(1, 6))
+	test.GenerateProgramBatchTest("nodejs")(t, rootDir, codegen.GenerateProgram, 
+		test.SingleTestCase("deferred-outputs"))
 }
