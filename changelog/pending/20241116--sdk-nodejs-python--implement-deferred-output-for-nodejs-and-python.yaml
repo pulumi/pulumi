@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs,python
+  description: Implement deferred output for nodejs and python
