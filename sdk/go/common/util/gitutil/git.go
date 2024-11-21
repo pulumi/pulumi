@@ -650,19 +650,21 @@ type gitRepoURLParts struct {
 }
 
 func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
-	urlRegex := regexp.MustCompile(`^[^\./][a-zA-Z0-9-]*\.[a-z]+/[a-zA-Z0-9-/]+$`)
-	if urlRegex.MatchString(rawurl) {
-		// We want to allow "naked" URLs, such as github.com/pulumi/pulumi-provider in addition to
-		// full URLs such as https://github.com/pulumi/pulumi-provider for convenience.  Prefix
-		// https:// to these URLs, as we assume that protocol.
-		rawurl = "https://" + rawurl
-	}
 	endpoint, err := transport.NewEndpoint(rawurl)
 	if err != nil {
 		return gitRepoURLParts{}, err
 	}
-
-	if endpoint.Protocol == "ssh" {
+	if endpoint.Protocol == "file" {
+		// We want to allow "naked" URLs, such as github.com/pulumi/pulumi-provider in addition to
+		// full URLs such as https://github.com/pulumi/pulumi-provider for convenience.  go-git
+		// parses these as local (file) repositories.  Since we never want to allow those, we prefix
+		// https:// to these URLs, and assume that protocol.
+		rawurl = "https://" + rawurl
+		endpoint, err = transport.NewEndpoint(rawurl)
+		if err != nil {
+			return gitRepoURLParts{}, err
+		}
+	} else if endpoint.Protocol == "ssh" {
 		// Normalize SSH URLs (including scp-style git@github.com URLs) into
 		// ssh:// format so we can parse them the same as https:// URLs.
 		rawurl = endpoint.String()
