@@ -1348,5 +1348,25 @@ describe("output", () => {
             const resources = await output.allResources!();
             assert.strictEqual(resources.size, 0);
         });
+
+        it("can be created from secret output", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(true), // secret
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, true);
+            const resources = await output.allResources!();
+            assert.strictEqual(resources.size, 0);
+        });
     });
 });

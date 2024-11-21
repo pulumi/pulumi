@@ -364,7 +364,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 }
 
 /**
- * Creates an Output<T> of which its value can be resolved/assigned later from another Output<T> instance.
+ * Creates an Output<T> whose value can be later resolved from another Output<T> instance.
  */
 export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
     let resolveValue: (v: T) => void;
