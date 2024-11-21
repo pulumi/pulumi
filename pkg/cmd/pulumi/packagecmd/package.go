@@ -164,7 +164,8 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
-	if !strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
+	if descriptor.PluginDownloadURL != "" ||
+		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err
