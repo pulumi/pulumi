@@ -1316,6 +1316,16 @@ func TestPluginSpec_GetSource(t *testing.T) {
 			expectedURL:        "gitlab://mygitlab.example.com/proj1",
 		},
 		{
+			name: "Use PluginDownloadURL (Git)",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "git://github.com/test/test",
+			},
+			expectedSourceType: "*workspace.gitSource",
+			expectedURL:        "https://github.com/test/test.git",
+		},
+		{
 			name: "Use fallback source",
 			spec: PluginSpec{
 				Name: "test-plugin",
