@@ -1030,7 +1030,7 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
         asyncio.ensure_future(o.future()).add_done_callback(value_callback)
 
-        def is_known_callback(fut: asyncio.Future[bool]) -> None:
+        def is_known_callback(fut: "asyncio.Future[bool]") -> None:
             if fut.exception() is not None:
                 resolve_is_known.set_exception(fut.exception())  # type: ignore
             else:
@@ -1038,7 +1038,7 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
         asyncio.ensure_future(o.is_known()).add_done_callback(is_known_callback)
 
-        def is_secret_callback(fut: asyncio.Future[bool]) -> None:
+        def is_secret_callback(fut: "asyncio.Future[bool]") -> None:
             if fut.exception() is not None:
                 resolve_is_secret.set_exception(fut.exception())  # type: ignore
             else:
@@ -1046,7 +1046,7 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
         asyncio.ensure_future(o.is_secret()).add_done_callback(is_secret_callback)
 
-        def deps_callback(fut: asyncio.Future[Set["Resource"]]) -> None:
+        def deps_callback(fut: "asyncio.Future[Set[Resource]]") -> None:
             if fut.exception() is not None:
                 resolve_deps.set_exception(fut.exception())  # type: ignore
             else:
