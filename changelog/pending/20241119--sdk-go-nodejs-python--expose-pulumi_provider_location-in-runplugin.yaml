@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/go,nodejs,python
-  description: Expose PULUMI_PROVIDER_LOCATION in RunPlugin
+  description: Expose PULUMI_ROOT_DIRECTORY and PULUMI_PROGRAM_DIRECTORY environment variables for programs and plugins
