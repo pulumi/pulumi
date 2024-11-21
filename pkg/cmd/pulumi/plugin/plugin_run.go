@@ -79,7 +79,7 @@ func (cmd *pluginRunCmd) run(ctx context.Context, args []string) error {
 		}
 
 		// TODO: Add support for --server and --checksums.
-		pluginSpec, err := workspace.NewPluginSpec(args[0], kind, "", nil)
+		pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
 		if err != nil {
 			return err
 		}

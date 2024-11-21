@@ -148,7 +148,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}

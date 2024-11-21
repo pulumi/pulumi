@@ -705,7 +705,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					pluginSpec, err := workspace.NewPluginSpec(string(provider), apitype.ResourcePlugin, "", nil)
+					pluginSpec, err := workspace.NewPluginSpec(string(provider), apitype.ResourcePlugin, nil, "", nil)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), provider, err)
 						return nil
