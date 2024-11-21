@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Work around a race where the summary event in the automation API sometimes cannot be found

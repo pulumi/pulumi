@@ -1704,7 +1704,7 @@ func (fw *fileWatcher) Close() {
 	if runtime.GOOS == "windows" {
 		time.Sleep(300 * time.Millisecond)
 	} else {
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 	}
 
 	//nolint:errcheck
