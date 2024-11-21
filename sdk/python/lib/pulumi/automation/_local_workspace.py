@@ -380,7 +380,7 @@ class LocalWorkspace(Workspace):
             who_am_i_json = json.loads(result.stdout)
             token_data = None
             if "tokenInformation" in who_am_i_json:
-                token_data =TokenInformation(
+                token_data=TokenInformation(
                     name=who_am_i_json["tokenInformation"].get("name"),
                     organization=who_am_i_json["tokenInformation"].get("organization"),
                     team=who_am_i_json["tokenInformation"].get("team"),
