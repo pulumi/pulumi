@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin,package
+  description: Support getting plugins from remote git sources
