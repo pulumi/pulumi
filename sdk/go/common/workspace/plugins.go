@@ -870,12 +870,8 @@ type ProjectPlugin struct {
 }
 
 // Spec Return a PluginSpec object for this project plugin.
-func (pp ProjectPlugin) Spec() PluginSpec {
-	return PluginSpec{
-		Name:    pp.Name,
-		Kind:    pp.Kind,
-		Version: pp.Version,
-	}
+func (pp ProjectPlugin) Spec() (PluginSpec, error) {
+	return NewPluginSpec(pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -2036,7 +2032,10 @@ func getPluginInfoAndPath(
 			}
 		}
 
-		spec := plugin.Spec()
+		spec, err := plugin.Spec()
+		if err != nil {
+			return nil, "", err
+		}
 		info := &PluginInfo{
 			Name:    spec.Name,
 			Kind:    spec.Kind,

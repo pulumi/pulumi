@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -190,7 +191,9 @@ func parsePluginOpts(
 	}
 
 	stat, err := os.Stat(providerOpts.Path)
-	if os.IsNotExist(err) {
+	if err != nil && strings.HasPrefix(providerOpts.Path, "github.com") {
+		// If the path is a github.com path, we don't need to check if it exists. TODO: this check should be for any URL like path.
+	} else if os.IsNotExist(err) {
 		return handleErr("no folder at path '%s'", providerOpts.Path)
 	} else if err != nil {
 		return handleErr("checking provider folder: %w", err)
