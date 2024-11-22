@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Allow specifiying dependencies for output invokes

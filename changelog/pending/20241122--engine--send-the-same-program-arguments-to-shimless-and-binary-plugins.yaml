@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Send the same program arguments to shimless and binary plugins

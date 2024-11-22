@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/new
-  description: Allow URLs without a scheme for downloading templates
