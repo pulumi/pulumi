@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2150,6 +2151,39 @@ func TestParameterizedNode(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+		t.Run(packageManager, func(t *testing.T) {
+			var err error
+			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
+			require.NoError(t, err)
+			err = fsutil.CopyFile(e.CWD, templatePath, nil)
+			require.NoError(t, err)
+
+			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+			assert.True(t, e.PathExists("sdks/random"))
+
+			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
+			assert.NoError(t, err)
+			packagesJSON := make(map[string]any)
+			err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+			assert.NoError(t, err)
+
+			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+			assert.True(t, ok)
+			cf, ok := dependencies["random"]
+			assert.True(t, ok)
+			cf, ok = cf.(string)
+			assert.True(t, ok)
+
+			assert.Equal(t, "file:sdks/random", cf)
+		})
+	}
 }
 
 func TestConstructFailuresNode(t *testing.T) {

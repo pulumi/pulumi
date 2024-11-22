@@ -1,0 +1,9 @@
+[project]
+name = "packageadd-uv"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "pulumi-gcp>=8.0.0,<9.0.0",
+    "pulumi>=3.0.0,<4.0.0",
+]

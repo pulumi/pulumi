@@ -1,0 +1,11 @@
+name: packageadd_pip
+description: A minimal Google Cloud Python Pulumi program
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: gcp-python

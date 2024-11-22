@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -1222,6 +1224,34 @@ func TestParameterizedGo(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("go/packageadd")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "add", "random")
+
+	assert.True(t, e.PathExists("sdks/random"))
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
+	assert.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	containsRename := false
+	for _, r := range gomod.Replace {
+		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-random/sdk/v4/go/random" {
+			containsRename = true
+		}
+	}
+
+	assert.True(t, containsRename)
 }
 
 func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {

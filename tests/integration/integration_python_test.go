@@ -33,8 +33,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1457,6 +1459,60 @@ func TestParameterizedPython(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddPython(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	for _, pm := range []struct {
+		packageManager string
+		usePyProject   bool
+		pyprojectPath  string
+	}{
+		{packageManager: "pip", usePyProject: false},
+		{packageManager: "uv", usePyProject: true, pyprojectPath: "tool.uv.sources"},
+		{packageManager: "poetry", usePyProject: true, pyprojectPath: "tool.poetry.dependencies"},
+	} {
+		t.Run(pm.packageManager, func(t *testing.T) {
+			var err error
+			templatePath, err := filepath.Abs("python/packageadd_" + pm.packageManager)
+			require.NoError(t, err)
+			err = fsutil.CopyFile(e.CWD, templatePath, nil)
+			require.NoError(t, err)
+
+			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+
+			assert.True(t, e.PathExists("sdks/random"))
+
+			if pm.usePyProject {
+				pyprojectToml := make(map[string]any)
+				_, err := toml.DecodeFile(filepath.Join(e.CWD, "pyproject.toml"), &pyprojectToml)
+				assert.NoError(t, err)
+
+				path := strings.Split(pm.pyprojectPath, ".")
+				data := pyprojectToml
+				for _, p := range path {
+					data = data[p].(map[string]any)
+				}
+
+				pkgSpec, ok := data["pulumi-random"]
+				assert.True(t, ok)
+				pkgSpecMap, ok := pkgSpec.(map[string]any)
+				assert.True(t, ok)
+				pf, ok := pkgSpecMap["path"]
+				assert.True(t, ok)
+				pf, ok = pf.(string)
+				assert.True(t, ok)
+
+				assert.Equal(t, "sdks/random", pf)
+			} else {
+				b, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				assert.NoError(t, err)
+				assert.Contains(t, string(b), "sdks/random")
+			}
+		})
+	}
 }
 
 func TestConfigGetterOverloads(t *testing.T) {
