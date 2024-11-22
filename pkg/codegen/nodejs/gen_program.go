@@ -1087,6 +1087,34 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	}
 	g.genTrivia(w, component.Definition.Tokens.GetOpenBrace())
 	configVars := component.Program.ConfigVariables()
+	// collect here all the deferred output variables
+	// these must be declared before the component instantiation
+	var componentInputs []*model.Attribute
+	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	for _, attr := range component.Inputs {
+		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
+		componentInputs = append(componentInputs, &model.Attribute{
+			Name:  attr.Name,
+			Value: expr,
+		})
+
+		// add the deferred outputs local to this component
+		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)
+		// add the deferred outputs to the global list of the program
+		// such that we can emit the resolution statement at the end
+		// of the component declaration (from which the output is resolved)
+		g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+	}
+
+	declareDeferredOutputVariables := func() {
+		for _, output := range componentDeferredOutputVariables {
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput();\n",
+				output.Name,
+				title(output.Name))
+		}
+	}
+
 	instantiate := func(resName string) {
 		if len(configVars) == 0 {
 			g.Fgenf(w, "new %s(%s%s)", componentName, resName, optionsBag)
@@ -1094,29 +1122,23 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 		}
 		g.Fgenf(w, "new %s(%s, {", componentName, resName)
 		indenter := func(f func()) { f() }
-		if len(component.Inputs) > 1 {
+		if len(componentInputs) > 1 {
 			indenter = g.Indented
 		}
 		indenter(func() {
 			fmtString := "%s: %.v"
-			if len(component.Inputs) > 1 {
+			if len(componentInputs) > 1 {
 				fmtString = "\n" + g.Indent + "%s: %.v,"
 			}
 
-			for _, attr := range component.Inputs {
+			for _, attr := range componentInputs {
 				propertyName := attr.Name
 				if !isLegalIdentifier(propertyName) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
 				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
-				expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(
-					g.program,
-					component,
-					loweredExpression)
-
-				g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
-				g.Fgenf(w, fmtString, propertyName, expr)
+				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})
 		if len(component.Inputs) > 1 {
@@ -1133,6 +1155,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, componentName)
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
 				instantiate(g.makeResourceName(name, ""))
 				g.Fgenf(w, ";\n")
@@ -1155,6 +1178,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
@@ -1162,9 +1186,19 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
+		declareDeferredOutputVariables()
 		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
+	}
+
+	// resolve the deferred output variables from this component
+	for _, output := range g.deferredOutputVariables {
+		if output.SourceComponent.Name() == component.Name() {
+			g.Fgenf(w, "%s", g.Indent)
+			expr := g.lowerExpression(output.Expr, output.Expr.Type())
+			g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+		}
 	}
 
 	g.genTrivia(w, component.Definition.Tokens.GetCloseBrace())
