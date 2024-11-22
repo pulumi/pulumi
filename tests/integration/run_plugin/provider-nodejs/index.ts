@@ -8,12 +8,12 @@ class Provider implements provider.Provider {
 
     async construct(name: string, type: string, inputs: pulumi.Inputs,
         options: pulumi.ComponentResourceOptions): Promise<provider.ConstructResult> {
-	const typeName = type.split(":", 3)[2];
+        const typeName = type.split(":", 3)[2];
         return {
             urn: pulumi.createUrn(type, name),
-	    state: {
-		"ITS_ALIVE": "IT'S ALIVE!",
-	    }
+            state: {
+                "ITS_ALIVE": "IT'S ALIVE!",
+            }
         }
     }
 }
