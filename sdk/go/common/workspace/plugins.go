@@ -2420,7 +2420,7 @@ func getCandidateExtensions() []string {
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
-		"(?P<Name>[a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
+		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted
