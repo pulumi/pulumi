@@ -14,7 +14,6 @@
 
 import json
 import os
-import shutil
 import tempfile
 import time
 import threading
@@ -26,7 +25,6 @@ from typing import (
     List,
     Any,
     Mapping,
-    MutableMapping,
     Optional,
     Callable,
     Tuple,
@@ -36,7 +34,7 @@ import grpc
 
 from ._cmd import CommandResult, OnOutput
 from ._config import ConfigValue, ConfigMap
-from .errors import StackAlreadyExistsError, StackNotFoundError
+from .errors import StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer

@@ -17,7 +17,7 @@ Support for automatic stack components.
 """
 import asyncio
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
 
 from . import settings
 from .. import log
