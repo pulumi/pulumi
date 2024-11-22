@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Fix mocks when multiple versions of @pulumi/pulumi are loaded in a project
