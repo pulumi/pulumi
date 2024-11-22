@@ -387,7 +387,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
-			Args:             pluginArgs,
+			Args:             args,
 			Env:              env,
 		})
 		if err != nil {
