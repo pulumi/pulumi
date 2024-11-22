@@ -353,7 +353,7 @@ type gitSource struct {
 	path string
 }
 
-func newGitSource(url *url.URL) (*gitSource, error) {
+func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 	url.Scheme = "https"
 	u, path, err := gitutil.ParseGitRepoURL(url.String())
 	if err != nil {
@@ -410,6 +410,9 @@ func (source *gitSource) Download(
 		return nil, -1, err
 	}
 
+	// These close statements cannot be deferred, because expressions in return statements
+	// are executed before defer statements in Go.  Closing the writers in defer statements
+	// can lead to the tarbuf.Len() return value to be wrong.
 	tw.Close()
 	zip.Close()
 
@@ -1194,7 +1197,7 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 	case "http", "https":
 		return newHTTPSource(name, kind, url), nil
 	case "git":
-		return newGitSource(url)
+		return newGitHTTPSSource(url)
 	default:
 		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}
