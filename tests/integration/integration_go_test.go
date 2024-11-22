@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -47,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -1217,6 +1219,62 @@ func TestParameterizedGo(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("go/packageadd")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "add", "random")
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
+	assert.NoError(t, err)
+	_, err = modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	// Currently package add does not work correctly for non parameterized
+	// packages, once they add the go.mod as expected we can parse it and check
+	// if it contains a rename as the parameterized version of this test does.
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddGoParameterized(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("go/packageadd")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random")
+
+	assert.True(t, e.PathExists("sdks/random/go.mod"))
+	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/random/go.mod"))
+	assert.NoError(t, err)
+	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
+	assert.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	containsRename := false
+	for _, r := range gomod.Replace {
+		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/Pulumi/pulumi-random/sdk/go/v3" {
+			containsRename = true
+		}
+	}
+
+	assert.True(t, containsRename)
 }
 
 func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {
