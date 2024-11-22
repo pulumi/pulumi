@@ -1378,7 +1378,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	env := os.Environ()
+	env := req.Env
 	if opts.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
 	}
@@ -1403,9 +1403,10 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	nodeargs = append(nodeargs, req.Info.EntryPoint)
+	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
 	args = append(args, nodeargs...)
+	args = append(args, req.Args...)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	cmd := exec.Command(nodeBin, args...)
