@@ -1108,10 +1108,13 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 	declareDeferredOutputVariables := func() {
 		for _, output := range componentDeferredOutputVariables {
+			outputType := output.Expr.Type()
+			typeParameter := computeConfigTypeParam(outputType)
 			g.Fgenf(w, "%s", g.Indent)
-			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput();\n",
+			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput<%s>();\n",
 				output.Name,
-				title(output.Name))
+				title(output.Name),
+				typeParameter)
 		}
 	}
 

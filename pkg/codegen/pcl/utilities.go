@@ -347,6 +347,18 @@ func inferVariableName(traversal *model.ScopeTraversalExpression) string {
 	return traversal.RootName + strings.Join(parts, "")
 }
 
+// isComponentReference takes a program and a root name and returns a component if the root
+// refers to a component in the given program.
+func isComponentReference(program *Program, root string) (*Component, bool) {
+	for _, node := range program.Nodes {
+		if c, ok := node.(*Component); ok && c.Name() == root {
+			return c, true
+		}
+	}
+
+	return nil, false
+}
+
 type DeferredOutputVariable struct {
 	Name            string
 	Expr            model.Expression
@@ -365,41 +377,58 @@ func ExtractDeferredOutputVariables(
 		nodeOrder[node.Name()] = i
 	}
 
-	isComponentReference := func(root string) (*Component, bool) {
-		for _, node := range program.Nodes {
-			if c, ok := node.(*Component); ok && c.Name() == root {
-				return c, true
-			}
-		}
-
-		return nil, false
-	}
-
-	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
+	componentTraversalExpr := func(subExpr model.Expression) (*model.ScopeTraversalExpression, *Component, bool) {
 		if traversal, ok := subExpr.(*model.ScopeTraversalExpression); ok {
-			if componentRef, ok := isComponentReference(traversal.RootName); ok {
+			if componentRef, ok := isComponentReference(program, traversal.RootName); ok {
 				if mutuallyDependantComponents(component, componentRef) {
 					if nodeOrder[componentRef.Name()] > nodeOrder[component.Name()] {
-						// we found a reference to component that appears later in the program
-						variableName := inferVariableName(traversal)
-						deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
-							Name:            variableName,
-							Expr:            subExpr,
-							SourceComponent: componentRef,
-						})
-
-						return model.VariableReference(&model.Variable{
-							Name:         variableName,
-							VariableType: model.NewOutputType(subExpr.Type()),
-						}), nil
+						return traversal, componentRef, true
 					}
 				}
 			}
 		}
+		return nil, nil, false
+	}
+
+	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
+		if traversal, componentRef, ok := componentTraversalExpr(subExpr); ok {
+			// we found a reference to component that appears later in the program
+			variableName := inferVariableName(traversal)
+			deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
+				Name:            variableName,
+				Expr:            subExpr,
+				SourceComponent: componentRef,
+			})
+
+			return model.VariableReference(&model.Variable{
+				Name:         variableName,
+				VariableType: model.NewOutputType(subExpr.Type()),
+			}), nil
+		}
+
+		// handle for loops where the collection we are looping over
+		// is a list of components that are defined later in the program
+		// turn the entire the ForExpression into a deferred output variable
+		if forExpr, ok := subExpr.(*model.ForExpression); ok {
+			if traversal, componentRef, ok := componentTraversalExpr(forExpr.Collection); ok {
+				variableName := "loopingOver" + titleCase(inferVariableName(traversal))
+				deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
+					Name:            variableName,
+					Expr:            forExpr,
+					SourceComponent: componentRef,
+				})
+
+				return model.VariableReference(&model.Variable{
+					Name:         variableName,
+					VariableType: forExpr.Type(),
+				}), nil
+			}
+		}
+
 		return subExpr, nil
 	}
 
-	modifiedExpr, diags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	modifiedExpr, diags := model.VisitExpression(expr, visitor, model.IdentityVisitor)
 	contract.Assertf(len(diags) == 0, "expected no diagnostics from VisitExpression")
 	return modifiedExpr, deferredOutputs
 }
