@@ -249,7 +249,7 @@ class InvokeOutputOptions(InvokeOptions):
         )
         if isinstance(source, InvokeOutputOptions):
             # Avoid circular import
-            from .output import _map2_input  # pylint: disable=import-outside-toplevel
+            from .output import _map2_input
 
             dest.depends_on = _map2_input(
                 dest._depends_on_list(),
@@ -264,7 +264,7 @@ class InvokeOutputOptions(InvokeOptions):
             return []
 
         # Avoid circular import
-        from .output import _map_input  # pylint: disable=import-outside-toplevel
+        from .output import _map_input
 
         return _map_input(
             self.depends_on,

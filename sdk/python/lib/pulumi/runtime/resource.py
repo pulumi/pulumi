@@ -472,7 +472,6 @@ def create_urn(
     parent_prefix: Optional[Output[str]] = None
     if parent is not None:
         parent_urn = None
-        # pylint: disable=import-outside-toplevel
         from .. import Resource
 
         if isinstance(parent, Resource):
@@ -916,7 +915,7 @@ def register_resource(
 
     async def do_register() -> None:
         try:
-            from ..resource import (  # pylint: disable=import-outside-toplevel
+            from ..resource import (
                 ResourceOptions,
             )
 

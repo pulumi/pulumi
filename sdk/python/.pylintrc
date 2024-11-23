@@ -74,6 +74,7 @@ disable=raw-checker-failed,
         method-hidden,
 
         # Pulumi-specific exclusions begin here
+        import-outside-toplevel,
         too-few-public-methods,
         too-many-public-methods,
         too-many-instance-attributes,

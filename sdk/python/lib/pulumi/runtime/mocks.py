@@ -47,7 +47,7 @@ def test(fn):
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        from .. import Output  # pylint: disable=import-outside-toplevel
+        from .. import Output
 
         SETTINGS.rpc_manager.clear()
         SETTINGS.outputs.clear()
