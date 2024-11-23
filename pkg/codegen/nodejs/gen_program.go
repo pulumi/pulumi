@@ -1200,7 +1200,11 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 		if output.SourceComponent.Name() == component.Name() {
 			g.Fgenf(w, "%s", g.Indent)
 			expr := g.lowerExpression(output.Expr, output.Expr.Type())
-			g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
+				g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+			} else {
+				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", title(output.Name), expr)
+			}
 		}
 	}
 
@@ -1223,6 +1227,8 @@ func computeConfigTypeParam(configType model.Type) string {
 			return fmt.Sprintf("Array<%s>", computeConfigTypeParam(complexType.ElementType))
 		case *model.MapType:
 			return fmt.Sprintf("Record<string, %s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.OutputType:
+			return computeConfigTypeParam(complexType.ElementType)
 		case *model.ObjectType:
 			if len(complexType.Properties) == 0 {
 				return "any"

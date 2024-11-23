@@ -32,7 +32,11 @@ func componentVariableType(program *Program) model.Type {
 	for _, node := range program.Nodes {
 		switch node := node.(type) {
 		case *OutputVariable:
-			switch nodeType := node.Type().(type) {
+			if node.Value == nil {
+				continue
+			}
+
+			switch nodeType := node.Value.Type().(type) {
 			case *model.OutputType:
 				// if the output variable is already an Output<T>, keep it as is
 				properties[node.LogicalName()] = nodeType
