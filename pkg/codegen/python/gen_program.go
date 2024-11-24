@@ -1132,7 +1132,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			expr, temps := g.lowerExpression(output.Expr, output.Expr.Type())
 			g.genTemps(w, temps)
 			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
-				g.Fgenf(w, "resolve_%s(%v);\n", PyName(output.Name), expr)
+				g.Fgenf(w, "resolve_%s(%v)\n", PyName(output.Name), expr)
 			} else {
 				g.Fgenf(w, "resolve_%s(pulumi.Output.from_input(%v))\n", PyName(output.Name), expr)
 			}

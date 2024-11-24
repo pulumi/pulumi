@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -79,7 +80,8 @@ type generator struct {
 	// if is it a plain list, then `new()` should be used because we are creating List<T>
 	// however if we have InputList<T> or anything else, we use `new[]` because InputList<T> can be implicitly casted
 	// from an array
-	listInitializer string
+	listInitializer         string
+	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
 func (g *generator) resetListInitializer() {
@@ -1421,6 +1423,36 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 	configVars := r.Program.ConfigVariables()
 
+	// collect here all the deferred output variables
+	// these must be declared before the component instantiation
+	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
+	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	for _, attr := range r.Inputs {
+		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
+		componentInputs = append(componentInputs, &model.Attribute{
+			Name:  attr.Name,
+			Value: expr,
+		})
+
+		// add the deferred outputs local to this component
+		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)
+		// add the deferred outputs to the global list of the program
+		// such that we can emit the resolution statement at the end
+		// of the component declaration (from which the output is resolved)
+		g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+	}
+
+	declareDeferredOutputVariables := func() {
+		for _, output := range componentDeferredOutputVariables {
+			typeParameter := componentOutputElementType(output.Expr.Type())
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "var %s, resolve%s = new Pulumi.DeferredOutput<%s>()\n",
+				output.Name,
+				Title(output.Name),
+				typeParameter)
+		}
+	}
+
 	instantiate := func(resName string) {
 		if len(configVars) == 0 {
 			// there is no args type for this component
@@ -1444,7 +1476,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 			g.Fgenf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
-				for _, attr := range r.Inputs {
+				for _, attr := range componentInputs {
 					g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
 					g.Fgenf(w, " %.v,\n", attr.Value)
 				}
@@ -1476,15 +1508,30 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 		resName := g.makeResourceName(name, "range."+resKey)
 		g.Indented(func() {
+			declareDeferredOutputVariables()
 			g.Fgenf(w, "%s%s.Add(", g.Indent, variableName)
 			instantiate(resName)
 			g.Fgenf(w, ");\n")
 		})
 		g.Fgenf(w, "%s}\n", g.Indent)
 	} else {
+		declareDeferredOutputVariables()
 		g.Fgenf(w, "%svar %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n\n")
+	}
+
+	// Emit the deferred output resolution statements
+	for _, output := range g.deferredOutputVariables {
+		if output.SourceComponent.Name() == r.Name() {
+			g.Fgenf(w, "%s", g.Indent)
+			expr := g.lowerExpression(output.Expr, output.Expr.Type())
+			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
+				g.Fgenf(w, "resolve%s(%v);\n", Title(output.Name), expr)
+			} else {
+				g.Fgenf(w, "resolve%s(Output.Create(%v));\n", Title(output.Name), expr)
+			}
+		}
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
