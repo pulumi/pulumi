@@ -277,7 +277,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "deferred-outputs",
 		Description: "Tests program with mutually dependant components that emit deferred outputs",
-		Skip:        allProgLanguages.Except(TestNodeJS),
+		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
 		SkipCompile: allProgLanguages,
 	},
 	{

@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -48,9 +49,10 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
-	configCreated bool
-	quotes        map[model.Expression]string
-	isComponent   bool
+	configCreated           bool
+	quotes                  map[model.Expression]string
+	isComponent             bool
+	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -1021,12 +1023,40 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
-	for _, input := range r.Inputs {
+	// collect here all the deferred output variables
+	// these must be declared before the component instantiation
+	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
+	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	for _, attr := range r.Inputs {
+		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
+		componentInputs = append(componentInputs, &model.Attribute{
+			Name:  attr.Name,
+			Value: expr,
+		})
+
+		// add the deferred outputs local to this component
+		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)
+		// add the deferred outputs to the global list of the program
+		// such that we can emit the resolution statement at the end
+		// of the component declaration (from which the output is resolved)
+		g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+	}
+
+	for _, input := range componentInputs {
 		value, valueTemps := g.lowerExpression(input.Value, input.Value.Type())
 		temps = append(temps, valueTemps...)
 		input.Value = value
 	}
 	g.genTemps(w, temps)
+
+	declareDeferredOutputVariables := func() {
+		for _, output := range componentDeferredOutputVariables {
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "%s, resolve_%s = pulumi.deferred_output()\n",
+				PyName(output.Name),
+				PyName(output.Name))
+		}
+	}
 
 	hasInputVariables := len(r.Program.ConfigVariables()) > 0
 	instantiate := func(resName string) {
@@ -1035,19 +1065,10 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		} else {
 			g.Fgenf(w, "%s(%s", componentName, resName)
 		}
-
-		indenter := func(f func()) { f() }
-		if len(r.Inputs) > 1 {
-			indenter = g.Indented
-		}
-		indenter(func() {
-			for index, attr := range r.Inputs {
+		g.Indented(func() {
+			for index, attr := range componentInputs {
 				propertyName := attr.Name
-				if len(r.Inputs) == 1 {
-					g.Fgenf(w, "'%s': %.v", propertyName, attr.Value)
-				} else {
-					g.Fgenf(w, "%s'%s': %.v", g.Indent, propertyName, attr.Value)
-				}
+				g.Fgenf(w, "%s'%s': %.v", g.Indent, propertyName, attr.Value)
 
 				if index != len(r.Inputs)-1 {
 					// add comma after each input when that property is not the last
@@ -1073,6 +1094,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fprintf(w, "%s%s = ", g.Indent, nameVar)
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
@@ -1090,15 +1112,31 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
 				g.Fprint(w, ")\n")
 			})
 		}
 	} else {
+		declareDeferredOutputVariables()
 		g.Fgenf(w, "%s%s = ", g.Indent, nameVar)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fprint(w, "\n")
+	}
+
+	// resolve the deferred output variables from this component
+	for _, output := range g.deferredOutputVariables {
+		if output.SourceComponent.Name() == r.Name() {
+			g.Fgenf(w, "%s", g.Indent)
+			expr, temps := g.lowerExpression(output.Expr, output.Expr.Type())
+			g.genTemps(w, temps)
+			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
+				g.Fgenf(w, "resolve_%s(%v);\n", PyName(output.Name), expr)
+			} else {
+				g.Fgenf(w, "resolve_%s(pulumi.Output.from_input(%v))\n", PyName(output.Name), expr)
+			}
+		}
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())

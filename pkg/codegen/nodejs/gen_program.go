@@ -1089,7 +1089,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	configVars := component.Program.ConfigVariables()
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
-	var componentInputs []*model.Attribute
+	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
 	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
 	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
