@@ -40,12 +40,15 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
-    """the grpc address for the engine."""
+    """The grpc address for the engine."""
     root_directory: builtins.str
-    """the root of the project, where the `PulumiPlugin.yaml` file or provider binary is located."""
+    """The optional root of the project, where the `PulumiPlugin.yaml` file or provider binary is located.
+    This can't be sent when the engine is attaching to a provider via a port number.
+    """
     program_directory: builtins.str
-    """the absolute path to the directory of the provider program to execute. Generally, but not required to
-    be, underneath the root directory.
+    """The optional absolute path to the directory of the provider program to execute. Generally, but not
+    required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+    provider via a port number.
     """
     def __init__(
         self,
