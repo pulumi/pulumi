@@ -12,6 +12,7 @@ import * as pulumi_provider_pb from "./provider_pb";
 import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
+import * as pulumi_plugin_pb from "./plugin_pb";
 
 interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     supportsFeature: IResourceMonitorService_ISupportsFeature;

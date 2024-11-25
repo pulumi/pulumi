@@ -24,6 +24,7 @@ var pulumi_provider_pb = require('./provider_pb.js');
 var pulumi_alias_pb = require('./alias_pb.js');
 var pulumi_source_pb = require('./source_pb.js');
 var pulumi_callback_pb = require('./callback_pb.js');
+var pulumi_plugin_pb = require('./plugin_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {

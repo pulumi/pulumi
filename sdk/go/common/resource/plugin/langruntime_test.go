@@ -61,6 +61,12 @@ func (m *MockLanguageRuntimeClient) RunPlugin(
 	return m.RunPluginF(ctx, info)
 }
 
+func (m *MockLanguageRuntimeClient) GetRequiredPackages(
+	ctx context.Context, in *pulumirpc.GetRequiredPackagesRequest, opts ...grpc.CallOption,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) GetRequiredPlugins(
 	ctx context.Context, in *pulumirpc.GetRequiredPluginsRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {

@@ -24,6 +24,7 @@ import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.alias_pb2
 import pulumi.callback_pb2
+import pulumi.plugin_pb2
 import pulumi.source_pb2
 import sys
 import typing
@@ -1047,7 +1048,7 @@ class RegisterPackageRequest(google.protobuf.message.Message):
     def checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
         """the optional plugin checksums."""
     @property
-    def parameterization(self) -> global___Parameterization:
+    def parameterization(self) -> pulumi.plugin_pb2.Parameterization:
         """the optional parameterization for this package."""
     def __init__(
         self,
@@ -1056,7 +1057,7 @@ class RegisterPackageRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         download_url: builtins.str = ...,
         checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        parameterization: global___Parameterization | None = ...,
+        parameterization: pulumi.plugin_pb2.Parameterization | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "download_url", b"download_url", "name", b"name", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
@@ -1078,27 +1079,3 @@ class RegisterPackageResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
 
 global___RegisterPackageResponse = RegisterPackageResponse
-
-@typing_extensions.final
-class Parameterization(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    NAME_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
-    VALUE_FIELD_NUMBER: builtins.int
-    name: builtins.str
-    """the parameterized package name."""
-    version: builtins.str
-    """the parameterized package version."""
-    value: builtins.bytes
-    """the parameter value for the parameterized package."""
-    def __init__(
-        self,
-        *,
-        name: builtins.str = ...,
-        version: builtins.str = ...,
-        value: builtins.bytes = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
-
-global___Parameterization = Parameterization

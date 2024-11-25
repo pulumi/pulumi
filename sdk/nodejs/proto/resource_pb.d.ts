@@ -11,6 +11,7 @@ import * as pulumi_provider_pb from "./provider_pb";
 import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
+import * as pulumi_plugin_pb from "./plugin_pb";
 
 export class SupportsFeatureRequest extends jspb.Message { 
     getId(): string;
@@ -829,8 +830,8 @@ export class RegisterPackageRequest extends jspb.Message {
 
     hasParameterization(): boolean;
     clearParameterization(): void;
-    getParameterization(): Parameterization | undefined;
-    setParameterization(value?: Parameterization): RegisterPackageRequest;
+    getParameterization(): pulumi_plugin_pb.Parameterization | undefined;
+    setParameterization(value?: pulumi_plugin_pb.Parameterization): RegisterPackageRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterPackageRequest.AsObject;
@@ -849,7 +850,7 @@ export namespace RegisterPackageRequest {
         downloadUrl: string,
 
         checksumsMap: Array<[string, Uint8Array | string]>,
-        parameterization?: Parameterization.AsObject,
+        parameterization?: pulumi_plugin_pb.Parameterization.AsObject,
     }
 }
 
@@ -870,34 +871,6 @@ export class RegisterPackageResponse extends jspb.Message {
 export namespace RegisterPackageResponse {
     export type AsObject = {
         ref: string,
-    }
-}
-
-export class Parameterization extends jspb.Message { 
-    getName(): string;
-    setName(value: string): Parameterization;
-    getVersion(): string;
-    setVersion(value: string): Parameterization;
-    getValue(): Uint8Array | string;
-    getValue_asU8(): Uint8Array;
-    getValue_asB64(): string;
-    setValue(value: Uint8Array | string): Parameterization;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Parameterization.AsObject;
-    static toObject(includeInstance: boolean, msg: Parameterization): Parameterization.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Parameterization, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Parameterization;
-    static deserializeBinaryFromReader(message: Parameterization, reader: jspb.BinaryReader): Parameterization;
-}
-
-export namespace Parameterization {
-    export type AsObject = {
-        name: string,
-        version: string,
-        value: Uint8Array | string,
     }
 }
 

@@ -20,6 +20,7 @@ import "pulumi/provider.proto";
 import "pulumi/alias.proto";
 import "pulumi/source.proto";
 import "pulumi/callback.proto";
+import "pulumi/plugin.proto";
 
 package pulumirpc;
 
@@ -285,8 +286,3 @@ message RegisterPackageResponse {
     string ref = 1;
 }
 
-message Parameterization {
-    string name = 1; // the parameterized package name.
-    string version = 2; // the parameterized package version.
-    bytes value = 3; // the parameter value for the parameterized package.
-}

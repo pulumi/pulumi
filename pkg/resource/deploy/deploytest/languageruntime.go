@@ -31,23 +31,23 @@ type LanguageRuntimeFactory func() plugin.LanguageRuntime
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
-func NewLanguageRuntimeF(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) LanguageRuntimeFactory {
+func NewLanguageRuntimeF(program ProgramFunc, requiredPackages ...workspace.PackageDescriptor) LanguageRuntimeFactory {
 	return func() plugin.LanguageRuntime {
-		return NewLanguageRuntime(program, requiredPlugins...)
+		return NewLanguageRuntime(program, requiredPackages...)
 	}
 }
 
-func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) plugin.LanguageRuntime {
+func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.PackageDescriptor) plugin.LanguageRuntime {
 	return &languageRuntime{
-		requiredPlugins: requiredPlugins,
-		program:         program,
+		requiredPackages: requiredPackages,
+		program:          program,
 	}
 }
 
 type languageRuntime struct {
-	requiredPlugins []workspace.PluginSpec
-	program         ProgramFunc
-	closed          bool
+	requiredPackages []workspace.PackageDescriptor
+	program          ProgramFunc
+	closed           bool
 }
 
 func (p *languageRuntime) Close() error {
@@ -55,11 +55,11 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgramInfo) ([]workspace.PluginSpec, error) {
+func (p *languageRuntime) GetRequiredPackages(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed
 	}
-	return p.requiredPlugins, nil
+	return p.requiredPackages, nil
 }
 
 func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {

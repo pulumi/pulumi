@@ -27,7 +27,12 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // for confguring and creating resource objects.
 service LanguageRuntime {
     // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-    rpc GetRequiredPlugins(GetRequiredPluginsRequest) returns (GetRequiredPluginsResponse) {}
+    rpc GetRequiredPlugins(GetRequiredPluginsRequest) returns (GetRequiredPluginsResponse) {
+        option deprecated = true;
+    }
+    // GetRequiredPackages computes the complete set of anticipated packages required by a program.
+    rpc GetRequiredPackages(GetRequiredPackagesRequest) returns (GetRequiredPackagesResponse) {}
+
     // Run executes a program and returns its result.
     rpc Run(RunRequest) returns (RunResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
@@ -115,6 +120,14 @@ message GetRequiredPluginsRequest {
 
 message GetRequiredPluginsResponse {
     repeated PluginDependency plugins = 1; // a list of plugins required by this program.
+}
+
+message GetRequiredPackagesRequest {
+    ProgramInfo info = 1; // the program info to use to calculate packages.
+}
+
+message GetRequiredPackagesResponse {
+    repeated PackageDependency packages = 1; // a list of packages required by this program.
 }
 
 // RunRequest asks the interpreter to execute a program.

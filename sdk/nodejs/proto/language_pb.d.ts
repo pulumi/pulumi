@@ -227,6 +227,51 @@ export namespace GetRequiredPluginsResponse {
     }
 }
 
+export class GetRequiredPackagesRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): GetRequiredPackagesRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetRequiredPackagesRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetRequiredPackagesRequest): GetRequiredPackagesRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetRequiredPackagesRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetRequiredPackagesRequest;
+    static deserializeBinaryFromReader(message: GetRequiredPackagesRequest, reader: jspb.BinaryReader): GetRequiredPackagesRequest;
+}
+
+export namespace GetRequiredPackagesRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+    }
+}
+
+export class GetRequiredPackagesResponse extends jspb.Message { 
+    clearPackagesList(): void;
+    getPackagesList(): Array<pulumi_plugin_pb.PackageDependency>;
+    setPackagesList(value: Array<pulumi_plugin_pb.PackageDependency>): GetRequiredPackagesResponse;
+    addPackages(value?: pulumi_plugin_pb.PackageDependency, index?: number): pulumi_plugin_pb.PackageDependency;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetRequiredPackagesResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetRequiredPackagesResponse): GetRequiredPackagesResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetRequiredPackagesResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetRequiredPackagesResponse;
+    static deserializeBinaryFromReader(message: GetRequiredPackagesResponse, reader: jspb.BinaryReader): GetRequiredPackagesResponse;
+}
+
+export namespace GetRequiredPackagesResponse {
+    export type AsObject = {
+        packagesList: Array<pulumi_plugin_pb.PackageDependency.AsObject>,
+    }
+}
+
 export class RunRequest extends jspb.Message { 
     getProject(): string;
     setProject(value: string): RunRequest;

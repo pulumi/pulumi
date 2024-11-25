@@ -254,6 +254,41 @@ class GetRequiredPluginsResponse(google.protobuf.message.Message):
 global___GetRequiredPluginsResponse = GetRequiredPluginsResponse
 
 @typing_extensions.final
+class GetRequiredPackagesRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INFO_FIELD_NUMBER: builtins.int
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to calculate packages."""
+    def __init__(
+        self,
+        *,
+        info: global___ProgramInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+
+global___GetRequiredPackagesRequest = GetRequiredPackagesRequest
+
+@typing_extensions.final
+class GetRequiredPackagesResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGES_FIELD_NUMBER: builtins.int
+    @property
+    def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageDependency]:
+        """a list of packages required by this program."""
+    def __init__(
+        self,
+        *,
+        packages: collections.abc.Iterable[pulumi.plugin_pb2.PackageDependency] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["packages", b"packages"]) -> None: ...
+
+global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
+
+@typing_extensions.final
 class RunRequest(google.protobuf.message.Message):
     """RunRequest asks the interpreter to execute a program."""
 
