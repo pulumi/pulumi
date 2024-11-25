@@ -15,7 +15,6 @@
 """
 Mocks for testing.
 """
-import asyncio
 import functools
 import logging
 from abc import ABC, abstractmethod

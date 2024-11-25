@@ -16,7 +16,7 @@ from typing import List, Mapping, Optional, Union
 
 from pulumi.automation._local_workspace import LocalWorkspace, Secret
 from pulumi.automation._remote_stack import RemoteStack
-from pulumi.automation._stack import Stack, StackInitMode
+from pulumi.automation._stack import Stack
 
 
 class RemoteWorkspaceOptions:

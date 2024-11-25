@@ -36,7 +36,7 @@ from typing import (
     overload,
 )
 
-from . import _types, runtime
+from . import _types
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 from .runtime.settings import SETTINGS
