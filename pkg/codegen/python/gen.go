@@ -2234,24 +2234,31 @@ func sanitizePackageDescription(description string) string {
 }
 
 func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
-	plugin := &plugin.PulumiPluginJSON{
+	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
 	}
 
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
-		plugin.Version = pkg.Version.String()
+		pulumiPlugin.Version = pkg.Version.String()
 	}
 	if pkg.SupportPack {
-		plugin.Version = pkg.Version.String()
+		pulumiPlugin.Version = pkg.Version.String()
 	}
 	if pkg.Parameterization != nil {
-		plugin.Name = pkg.Parameterization.BaseProvider.Name
-		plugin.Version = pkg.Parameterization.BaseProvider.Version.String()
+		// For a parameterized package the plugin name/version is from the base provider information, not the
+		// top-level package name/version.
+		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   pkg.Parameterization.Parameter,
+		}
+		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
+		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
 	}
 
-	return plugin.JSON()
+	return pulumiPlugin.JSON()
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
