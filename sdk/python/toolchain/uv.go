@@ -198,7 +198,7 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
 	cmd := exec.CommandContext(ctx, "uv", "pip", "list", "--format", "json")
 	// `uv pip` commands require the virtualenv to be activated.
-	cmd.Env = ActivateVirtualEnv(cmd.Env, u.virtualenvPath)
+	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("error listing packages: %w", err)
@@ -258,7 +258,7 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 		cmd.Stdout = infoWriter
 		cmd.Stderr = errorWriter
 	}
-	cmd.Env = append(cmd.Env, "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
+	cmd.Env = append(cmd.Environ(), "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
 	return cmd
 }
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: "uv toolchain: preserve env-vars when executing uv command"
