@@ -47,7 +47,7 @@ export interface GetBastionShareableLinkResult {
  * Response for all the Bastion Shareable Link endpoints.
  * API Version: 2020-11-01.
  */
-export function getBastionShareableLinkOutput(args: GetBastionShareableLinkOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetBastionShareableLinkResult> {
+export function getBastionShareableLinkOutput(args: GetBastionShareableLinkOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<GetBastionShareableLinkResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::getBastionShareableLink", {
         "bastionHostName": args.bastionHostName,
