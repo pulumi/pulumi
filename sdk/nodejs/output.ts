@@ -583,12 +583,15 @@ function outputRec(val: any, seen?: Set<object>, preallocatedError?: Error): any
     // directly to user code.
     preallocatedError = preallocatedError ?? new Error("Cannot create an Output from a circular structure");
 
-    if (val instanceof Array) {
-        if (seen.has(val)) {
-            throw preallocatedError;
-        }
-        seen.add(val);
+    // Throw an error if we've seen this object before.
+    if (seen.has(val)) {
+        throw preallocatedError;
+    }
 
+    // Track that we've seen this object.
+    seen.add(val);
+
+    if (val instanceof Array) {
         const allValues = [];
         let hasOutputs = false;
         for (const v of val) {
@@ -614,11 +617,6 @@ function outputRec(val: any, seen?: Set<object>, preallocatedError?: Error): any
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allValues);
         return new Output(syncResources, promisedArray, isKnown, isSecret, allResources);
     }
-
-    if (seen.has(val)) {
-        throw preallocatedError;
-    }
-    seen.add(val);
 
     const promisedValues: { key: string; value: any }[] = [];
     let hasOutputs = false;
