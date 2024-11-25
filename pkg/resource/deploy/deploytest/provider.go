@@ -41,7 +41,7 @@ type Provider struct {
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	CancelF      func() error
 
-	HandshakeF    func(context.Context, plugin.ProviderHandshakeRequest) (plugin.ProviderHandshakeResponse, error)
+	HandshakeF    func(context.Context, plugin.ProviderHandshakeRequest) (*plugin.ProviderHandshakeResponse, error)
 	ParameterizeF func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 	GetSchemaF    func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error)
 	CheckConfigF  func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error)
@@ -61,9 +61,11 @@ type Provider struct {
 	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
 }
 
-func (prov *Provider) Handshake(ctx context.Context, req plugin.ProviderHandshakeRequest) (plugin.ProviderHandshakeResponse, error) {
+func (prov *Provider) Handshake(
+	ctx context.Context, req plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
 	if prov.HandshakeF == nil {
-		return plugin.ProviderHandshakeResponse{}, nil
+		return &plugin.ProviderHandshakeResponse{}, nil
 	}
 	return prov.HandshakeF(ctx, req)
 }

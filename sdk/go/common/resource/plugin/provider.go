@@ -279,7 +279,7 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
-	Handshake(context.Context, ProviderHandshakeRequest) (ProviderHandshakeResponse, error)
+	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 
 	// Parameterize adds a sub-package to this provider instance.
 	Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error)

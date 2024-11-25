@@ -444,10 +444,12 @@ func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
 
-func (r *Registry) Handshake(ctx context.Context, req plugin.ProviderHandshakeRequest) (plugin.ProviderHandshakeResponse, error) {
+func (r *Registry) Handshake(
+	context.Context, plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
 	contract.Failf("Handshake must not be called on the provider registry")
 
-	return plugin.ProviderHandshakeResponse{}, errors.New("the provider registry does not support handshake")
+	return nil, errors.New("the provider registry does not support handshake")
 }
 
 func (r *Registry) Parameterize(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {

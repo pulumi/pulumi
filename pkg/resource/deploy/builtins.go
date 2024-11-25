@@ -66,8 +66,8 @@ func (p *builtinProvider) Pkg() tokens.Package {
 func (p *builtinProvider) Handshake(
 	context.Context,
 	plugin.ProviderHandshakeRequest,
-) (plugin.ProviderHandshakeResponse, error) {
-	return plugin.ProviderHandshakeResponse{}, nil
+) (*plugin.ProviderHandshakeResponse, error) {
+	return nil, nil
 }
 
 func (p *builtinProvider) Parameterize(

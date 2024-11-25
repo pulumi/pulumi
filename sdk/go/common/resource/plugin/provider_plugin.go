@@ -174,7 +174,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	if attachPort != nil {
 		port := *attachPort
 
-		handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+		handshake := func(
+			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+		) (*ProviderHandshakeResponse, error) {
 			req := &ProviderHandshakeRequest{
 				EngineAddress: host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
@@ -227,7 +229,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
 
-		handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+		handshake := func(
+			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+		) (*ProviderHandshakeResponse, error) {
 			req := &ProviderHandshakeRequest{
 				EngineAddress:    host.ServerAddr(),
 				RootDirectory:    filepath.Dir(bin),
@@ -301,7 +305,7 @@ func handshake(
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
-	return &ProviderHandshakeResponse{}, err
+	return &ProviderHandshakeResponse{}, nil
 }
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
@@ -332,7 +336,9 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
 
-	handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*ProviderHandshakeResponse, error) {
 		req := &ProviderHandshakeRequest{
 			EngineAddress:    host.ServerAddr(),
 			RootDirectory:    filepath.Dir(bin),
@@ -429,17 +435,17 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
-func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (ProviderHandshakeResponse, error) {
+func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
 	})
 	if err != nil {
-		return ProviderHandshakeResponse{}, err
+		return nil, err
 	}
 
-	return ProviderHandshakeResponse{}, nil
+	return &ProviderHandshakeResponse{}, nil
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
