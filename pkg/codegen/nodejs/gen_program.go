@@ -1091,12 +1091,12 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
 	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
-	for i, attr := range component.Inputs {
+	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
-		componentInputs[i] = &model.Attribute{
+		componentInputs = append(componentInputs, &model.Attribute{
 			Name:  attr.Name,
 			Value: expr,
-		}
+		})
 
 		// add the deferred outputs local to this component
 		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)

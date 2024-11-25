@@ -420,7 +420,7 @@ func ExtractDeferredOutputVariables(
 
 				return model.VariableReference(&model.Variable{
 					Name:         variableName,
-					VariableType: forExpr.Type(),
+					VariableType: model.NewOutputType(forExpr.Type()),
 				}), nil
 			}
 		}
