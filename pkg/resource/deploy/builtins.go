@@ -67,7 +67,7 @@ func (p *builtinProvider) Handshake(
 	context.Context,
 	plugin.ProviderHandshakeRequest,
 ) (*plugin.ProviderHandshakeResponse, error) {
-	return nil, nil
+	return &plugin.ProviderHandshakeResponse{}, nil
 }
 
 func (p *builtinProvider) Parameterize(
