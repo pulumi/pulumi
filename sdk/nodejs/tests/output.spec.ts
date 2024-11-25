@@ -79,6 +79,72 @@ function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<an
 }
 
 describe("output", () => {
+    describe("throws on circular structures", () => {
+        const syncCases = [
+            {
+                name: "object in object",
+                block: () => {
+                    const a: any = {};
+                    a.a = a;
+                    output(a);
+                },
+            },
+            {
+                name: "array in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "object in array in object",
+                block: () => {
+                    const a: any = { b: [] };
+                    a.b.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "array in object in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push({ b: a });
+                    output(a);
+                },
+            },
+        ];
+        for (const { name, block } of syncCases) {
+            it(name, () => {
+                assert.throws(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+
+        const asyncCases = [
+            {
+                name: "promise object in object",
+                block: async () => {
+                    const a: any = {};
+                    a.a = Promise.resolve(a);
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+        ];
+        for (const { name, block } of asyncCases) {
+            it(name, () => {
+                assert.rejects(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+    });
+
     it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 

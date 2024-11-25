@@ -529,7 +529,7 @@ export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
  *     In both cases of recursion, the outer output's known/secret/resources
  *     will be computed from the nested Outputs.
  */
-function outputRec(val: any): any {
+function outputRec(val: any, seen?: Set<object>, preallocatedError?: Error): any {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
@@ -549,7 +549,7 @@ function outputRec(val: any): any {
         // Promise<Output>. Wrap this in another Output as the final result.  This Output's
         // construction will be able to merge the inner Output's data with its own.  See
         // liftInnerOutput for more details.
-        return createSimpleOutput(val.then((v) => outputRec(v)));
+        return createSimpleOutput(val.then((v) => outputRec(v, seen, preallocatedError)));
     }
     if (Output.isInstance(val)) {
         // We create a new output here from the raw pieces of the original output in order to
@@ -570,13 +570,29 @@ function outputRec(val: any): any {
             val.isSecret,
             allResources,
         );
-        return newOutput.apply(outputRec, /*runWithUnknowns*/ true);
+        return newOutput.apply((v) => outputRec(v, seen, preallocatedError), /*runWithUnknowns*/ true);
     }
+
+    // Used to track whether we've seen this object before, so we can throw an error about circular
+    // structures. The Set is allocated when the first "container" object encountered, either an array
+    // or object.
+    seen = seen ?? new Set<object>();
+
+    // In order to present a useful stack trace if an error occurs, we preallocate an error here.
+    // V8 captures a stack trace at the moment an Error is created and this stack trace will lead
+    // directly to user code.
+    preallocatedError = preallocatedError ?? new Error("Cannot create an Output from a circular structure");
+
     if (val instanceof Array) {
+        if (seen.has(val)) {
+            throw preallocatedError;
+        }
+        seen.add(val);
+
         const allValues = [];
         let hasOutputs = false;
         for (const v of val) {
-            const ev = outputRec(v);
+            const ev = outputRec(v, seen, preallocatedError);
 
             allValues.push(ev);
             if (Output.isInstance(ev)) {
@@ -599,10 +615,15 @@ function outputRec(val: any): any {
         return new Output(syncResources, promisedArray, isKnown, isSecret, allResources);
     }
 
+    if (seen.has(val)) {
+        throw preallocatedError;
+    }
+    seen.add(val);
+
     const promisedValues: { key: string; value: any }[] = [];
     let hasOutputs = false;
     for (const k of Object.keys(val)) {
-        const ev = outputRec(val[k]);
+        const ev = outputRec(val[k], seen, preallocatedError);
 
         promisedValues.push({ key: k, value: ev });
         if (Output.isInstance(ev)) {
