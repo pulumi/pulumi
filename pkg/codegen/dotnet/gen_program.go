@@ -1477,7 +1477,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Indented(func() {
 				for _, attr := range componentInputs {
 					g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
-					g.Fgenf(w, " %.v,\n", attr.Value)
+					value := g.lowerExpression(attr.Value, attr.Value.Type())
+					g.Fgenf(w, " %.v,\n", value)
 				}
 			})
 			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "ComponentResourceOptions"))

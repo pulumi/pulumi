@@ -19,7 +19,7 @@ return await Deployment.RunAsync(() =>
     var loopingOverMany = new Pulumi.DeferredOutput<List<int>>();
     var another = new Components.First("another", new()
     {
-        PasswordLength = loopingOverMany.Output.Length,
+        PasswordLength = loopingOverMany.Output.Apply(loopingOverMany => loopingOverMany.Length),
     });
 
     var many = new List<Components.Second>();

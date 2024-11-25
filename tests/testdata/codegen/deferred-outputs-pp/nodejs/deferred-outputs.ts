@@ -7,7 +7,7 @@ const first = new First("first", {passwordLength: secondPasswordLength});
 const second = new Second("second", {petName: first.petName});
 resolveSecondPasswordLength(second.passwordLength);
 const [loopingOverMany, resolveLoopingOverMany] = pulumi.deferredOutput<Array<number>>();
-const another = new First("another", {passwordLength: loopingOverMany.length});
+const another = new First("another", {passwordLength: loopingOverMany.apply(loopingOverMany => loopingOverMany.length)});
 const many: Second[] = [];
 for (const range = {value: 0}; range.value < 10; range.value++) {
     many.push(new Second(`many-${range.value}`, {petName: another.petName}));

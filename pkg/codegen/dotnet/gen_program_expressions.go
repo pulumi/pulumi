@@ -1041,7 +1041,8 @@ func (g *generator) isDeferredOutputVariable(expr *model.ScopeTraversalExpressio
 
 	for _, output := range g.deferredOutputVariables {
 		if output.Name == expr.RootName {
-			return true
+			_, isOutput := expr.Type().(*model.OutputType)
+			return isOutput
 		}
 	}
 
