@@ -347,6 +347,16 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         callback(undefined, resp);
     }
 
+    handshake(call: any, callback: any): void {
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "Handshake is not implemented by the dynamic provider",
+            },
+            undefined,
+        );
+    }
+
     getSchema(call: any, callback: any): void {
         callback(
             {
