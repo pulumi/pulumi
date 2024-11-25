@@ -145,6 +145,57 @@ describe("output", () => {
         }
     });
 
+    describe("doesn't throw for non-circular structures", () => {
+        it("same object in array", async () => {
+            const a = {};
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [a, a]);
+        });
+        it("same array in object", async () => {
+            const a: any[] = [];
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: a, b: a });
+        });
+        it("same promise object in array", async () => {
+            const a = Promise.resolve({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same object in promise in array", async () => {
+            const a = {};
+            const b = [Promise.resolve(a), Promise.resolve(a)];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same promise array in object", async () => {
+            const a = Promise.resolve([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same array in promise in object", async () => {
+            const a: any[] = [];
+            const b = { a: Promise.resolve(a), b: Promise.resolve(a) };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same output object in array", async () => {
+            const a = output({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same output array in object", async () => {
+            const a = output([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+    });
+
     it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 

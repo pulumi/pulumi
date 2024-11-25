@@ -574,9 +574,9 @@ function outputRec(val: any, seen?: Set<object>, preallocatedError?: Error): any
     }
 
     // Used to track whether we've seen this object before, so we can throw an error about circular
-    // structures. The Set is allocated when the first "container" object encountered, either an array
-    // or object.
-    seen = seen ?? new Set<object>();
+    // structures. The Set is allocated when the first "container" object is encountered, either an array
+    // or object. Any subsequent recursive calls get a new Set based on the passed-in one.
+    seen = new Set(seen);
 
     // In order to present a useful stack trace if an error occurs, we preallocate an error here.
     // V8 captures a stack trace at the moment an Error is created and this stack trace will lead
