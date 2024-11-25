@@ -1034,7 +1034,26 @@ func (g *generator) withinFunctionInvoke(run func()) {
 	}
 }
 
+func (g *generator) isDeferredOutputVariable(expr *model.ScopeTraversalExpression) bool {
+	if len(expr.Parts) != 1 {
+		return false
+	}
+
+	for _, output := range g.deferredOutputVariables {
+		if output.Name == expr.RootName {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	if g.isDeferredOutputVariable(expr) {
+		g.Fgenf(w, "%s.Output", expr.RootName)
+		return
+	}
+
 	rootName := makeValidIdentifier(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}

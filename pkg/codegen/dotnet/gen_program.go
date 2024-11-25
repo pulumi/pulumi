@@ -1446,9 +1446,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		for _, output := range componentDeferredOutputVariables {
 			typeParameter := componentOutputElementType(output.Expr.Type())
 			g.Fgenf(w, "%s", g.Indent)
-			g.Fgenf(w, "var %s, resolve%s = new Pulumi.DeferredOutput<%s>()\n",
+			g.Fgenf(w, "var %s = new Pulumi.DeferredOutput<%s>()\n",
 				output.Name,
-				Title(output.Name),
 				typeParameter)
 		}
 	}
@@ -1527,9 +1526,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Fgenf(w, "%s", g.Indent)
 			expr := g.lowerExpression(output.Expr, output.Expr.Type())
 			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
-				g.Fgenf(w, "resolve%s(%v);\n", Title(output.Name), expr)
+				g.Fgenf(w, "%s.Resolve(%v);\n", output.Name, expr)
 			} else {
-				g.Fgenf(w, "resolve%s(Output.Create(%v));\n", Title(output.Name), expr)
+				g.Fgenf(w, "%s.Resolve(Output.Create(%v));\n", output.Name, expr)
 			}
 		}
 	}
