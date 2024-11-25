@@ -134,11 +134,14 @@ func newLoginCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				act, err := chooseAccount(creds.Accounts, displayOptions)
-				if err != nil {
-					return err
+				// If there are no accounts, skip this step and continue on with the default behavior below.
+				if len(creds.Accounts) > 0 {
+					act, err := chooseAccount(creds.Accounts, displayOptions)
+					if err != nil {
+						return err
+					}
+					cloudURL = act
 				}
-				cloudURL = act
 			}
 			if cloudURL == "" {
 				var err error
