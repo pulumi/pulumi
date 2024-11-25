@@ -2044,7 +2044,7 @@ func (mod *modContext) genUtilities() (string, error) {
 	if def.Parameterization != nil {
 		templateData.BaseProviderName = def.Parameterization.BaseProvider.Name
 		templateData.BaseProviderVersion = def.Parameterization.BaseProvider.Version.String()
-		templateData.BaseProviderPluginDownloadURL = def.Parameterization.BaseProvider.PluginDownloadURL
+		templateData.BaseProviderPluginDownloadURL = def.PluginDownloadURL
 		templateData.ParameterValue = base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
 	}
 

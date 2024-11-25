@@ -585,8 +585,6 @@ type BaseProvider struct {
 	Name string
 	// Version is the version of the provider.
 	Version semver.Version
-	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
-	PluginDownloadURL string
 }
 
 type Parameterization struct {
@@ -978,9 +976,8 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	if pkg.Parameterization != nil {
 		parameterization = &ParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
-				Name:              pkg.Parameterization.BaseProvider.Name,
-				Version:           pkg.Parameterization.BaseProvider.Version.String(),
-				PluginDownloadURL: pkg.Parameterization.BaseProvider.PluginDownloadURL,
+				Name:    pkg.Parameterization.BaseProvider.Name,
+				Version: pkg.Parameterization.BaseProvider.Version.String(),
 			},
 			Parameter: pkg.Parameterization.Parameter,
 		}
@@ -1994,8 +1991,6 @@ type BaseProviderSpec struct {
 	Name string `json:"name" yaml:"name"`
 	// The version of the base provider.
 	Version string `json:"version" yaml:"version"`
-	// The plugin download URL for the base provider.
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
 }
 
 // ParameterizationSpec is the serializable description of a provider parameterization.

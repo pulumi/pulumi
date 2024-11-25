@@ -2249,7 +2249,6 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	if pkg.Parameterization != nil {
 		plugin.Name = pkg.Parameterization.BaseProvider.Name
 		plugin.Version = pkg.Parameterization.BaseProvider.Version.String()
-		plugin.Server = pkg.Parameterization.BaseProvider.PluginDownloadURL
 	}
 
 	return plugin.JSON()
