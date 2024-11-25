@@ -1446,7 +1446,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		for _, output := range componentDeferredOutputVariables {
 			typeParameter := componentOutputElementType(output.Expr.Type())
 			g.Fgenf(w, "%s", g.Indent)
-			g.Fgenf(w, "var %s = new Pulumi.DeferredOutput<%s>()\n",
+			g.Fgenf(w, "var %s = new Pulumi.DeferredOutput<%s>();\n",
 				output.Name,
 				typeParameter)
 		}

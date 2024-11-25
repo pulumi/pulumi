@@ -4,7 +4,7 @@ using Pulumi;
 
 return await Deployment.RunAsync(() => 
 {
-    var secondPasswordLength = new Pulumi.DeferredOutput<int>()
+    var secondPasswordLength = new Pulumi.DeferredOutput<int>();
     var first = new Components.First("first", new()
     {
         PasswordLength = secondPasswordLength.Output,
@@ -16,7 +16,7 @@ return await Deployment.RunAsync(() =>
     });
 
     secondPasswordLength.Resolve(second.PasswordLength);
-    var loopingOverMany = new Pulumi.DeferredOutput<List<int>>()
+    var loopingOverMany = new Pulumi.DeferredOutput<List<int>>();
     var another = new Components.First("another", new()
     {
         PasswordLength = loopingOverMany.Output.Length,
