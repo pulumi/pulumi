@@ -242,28 +242,6 @@ function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
   return pulumi_provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_HandshakeRequest(arg) {
-  if (!(arg instanceof pulumi_provider_pb.HandshakeRequest)) {
-    throw new Error('Expected argument of type pulumirpc.HandshakeRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_HandshakeRequest(buffer_arg) {
-  return pulumi_provider_pb.HandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_HandshakeResponse(arg) {
-  if (!(arg instanceof pulumi_provider_pb.HandshakeResponse)) {
-    throw new Error('Expected argument of type pulumirpc.HandshakeResponse');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_HandshakeResponse(buffer_arg) {
-  return pulumi_provider_pb.HandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
@@ -330,6 +308,28 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
   return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ProviderHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ProviderHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ProviderHandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ProviderHandshakeRequest(buffer_arg) {
+  return pulumi_provider_pb.ProviderHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ProviderHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ProviderHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ProviderHandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ProviderHandshakeResponse(buffer_arg) {
+  return pulumi_provider_pb.ProviderHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ReadRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.ReadRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadRequest');
@@ -384,12 +384,12 @@ var ResourceProviderService = exports.ResourceProviderService = {
     path: '/pulumirpc.ResourceProvider/Handshake',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_provider_pb.HandshakeRequest,
-    responseType: pulumi_provider_pb.HandshakeResponse,
-    requestSerialize: serialize_pulumirpc_HandshakeRequest,
-    requestDeserialize: deserialize_pulumirpc_HandshakeRequest,
-    responseSerialize: serialize_pulumirpc_HandshakeResponse,
-    responseDeserialize: deserialize_pulumirpc_HandshakeResponse,
+    requestType: pulumi_provider_pb.ProviderHandshakeRequest,
+    responseType: pulumi_provider_pb.ProviderHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_ProviderHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_ProviderHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_ProviderHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_ProviderHandshakeResponse,
   },
   // `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 // a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and

@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceProviderClient interface {
-	Handshake(ctx context.Context, in *HandshakeRequest, opts ...grpc.CallOption) (*HandshakeResponse, error)
+	Handshake(ctx context.Context, in *ProviderHandshakeRequest, opts ...grpc.CallOption) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
 	// subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
@@ -182,8 +182,8 @@ func NewResourceProviderClient(cc grpc.ClientConnInterface) ResourceProviderClie
 	return &resourceProviderClient{cc}
 }
 
-func (c *resourceProviderClient) Handshake(ctx context.Context, in *HandshakeRequest, opts ...grpc.CallOption) (*HandshakeResponse, error) {
-	out := new(HandshakeResponse)
+func (c *resourceProviderClient) Handshake(ctx context.Context, in *ProviderHandshakeRequest, opts ...grpc.CallOption) (*ProviderHandshakeResponse, error) {
+	out := new(ProviderHandshakeResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Handshake", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -398,7 +398,7 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
 type ResourceProviderServer interface {
-	Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error)
+	Handshake(context.Context, *ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
 	// subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
@@ -554,7 +554,7 @@ type ResourceProviderServer interface {
 type UnimplementedResourceProviderServer struct {
 }
 
-func (UnimplementedResourceProviderServer) Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error) {
+func (UnimplementedResourceProviderServer) Handshake(context.Context, *ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
 }
 func (UnimplementedResourceProviderServer) Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error) {
@@ -631,7 +631,7 @@ func RegisterResourceProviderServer(s grpc.ServiceRegistrar, srv ResourceProvide
 }
 
 func _ResourceProvider_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HandshakeRequest)
+	in := new(ProviderHandshakeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -643,7 +643,7 @@ func _ResourceProvider_Handshake_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/pulumirpc.ResourceProvider/Handshake",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).Handshake(ctx, req.(*HandshakeRequest))
+		return srv.(ResourceProviderServer).Handshake(ctx, req.(*ProviderHandshakeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

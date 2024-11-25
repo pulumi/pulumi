@@ -9,36 +9,45 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
-export class HandshakeRequest extends jspb.Message { 
+export class ProviderHandshakeRequest extends jspb.Message { 
+    getEngineAddress(): string;
+    setEngineAddress(value: string): ProviderHandshakeRequest;
+    getRootDirectory(): string;
+    setRootDirectory(value: string): ProviderHandshakeRequest;
+    getProgramDirectory(): string;
+    setProgramDirectory(value: string): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): HandshakeRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: HandshakeRequest): HandshakeRequest.AsObject;
+    toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderHandshakeRequest): ProviderHandshakeRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: HandshakeRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): HandshakeRequest;
-    static deserializeBinaryFromReader(message: HandshakeRequest, reader: jspb.BinaryReader): HandshakeRequest;
+    static serializeBinaryToWriter(message: ProviderHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderHandshakeRequest;
+    static deserializeBinaryFromReader(message: ProviderHandshakeRequest, reader: jspb.BinaryReader): ProviderHandshakeRequest;
 }
 
-export namespace HandshakeRequest {
+export namespace ProviderHandshakeRequest {
     export type AsObject = {
+        engineAddress: string,
+        rootDirectory: string,
+        programDirectory: string,
     }
 }
 
-export class HandshakeResponse extends jspb.Message { 
+export class ProviderHandshakeResponse extends jspb.Message { 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): HandshakeResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: HandshakeResponse): HandshakeResponse.AsObject;
+    toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderHandshakeResponse): ProviderHandshakeResponse.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: HandshakeResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): HandshakeResponse;
-    static deserializeBinaryFromReader(message: HandshakeResponse, reader: jspb.BinaryReader): HandshakeResponse;
+    static serializeBinaryToWriter(message: ProviderHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderHandshakeResponse;
+    static deserializeBinaryFromReader(message: ProviderHandshakeResponse, reader: jspb.BinaryReader): ProviderHandshakeResponse;
 }
 
-export namespace HandshakeResponse {
+export namespace ProviderHandshakeResponse {
     export type AsObject = {
     }
 }

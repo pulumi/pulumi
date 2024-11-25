@@ -27,7 +27,7 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
 // as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
 service ResourceProvider {
-    rpc Handshake(HandshakeRequest) returns (HandshakeResponse) {}
+    rpc Handshake(ProviderHandshakeRequest) returns (ProviderHandshakeResponse) {}
 
     // `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
     // a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
@@ -197,10 +197,18 @@ service ResourceProvider {
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
 }
 
-message HandshakeRequest {
+message ProviderHandshakeRequest {
+    // the grpc address for the engine.
+    string engine_address = 1;
+
+    // the root of the project, where the `PulumiPlugin.yaml` file or provider binary is located.
+    string root_directory = 2;
+    // the absolute path to the directory of the provider program to execute. Generally, but not required to
+    // be, underneath the root directory.
+    string program_directory = 3;
 }
 
-message HandshakeResponse {
+message ProviderHandshakeResponse {
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A

@@ -156,7 +156,7 @@ type MockProvider struct {
 
 	CloseF              func() error
 	PkgF                func() tokens.Package
-	HandshakeF          func(context.Context, HandshakeRequest) (HandshakeResponse, error)
+	HandshakeF          func(context.Context, ProviderHandshakeRequest) (ProviderHandshakeResponse, error)
 	ParameterizeF       func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
 	GetSchemaF          func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
 	CheckConfigF        func(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
@@ -194,11 +194,11 @@ func (m *MockProvider) Pkg() tokens.Package {
 	return ""
 }
 
-func (m *MockProvider) Handshake(ctx context.Context, req HandshakeRequest) (HandshakeResponse, error) {
+func (m *MockProvider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (ProviderHandshakeResponse, error) {
 	if m.HandshakeF != nil {
 		return m.HandshakeF(ctx, req)
 	}
-	return HandshakeResponse{}, errors.New("Handshake not implemented")
+	return ProviderHandshakeResponse{}, errors.New("Handshake not implemented")
 }
 
 func (m *MockProvider) Parameterize(ctx context.Context, req ParameterizeRequest) (ParameterizeResponse, error) {

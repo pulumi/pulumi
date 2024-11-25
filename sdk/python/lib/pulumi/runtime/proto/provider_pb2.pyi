@@ -33,24 +33,40 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
-class HandshakeRequest(google.protobuf.message.Message):
+class ProviderHandshakeRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    engine_address: builtins.str
+    """the grpc address for the engine."""
+    root_directory: builtins.str
+    """the root of the project, where the `PulumiPlugin.yaml` file or provider binary is located."""
+    program_directory: builtins.str
+    """the absolute path to the directory of the provider program to execute. Generally, but not required to
+    be, underneath the root directory.
+    """
     def __init__(
         self,
+        *,
+        engine_address: builtins.str = ...,
+        root_directory: builtins.str = ...,
+        program_directory: builtins.str = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
 
-global___HandshakeRequest = HandshakeRequest
+global___ProviderHandshakeRequest = ProviderHandshakeRequest
 
 @typing_extensions.final
-class HandshakeResponse(google.protobuf.message.Message):
+class ProviderHandshakeResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     def __init__(
         self,
     ) -> None: ...
 
-global___HandshakeResponse = HandshakeResponse
+global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
 @typing_extensions.final
 class ParameterizeRequest(google.protobuf.message.Message):

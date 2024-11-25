@@ -22,8 +22,8 @@ class ResourceProviderStub(object):
         """
         self.Handshake = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Handshake',
-                request_serializer=pulumi_dot_provider__pb2.HandshakeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.HandshakeResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.ProviderHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ProviderHandshakeResponse.FromString,
                 )
         self.Parameterize = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Parameterize',
@@ -393,8 +393,8 @@ def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Handshake': grpc.unary_unary_rpc_method_handler(
                     servicer.Handshake,
-                    request_deserializer=pulumi_dot_provider__pb2.HandshakeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.HandshakeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.ProviderHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ProviderHandshakeResponse.SerializeToString,
             ),
             'Parameterize': grpc.unary_unary_rpc_method_handler(
                     servicer.Parameterize,
@@ -522,8 +522,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Handshake',
-            pulumi_dot_provider__pb2.HandshakeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.HandshakeResponse.FromString,
+            pulumi_dot_provider__pb2.ProviderHandshakeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ProviderHandshakeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

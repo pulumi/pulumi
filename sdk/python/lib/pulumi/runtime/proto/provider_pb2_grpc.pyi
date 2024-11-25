@@ -33,8 +33,8 @@ class ResourceProviderStub:
 
     def __init__(self, channel: grpc.Channel) -> None: ...
     Handshake: grpc.UnaryUnaryMultiCallable[
-        pulumi.provider_pb2.HandshakeRequest,
-        pulumi.provider_pb2.HandshakeResponse,
+        pulumi.provider_pb2.ProviderHandshakeRequest,
+        pulumi.provider_pb2.ProviderHandshakeResponse,
     ]
     Parameterize: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ParameterizeRequest,
@@ -269,9 +269,9 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     
     def Handshake(
         self,
-        request: pulumi.provider_pb2.HandshakeRequest,
+        request: pulumi.provider_pb2.ProviderHandshakeRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.provider_pb2.HandshakeResponse: ...
+    ) -> pulumi.provider_pb2.ProviderHandshakeResponse: ...
     
     def Parameterize(
         self,

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -161,7 +162,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
-	var handshakeRes *pulumirpc.HandshakeResponse
+	var handshakeRes *ProviderHandshakeResponse
 
 	attachPort, err := GetProviderAttachPort(pkg)
 	if err != nil {
@@ -172,6 +173,16 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	if attachPort != nil {
 		port := *attachPort
+
+		handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+			req := &ProviderHandshakeRequest{
+				EngineAddress: host.ServerAddr(),
+				// If we're attaching then we don't know the root or program directory.
+				RootDirectory:    "",
+				ProgramDirectory: "",
+			}
+			return handshake(ctx, bin, prefix, conn, req)
+		}
 
 		var conn *grpc.ClientConn
 		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
@@ -215,6 +226,16 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
+
+		handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+			req := &ProviderHandshakeRequest{
+				EngineAddress:    host.ServerAddr(),
+				RootDirectory:    filepath.Dir(bin),
+				ProgramDirectory: filepath.Dir(bin),
+			}
+			return handshake(ctx, bin, prefix, conn, req)
+		}
+
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
@@ -262,9 +283,14 @@ func handshake(
 	bin string,
 	prefix string,
 	conn *grpc.ClientConn,
-) (*pulumirpc.HandshakeResponse, error) {
+	req *ProviderHandshakeRequest,
+) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
-	res, err := client.Handshake(ctx, &pulumirpc.HandshakeRequest{})
+	_, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
+		EngineAddress:    req.EngineAddress,
+		RootDirectory:    req.RootDirectory,
+		ProgramDirectory: req.ProgramDirectory,
+	})
 	if err != nil {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {
@@ -275,7 +301,7 @@ func handshake(
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
-	return res, err
+	return &ProviderHandshakeResponse{}, err
 }
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
@@ -305,6 +331,15 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
+
+	handshake := func(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*ProviderHandshakeResponse, error) {
+		req := &ProviderHandshakeRequest{
+			EngineAddress:    host.ServerAddr(),
+			RootDirectory:    filepath.Dir(bin),
+			ProgramDirectory: filepath.Dir(bin),
+		}
+		return handshake(ctx, bin, prefix, conn, req)
+	}
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
@@ -394,13 +429,17 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
-func (p *provider) Handshake(ctx context.Context, req HandshakeRequest) (HandshakeResponse, error) {
-	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.HandshakeRequest{})
+func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (ProviderHandshakeResponse, error) {
+	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
+		EngineAddress:    req.EngineAddress,
+		RootDirectory:    req.RootDirectory,
+		ProgramDirectory: req.ProgramDirectory,
+	})
 	if err != nil {
-		return HandshakeResponse{}, err
+		return ProviderHandshakeResponse{}, err
 	}
 
-	return HandshakeResponse{}, nil
+	return ProviderHandshakeResponse{}, nil
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {

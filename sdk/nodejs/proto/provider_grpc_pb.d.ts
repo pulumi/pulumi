@@ -34,14 +34,14 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     getMappings: IResourceProviderService_IGetMappings;
 }
 
-interface IResourceProviderService_IHandshake extends grpc.MethodDefinition<pulumi_provider_pb.HandshakeRequest, pulumi_provider_pb.HandshakeResponse> {
+interface IResourceProviderService_IHandshake extends grpc.MethodDefinition<pulumi_provider_pb.ProviderHandshakeRequest, pulumi_provider_pb.ProviderHandshakeResponse> {
     path: "/pulumirpc.ResourceProvider/Handshake";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_provider_pb.HandshakeRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_provider_pb.HandshakeRequest>;
-    responseSerialize: grpc.serialize<pulumi_provider_pb.HandshakeResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_provider_pb.HandshakeResponse>;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.ProviderHandshakeRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.ProviderHandshakeRequest>;
+    responseSerialize: grpc.serialize<pulumi_provider_pb.ProviderHandshakeResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_provider_pb.ProviderHandshakeResponse>;
 }
 interface IResourceProviderService_IParameterize extends grpc.MethodDefinition<pulumi_provider_pb.ParameterizeRequest, pulumi_provider_pb.ParameterizeResponse> {
     path: "/pulumirpc.ResourceProvider/Parameterize";
@@ -227,7 +227,7 @@ interface IResourceProviderService_IGetMappings extends grpc.MethodDefinition<pu
 export const ResourceProviderService: IResourceProviderService;
 
 export interface IResourceProviderServer extends grpc.UntypedServiceImplementation {
-    handshake: grpc.handleUnaryCall<pulumi_provider_pb.HandshakeRequest, pulumi_provider_pb.HandshakeResponse>;
+    handshake: grpc.handleUnaryCall<pulumi_provider_pb.ProviderHandshakeRequest, pulumi_provider_pb.ProviderHandshakeResponse>;
     parameterize: grpc.handleUnaryCall<pulumi_provider_pb.ParameterizeRequest, pulumi_provider_pb.ParameterizeResponse>;
     getSchema: grpc.handleUnaryCall<pulumi_provider_pb.GetSchemaRequest, pulumi_provider_pb.GetSchemaResponse>;
     checkConfig: grpc.handleUnaryCall<pulumi_provider_pb.CheckRequest, pulumi_provider_pb.CheckResponse>;
@@ -251,9 +251,9 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
 }
 
 export interface IResourceProviderClient {
-    handshake(request: pulumi_provider_pb.HandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
-    handshake(request: pulumi_provider_pb.HandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
-    handshake(request: pulumi_provider_pb.HandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
     parameterize(request: pulumi_provider_pb.ParameterizeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
     parameterize(request: pulumi_provider_pb.ParameterizeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
     parameterize(request: pulumi_provider_pb.ParameterizeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
@@ -317,9 +317,9 @@ export interface IResourceProviderClient {
 
 export class ResourceProviderClient extends grpc.Client implements IResourceProviderClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
-    public handshake(request: pulumi_provider_pb.HandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
-    public handshake(request: pulumi_provider_pb.HandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
-    public handshake(request: pulumi_provider_pb.HandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.HandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_provider_pb.ProviderHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ProviderHandshakeResponse) => void): grpc.ClientUnaryCall;
     public parameterize(request: pulumi_provider_pb.ParameterizeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
     public parameterize(request: pulumi_provider_pb.ParameterizeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
     public parameterize(request: pulumi_provider_pb.ParameterizeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ParameterizeResponse) => void): grpc.ClientUnaryCall;
