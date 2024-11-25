@@ -500,11 +500,11 @@ func (host *pluginHost) ResolvePlugin(
 	return match, nil
 }
 
-func (host *pluginHost) GetRequiredPlugins(
+func (host *pluginHost) GetRequiredPackages(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
-) ([]workspace.PluginSpec, error) {
-	return host.languageRuntime.GetRequiredPlugins(info)
+) ([]workspace.PackageDescriptor, error) {
+	return host.languageRuntime.GetRequiredPackages(info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {

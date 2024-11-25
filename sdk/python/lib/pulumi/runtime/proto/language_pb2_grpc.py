@@ -23,6 +23,11 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
                 )
+        self.GetRequiredPackages = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+                request_serializer=pulumi_dot_language__pb2.GetRequiredPackagesRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.GetRequiredPackagesResponse.FromString,
+                )
         self.Run = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/Run',
                 request_serializer=pulumi_dot_language__pb2.RunRequest.SerializeToString,
@@ -87,6 +92,13 @@ class LanguageRuntimeServicer(object):
 
     def GetRequiredPlugins(self, request, context):
         """GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetRequiredPackages(self, request, context):
+        """GetRequiredPackages computes the complete set of anticipated packages required by a program.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -177,6 +189,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.SerializeToString,
             ),
+            'GetRequiredPackages': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRequiredPackages,
+                    request_deserializer=pulumi_dot_language__pb2.GetRequiredPackagesRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.GetRequiredPackagesResponse.SerializeToString,
+            ),
             'Run': grpc.unary_unary_rpc_method_handler(
                     servicer.Run,
                     request_deserializer=pulumi_dot_language__pb2.RunRequest.FromString,
@@ -258,6 +275,23 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
             pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
             pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRequiredPackages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+            pulumi_dot_language__pb2.GetRequiredPackagesRequest.SerializeToString,
+            pulumi_dot_language__pb2.GetRequiredPackagesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

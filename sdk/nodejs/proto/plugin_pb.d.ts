@@ -79,3 +79,71 @@ export namespace PluginAttach {
         address: string,
     }
 }
+
+export class PackageParameterization extends jspb.Message { 
+    getName(): string;
+    setName(value: string): PackageParameterization;
+    getVersion(): string;
+    setVersion(value: string): PackageParameterization;
+    getValue(): Uint8Array | string;
+    getValue_asU8(): Uint8Array;
+    getValue_asB64(): string;
+    setValue(value: Uint8Array | string): PackageParameterization;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageParameterization.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageParameterization): PackageParameterization.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageParameterization, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageParameterization;
+    static deserializeBinaryFromReader(message: PackageParameterization, reader: jspb.BinaryReader): PackageParameterization;
+}
+
+export namespace PackageParameterization {
+    export type AsObject = {
+        name: string,
+        version: string,
+        value: Uint8Array | string,
+    }
+}
+
+export class PackageDependency extends jspb.Message { 
+    getName(): string;
+    setName(value: string): PackageDependency;
+    getKind(): string;
+    setKind(value: string): PackageDependency;
+    getVersion(): string;
+    setVersion(value: string): PackageDependency;
+    getServer(): string;
+    setServer(value: string): PackageDependency;
+
+    getChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearChecksumsMap(): void;
+
+    hasParameterization(): boolean;
+    clearParameterization(): void;
+    getParameterization(): PackageParameterization | undefined;
+    setParameterization(value?: PackageParameterization): PackageDependency;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageDependency.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageDependency): PackageDependency.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageDependency, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageDependency;
+    static deserializeBinaryFromReader(message: PackageDependency, reader: jspb.BinaryReader): PackageDependency;
+}
+
+export namespace PackageDependency {
+    export type AsObject = {
+        name: string,
+        kind: string,
+        version: string,
+        server: string,
+
+        checksumsMap: Array<[string, Uint8Array | string]>,
+        parameterization?: PackageParameterization.AsObject,
+    }
+}

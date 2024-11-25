@@ -112,12 +112,15 @@ func newInstallCmd() *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				plugins, err := lang.GetRequiredPlugins(programInfo)
+				packages, err := lang.GetRequiredPackages(programInfo)
 				if err != nil {
 					return err
 				}
 
-				pluginSet := engine.NewPluginSet(plugins...)
+				pluginSet := engine.NewPluginSet()
+				for _, pkg := range packages {
+					pluginSet.Add(pkg.PluginSpec)
+				}
 
 				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
 					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {

@@ -419,7 +419,7 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{
+		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck // Deprecated API.
 			Project: "deprecated",
 			Pwd:     progDir,
 			Info: &pulumirpc.ProgramInfo{

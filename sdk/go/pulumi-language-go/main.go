@@ -37,7 +37,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -674,6 +676,12 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 	}
 
 	return filepath.Dir(modPath), f, nil
+}
+
+func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
+	req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.

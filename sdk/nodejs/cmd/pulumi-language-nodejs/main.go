@@ -51,7 +51,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -204,7 +206,7 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
-	pulumirpc.UnimplementedLanguageRuntimeServer
+	pulumirpc.UnsafeLanguageRuntimeServer
 
 	engineAddress string
 	tracing       string
@@ -330,6 +332,12 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 	}
 
 	return true, ""
+}
+
+func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
+	req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
