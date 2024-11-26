@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Reduce binary size by stripping debug information
