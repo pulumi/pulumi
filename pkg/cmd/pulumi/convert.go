@@ -288,7 +288,10 @@ func runConvert(
 				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
 			}, language)
 	case "java":
-		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
+		projectGenerator = generatorWrapper(
+			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
+				return javagen.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+			}, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
