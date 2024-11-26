@@ -42,7 +42,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     engine_address: builtins.str
     """The grpc address for the engine."""
     root_directory: builtins.str
-    """The optional root of the project, where the `PulumiPlugin.yaml` file or provider binary is located.
+    """The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
     This can't be sent when the engine is attaching to a provider via a port number.
     """
     program_directory: builtins.str

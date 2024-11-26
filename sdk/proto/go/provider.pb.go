@@ -216,7 +216,7 @@ type ProviderHandshakeRequest struct {
 
 	// The grpc address for the engine.
 	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
-	// The optional root of the project, where the `PulumiPlugin.yaml` file or provider binary is located.
+	// The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
 	// This can't be sent when the engine is attaching to a provider via a port number.
 	RootDirectory string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
 	// The optional absolute path to the directory of the provider program to execute. Generally, but not

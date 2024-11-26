@@ -37,13 +37,15 @@ type GetSchemaRequest struct {
 }
 
 type ProviderHandshakeRequest struct {
-	// the grpc address for the engine.
+	// The grpc address for the engine.
 	EngineAddress string
 
-	// the root of the project, where the `PulumiPlugin.yaml` file or provider binary is located.
+	// The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
+	// This can't be sent when the engine is attaching to a provider via a port number.
 	RootDirectory string
-	// the absolute path to the directory of the provider program to execute. Generally, but not required to
-	// be, underneath the root directory.
+	// The optional absolute path to the directory of the provider program to execute. Generally, but not
+	// required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+	// provider via a port number.
 	ProgramDirectory string
 }
 
