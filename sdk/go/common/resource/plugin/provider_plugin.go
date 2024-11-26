@@ -90,8 +90,7 @@ type provider struct {
 }
 
 type pluginProtocol struct {
-	// True if the provider accepts strongly-typed secrets. This is always true for providers that implement Handshake,
-	// since Handshake was added to the provider protocol after the acceptSecrets flag.
+	// True if the provider accepts strongly-typed secrets.
 	acceptSecrets bool
 
 	// True if the provider accepts strongly-typed resource references.
