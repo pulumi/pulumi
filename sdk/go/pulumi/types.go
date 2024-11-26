@@ -174,6 +174,14 @@ func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 	return internal.ToOutputWithContext(ctx, v)
 }
 
+func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Output {
+	r := make([]internal.Resource, len(deps))
+	for i, d := range deps {
+		r[i] = d.(internal.Resource)
+	}
+	return internal.OutputWithDependencies(ctx, o, r...)
+}
+
 func init() {
 	internal.AnyOutputType = anyOutputType
 }
