@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet
-  description: Fix parameterized packages to have version.txt

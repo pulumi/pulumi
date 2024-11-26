@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/java
-  description: Bump pulumi-java to 0.18.0
