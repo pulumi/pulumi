@@ -1259,3 +1259,27 @@ func TestInstallDependenciesProjectWithParentPolicyPack(t *testing.T) {
 	require.True(t, e.PathExists(filepath.Join("project", "node_modules")),
 		"node_modules should exist in the project path")
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/17862
+//
+//nolint:paralleltest // uses parallel programtest
+func TestPulumiNewLocalTemplatePath(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Clone the `python` folder from https://github.com/pulumi/templates into a temporary directory
+	templateDir := e.TempDir()
+	cwd := e.CWD
+	e.CWD = templateDir
+	e.RunCommand("git", "init")
+	e.RunCommand("git", "remote", "add", "origin", "https://github.com/pulumi/templates")
+	e.RunCommand("git", "config", "core.sparseCheckout", "true")
+	e.RunCommand("git", "sparse-checkout", "set", "python")
+	e.RunCommand("git", "pull", "origin", "master")
+	e.CWD = cwd
+
+	templatePath := filepath.Join(templateDir, "python")
+	stdout, stderr := e.RunCommand("pulumi", "new", templatePath, "--generate-only", "--yes", "--force")
+	require.Empty(t, stderr)
+	require.Contains(t, stdout, "Your new project is ready to go")
+}
