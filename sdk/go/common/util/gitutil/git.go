@@ -654,13 +654,8 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	if err != nil {
 		return gitRepoURLParts{}, err
 	}
-	if endpoint.Protocol == "file" {
-		// We want to allow "naked" URLs, such as github.com/pulumi/pulumi-provider in addition to
-		// full URLs such as https://github.com/pulumi/pulumi-provider for convenience.  go-git
-		// parses these as local (file) repositories.  Since we never want to allow those, we prefix
-		// https:// to these URLs, and assume that protocol.
-		rawurl = "https://" + rawurl
-	} else if endpoint.Protocol == "ssh" {
+
+	if endpoint.Protocol == "ssh" {
 		// Normalize SSH URLs (including scp-style git@github.com URLs) into
 		// ssh:// format so we can parse them the same as https:// URLs.
 		rawurl = endpoint.String()

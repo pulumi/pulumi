@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Fix new to work with local template directories again

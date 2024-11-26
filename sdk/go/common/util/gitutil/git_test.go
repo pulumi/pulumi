@@ -144,8 +144,8 @@ func TestParseGitRepoURL(t *testing.T) {
 	// No owner.
 	testError("https://github.com", "invalid Git URL")
 	testError("https://github.com/", "invalid Git URL")
-	testError("git@github.com", "invalid Git URL")
-	testError("git@github.com/", "invalid Git URL")
+	testError("git@github.com", "invalid URL scheme: ")
+	testError("git@github.com/", "invalid URL scheme: ")
 	testError("ssh://git@github.com", "invalid Git URL")
 	testError("ssh://git@github.com/", "invalid Git URL")
 
@@ -160,13 +160,6 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git", "invalid URL scheme: http")
 	testError("http://github.com/pulumi/templates", "invalid URL scheme: http")
-
-	// "Naked" URLs.
-	pre = "github.com/pulumi/templates"
-	exp = "https://" + pre + ".git"
-	test(exp, "", pre)
-	test(exp, "", pre+"/")
-	test(exp, "templates", pre+"/templates")
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
