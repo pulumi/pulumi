@@ -4719,7 +4719,6 @@ func GeneratePackage(tool string,
 	if pkg.Parameterization != nil {
 		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
 		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
-		pulumiPlugin.Server = pkg.Parameterization.BaseProvider.PluginDownloadURL
 	}
 
 	pulumiPluginJSON, err := pulumiPlugin.JSON()

@@ -1409,9 +1409,8 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 
 	return &Parameterization{
 		BaseProvider: BaseProvider{
-			Name:              spec.BaseProvider.Name,
-			Version:           ver,
-			PluginDownloadURL: spec.BaseProvider.PluginDownloadURL,
+			Name:    spec.BaseProvider.Name,
+			Version: ver,
 		},
 		Parameter: spec.Parameter,
 	}, nil
