@@ -33,6 +33,45 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
+class ProviderHandshakeRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    engine_address: builtins.str
+    """The grpc address for the engine."""
+    root_directory: builtins.str
+    """The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
+    This can't be sent when the engine is attaching to a provider via a port number.
+    """
+    program_directory: builtins.str
+    """The optional absolute path to the directory of the provider program to execute. Generally, but not
+    required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+    provider via a port number.
+    """
+    def __init__(
+        self,
+        *,
+        engine_address: builtins.str = ...,
+        root_directory: builtins.str = ...,
+        program_directory: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+
+global___ProviderHandshakeRequest = ProviderHandshakeRequest
+
+@typing_extensions.final
+class ProviderHandshakeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___ProviderHandshakeResponse = ProviderHandshakeResponse
+
+@typing_extensions.final
 class ParameterizeRequest(google.protobuf.message.Message):
     """`ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
     `ParameterizeRequest` may contain either:

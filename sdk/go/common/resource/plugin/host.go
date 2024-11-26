@@ -438,7 +438,9 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 	if plugin == nil || err != nil {
 		return nil, err
 	}
-	return plugin.(Provider), nil
+
+	provider := plugin.(Provider)
+	return provider, nil
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,

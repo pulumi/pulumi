@@ -52,8 +52,9 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 
 	contract.Assertf(path != "", "unexpected empty path for plugin %s", name)
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, prefix,
-		apitype.ConverterPlugin, []string{}, os.Environ(), converterPluginDialOptions(ctx, name, ""))
+	plug, _, err := newPlugin(ctx, ctx.Pwd, path, prefix,
+		apitype.ConverterPlugin, []string{}, os.Environ(),
+		testConnection, converterPluginDialOptions(ctx, name, ""))
 	if err != nil {
 		return nil, err
 	}

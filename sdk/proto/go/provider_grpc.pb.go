@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceProviderClient interface {
+	Handshake(ctx context.Context, in *ProviderHandshakeRequest, opts ...grpc.CallOption) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
 	// subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
@@ -179,6 +180,15 @@ type resourceProviderClient struct {
 
 func NewResourceProviderClient(cc grpc.ClientConnInterface) ResourceProviderClient {
 	return &resourceProviderClient{cc}
+}
+
+func (c *resourceProviderClient) Handshake(ctx context.Context, in *ProviderHandshakeRequest, opts ...grpc.CallOption) (*ProviderHandshakeResponse, error) {
+	out := new(ProviderHandshakeResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Handshake", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *resourceProviderClient) Parameterize(ctx context.Context, in *ParameterizeRequest, opts ...grpc.CallOption) (*ParameterizeResponse, error) {
@@ -388,6 +398,7 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
 type ResourceProviderServer interface {
+	Handshake(context.Context, *ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
 	// subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
@@ -543,6 +554,9 @@ type ResourceProviderServer interface {
 type UnimplementedResourceProviderServer struct {
 }
 
+func (UnimplementedResourceProviderServer) Handshake(context.Context, *ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
 func (UnimplementedResourceProviderServer) Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Parameterize not implemented")
 }
@@ -614,6 +628,24 @@ type UnsafeResourceProviderServer interface {
 
 func RegisterResourceProviderServer(s grpc.ServiceRegistrar, srv ResourceProviderServer) {
 	s.RegisterService(&ResourceProvider_ServiceDesc, srv)
+}
+
+func _ResourceProvider_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderHandshakeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Handshake(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/Handshake",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Handshake(ctx, req.(*ProviderHandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ResourceProvider_Parameterize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -986,6 +1018,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.ResourceProvider",
 	HandlerType: (*ResourceProviderServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Handshake",
+			Handler:    _ResourceProvider_Handshake_Handler,
+		},
 		{
 			MethodName: "Parameterize",
 			Handler:    _ResourceProvider_Parameterize_Handler,
