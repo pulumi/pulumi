@@ -320,7 +320,7 @@ func LiteralValueString(x model.Expression) string {
 
 // inferVariableName infers a variable name from the given traversal expression.
 // for example if you have component.firstName.lastName it will become componentFirstNameLastName
-func inferVariableName(traversal *model.ScopeTraversalExpression) string {
+func InferVariableName(traversal *model.ScopeTraversalExpression) string {
 	if len(traversal.Parts) == 1 {
 		return traversal.RootName
 	}
@@ -393,7 +393,7 @@ func ExtractDeferredOutputVariables(
 	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
 		if traversal, componentRef, ok := componentTraversalExpr(subExpr); ok {
 			// we found a reference to component that appears later in the program
-			variableName := inferVariableName(traversal)
+			variableName := InferVariableName(traversal)
 			deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
 				Name:            variableName,
 				Expr:            subExpr,
@@ -411,7 +411,7 @@ func ExtractDeferredOutputVariables(
 		// turn the entire the ForExpression into a deferred output variable
 		if forExpr, ok := subExpr.(*model.ForExpression); ok {
 			if traversal, componentRef, ok := componentTraversalExpr(forExpr.Collection); ok {
-				variableName := "loopingOver" + titleCase(inferVariableName(traversal))
+				variableName := "loopingOver" + titleCase(InferVariableName(traversal))
 				deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
 					Name:            variableName,
 					Expr:            forExpr,
