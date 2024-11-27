@@ -724,8 +724,12 @@ def create_stack(
     if _is_inline_program(**args):
         # Type checks are ignored because we have already asserted that the correct args are present.
         return _inline_source_stack_helper(
-            stack_name, program, project_name, Stack.create, opts
-        )  # type: ignore
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.create,
+            opts,
+        )
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
@@ -779,8 +783,12 @@ def select_stack(
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(
-            stack_name, program, project_name, Stack.select, opts
-        )  # type: ignore
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.select,
+            opts,
+        )
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
@@ -834,12 +842,19 @@ def create_or_select_stack(
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(
-            stack_name, program, project_name, Stack.create_or_select, opts
-        )  # type: ignore
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.create_or_select,
+            opts,
+        )
     if _is_local_program(**args):
         return _local_source_stack_helper(
-            stack_name, work_dir, Stack.create_or_select, opts
-        )  # type: ignore
+            stack_name,
+            work_dir,  # type: ignore
+            Stack.create_or_select,
+            opts,
+        )
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
