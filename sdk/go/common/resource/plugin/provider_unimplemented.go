@@ -36,6 +36,12 @@ type NotForwardCompatibleProvider struct{}
 // implement [Provider].
 type UnimplementedProvider struct{ NotForwardCompatibleProvider }
 
+func (p *UnimplementedProvider) Handshake(
+	context.Context, ProviderHandshakeRequest,
+) (*ProviderHandshakeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
+
 func (p *UnimplementedProvider) Close() error {
 	return status.Error(codes.Unimplemented, "Close is not yet implemented")
 }

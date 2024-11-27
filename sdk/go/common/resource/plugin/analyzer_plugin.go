@@ -69,8 +69,9 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
+	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
+		testConnection, dialOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +136,9 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+	plug, _, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		apitype.AnalyzerPlugin, args, env, testConnection,
+		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.

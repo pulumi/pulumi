@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.142.0 (2024-11-26)
+
+
+### Features
+
+- [cli] Reduce binary size by stripping debug information
+  [#17868](https://github.com/pulumi/pulumi/pull/17868)
+
+- [sdk/go] Add OutputWithDependencies
+  [#17856](https://github.com/pulumi/pulumi/pull/17856)
+
+- [sdk/java] Bump pulumi-java to 0.18.0
+
+
+### Bug Fixes
+
+- [cli] Fix login --interactive when no accounts are in the credentials file
+  [#17860](https://github.com/pulumi/pulumi/pull/17860)
+
+- [cli/new] Fix new to work with local template directories again
+  [#17866](https://github.com/pulumi/pulumi/pull/17866)
+
+- [sdkgen/dotnet] Fix parameterized packages to have version.txt
+  [#17851](https://github.com/pulumi/pulumi/pull/17851)
+
+- [sdk/python] uv toolchain: preserve env-vars when executing uv command
+  [#17849](https://github.com/pulumi/pulumi/pull/17849)
+
 ## 3.141.0 (2024-11-22)
 
 

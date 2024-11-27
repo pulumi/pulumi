@@ -2427,9 +2427,14 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	if pkg.Parameterization != nil {
 		pulumiPlugin = plugin.PulumiPluginJSON{
 			Resource: true,
+			Server:   pkg.PluginDownloadURL,
 			Name:     pkg.Parameterization.BaseProvider.Name,
 			Version:  pkg.Parameterization.BaseProvider.Version.String(),
-			Server:   pkg.Parameterization.BaseProvider.PluginDownloadURL,
+			Parameterization: &plugin.PulumiParameterizationJSON{
+				Name:    pkg.Name,
+				Version: pkg.Version.String(),
+				Value:   pkg.Parameterization.Parameter,
+			},
 		}
 	} else {
 		pulumiPlugin = plugin.PulumiPluginJSON{
@@ -2901,7 +2906,7 @@ export async function getPackage() : Promise<string | undefined> {
 }
 `,
 			def.Name, def.Version, parameterValue,
-			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.Parameterization.BaseProvider.PluginDownloadURL)
+			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.PluginDownloadURL)
 	}
 
 	return err

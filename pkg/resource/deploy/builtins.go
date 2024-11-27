@@ -63,6 +63,13 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+func (p *builtinProvider) Handshake(
+	context.Context,
+	plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
+	return &plugin.ProviderHandshakeResponse{}, nil
+}
+
 func (p *builtinProvider) Parameterize(
 	context.Context, plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {

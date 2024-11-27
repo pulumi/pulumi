@@ -1097,6 +1097,34 @@ func toOutputWithContext(
 	return toOutputTWithContext(ctx, join, outType, v, result, forceSecretVal)
 }
 
+func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Output {
+	state := o.getState()
+	mergedDeps := mergeDependencies(state.deps, deps)
+	resultType := reflect.TypeOf(o)
+	result := NewOutput(state.join, resultType, mergedDeps...)
+	go func() {
+		v, known, secret, deps, err := o.getState().await(ctx)
+		if err != nil || !known {
+			result.getState().fulfill(nil, known, secret, deps, err)
+			return
+		}
+
+		val := reflect.ValueOf(v)
+		if !val.IsValid() {
+			val = reflect.Zero(state.elementType())
+		}
+
+		var fulfilledDeps []Resource
+		fulfilledDeps = append(fulfilledDeps, deps...)
+		if resultOutput, ok := val.Interface().(Output); ok {
+			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
+		}
+		// Fulfill the result.
+		result.getState().fulfillValue(val, true, secret, fulfilledDeps, nil)
+	}()
+	return result
+}
+
 // Input is an input value for a Pulumi resource.
 //
 // This is an untyped version of the Input type

@@ -168,3 +168,55 @@ func TestOutputState_nil(t *testing.T) {
 	// should be a no-op
 	os.fulfillValue(reflect.ValueOf("hello"), true, true, nil /* deps */, nil /* err */)
 }
+
+func TestOutputWithDependencies(t *testing.T) {
+	t.Parallel()
+
+	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	state := out.getState()
+	require.Empty(t, state.dependencies())
+
+	deps := []Resource{&ResourceState{}, &ResourceState{}}
+	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+
+	// The output with dependencies should be pending and track the dependencies
+	stateWithDeps := outputWithDeps.getState()
+	require.Equal(t, OutputPending, stateWithDeps.state)
+	require.Equal(t, deps, stateWithDeps.dependencies())
+
+	// Resolve the original output, which should also resolve the output with dependencies
+	state.resolve(42, true, false, nil)
+
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 42, v)
+	require.True(t, known)
+	require.False(t, secret)
+	require.Equal(t, deps, resolvedDeps)
+}
+
+func TestOutputWithDependenciesReject(t *testing.T) {
+	t.Parallel()
+
+	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	state := out.getState()
+	require.Empty(t, state.dependencies())
+
+	deps := []Resource{&ResourceState{}, &ResourceState{}}
+	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+
+	// The output with dependencies should be pending and track the dependencies
+	stateWithDeps := outputWithDeps.getState()
+	require.Equal(t, OutputPending, stateWithDeps.state)
+	require.Equal(t, deps, stateWithDeps.dependencies())
+
+	// Reject the original output, which should also reject the output with dependencies
+	state.reject(errors.New("oh no"))
+
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	require.Error(t, err, "oh no")
+	require.Nil(t, v)
+	require.True(t, known)
+	require.False(t, secret)
+	require.Equal(t, deps, resolvedDeps)
+}
