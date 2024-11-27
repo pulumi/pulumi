@@ -98,3 +98,31 @@ let test2pulumi1 = pulumi1.runtime.getResourcePackage("test2");
 assert.strictEqual(test2pulumi1.version, "0.0.2");
 let test2pulumi2 = pulumi2.runtime.getResourcePackage("test2");
 assert.strictEqual(test2pulumi2.version, "0.0.2");
+
+// Check that we can set mocks successfully
+// We don't need an actual test monitor here, just something to set and get.
+class Mocks {
+    newResource(args) {
+        return {
+            id: args.inputs.name + "_id",
+            state: {
+                ...args.inputs,
+            },
+        };
+    }
+    call(args) {
+        return args;
+    }
+}
+
+let mocks = new Mocks();
+
+pulumi1.runtime.setMocks(mocks);
+assert.strictEqual(pulumi1.runtime.getMonitor().mocks, mocks);
+assert.strictEqual(pulumi2.runtime.getMonitor().mocks, mocks);
+assert.strictEqual(pulumi1.runtime.getMonitor(), pulumi2.runtime.getMonitor());
+assert(pulumi1.runtime.hasMonitor());
+assert(pulumi2.runtime.hasMonitor());
+
+pulumi1.runtime._reset();
+pulumi2.runtime._reset();

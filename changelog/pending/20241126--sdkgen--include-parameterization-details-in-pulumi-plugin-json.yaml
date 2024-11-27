@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen
+  description: Include parameterization details in pulumi-plugin.json

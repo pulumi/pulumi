@@ -27,7 +27,7 @@ export interface FuncWithListParamResult {
 /**
  * Check codegen of functions with a List parameter.
  */
-export function funcWithListParamOutput(args?: FuncWithListParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithListParamResult> {
+export function funcWithListParamOutput(args?: FuncWithListParamOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FuncWithListParamResult> {
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithListParam", {

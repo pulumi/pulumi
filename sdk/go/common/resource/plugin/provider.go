@@ -36,6 +36,21 @@ type GetSchemaRequest struct {
 	SubpackageVersion *semver.Version
 }
 
+type ProviderHandshakeRequest struct {
+	// The grpc address for the engine.
+	EngineAddress string
+
+	// The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
+	// This can't be sent when the engine is attaching to a provider via a port number.
+	RootDirectory string
+	// The optional absolute path to the directory of the provider program to execute. Generally, but not
+	// required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+	// provider via a port number.
+	ProgramDirectory string
+}
+
+type ProviderHandshakeResponse struct{}
+
 type ParameterizeParameters interface {
 	isParameterizeParameters()
 }
@@ -265,6 +280,8 @@ type Provider interface {
 
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
+
+	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 
 	// Parameterize adds a sub-package to this provider instance.
 	Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error)

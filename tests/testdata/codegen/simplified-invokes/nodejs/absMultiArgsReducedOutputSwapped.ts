@@ -19,7 +19,7 @@ export function absMultiArgsReducedOutputSwapped(b: number, a: number, opts?: pu
  * Returns the absolute value of a given float.
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
-export function absMultiArgsReducedOutputSwappedOutput(b: pulumi.Input<number>, a: pulumi.Input<number>, opts?: pulumi.InvokeOptions): pulumi.Output<number> {
+export function absMultiArgsReducedOutputSwappedOutput(b: pulumi.Input<number>, a: pulumi.Input<number>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<number> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingleOutput("std:index:AbsMultiArgsReducedOutputSwapped", {
         "b": b,

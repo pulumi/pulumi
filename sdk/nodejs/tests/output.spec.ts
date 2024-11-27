@@ -27,6 +27,7 @@ import {
     secret,
     unknown,
     unsecret,
+    deferredOutput,
 } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
@@ -78,6 +79,139 @@ function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<an
 }
 
 describe("output", () => {
+    describe("throws on circular structures", () => {
+        const syncCases = [
+            {
+                name: "object in object",
+                block: () => {
+                    const a: any = {};
+                    a.a = a;
+                    output(a);
+                },
+            },
+            {
+                name: "array in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "object in array in object",
+                block: () => {
+                    const a: any = { b: [] };
+                    a.b.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "array in object in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push({ b: a });
+                    output(a);
+                },
+            },
+        ];
+        for (const { name, block } of syncCases) {
+            it(name, () => {
+                assert.throws(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+
+        const asyncCases = [
+            {
+                name: "promise object in object",
+                block: async () => {
+                    const a: any = {};
+                    a.a = Promise.resolve(a);
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise object in array in object",
+                block: async () => {
+                    const a: any = { b: [] };
+                    a.b.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in object in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push({ b: Promise.resolve(a) });
+                    await output(a).promise();
+                },
+            },
+        ];
+        for (const { name, block } of asyncCases) {
+            it(name, () => {
+                assert.rejects(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+    });
+
+    describe("doesn't throw for non-circular structures", () => {
+        it("same object in array", async () => {
+            const a = {};
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [a, a]);
+        });
+        it("same array in object", async () => {
+            const a: any[] = [];
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: a, b: a });
+        });
+        it("same promise object in array", async () => {
+            const a = Promise.resolve({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same object in promise in array", async () => {
+            const a = {};
+            const b = [Promise.resolve(a), Promise.resolve(a)];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same promise array in object", async () => {
+            const a = Promise.resolve([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same array in promise in object", async () => {
+            const a: any[] = [];
+            const b = { a: Promise.resolve(a), b: Promise.resolve(a) };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same output object in array", async () => {
+            const a = output({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same output array in object", async () => {
+            const a = output([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+    });
+
     it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
@@ -1324,6 +1458,48 @@ describe("output", () => {
             const result18 = (<any>result16).qux;
             assert.strictEqual(await result18.isKnown, false);
             assert.strictEqual(await (<any>result18).promise(/*withUnknowns*/ true), unknown);
+        });
+    });
+
+    describe("deferred", () => {
+        it("can be created", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, false);
+            const resources = await output.allResources!();
+            assert.strictEqual(resources.size, 0);
+        });
+
+        it("can be created from secret output", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(true), // secret
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, true);
+            const resources = await output.allResources!();
+            assert.strictEqual(resources.size, 0);
         });
     });
 });

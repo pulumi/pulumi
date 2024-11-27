@@ -36,7 +36,7 @@ from typing import (
     overload,
 )
 
-from . import _types, runtime
+from . import _types
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 from .runtime.settings import SETTINGS
@@ -999,3 +999,60 @@ def _map2_input(
 async def _gather_from_dict(tasks: dict) -> dict:
     results = await asyncio.gather(*tasks.values())
     return dict(zip(tasks.keys(), results))
+
+
+def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
+    """
+    Creates an Output[T] whose value can be later resolved from another Output[T] instance.
+    """
+    # Setup the futures for the output.
+    resolve_value: "asyncio.Future" = asyncio.Future()
+    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    already_resolved = False
+
+    def resolve(o: Output[T]) -> None:
+        nonlocal resolve_value
+        nonlocal resolve_is_known
+        nonlocal resolve_is_secret
+        nonlocal resolve_deps
+        nonlocal already_resolved
+        if already_resolved:
+            raise Exception("Deferred Output has already been resolved")
+        already_resolved = True
+
+        def value_callback(fut: asyncio.Future) -> None:
+            if fut.exception() is not None:
+                resolve_value.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_value.set_result(fut.result())
+
+        asyncio.ensure_future(o.future()).add_done_callback(value_callback)
+
+        def is_known_callback(fut: "asyncio.Future[bool]") -> None:
+            if fut.exception() is not None:
+                resolve_is_known.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_is_known.set_result(fut.result())
+
+        asyncio.ensure_future(o.is_known()).add_done_callback(is_known_callback)
+
+        def is_secret_callback(fut: "asyncio.Future[bool]") -> None:
+            if fut.exception() is not None:
+                resolve_is_secret.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_is_secret.set_result(fut.result())
+
+        asyncio.ensure_future(o.is_secret()).add_done_callback(is_secret_callback)
+
+        def deps_callback(fut: "asyncio.Future[Set[Resource]]") -> None:
+            if fut.exception() is not None:
+                resolve_deps.set_exception(fut.exception())  # type: ignore
+            else:
+                resolve_deps.set_result(fut.result())
+
+        asyncio.ensure_future(o.resources()).add_done_callback(deps_callback)
+
+    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    return out, resolve

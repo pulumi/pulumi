@@ -117,6 +117,17 @@ func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
 // array will contain the resolved value of the corresponding output. The output will be rejected if any of the inputs
 // is rejected.
+//
+// For example:
+//
+//	connectionString := pulumi.All(sqlServer.Name, database.Name).ApplyT(
+//		func (args []interface{}) pulumi.Output {
+//			return Connection{
+//				Server: args[0].(string),
+//				Database: args[1].(string),
+//			}
+//		}
+//	)
 func All(inputs ...interface{}) ArrayOutput {
 	return AllWithContext(context.Background(), inputs...)
 }
@@ -124,16 +135,53 @@ func All(inputs ...interface{}) ArrayOutput {
 // AllWithContext returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each
 // element of the array will contain the resolved value of the corresponding output. The output will be rejected if any
 // of the inputs is rejected.
+//
+// For example:
+//
+//	connectionString := pulumi.AllWithContext(ctx.Context(), sqlServer.Name, database.Name).ApplyT(
+//		func (args []interface{}) pulumi.Output {
+//			return Connection{
+//				Server: args[0].(string),
+//				Database: args[1].(string),
+//			}
+//		}
+//	)
 func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
 // JSONMarshal uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
+//
+// JSONMarshal *does not* support marshaling values that contain nested unknowns. You will need to manually create
+// a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
+//
+//	pulumi.JSONMarshal(map[string]any{"key": myResource.Name})
+//
+// You need to move the output myResource.Name to a top level output:
+//
+//	pulumi.JSONMarshal(myResource.Name.Apply(func(name string) map[string]any{
+//		return map[string]any{"key": name}
+//	}))
+//
+// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
 func JSONMarshal(v interface{}) StringOutput {
 	return JSONMarshalWithContext(context.Background(), v)
 }
 
 // JSONMarshalWithContext uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
+//
+// JSONMarshalWithContext *does not* support marshaling values that contain nested unknowns. You will need to
+// manually create a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
+//
+//	pulumi.JSONMarshalWithContext(ctx.Context(), map[string]any{"key": myResource.Name})
+//
+// You need to move the output myResource.Name to a top level output:
+//
+//	pulumi.JSONMarshalWithContext(ctx.Context(), myResource.Name.Apply(func(name string) map[string]any{
+//		return map[string]any{"key": name}
+//	}))
+//
+// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
 func JSONMarshalWithContext(ctx context.Context, v interface{}) StringOutput {
 	o := ToOutputWithContext(ctx, v)
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v interface{}) (string, error) {
@@ -172,6 +220,14 @@ func ToOutput(v interface{}) Output {
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 	return internal.ToOutputWithContext(ctx, v)
+}
+
+func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Output {
+	r := make([]internal.Resource, len(deps))
+	for i, d := range deps {
+		r[i] = d.(internal.Resource)
+	}
+	return internal.OutputWithDependencies(ctx, o, r...)
 }
 
 func init() {

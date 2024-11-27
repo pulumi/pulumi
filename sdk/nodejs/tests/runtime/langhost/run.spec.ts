@@ -1594,6 +1594,33 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        invoke_output_depends_on: {
+            pwd: path.join(base, "075.invoke_output_depends_on"),
+            expectResourceCount: 1,
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(tok, "test:index:echo");
+                assert.deepStrictEqual(args, { dependency: { resolved: true } });
+                return { failures: undefined, ret: args };
+            },
+        },
+        invoke_output_depends_on_non_resource: {
+            pwd: path.join(base, "076.invoke_output_depends_on_non_resource"),
+            expectResourceCount: 0,
+            // We should get the error message saying that a message was reported and the
+            // host should bail.
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("'dependsOn' was passed a value that was not a Resource.") < 0) {
+                        throw new Error("Unexpected error: " + message);
+                    }
+                }
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {

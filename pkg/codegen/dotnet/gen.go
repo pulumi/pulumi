@@ -2044,7 +2044,7 @@ func (mod *modContext) genUtilities() (string, error) {
 	if def.Parameterization != nil {
 		templateData.BaseProviderName = def.Parameterization.BaseProvider.Name
 		templateData.BaseProviderVersion = def.Parameterization.BaseProvider.Version.String()
-		templateData.BaseProviderPluginDownloadURL = def.Parameterization.BaseProvider.PluginDownloadURL
+		templateData.BaseProviderPluginDownloadURL = def.PluginDownloadURL
 		templateData.ParameterValue = base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
 	}
 
@@ -2231,7 +2231,7 @@ func genPackageMetadata(pkg *schema.Package,
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
-	} else if pkg.SupportPack {
+	} else if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return errors.New("package version is required")
 		}
@@ -2253,6 +2253,17 @@ func genPackageMetadata(pkg *schema.Package,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
 		Version:  version,
+	}
+	if pkg.Parameterization != nil {
+		// For a parameterized package the plugin name/version is from the base provider information, not the
+		// top-level package name/version.
+		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   pkg.Parameterization.Parameter,
+		}
+		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
+		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
 	}
 
 	plugin, err := (pulumiPlugin).JSON()

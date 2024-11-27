@@ -32,7 +32,6 @@ from typing import (
     cast,
 )
 from . import _types
-from .metadata import get_project, get_stack
 from .runtime import known_types
 from .runtime.resource import (
     _pkg_from_type,
@@ -42,10 +41,9 @@ from .runtime.resource import (
     read_resource,
     collapse_alias_to_urn,
     create_urn as create_urn_internal,
-    convert_providers,
 )
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, T, Output
+from .output import _is_prompt, _map_input, _map2_input, Output
 from . import urn as urn_util
 from . import log
 

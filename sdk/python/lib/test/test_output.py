@@ -565,3 +565,20 @@ class OutputSerializationTests(unittest.TestCase):
             i.is_known()
         with self.assertRaisesRegex(Exception, expected_msg("is_secret")):
             i.is_secret()
+
+
+class DeferredOutputTests(unittest.TestCase):
+    @pulumi_test
+    async def test_deferred_output(self):
+        output, resolve = pulumi.deferred_output()
+        source = Output.from_input("hello")
+        resolve(source)
+        self.assertEqual(await output.future(), "hello")
+
+    @pulumi_test
+    async def test_deferred_output_secret(self):
+        output, resolve = pulumi.deferred_output()
+        source = Output.secret(Output.from_input("hello"))
+        resolve(source)
+        self.assertEqual(await output.future(), "hello")
+        self.assertEqual(await output.is_secret(), True)

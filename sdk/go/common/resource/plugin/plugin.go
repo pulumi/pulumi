@@ -45,6 +45,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type PulumiParameterizationJSON struct {
+	// The name of the parameterized package.
+	Name string `json:"name"`
+	// The version of the parameterized package.
+	Version string `json:"version"`
+	// The parameter value of the parameterized package.
+	Value []byte `json:"value"`
+}
+
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
 // For Python, the content is inside a pulumi-plugin.json file inside the package.
 // For Node.js, the content is within the package.json file, under the "pulumi" node.
@@ -59,6 +68,8 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
+	// Parameterization information for the package.
+	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
@@ -117,18 +128,26 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
-func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) (*grpc.ClientConn, error) {
+func dialPlugin[T any](
+	portNum int,
+	bin string,
+	prefix string,
+	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
+	dialOptions []grpc.DialOption,
+) (*grpc.ClientConn, *T, error) {
 	port := strconv.Itoa(portNum)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.NewClient("127.0.0.1:"+port, dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
+		return nil, nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
 	}
 
 	// We want to wait for the gRPC connection to the plugin to become ready before we proceed. To this end, we'll
 	// manually kick off a Connect() call and then wait until the state of the connection becomes Ready.
 	conn.Connect()
+
+	var handshakeRes *T
 
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
@@ -139,45 +158,56 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 		if s == connectivity.Ready {
 			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
 			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
-		outer:
 			for {
-				err = grpc.Invoke(timeout, "", nil, nil, conn)
+				handshakeRes, err = handshake(timeout, bin, prefix, conn)
 				if err == nil {
 					break // successful connect
 				}
 
 				// We have an error; see if it's a known status and, if so, react appropriately.
 				status, ok := status.FromError(err)
-				if ok {
-					//nolint:exhaustive // we have a default case for other statuses
-					switch status.Code() {
-					case codes.Unavailable:
-						// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
-						time.Sleep(time.Millisecond * 10)
-						continue // keep retrying
-					default:
-						// Since we sent "" as the method above, this is the expected response.  Ready to go.
-						break outer
-					}
+				if ok && status.Code() == codes.Unavailable {
+					// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
+					time.Sleep(time.Millisecond * 10)
+					continue // keep retrying
 				}
 
 				// Unexpected error; get outta dodge.
-				return nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", prefix, bin, err)
+				return nil, nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", prefix, bin, err)
 			}
 			break
 		}
 		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
 		if !conn.WaitForStateChange(timeout, s) {
-			return nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
+			return nil, nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
 		}
 	}
 
-	return conn, nil
+	return conn, handshakeRes, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
-	args, env []string, dialOptions []grpc.DialOption,
-) (*plugin, error) {
+func testConnection(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*struct{}, error) {
+	err := conn.Invoke(ctx, "", nil, nil)
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() != codes.Unavailable {
+			return &struct{}{}, nil
+		}
+	}
+	return &struct{}{}, err
+}
+
+func newPlugin[T any](
+	ctx *Context,
+	pwd string,
+	bin string,
+	prefix string,
+	kind apitype.PluginKind,
+	args []string,
+	env []string,
+	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
+	dialOptions []grpc.DialOption,
+) (*plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -204,7 +234,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	// Try to execute the binary.
 	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
+		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
 	contract.Assertf(plug != nil, "plugin %v canot be nil", bin)
 
@@ -271,14 +301,14 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 
 			// If from the output we have seen, return a specific error if possible.
 			if sawPolicyModuleNotFoundErr {
-				return nil, errRunPolicyModuleNotFound
+				return nil, nil, errRunPolicyModuleNotFound
 			}
 
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
+				return nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
 			}
-			return nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
+			return nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
 				bin, portString, readerr)
 		}
 		if n > 0 && b[0] == '\n' {
@@ -291,7 +321,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	if port, err = parsePort(portString); err != nil {
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
 	}
 
@@ -300,14 +330,14 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
-	conn, err := dialPlugin(port, bin, prefix, dialOptions)
+	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Done; store the connection and return the plugin info.
 	plug.Conn = conn
-	return plug, nil
+	return plug, handshakeRes, nil
 }
 
 func parsePort(portString string) (int, error) {
@@ -387,7 +417,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
-			Args:             pluginArgs,
+			Args:             args,
 			Env:              env,
 		})
 		if err != nil {

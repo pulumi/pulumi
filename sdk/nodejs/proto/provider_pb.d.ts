@@ -9,6 +9,49 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
+export class ProviderHandshakeRequest extends jspb.Message { 
+    getEngineAddress(): string;
+    setEngineAddress(value: string): ProviderHandshakeRequest;
+    getRootDirectory(): string;
+    setRootDirectory(value: string): ProviderHandshakeRequest;
+    getProgramDirectory(): string;
+    setProgramDirectory(value: string): ProviderHandshakeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderHandshakeRequest): ProviderHandshakeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProviderHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderHandshakeRequest;
+    static deserializeBinaryFromReader(message: ProviderHandshakeRequest, reader: jspb.BinaryReader): ProviderHandshakeRequest;
+}
+
+export namespace ProviderHandshakeRequest {
+    export type AsObject = {
+        engineAddress: string,
+        rootDirectory: string,
+        programDirectory: string,
+    }
+}
+
+export class ProviderHandshakeResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderHandshakeResponse): ProviderHandshakeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProviderHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderHandshakeResponse;
+    static deserializeBinaryFromReader(message: ProviderHandshakeResponse, reader: jspb.BinaryReader): ProviderHandshakeResponse;
+}
+
+export namespace ProviderHandshakeResponse {
+    export type AsObject = {
+    }
+}
+
 export class ParameterizeRequest extends jspb.Message { 
 
     hasArgs(): boolean;
@@ -217,6 +260,8 @@ export class ConfigureResponse extends jspb.Message {
     setAcceptresources(value: boolean): ConfigureResponse;
     getAcceptoutputs(): boolean;
     setAcceptoutputs(value: boolean): ConfigureResponse;
+    getSupportsAutonamingConfiguration(): boolean;
+    setSupportsAutonamingConfiguration(value: boolean): ConfigureResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureResponse.AsObject;
@@ -234,6 +279,7 @@ export namespace ConfigureResponse {
         supportspreview: boolean,
         acceptresources: boolean,
         acceptoutputs: boolean,
+        supportsAutonamingConfiguration: boolean,
     }
 }
 
@@ -503,6 +549,11 @@ export class CheckRequest extends jspb.Message {
     getType(): string;
     setType(value: string): CheckRequest;
 
+    hasAutonaming(): boolean;
+    clearAutonaming(): void;
+    getAutonaming(): CheckRequest.AutonamingOptions | undefined;
+    setAutonaming(value?: CheckRequest.AutonamingOptions): CheckRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CheckRequest): CheckRequest.AsObject;
@@ -521,7 +572,40 @@ export namespace CheckRequest {
         randomseed: Uint8Array | string,
         name: string,
         type: string,
+        autonaming?: CheckRequest.AutonamingOptions.AsObject,
     }
+
+
+    export class AutonamingOptions extends jspb.Message { 
+        getProposedName(): string;
+        setProposedName(value: string): AutonamingOptions;
+        getMode(): CheckRequest.AutonamingOptions.Mode;
+        setMode(value: CheckRequest.AutonamingOptions.Mode): AutonamingOptions;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): AutonamingOptions.AsObject;
+        static toObject(includeInstance: boolean, msg: AutonamingOptions): AutonamingOptions.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: AutonamingOptions, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): AutonamingOptions;
+        static deserializeBinaryFromReader(message: AutonamingOptions, reader: jspb.BinaryReader): AutonamingOptions;
+    }
+
+    export namespace AutonamingOptions {
+        export type AsObject = {
+            proposedName: string,
+            mode: CheckRequest.AutonamingOptions.Mode,
+        }
+
+        export enum Mode {
+    PROPOSE = 0,
+    ENFORCE = 1,
+    DISABLE = 2,
+        }
+
+    }
+
 }
 
 export class CheckResponse extends jspb.Message { 

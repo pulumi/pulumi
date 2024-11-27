@@ -27,7 +27,7 @@ export interface FuncWithDictParamResult {
 /**
  * Check codegen of functions with a Dict<str,str> parameter.
  */
-export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDictParamResult> {
+export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FuncWithDictParamResult> {
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithDictParam", {

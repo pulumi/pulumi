@@ -18,10 +18,10 @@ The config module contains all configuration management functionality.
 import json
 from typing import Any, Callable, Optional, overload
 
-from . import errors, log
+from . import errors
 from .metadata import get_project
 from .output import Output
-from .runtime.config import get_config, is_config_secret
+from .runtime.config import get_config
 
 
 class Config:

@@ -1,5 +1,74 @@
 # Changelog
 
+## 3.142.0 (2024-11-26)
+
+
+### Features
+
+- [cli] Reduce binary size by stripping debug information
+  [#17868](https://github.com/pulumi/pulumi/pull/17868)
+
+- [sdk/go] Add OutputWithDependencies
+  [#17856](https://github.com/pulumi/pulumi/pull/17856)
+
+- [sdk/java] Bump pulumi-java to 0.18.0
+
+
+### Bug Fixes
+
+- [cli] Fix login --interactive when no accounts are in the credentials file
+  [#17860](https://github.com/pulumi/pulumi/pull/17860)
+
+- [cli/new] Fix new to work with local template directories again
+  [#17866](https://github.com/pulumi/pulumi/pull/17866)
+
+- [sdkgen/dotnet] Fix parameterized packages to have version.txt
+  [#17851](https://github.com/pulumi/pulumi/pull/17851)
+
+- [sdk/python] uv toolchain: preserve env-vars when executing uv command
+  [#17849](https://github.com/pulumi/pulumi/pull/17849)
+
+## 3.141.0 (2024-11-22)
+
+
+### Features
+
+- [sdk/dotnet] Update dotnet to 3.69.0
+  [#17828](https://github.com/pulumi/pulumi/pull/17828)
+
+- [cli/new] Allow URLs without a scheme for downloading templates
+  [#17824](https://github.com/pulumi/pulumi/pull/17824)
+
+- [sdk/nodejs] Allow specifiying additional dependencies for output invokes
+  [#17632](https://github.com/pulumi/pulumi/pull/17632)
+
+- [sdk/{nodejs,python}] Implement deferred output for nodejs and python
+  [#17793](https://github.com/pulumi/pulumi/pull/17793)
+
+- [sdk/python] Allow specifiying dependencies for output invokes
+  [#17751](https://github.com/pulumi/pulumi/pull/17751)
+
+- [sdk/yaml] Update yaml to 1.12.0
+  [#17811](https://github.com/pulumi/pulumi/pull/17811)
+
+
+### Bug Fixes
+
+- [engine] Send the same program arguments to shimless and binary plugins
+  [#17833](https://github.com/pulumi/pulumi/pull/17833)
+
+- [auto/go] Work around a race where the summary event in the automation API sometimes cannot be found
+  [#17825](https://github.com/pulumi/pulumi/pull/17825)
+
+- [sdk/nodejs] Fix mocks when multiple versions of @pulumi/pulumi are loaded in a project
+  [#17769](https://github.com/pulumi/pulumi/pull/17769)
+
+
+### Miscellaneous
+
+- [sdk/go] Split public and internal representation of InvokeOptions
+  [#17818](https://github.com/pulumi/pulumi/pull/17818)
+
 ## 3.140.0 (2024-11-19)
 
 

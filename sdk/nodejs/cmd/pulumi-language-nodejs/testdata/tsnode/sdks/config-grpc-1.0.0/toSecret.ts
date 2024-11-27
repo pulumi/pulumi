@@ -306,7 +306,7 @@ export interface ToSecretResult {
     readonly string2: string;
     readonly string3: string;
 }
-export function toSecretOutput(args?: ToSecretOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ToSecretResult> {
+export function toSecretOutput(args?: ToSecretOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<ToSecretResult> {
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("config-grpc:index:toSecret", {

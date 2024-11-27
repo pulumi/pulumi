@@ -18,15 +18,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
-    Coroutine,
     Dict,
     List,
-    Literal,
     Optional,
     Set,
     Tuple,
     Union,
-    overload,
 )
 
 import grpc
@@ -36,7 +33,7 @@ from semver import VersionInfo
 
 from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
-from ..runtime.proto import provider_pb2, resource_pb2
+from ..runtime.proto import resource_pb2
 from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (

@@ -24,7 +24,7 @@ export interface AbsReducedOutputArgs {
  * Returns the absolute value of a given float.
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
-export function absReducedOutputOutput(args: AbsReducedOutputOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<number> {
+export function absReducedOutputOutput(args: AbsReducedOutputOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<number> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingleOutput("std:index:AbsReducedOutput", {
         "a": args.a,

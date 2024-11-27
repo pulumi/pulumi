@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/yaml
-  description: Update yaml to 1.12.0
