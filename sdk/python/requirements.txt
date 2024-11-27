@@ -19,5 +19,4 @@ types-protobuf
 pytest-asyncio
 coverage>=6.0.2
 wheel
-black>=1.0.0
 ruff==0.8.0

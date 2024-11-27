@@ -336,9 +336,7 @@ class _Property:
 
 # This function's return type is deliberately annotated as Any so that type checkers do not
 # complain about assignments that we want to allow like `my_value: str = property("myValue")`.
-def property(
-    name: str, *, default: Any = MISSING
-) -> Any:  # noqa: A001 shadowing builtin
+def property(name: str, *, default: Any = MISSING) -> Any:  # noqa: A001 shadowing builtin
     """
     Return an object to identify Pulumi properties.
 

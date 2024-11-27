@@ -15,6 +15,7 @@
 """
 The config module contains all configuration management functionality.
 """
+
 import json
 from typing import Any, Callable, Optional, overload
 

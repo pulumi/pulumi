@@ -111,7 +111,6 @@ class MyMocks(Mocks):
 
 @pulumi.output_type
 class MyOutputTypeDict(dict):
-
     def __init__(self, values: list, items: list, keys: list):
         pulumi.set(self, "values", values)
         pulumi.set(self, "items", items)

@@ -15,6 +15,7 @@
 """
 Mocks for testing.
 """
+
 import functools
 import logging
 from abc import ABC, abstractmethod
@@ -186,10 +187,13 @@ class MockMonitor:
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
-            (ret, failures) = tup[0], [
-                provider_pb2.CheckFailure(property=failure[0], reason=failure[1])
-                for failure in tup[1]
-            ]
+            (ret, failures) = (
+                tup[0],
+                [
+                    provider_pb2.CheckFailure(property=failure[0], reason=failure[1])
+                    for failure in tup[1]
+                ],
+            )
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 

@@ -321,7 +321,6 @@ This function may throw in a future version of Pulumi.""",
 
 
 class OutputApplyTests(unittest.TestCase):
-
     async def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
