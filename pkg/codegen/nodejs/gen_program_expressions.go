@@ -185,8 +185,8 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 	fnParams, reduceParams := expr.ValueVariable.Name, expr.ValueVariable.Name
 	if expr.KeyVariable != nil {
-		reduceParams = fmt.Sprintf("[%.v, %.v]", expr.KeyVariable.Name, expr.ValueVariable.Name)
-		fnParams = fmt.Sprintf("(%v)", reduceParams)
+		reduceParams = fmt.Sprintf("[%s, %s]", expr.KeyVariable.Name, expr.ValueVariable.Name)
+		fnParams = fmt.Sprintf("(%s)", reduceParams)
 	}
 
 	if expr.Condition != nil {

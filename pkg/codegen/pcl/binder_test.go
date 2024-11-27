@@ -868,3 +868,26 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	assert.Nil(t, bindError)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 }
+
+func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
+	t.Parallel()
+	source := "localVariable = component.firstValue"
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "There are no error or warning diagnostics")
+	assert.NotNil(t, program)
+	var localVariable *pcl.LocalVariable
+	for _, v := range program.Nodes {
+		switch v := v.(type) {
+		case *pcl.LocalVariable:
+			localVariable = v
+		}
+	}
+
+	assert.NotNil(t, localVariable, "There is a local variable")
+	assert.Equal(t, "localVariable", localVariable.Name())
+	traversal, ok := localVariable.Definition.Value.(*model.ScopeTraversalExpression)
+	assert.True(t, ok, "The value is a scope traversal expression")
+	variableName := pcl.InferVariableName(traversal)
+	assert.Equal(t, "componentFirstValue", variableName)
+}
