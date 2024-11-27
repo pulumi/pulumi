@@ -668,7 +668,6 @@ def get(self, name: str) -> Any:
             return getattr(dict, "get")(self, name)
         return self.__dict__.get(name)
 
-    # pylint: disable=import-outside-toplevel
     from . import Resource
 
     if isinstance(self, Resource):
@@ -738,7 +737,6 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
     # We use get_type_hints() below on each Python property to resolve the getter function's
@@ -803,7 +801,6 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     if not props:
         return {}
 
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
     # We want resolved types for just the cls's type annotations (not base classes),
@@ -935,7 +932,6 @@ def unwrap_type(val: type) -> type:
     """
     Unwraps the type T in Output[T], Input[T], InputType[T], and Optional[T].
     """
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
     origin = typing.get_origin(val)

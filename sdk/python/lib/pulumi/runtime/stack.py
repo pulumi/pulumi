@@ -194,7 +194,7 @@ def massage(attr: Any, seen: List[Any]):
     lists or dictionaries as appropriate.  In general, iterable things are turned into lists, and
     dictionary-like things are turned into dictionaries.
     """
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     # Basic primitive types (numbers, booleans, strings, etc.) don't need any special handling.
     if is_primitive(attr):

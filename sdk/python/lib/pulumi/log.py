@@ -30,7 +30,7 @@ def get_engine():
     # create import cycles when this module is imported. We lazily import
     # `get_engine` on the first use. Subsequent calls will use the module cache
     # here.
-    # pylint: disable=import-outside-toplevel,redefined-outer-name
+    # pylint: disable=redefined-outer-name
     from .runtime.settings import get_engine
 
     return get_engine()

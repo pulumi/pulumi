@@ -992,7 +992,6 @@ class Stack:
 
     @property
     def _remote(self) -> bool:
-        # pylint: disable=import-outside-toplevel
         from pulumi.automation._local_workspace import LocalWorkspace
 
         return (
@@ -1002,7 +1001,6 @@ class Stack:
         )
 
     def _remote_args(self) -> List[str]:
-        # pylint: disable=import-outside-toplevel
         from pulumi.automation._local_workspace import LocalWorkspace
 
         return (

@@ -284,7 +284,7 @@ async def _add_dependency(
     * Comp2 because it is a non-remote component resoruce
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
-    from ..resource import Resource  # pylint: disable=import-outside-toplevel
+    from ..resource import Resource
 
     # Note that a recursive algorithm here would be cleaner, but that results in a
     # RecursionError with deeply nested hierarchies of ComponentResources.
@@ -311,7 +311,7 @@ async def _add_dependency(
                 + "no cycles have been introduced in your program."
             )
 
-        from .. import ComponentResource  # pylint: disable=import-outside-toplevel
+        from .. import ComponentResource
 
         # Local component resources act as aggregations of their descendents.
         # Rather than adding the component resource itself, each child resource
@@ -709,7 +709,7 @@ def deserialize_properties(
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
-        from .. import (  # pylint: disable=import-outside-toplevel
+        from .. import (
             AssetArchive,
             FileArchive,
             FileAsset,
@@ -926,7 +926,7 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
 
     resources: Set["Resource"] = set()
     if "dependencies" in ref_struct:
-        from ..resource import (  # pylint: disable=import-outside-toplevel
+        from ..resource import (
             DependencyResource,
         )
 
@@ -934,7 +934,7 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
         for urn in dependencies:
             resources.add(DependencyResource(urn))
 
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     return Output(resources, value_future, is_known_future, is_secret_future)
 
@@ -999,7 +999,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
     """
-    from ..output import Unknown  # pylint: disable=import-outside-toplevel
+    from ..output import Unknown
 
     if value == UNKNOWN:
         return Unknown() if settings.is_dry_run() or keep_unknowns else None
@@ -1051,7 +1051,7 @@ result in the exception being re-thrown.
 def transfer_properties(
     res: "Resource", props: "Inputs", custom: bool
 ) -> Dict[str, Resolver]:
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     resolvers: Dict[str, Resolver] = {}
 

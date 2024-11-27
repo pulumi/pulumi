@@ -146,7 +146,7 @@ def invoke_output(
     resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
     resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
 
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
@@ -364,7 +364,7 @@ def call(
     resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
     resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
 
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
@@ -466,7 +466,7 @@ def call(
                     if rpc_deps
                     else set()
                 )
-                from ..resource import (  # pylint: disable=import-outside-toplevel
+                from ..resource import (
                     DependencyResource,
                 )
 

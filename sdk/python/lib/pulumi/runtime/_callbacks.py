@@ -108,7 +108,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if token is not None:
             return callback_pb2.Callback(token=token, target=self._target)
 
-        from ..resource import (  # pylint: disable=import-outside-toplevel
+        from ..resource import (
             ResourceTransformArgs,
             ResourceTransformResult,
         )
@@ -178,7 +178,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if token is not None:
             return callback_pb2.Callback(token=token, target=self._target)
 
-        from ..invoke import (  # pylint: disable=import-outside-toplevel
+        from ..invoke import (
             InvokeTransformArgs,
             InvokeTransformResult,
         )
@@ -241,7 +241,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     def _resource_options(
         self, request: resource_pb2.TransformRequest
     ) -> ResourceOptions:
-        from ..resource import (  # pylint: disable=import-outside-toplevel
+        from ..resource import (
             CustomTimeouts,
             DependencyProviderResource,
             DependencyResource,
@@ -322,7 +322,6 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if alias.HasField("urn"):
             return alias.urn
 
-        # pylint: disable=import-outside-toplevel
         from ..resource import Alias
 
         a = Alias()
@@ -343,20 +342,20 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     async def _transformation_resource_options(
         self, opts: ResourceOptions
     ) -> resource_pb2.TransformResourceOptions:
-        from ._depends_on import (  # pylint: disable=import-outside-toplevel
+        from ._depends_on import (
             _resolve_depends_on_urns,
         )
-        from .resource import (  # pylint: disable=import-outside-toplevel
+        from .resource import (
             _create_custom_timeouts,
             _create_provider_ref,
             create_alias_spec,
         )
-        from ..resource import (  # pylint: disable=import-outside-toplevel
+        from ..resource import (
             Alias,
             ProviderResource,
             _collapse_providers,
         )
-        from ..output import Output  # pylint: disable=import-outside-toplevel
+        from ..output import Output
 
         aliases: List[alias_pb2.Alias] = []
         if opts.aliases:
@@ -423,7 +422,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     def _invoke_options(
         self, request: resource_pb2.TransformInvokeRequest
     ) -> InvokeOptions:
-        from ..resource import (  # pylint: disable=import-outside-toplevel
+        from ..resource import (
             DependencyProviderResource,
         )
 
@@ -449,7 +448,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     async def _transformation_invoke_options(
         self, opts: InvokeOptions
     ) -> resource_pb2.TransformInvokeOptions:
-        from .resource import (  # pylint: disable=import-outside-toplevel
+        from .resource import (
             _create_provider_ref,
         )
 
