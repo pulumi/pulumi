@@ -2430,6 +2430,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			Server:   pkg.PluginDownloadURL,
 			Name:     pkg.Parameterization.BaseProvider.Name,
 			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Parameterization: &plugin.PulumiParameterizationJSON{
+				Name:    pkg.Name,
+				Version: pkg.Version.String(),
+				Value:   pkg.Parameterization.Parameter,
+			},
 		}
 	} else {
 		pulumiPlugin = plugin.PulumiPluginJSON{

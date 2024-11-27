@@ -45,6 +45,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type PulumiParameterizationJSON struct {
+	// The name of the parameterized package.
+	Name string `json:"name"`
+	// The version of the parameterized package.
+	Version string `json:"version"`
+	// The parameter value of the parameterized package.
+	Value []byte `json:"value"`
+}
+
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
 // For Python, the content is inside a pulumi-plugin.json file inside the package.
 // For Node.js, the content is within the package.json file, under the "pulumi" node.
@@ -59,6 +68,8 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
+	// Parameterization information for the package.
+	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {

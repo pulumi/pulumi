@@ -4717,6 +4717,13 @@ func GeneratePackage(tool string,
 	}
 
 	if pkg.Parameterization != nil {
+		// For a parameterized package the plugin name/version is from the base provider information, not the
+		// top-level package name/version.
+		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   pkg.Parameterization.Parameter,
+		}
 		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
 		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
 	}
