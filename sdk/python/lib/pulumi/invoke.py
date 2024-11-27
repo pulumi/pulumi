@@ -85,7 +85,6 @@ class InvokeOptions:
     def _merge_instance(self, opts: "InvokeOptions") -> "InvokeOptions":
         return InvokeOptions.merge(self, opts)
 
-    # pylint: disable=method-hidden
     @staticmethod
     def merge(
         opts1: Optional["InvokeOptions"],

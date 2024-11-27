@@ -49,7 +49,6 @@ class Config:
             raise TypeError("Expected name to be a string")
         self.name = name
 
-    # pylint: disable=unused-argument
     def _get(
         self,
         key: str,

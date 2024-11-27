@@ -341,9 +341,9 @@ class StepEventStateMetadata(BaseEvent):
 
     def __init__(
         self,
-        type: str,  # pylint: disable=redefined-builtin
+        type: str,
         urn: str,
-        id: str,  # pylint: disable=redefined-builtin
+        id: str,
         parent: str,
         provider: str,
         custom: Optional[bool] = None,
@@ -418,7 +418,7 @@ class StepEventMetadata(BaseEvent):
         self,
         op: OpType,
         urn: str,
-        type: str,  # pylint: disable=redefined-builtin
+        type: str,
         provider: str,
         old: Optional[StepEventStateMetadata] = None,
         new: Optional[StepEventStateMetadata] = None,

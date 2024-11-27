@@ -70,7 +70,7 @@ class RPCManager:
             try:
                 result = await rpc
                 exception = None
-            except Exception as exn:
+            except Exception as exn:  # noqa: BLE001 catch blind exception
                 log.debug("RPC failed with exception:")
                 log.debug(traceback.format_exc())
                 if self.unhandled_exception is None:

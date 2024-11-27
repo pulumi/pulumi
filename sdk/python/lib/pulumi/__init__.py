@@ -102,15 +102,14 @@ from .stack_reference import (
     StackReferenceOutputDetails,
 )
 
-# pylint: disable=redefined-builtin
 from ._types import (
     MISSING,
     input_type,
     output_type,
-    property,
+    property,  # noqa: A004 shadowing builtin
     getter,
-    get,
-    set,
+    get,  # noqa: A004 shadowing builtin
+    set,  # noqa: A004 shadowing builtin
 )
 
 from . import runtime, dynamic, policy, automation

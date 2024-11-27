@@ -102,14 +102,13 @@ from ._cmd import CommandResult, OnOutput, PulumiCommand
 
 from ._config import ConfigMap, ConfigValue
 
-# pylint: disable=redefined-builtin
 from .errors import (
     StackNotFoundError,
     StackAlreadyExistsError,
     CommandError,
     ConcurrentUpdateError,
     InlineSourceRuntimeError,
-    RuntimeError,
+    RuntimeError,  # noqa: A004 shadowing builtin
     CompilationError,
     InvalidVersionError,
 )

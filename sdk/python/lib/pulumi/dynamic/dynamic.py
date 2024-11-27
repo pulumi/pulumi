@@ -34,7 +34,7 @@ from ..runtime._serialization import _serialize
 from .config import Config
 
 if TYPE_CHECKING:
-    from ..output import Inputs, Output
+    from ..output import Inputs
 
 PROVIDER_KEY = "__provider"
 
@@ -273,7 +273,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
     # ensure we get a deterministic result.  Without this we would see changes to our serialized
     # provider even when there are no actual changes.
     old_pickler = pickle.Pickler
-    pickle.Pickler = pickle._Pickler  # pylint: disable=protected-access
+    pickle.Pickler = pickle._Pickler
 
     # See: https://github.com/uqfoundation/dill/issues/481#issuecomment-1133789848
     unsorted_batch_setitems = pickle.Pickler._batch_setitems
@@ -290,7 +290,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
             self.write(pickle.MARK + pickle.DICT)
 
         self.memoize(obj)
-        self._batch_setitems(obj.items())  # pylint: disable=protected-access
+        self._batch_setitems(obj.items())
 
     pickle.Pickler.save_dict = save_dict_sorted
 

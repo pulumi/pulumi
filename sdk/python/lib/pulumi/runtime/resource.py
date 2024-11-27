@@ -166,7 +166,6 @@ async def _create_provider_ref(provider: "ProviderResource") -> str:
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
-# pylint: disable=too-many-locals
 async def prepare_resource(
     res: "Resource",
     ty: str,
@@ -545,10 +544,9 @@ def get_resource(
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
 
-            accept_resources = not (
-                os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
-                in {"TRUE", "1"}
-            )
+            accept_resources = os.getenv(
+                "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
+            ).upper() not in {"TRUE", "1"}
             req = resource_pb2.ResourceInvokeRequest(
                 tok="pulumi:pulumi:getResource",
                 args=inputs,
@@ -680,7 +678,7 @@ def _get_source_position(skip: int) -> Optional[source_pb2.SourcePosition]:
 
     try:
         uri = pathlib.Path(caller.filename).as_uri()
-    except BaseException:
+    except BaseException:  # noqa: BLE001 catch blind exception
         return None
 
     # Convert the Nth source position to a source position URI by converting the filename to a URI and appending
@@ -756,10 +754,9 @@ def read_resource(
                 res, typ, opts.additional_secret_outputs
             )
 
-            accept_resources = not (
-                os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
-                in {"TRUE", "1"}
-            )
+            accept_resources = os.getenv(
+                "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
+            ).upper() not in {"TRUE", "1"}
 
             # If we have a package reference, we need to wait for it to resolve.
             package_ref_str = None
@@ -986,10 +983,9 @@ def register_resource(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
                 )
 
-            accept_resources = not (
-                os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
-                in {"TRUE", "1"}
-            )
+            accept_resources = os.getenv(
+                "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
+            ).upper() not in {"TRUE", "1"}
 
             full_aliases_specs: Optional[List[alias_pb2.Alias]] = None
             alias_urns: Optional[List[str]] = None
@@ -1179,7 +1175,6 @@ class RegisterResponse:
     propertyDependencies: Optional[Dict[str, PropertyDependencies]]
     result: Optional[resource_pb2.Result.ValueType]
 
-    # pylint: disable=redefined-builtin
     def __init__(
         self,
         urn: str,

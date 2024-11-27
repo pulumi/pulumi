@@ -73,7 +73,7 @@ def _requires_legacy_none_return_for_empty_struct(
         k8s_ver = VersionInfo(4, 5, 4)
         try:
             ver = VersionInfo.parse(version)
-        except Exception as ex:
+        except Exception as ex:  # noqa: BLE001 catch blind exception
             log.debug(f"Failed to parse version {version} as semver: {ex}")
             ver = k8s_ver
         return ver <= k8s_ver
@@ -99,7 +99,6 @@ class InvokeResult:
         self.is_known = is_known
         self.dependencies = dependencies or []
 
-    # pylint: disable=using-constant-test
     def __await__(self):
         # We need __await__ to be an iterator, but we only want it to return one value. As such, we use
         # `if False: yield` to construct this.
@@ -164,7 +163,7 @@ def invoke_output(
                 invoke_result.is_secret and invoke_result.is_known
             )
             resolve_deps.set_result(set(invoke_result.dependencies))
-        except Exception as exn:
+        except Exception as exn:  # noqa: BLE001 catch blind exception
             resolve_value.set_exception(exn)
             resolve_is_known.set_exception(exn)
             resolve_is_secret.set_exception(exn)
@@ -249,9 +248,9 @@ def _invoke(
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
-        accept_resources = not (
-            os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
-        )
+        accept_resources = os.getenv(
+            "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
+        ).upper() not in {"TRUE", "1"}
         log.debug(f"Invoking function prepared: tok={tok}")
         req = resource_pb2.ResourceInvokeRequest(
             tok=tok,

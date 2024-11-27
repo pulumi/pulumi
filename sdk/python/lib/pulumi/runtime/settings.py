@@ -293,7 +293,6 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     #
     # Neither pylint nor I are the only ones who find this confusing:
     # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-    # pylint: disable=no-member
     if exn.code() == grpc.StatusCode.UNAVAILABLE:
         # If the monitor is unavailable, it is in the process of
         # shutting down or has already shut down.
@@ -375,7 +374,7 @@ async def _monitor_supports_feature(
             resp = monitor.SupportsFeature(req)
             return resp.hasSupport
         except grpc.RpcError as exn:
-            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:  # pylint: disable=no-member
+            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
                 handle_grpc_error(exn)
             return False
 

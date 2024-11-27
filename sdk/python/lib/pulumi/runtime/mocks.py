@@ -18,7 +18,7 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from google.protobuf import empty_pb2
 
@@ -34,9 +34,6 @@ from .settings import (
     SETTINGS,
 )
 from .sync_await import _ensure_event_loop, _sync_await
-
-if TYPE_CHECKING:
-    from ..resource import Resource
 
 
 def test(fn):
@@ -250,7 +247,6 @@ class MockMonitor:
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):
-        # pylint: disable=unused-argument
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
@@ -280,7 +276,7 @@ class MockEngine:
 # We use this MockSettings class in the case where test setup needs to stub in settings objects
 # Because ContextVars are context-sensitive, asyncio threads lose track of external settings meddling
 class MockSettings(Settings):
-    def __init__(self, *_, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, *_, **kwargs):
         self.rpc_manager = rpc_manager.RPCManager()
         for key, value in kwargs.items():
             setattr(self, key, value)

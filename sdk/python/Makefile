@@ -50,7 +50,7 @@ lint:: ensure
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
-		python -m pylint ./lib/pulumi --rcfile=.pylintrc
+		python -m ruff check
 	. venv/*/activate && \
 		python -m pyright
 
