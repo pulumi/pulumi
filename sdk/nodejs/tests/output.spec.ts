@@ -137,6 +137,22 @@ describe("output", () => {
                     await output(a).promise();
                 },
             },
+            {
+                name: "promise object in array in object",
+                block: async () => {
+                    const a: any = { b: [] };
+                    a.b.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in object in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push({ b: Promise.resolve(a) });
+                    await output(a).promise();
+                },
+            },
         ];
         for (const { name, block } of asyncCases) {
             it(name, () => {
