@@ -140,7 +140,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "nodejs": "18.x",
     # When updating the minimum Python version here, also update `mypy.ini` and
     # `ruff.toml` to target this version.
-    "python": "3.8.x",
+    "python": "3.9.x",
 }
 
 ALL_VERSION_SET = {
