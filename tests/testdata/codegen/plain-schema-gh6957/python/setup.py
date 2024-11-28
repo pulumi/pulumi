@@ -18,7 +18,7 @@ def readme():
 
 
 setup(name='pulumi_xyz',
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       version=VERSION,
       long_description=readme(),
       long_description_content_type='text/markdown',
