@@ -750,6 +750,6 @@ build-backend = "poetry.core.masonry.api"
 package-mode = false
 [tool.poetry.dependencies]
 pulumi = ">=3.0.0,<4.0.0"
-python = "^3.8"
+python = "^3.9"
 `, string(b))
 }

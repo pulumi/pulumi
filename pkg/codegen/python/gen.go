@@ -65,10 +65,8 @@ type typeDetails struct {
 type imports codegen.StringSet
 
 // defaultMinPythonVersion is what we use as the minimum version field in generated
-// package metadata if the schema does not provide a value. This version corresponds
-// to the minimum supported version as listed in the reference documentation:
-// https://www.pulumi.com/docs/languages-sdks/python/
-const defaultMinPythonVersion = ">=3.8"
+// package metadata if the schema does not provide a value.
+const defaultMinPythonVersion = ">=3.9"
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
