@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Implement deferred output for the Go SDK and program-gen 
