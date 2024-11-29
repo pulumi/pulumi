@@ -384,8 +384,8 @@ class LocalWorkspace(Workspace):
                     name=who_am_i_json["tokenInformation"].get("name"),
                     organization=who_am_i_json["tokenInformation"].get("organization"),
                     team=who_am_i_json["tokenInformation"].get("team"),
-                ) 
-    
+                )
+
             return WhoAmIResult(
                 user=who_am_i_json["user"],
                 url=who_am_i_json["url"] if "url" in who_am_i_json else None,
@@ -394,7 +394,7 @@ class LocalWorkspace(Workspace):
                     if "organizations" in who_am_i_json
                     else None
                 ),
-                token_information=token_data
+                token_information=token_data,
             )
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
