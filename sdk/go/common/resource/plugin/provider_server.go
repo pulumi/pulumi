@@ -398,6 +398,14 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
+	var autonaming *AutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &AutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         AutonamingMode(req.Autonaming.Mode),
+		}
+	}
+
 	resp, err := p.provider.Check(ctx, CheckRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -406,6 +414,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		News:          inputs,
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
+		Autonaming:    autonaming,
 	})
 	if err != nil {
 		return nil, err

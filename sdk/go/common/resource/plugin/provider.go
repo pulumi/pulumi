@@ -119,6 +119,27 @@ type ConfigureRequest struct {
 
 type ConfigureResponse struct{}
 
+// The mode that controls how the provider handles the proposed name. If not specified, defaults to `Propose`.
+type AutonamingMode int32
+
+const (
+	// Propose: The provider may use the proposed name as a suggestion but is free to modify it.
+	AutonamingModePropose AutonamingMode = iota
+	// Enforce: The provider must use exactly the proposed name or return an error.
+	AutonamingModeEnforce = 1
+	// Disabled: The provider should disable automatic naming and return an error if no explicit name is provided
+	// by user's program.
+	AutonamingModeDisabled = 2
+)
+
+// Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
+// handles resource names, including proposed names and naming modes.
+type AutonamingOptions struct {
+	ProposedName    string
+	Mode            AutonamingMode
+	WarnIfNoSupport bool
+}
+
 type CheckRequest struct {
 	URN  resource.URN
 	Name string
@@ -127,6 +148,7 @@ type CheckRequest struct {
 	Olds, News    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
+	Autonaming    *AutonamingOptions
 }
 
 type CheckResponse struct {

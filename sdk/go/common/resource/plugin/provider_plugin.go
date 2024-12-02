@@ -101,6 +101,9 @@ type pluginProtocol struct {
 
 	// True if this plugin supports previews for Create and Update.
 	supportsPreview bool
+
+	// True if this plugin supports custom autonaming configuration.
+	supportsAutonamingConfiguration bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -938,10 +941,11 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 
 		if p.protocol == nil {
 			p.protocol = &pluginProtocol{
-				acceptSecrets:   resp.GetAcceptSecrets(),
-				acceptResources: resp.GetAcceptResources(),
-				supportsPreview: resp.GetSupportsPreview(),
-				acceptOutputs:   resp.GetAcceptOutputs(),
+				acceptSecrets:                   resp.GetAcceptSecrets(),
+				acceptResources:                 resp.GetAcceptResources(),
+				supportsPreview:                 resp.GetSupportsPreview(),
+				acceptOutputs:                   resp.GetAcceptOutputs(),
+				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
 			}
 		}
 
@@ -996,6 +1000,18 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{}, err
 	}
 
+	var autonaming *pulumirpc.CheckRequest_AutonamingOptions
+	if req.Autonaming != nil {
+		if protocol.supportsAutonamingConfiguration {
+			autonaming = &pulumirpc.CheckRequest_AutonamingOptions{
+				ProposedName: req.Autonaming.ProposedName,
+				Mode:         pulumirpc.CheckRequest_AutonamingOptions_Mode(req.Autonaming.Mode),
+			}
+		} else if req.Autonaming.WarnIfNoSupport {
+			logging.V(3).Infof("%s warning: provider does not support autonaming configuration", label)
+		}
+	}
+
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
@@ -1003,6 +1019,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		Olds:       molds,
 		News:       mnews,
 		RandomSeed: req.RandomSeed,
+		Autonaming: autonaming,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
