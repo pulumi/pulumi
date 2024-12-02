@@ -327,7 +327,7 @@ func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, 
 func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 	versionRe := regexp.MustCompile("[<>=]+.+")
 	deps := map[string]string{
-		"python": "^3.8",
+		"python": "^3.9",
 	}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {

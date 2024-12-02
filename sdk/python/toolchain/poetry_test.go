@@ -39,7 +39,7 @@ setuptools    # comment here
 	require.Equal(t, map[string]string{
 		"pulumi":        ">=3.0.0,<4.0.0",
 		"requests":      ">1",
-		"python":        "^3.8",
+		"python":        "^3.9",
 		"setuptools":    "*",
 		"spaces-before": "1.2.3",
 	}, deps)

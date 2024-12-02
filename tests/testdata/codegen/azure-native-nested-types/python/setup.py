@@ -18,7 +18,7 @@ def readme():
 
 
 setup(name='pulumi_azure_native',
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       version=VERSION,
       description="A native Pulumi package for creating and managing Azure resources.",
       long_description=readme(),

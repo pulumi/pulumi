@@ -18,7 +18,7 @@ def readme():
 
 
 setup(name='pulumi_urnid',
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       version=VERSION,
       description="Test urn and id in valid locations",
       long_description=readme(),
