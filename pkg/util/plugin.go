@@ -31,33 +31,6 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		return false
 	}
 
-	pulumiversePlugins := []string{
-		"acme",
-		"aquasec",
-		"astra",
-		"aws-eksa",
-		"buildkite",
-		"concourse",
-		"configcat",
-		"doppler",
-		"exoscale",
-		"gandi",
-		"github-credentials",
-		"googleworkspace",
-		"harbor",
-		"hcp",
-		"heroku",
-		"matchbox",
-		"mssql",
-		"ngrok",
-		"purrl",
-		"sentry",
-		"statuscake",
-		"time",
-		"unifi",
-		"vra",
-		"zitadel",
-	}
 	if spec.Kind == apitype.ResourcePlugin {
 		for _, plugin := range pulumiversePlugins {
 			if spec.Name == plugin {

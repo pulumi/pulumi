@@ -209,19 +209,23 @@ func (DiffResponse_DiffChanges) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{18, 0}
 }
 
+// `ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The grpc address for the engine.
+	// The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
+	// of the [](pulumirpc.Engine) service.
 	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
-	// The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
-	// This can't be sent when the engine is attaching to a provider via a port number.
+	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
+	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been
+	// asked to attach to an existing running provider instance via a host/port number), this field will be empty.
 	RootDirectory string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
-	// The optional absolute path to the directory of the provider program to execute. Generally, but not
-	// required to be, underneath the root directory. This can't be sent when the engine is attaching to a
-	// provider via a port number.
+	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root
+	// directory, though this is not required. In the event that the provider is *not* being booted by the engine (e.g.
+	// in the case that the engine has been asked to attach to an existing running provider instance via a host/port
+	// number), this field will be empty.
 	ProgramDirectory string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3" json:"program_directory,omitempty"`
 }
 
@@ -278,6 +282,7 @@ func (x *ProviderHandshakeRequest) GetProgramDirectory() string {
 	return ""
 }
 
+// `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -625,18 +630,20 @@ type ConfigureRequest struct {
 	// :::
 	Args *structpb.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
 	// True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
-	// provider supports them also.
+	// provider supports them also. *Must* be true if the caller has previously called
+	// [](pulumirpc.ResourceProvider.Handshake).
 	AcceptSecrets bool `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
 	// True if and only if the caller supports strongly typed resources. If true, operations should return resources as
-	// strongly typed values if the provider supports them also.
+	// strongly typed values if the provider supports them also. *Must* be true if the caller has previously called
+	// [](pulumirpc.ResourceProvider.Handshake).
 	AcceptResources bool `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
 	// True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
 	// [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
-	// these calls.
+	// these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
 	SendsOldInputs bool `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`
 	// True if and only if the caller supports sending old inputs and outputs as part of
 	// [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
-	// these calls.
+	// these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
 	SendsOldInputsToDelete bool `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`
 }
 
@@ -722,17 +729,19 @@ type ConfigureResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
-	// values to the provider.
+	// values to the provider. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
 	AcceptSecrets bool `protobuf:"varint,1,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
 	// True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
 	// [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
-	// `true` during previews.
+	// `true` during previews. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
 	SupportsPreview bool `protobuf:"varint,2,opt,name=supportsPreview,proto3" json:"supportsPreview,omitempty"`
 	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
-	// strongly typed values to the provider.
+	// strongly typed values to the provider. *Must* be true if the provider implements
+	// [](pulumirpc.ResourceProvider.Handshake).
 	AcceptResources bool `protobuf:"varint,3,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
 	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
-	// to the provider where possible.
+	// to the provider where possible. *Must* be true if the provider implements
+	// [](pulumirpc.ResourceProvider.Handshake).
 	AcceptOutputs bool `protobuf:"varint,4,opt,name=acceptOutputs,proto3" json:"acceptOutputs,omitempty"`
 	// True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user.
 	SupportsAutonamingConfiguration bool `protobuf:"varint,5,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`

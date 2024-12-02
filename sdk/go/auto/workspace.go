@@ -183,11 +183,20 @@ type StackSummary struct {
 	URL              string `json:"url,omitempty"`
 }
 
+// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
+// will be set, but not both.
+type TokenInformation struct {
+	Name         string `json:"name"`                   // The name of the token.
+	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
+	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+}
+
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
 type WhoAmIResult struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User             string            `json:"user"`
+	Organizations    []string          `json:"organizations,omitempty"`
+	URL              string            `json:"url"`
+	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
 }
 
 type ChangeSecretsProviderOptions struct {
