@@ -80,6 +80,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/godbus/dbus/v5 v5.1.0
+	github.com/google/go-github/v55 v55.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/hexops/autogold/v2 v2.2.1
