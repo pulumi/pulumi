@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/plugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"\xc0\x01\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\x12=\n\tchecksums\x18\x05 \x03(\x0b\x32*.pulumirpc.PluginDependency.ChecksumsEntry\x1a\x30\n\x0e\x43hecksumsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/plugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"\xc0\x01\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\x12=\n\tchecksums\x18\x05 \x03(\x0b\x32*.pulumirpc.PluginDependency.ChecksumsEntry\x1a\x30\n\x0e\x43hecksumsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"G\n\x17PackageParameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x80\x02\n\x11PackageDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\x12>\n\tchecksums\x18\x05 \x03(\x0b\x32+.pulumirpc.PackageDependency.ChecksumsEntry\x12<\n\x10parameterization\x18\x06 \x01(\x0b\x32\".pulumirpc.PackageParameterization\x1a\x30\n\x0e\x43hecksumsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.plugin_pb2', globals())
@@ -23,6 +23,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
   _PLUGINDEPENDENCY_CHECKSUMSENTRY._options = None
   _PLUGINDEPENDENCY_CHECKSUMSENTRY._serialized_options = b'8\001'
+  _PACKAGEDEPENDENCY_CHECKSUMSENTRY._options = None
+  _PACKAGEDEPENDENCY_CHECKSUMSENTRY._serialized_options = b'8\001'
   _PLUGININFO._serialized_start=34
   _PLUGININFO._serialized_end=63
   _PLUGINDEPENDENCY._serialized_start=66
@@ -31,4 +33,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _PLUGINDEPENDENCY_CHECKSUMSENTRY._serialized_end=258
   _PLUGINATTACH._serialized_start=260
   _PLUGINATTACH._serialized_end=291
+  _PACKAGEPARAMETERIZATION._serialized_start=293
+  _PACKAGEPARAMETERIZATION._serialized_end=364
+  _PACKAGEDEPENDENCY._serialized_start=367
+  _PACKAGEDEPENDENCY._serialized_end=623
+  _PACKAGEDEPENDENCY_CHECKSUMSENTRY._serialized_start=210
+  _PACKAGEDEPENDENCY_CHECKSUMSENTRY._serialized_end=258
 # @@protoc_insertion_point(module_scope)

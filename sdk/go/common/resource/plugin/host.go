@@ -655,11 +655,13 @@ func GetRequiredPlugins(
 			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 			//     later than we do (right now, we do it up front, but at that point we don't know the version).
-			deps, err := lang.GetRequiredPlugins(info)
+			deps, err := lang.GetRequiredPackages(info)
 			if err != nil {
 				return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 			}
-			plugins = append(plugins, deps...)
+			for _, dep := range deps {
+				plugins = append(plugins, dep.PluginSpec)
+			}
 		}
 	} else {
 		// If we can't load the language plugin, we can't discover the resource plugins.

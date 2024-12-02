@@ -43,3 +43,24 @@ message PluginDependency {
 message PluginAttach {
     string address = 1; // the grpc address for the engine
 }
+
+message PackageParameterization {
+    string name = 1; // the parameterized package name.
+    string version = 2; // the parameterized package version.
+    bytes value = 3; // the parameter value for the parameterized package.
+}
+
+// PackageDependency is information about a package that a program may depend upon.
+message PackageDependency {
+    string name = 1;    // the name of the plugin.
+    string kind = 2;    // the kind of plugin (e.g., language, etc).
+    string version = 3; // the semver for this plugin.
+    string server = 4; // the URL of a server that can be used to download this plugin, if needed.
+
+    // a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
+    // the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
+    map<string, bytes> checksums = 5;
+
+    // The optional parameterization for this package.
+    PackageParameterization parameterization = 6;
+}

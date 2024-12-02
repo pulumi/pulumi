@@ -1428,7 +1428,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		plugins  []workspace.PluginSpec
+		packages []workspace.PackageDescriptor
 		snapshot *deploy.Snapshot
 		validate func(t *testing.T, r *resource.State)
 		versions []string
@@ -1443,12 +1443,16 @@ func TestProviderVersionAssignment(t *testing.T) {
 		{
 			name:     "default-version",
 			versions: []string{"1.0.0", "1.1.0"},
-			plugins: []workspace.PluginSpec{{
-				Name:              "pkgA",
-				Version:           &semver.Version{Major: 1, Minor: 1},
-				PluginDownloadURL: "example.com/default",
-				Kind:              apitype.ResourcePlugin,
-			}},
+			packages: []workspace.PackageDescriptor{
+				{
+					PluginSpec: workspace.PluginSpec{
+						Name:              "pkgA",
+						Version:           &semver.Version{Major: 1, Minor: 1},
+						PluginDownloadURL: "example.com/default",
+						Kind:              apitype.ResourcePlugin,
+					},
+				},
+			},
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
@@ -1460,10 +1464,12 @@ func TestProviderVersionAssignment(t *testing.T) {
 		{
 			name:     "specified-provider",
 			versions: []string{"1.0.0", "1.1.0"},
-			plugins: []workspace.PluginSpec{{
-				Name:    "pkgA",
-				Version: &semver.Version{Major: 1, Minor: 1},
-				Kind:    apitype.ResourcePlugin,
+			packages: []workspace.PackageDescriptor{{
+				PluginSpec: workspace.PluginSpec{
+					Name:    "pkgA",
+					Version: &semver.Version{Major: 1, Minor: 1},
+					Kind:    apitype.ResourcePlugin,
+				},
 			}},
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
@@ -1478,10 +1484,12 @@ func TestProviderVersionAssignment(t *testing.T) {
 			name:     "higher-in-snapshot",
 			versions: []string{"1.3.0", "1.1.0"},
 			prog:     prog(),
-			plugins: []workspace.PluginSpec{{
-				Name:    "pkgA",
-				Version: &semver.Version{Major: 1, Minor: 1},
-				Kind:    apitype.ResourcePlugin,
+			packages: []workspace.PackageDescriptor{{
+				PluginSpec: workspace.PluginSpec{
+					Name:    "pkgA",
+					Version: &semver.Version{Major: 1, Minor: 1},
+					Kind:    apitype.ResourcePlugin,
+				},
 			}},
 			snapshot: &deploy.Snapshot{
 				Resources: []*resource.State{
@@ -1505,7 +1513,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			programF := deploytest.NewLanguageRuntimeF(c.prog, c.plugins...)
+			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
 			loaders := []*deploytest.ProviderLoader{}
 			for _, v := range c.versions {
 				loaders = append(loaders,

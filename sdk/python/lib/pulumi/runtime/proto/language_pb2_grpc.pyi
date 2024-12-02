@@ -35,6 +35,11 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GetRequiredPluginsResponse,
     ]
     """GetRequiredPlugins computes the complete set of anticipated plugins required by a program."""
+    GetRequiredPackages: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.GetRequiredPackagesRequest,
+        pulumi.language_pb2.GetRequiredPackagesResponse,
+    ]
+    """GetRequiredPackages computes the complete set of anticipated packages required by a program."""
     Run: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.RunRequest,
         pulumi.language_pb2.RunResponse,
@@ -103,6 +108,13 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.GetRequiredPluginsResponse:
         """GetRequiredPlugins computes the complete set of anticipated plugins required by a program."""
+    
+    def GetRequiredPackages(
+        self,
+        request: pulumi.language_pb2.GetRequiredPackagesRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.GetRequiredPackagesResponse:
+        """GetRequiredPackages computes the complete set of anticipated packages required by a program."""
     
     def Run(
         self,

@@ -144,6 +144,28 @@ function deserialize_pulumirpc_GetProgramDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.GetProgramDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetRequiredPackagesRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetRequiredPackagesRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPackagesRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPackagesRequest(buffer_arg) {
+  return pulumi_language_pb.GetRequiredPackagesRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetRequiredPackagesResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetRequiredPackagesResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPackagesResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPackagesResponse(buffer_arg) {
+  return pulumi_language_pb.GetRequiredPackagesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetRequiredPluginsRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.GetRequiredPluginsRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsRequest');
@@ -302,6 +324,18 @@ getRequiredPlugins: {
     requestDeserialize: deserialize_pulumirpc_GetRequiredPluginsRequest,
     responseSerialize: serialize_pulumirpc_GetRequiredPluginsResponse,
     responseDeserialize: deserialize_pulumirpc_GetRequiredPluginsResponse,
+  },
+  // GetRequiredPackages computes the complete set of anticipated packages required by a program.
+getRequiredPackages: {
+    path: '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.GetRequiredPackagesRequest,
+    responseType: pulumi_language_pb.GetRequiredPackagesResponse,
+    requestSerialize: serialize_pulumirpc_GetRequiredPackagesRequest,
+    requestDeserialize: deserialize_pulumirpc_GetRequiredPackagesRequest,
+    responseSerialize: serialize_pulumirpc_GetRequiredPackagesResponse,
+    responseDeserialize: deserialize_pulumirpc_GetRequiredPackagesResponse,
   },
   // Run executes a program and returns its result.
 run: {

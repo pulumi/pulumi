@@ -132,8 +132,91 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 	}
 }
 
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error) {
+// GetRequiredPackages computes the complete set of anticipated plugins required by a program.
+func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error) {
+	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) executing",
+		h.runtime, info)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := h.client.GetRequiredPackages(h.ctx.Request(), &pulumirpc.GetRequiredPackagesRequest{
+		Info: minfo,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) failed: err=%v",
+			h.runtime, info, rpcError)
+
+		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPackages
+		// method.  In such cases, fallback to using GetRequiredPlugins and don't report any parameterized packages.
+		if rpcError.Code() == codes.Unimplemented {
+			plugins, err := h.getRequiredPlugins(info)
+			if err != nil {
+				return nil, err
+			}
+			packages := make([]workspace.PackageDescriptor, len(plugins))
+			for i, plugin := range plugins {
+				packages[i] = workspace.PackageDescriptor{
+					PluginSpec: plugin,
+				}
+			}
+			return packages, nil
+		}
+
+		return nil, rpcError
+	}
+
+	results := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	for _, info := range resp.Packages {
+		var version *semver.Version
+		if v := info.GetVersion(); v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
+			}
+			version = &sv
+		}
+		if !apitype.IsPluginKind(info.Kind) {
+			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
+		}
+		var parameterization *workspace.Parameterization
+		if info.Parameterization != nil {
+			sv, err := semver.ParseTolerant(info.Parameterization.Version)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"illegal semver returned by language host: %s@%s: %w",
+					info.GetName(), info.Parameterization.Version, err)
+			}
+
+			parameterization = &workspace.Parameterization{
+				Name:    info.Parameterization.Name,
+				Version: sv,
+				Value:   info.Parameterization.Value,
+			}
+		}
+
+		results = append(results, workspace.PackageDescriptor{
+			PluginSpec: workspace.PluginSpec{
+				Name:              info.Name,
+				Kind:              apitype.PluginKind(info.Kind),
+				Version:           version,
+				PluginDownloadURL: info.Server,
+				Checksums:         info.Checksums,
+			},
+			Parameterization: parameterization,
+		})
+	}
+
+	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) success: #versions=%d",
+		h.runtime, info, len(results))
+	return results, nil
+}
+
+// getRequiredPlugins computes the complete set of anticipated plugins required by a program.
+func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) executing",
 		h.runtime, info)
 
@@ -142,7 +225,9 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		return nil, err
 	}
 
-	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
+	// this is deprecated and will be removed in a future release, but we use it for backcompat for now until
+	// all language hosts are update to GetRequiredPackages.
+	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
 		Project: "deprecated",
 		Pwd:     info.ProgramDirectory(),
 		Program: info.EntryPoint(),
