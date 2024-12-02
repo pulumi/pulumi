@@ -5,7 +5,6 @@ package configstation
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"example.com/pulumi-configstation/sdk/go/configstation/internal"
@@ -15,16 +14,6 @@ import (
 // Check codegen of functions with all optional inputs.
 func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInputsArgs, opts ...pulumi.InvokeOption) (*FuncWithAllOptionalInputsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &FuncWithAllOptionalInputsResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &FuncWithAllOptionalInputsResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithAllOptionalInputs, use FuncWithAllOptionalInputsOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &FuncWithAllOptionalInputsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithAllOptionalInputs, use FuncWithAllOptionalInputsOutput instead")
-	}
 	var rv FuncWithAllOptionalInputsResult
 	err := ctx.Invoke("configstation::funcWithAllOptionalInputs", args, &rv, opts...)
 	if err != nil {

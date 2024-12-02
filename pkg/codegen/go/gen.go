@@ -2812,9 +2812,9 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	buffer := &bytes.Buffer{}
 	goInfo := goPackageInfo(pkg.pkg)
-	imports := []string{"errors"}
+	var imports []string
 	if f.ReturnType != nil {
-		imports = append(imports, "context", "reflect")
+		imports = []string{"context", "reflect"}
 		if goInfo.Generics == GenericsSettingSideBySide {
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 		}
@@ -2840,9 +2840,9 @@ func (pkg *pkgContext) genGenericVariantFunctionCodeFile(f *schema.Function) (st
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	buffer := &bytes.Buffer{}
 
-	imports := []string{"errors"}
+	var imports []string
 	if NeedsGoOutputVersion(f) {
-		imports = append(imports, "context", "reflect")
+		imports = []string{"context", "reflect"}
 	}
 
 	pkg.genHeader(buffer, imports, importsAndAliases, false /* isUtil */)
@@ -2905,11 +2905,6 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	}
 
 	err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
-	if err != nil {
-		return err
-	}
-
-	err = pkg.genValidatePlainInvokeOptions(w, f, objectReturnType != nil)
 	if err != nil {
 		return err
 	}
@@ -5315,41 +5310,6 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	}
 
 	return nil
-}
-
-func (pkg *pkgContext) genValidatePlainInvokeOptions(w io.Writer, f *schema.Function, objectReturnType bool) error {
-	directName := pkg.functionName(f)
-	outputName := pkg.functionOutputName(f)
-	directResultTypeName := pkg.functionResultTypeName(f)
-	errorResultValue := "&" + directResultTypeName + "{}"
-
-	var err error
-	if objectReturnType {
-		_, err = fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return %[1]s, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return %[1]s, errors.New("DependsOn is not supported for direct form invoke %[2]s, use %[3]s instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return %[1]s, errors.New("DependsOnInputs is not supported for direct form invoke %[2]s, use %[3]s instead")
-	}
-`, errorResultValue, directName, outputName)
-	} else {
-		_, err = fmt.Fprintf(w, `	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return errors.New("DependsOn is not supported for direct form invoke %[1]s, use %[2]s instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return errors.New("DependsOnInputs is not supported for direct form invoke %[1]s, use %[2]s instead")
-	}
-`, directName, outputName)
-	}
-	return err
 }
 
 // GenPkgGetPackageRefCall generates a call to PkgGetPackageRef.

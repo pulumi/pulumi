@@ -5,7 +5,6 @@ package urnid
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,16 +14,6 @@ import (
 // It's fine for invokes to use urn and id
 func Test(ctx *pulumi.Context, args *TestArgs, opts ...pulumi.InvokeOption) (*TestResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &TestResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &TestResult{}, errors.New("DependsOn is not supported for direct form invoke Test, use TestOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &TestResult{}, errors.New("DependsOnInputs is not supported for direct form invoke Test, use TestOutput instead")
-	}
 	var rv TestResult
 	err := ctx.Invoke("urnid:index:Test", args, &rv, opts...)
 	if err != nil {

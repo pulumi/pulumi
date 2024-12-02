@@ -5,7 +5,6 @@ package mongodbatlas
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -14,16 +13,6 @@ import (
 
 func LookupCustomDbRoles(ctx *pulumi.Context, args *LookupCustomDbRolesArgs, opts ...pulumi.InvokeOption) (*LookupCustomDbRolesResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &LookupCustomDbRolesResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &LookupCustomDbRolesResult{}, errors.New("DependsOn is not supported for direct form invoke LookupCustomDbRoles, use LookupCustomDbRolesOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &LookupCustomDbRolesResult{}, errors.New("DependsOnInputs is not supported for direct form invoke LookupCustomDbRoles, use LookupCustomDbRolesOutput instead")
-	}
 	var rv LookupCustomDbRolesResult
 	err := ctx.Invoke("mongodbatlas::getCustomDbRoles", args, &rv, opts...)
 	if err != nil {

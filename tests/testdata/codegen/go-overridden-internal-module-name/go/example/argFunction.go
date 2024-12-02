@@ -5,7 +5,6 @@ package example
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -14,16 +13,6 @@ import (
 
 func ArgFunction(ctx *pulumi.Context, args *ArgFunctionArgs, opts ...pulumi.InvokeOption) (*ArgFunctionResult, error) {
 	opts = utilities.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &ArgFunctionResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &ArgFunctionResult{}, errors.New("DependsOn is not supported for direct form invoke ArgFunction, use ArgFunctionOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &ArgFunctionResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ArgFunction, use ArgFunctionOutput instead")
-	}
 	var rv ArgFunctionResult
 	err := ctx.Invoke("example::argFunction", args, &rv, opts...)
 	if err != nil {

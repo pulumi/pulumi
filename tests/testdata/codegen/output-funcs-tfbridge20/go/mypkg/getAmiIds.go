@@ -5,7 +5,6 @@ package mypkg
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -17,16 +16,6 @@ import (
 // Deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds
 func GetAmiIds(ctx *pulumi.Context, args *GetAmiIdsArgs, opts ...pulumi.InvokeOption) (*GetAmiIdsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &GetAmiIdsResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &GetAmiIdsResult{}, errors.New("DependsOn is not supported for direct form invoke GetAmiIds, use GetAmiIdsOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &GetAmiIdsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke GetAmiIds, use GetAmiIdsOutput instead")
-	}
 	var rv GetAmiIdsResult
 	err := ctx.Invoke("mypkg::getAmiIds", args, &rv, opts...)
 	if err != nil {

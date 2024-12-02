@@ -807,6 +807,17 @@ func (ctx *Context) InvokePackage(
 		return errors.New("result must be a pointer to a struct or map value")
 	}
 
+	invokeOpts, optsErr := NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return errors.New("DependsOn is not supported for direct form invoke, use the output form invoke instead")
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return errors.New("DependsOnInputs is not supported for direct form invoke, use the output form invoke instead")
+	}
+
 	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return err

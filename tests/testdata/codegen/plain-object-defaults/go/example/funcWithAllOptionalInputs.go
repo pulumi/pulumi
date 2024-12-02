@@ -5,7 +5,6 @@ package example
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -15,16 +14,6 @@ import (
 // Check codegen of functions with all optional inputs.
 func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInputsArgs, opts ...pulumi.InvokeOption) (*FuncWithAllOptionalInputsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &FuncWithAllOptionalInputsResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &FuncWithAllOptionalInputsResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithAllOptionalInputs, use FuncWithAllOptionalInputsOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &FuncWithAllOptionalInputsResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithAllOptionalInputs, use FuncWithAllOptionalInputsOutput instead")
-	}
 	var rv FuncWithAllOptionalInputsResult
 	err := ctx.Invoke("example::funcWithAllOptionalInputs", args.Defaults(), &rv, opts...)
 	if err != nil {

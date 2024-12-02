@@ -4,24 +4,12 @@
 package my8110
 
 import (
-	"errors"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"regress-node-8110/my8110/internal"
 )
 
 func ExampleFunc(ctx *pulumi.Context, args *ExampleFuncArgs, opts ...pulumi.InvokeOption) error {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return errors.New("DependsOn is not supported for direct form invoke ExampleFunc, use ExampleFuncOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return errors.New("DependsOnInputs is not supported for direct form invoke ExampleFunc, use ExampleFuncOutput instead")
-	}
 	var rv struct{}
 	err := ctx.Invoke("my8110::exampleFunc", args, &rv, opts...)
 	return err

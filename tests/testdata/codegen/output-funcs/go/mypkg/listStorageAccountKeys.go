@@ -5,7 +5,6 @@ package mypkg
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -17,16 +16,6 @@ import (
 // API Version: 2021-02-01.
 func ListStorageAccountKeys(ctx *pulumi.Context, args *ListStorageAccountKeysArgs, opts ...pulumi.InvokeOption) (*ListStorageAccountKeysResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &ListStorageAccountKeysResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &ListStorageAccountKeysResult{}, errors.New("DependsOn is not supported for direct form invoke ListStorageAccountKeys, use ListStorageAccountKeysOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &ListStorageAccountKeysResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ListStorageAccountKeys, use ListStorageAccountKeysOutput instead")
-	}
 	var rv ListStorageAccountKeysResult
 	err := ctx.Invoke("mypkg::listStorageAccountKeys", args, &rv, opts...)
 	if err != nil {

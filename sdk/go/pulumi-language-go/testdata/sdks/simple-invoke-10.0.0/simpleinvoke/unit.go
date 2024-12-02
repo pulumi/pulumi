@@ -5,7 +5,6 @@ package simpleinvoke
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"example.com/pulumi-simple-invoke/sdk/go/v10/simpleinvoke/internal"
@@ -14,16 +13,6 @@ import (
 
 func Unit(ctx *pulumi.Context, args *UnitArgs, opts ...pulumi.InvokeOption) (*UnitResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &UnitResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &UnitResult{}, errors.New("DependsOn is not supported for direct form invoke Unit, use UnitOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &UnitResult{}, errors.New("DependsOnInputs is not supported for direct form invoke Unit, use UnitOutput instead")
-	}
 	var rv UnitResult
 	err := ctx.Invoke("simple-invoke:index:unit", args, &rv, opts...)
 	if err != nil {

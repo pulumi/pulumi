@@ -5,7 +5,6 @@ package mypkg
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -17,16 +16,6 @@ import (
 // API Version: 2020-11-01.
 func GetBastionShareableLink(ctx *pulumi.Context, args *GetBastionShareableLinkArgs, opts ...pulumi.InvokeOption) (*GetBastionShareableLinkResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &GetBastionShareableLinkResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &GetBastionShareableLinkResult{}, errors.New("DependsOn is not supported for direct form invoke GetBastionShareableLink, use GetBastionShareableLinkOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &GetBastionShareableLinkResult{}, errors.New("DependsOnInputs is not supported for direct form invoke GetBastionShareableLink, use GetBastionShareableLinkOutput instead")
-	}
 	var rv GetBastionShareableLinkResult
 	err := ctx.Invoke("mypkg::getBastionShareableLink", args, &rv, opts...)
 	if err != nil {

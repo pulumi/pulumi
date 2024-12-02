@@ -5,7 +5,6 @@ package configgrpc
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"example.com/pulumi-config-grpc/sdk/go/configgrpc/internal"
@@ -14,16 +13,6 @@ import (
 
 func ToSecret(ctx *pulumi.Context, args *ToSecretArgs, opts ...pulumi.InvokeOption) (*ToSecretResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &ToSecretResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &ToSecretResult{}, errors.New("DependsOn is not supported for direct form invoke ToSecret, use ToSecretOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &ToSecretResult{}, errors.New("DependsOnInputs is not supported for direct form invoke ToSecret, use ToSecretOutput instead")
-	}
 	var rv ToSecretResult
 	err := ctx.Invoke("config-grpc:index:toSecret", args, &rv, opts...)
 	if err != nil {

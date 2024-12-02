@@ -5,7 +5,6 @@ package mypkg
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -16,16 +15,6 @@ import (
 // Check codegen of functions with a List parameter.
 func FuncWithListParam(ctx *pulumi.Context, args *FuncWithListParamArgs, opts ...pulumi.InvokeOption) (*FuncWithListParamResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
-	invokeOpts, optsErr := pulumi.NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return &FuncWithListParamResult{}, optsErr
-	}
-	if len(invokeOpts.DependsOn) > 0 {
-		return &FuncWithListParamResult{}, errors.New("DependsOn is not supported for direct form invoke FuncWithListParam, use FuncWithListParamOutput instead")
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return &FuncWithListParamResult{}, errors.New("DependsOnInputs is not supported for direct form invoke FuncWithListParam, use FuncWithListParamOutput instead")
-	}
 	var rv FuncWithListParamResult
 	err := ctx.Invoke("mypkg::funcWithListParam", args, &rv, opts...)
 	if err != nil {
