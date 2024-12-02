@@ -336,8 +336,7 @@ class _Property:
 
 # This function's return type is deliberately annotated as Any so that type checkers do not
 # complain about assignments that we want to allow like `my_value: str = property("myValue")`.
-# pylint: disable=redefined-builtin
-def property(name: str, *, default: Any = MISSING) -> Any:
+def property(name: str, *, default: Any = MISSING) -> Any:  # noqa: A001 shadowing builtin
     """
     Return an object to identify Pulumi properties.
 
@@ -366,7 +365,8 @@ def _properties_from_annotations(cls: type) -> Dict[str, _Property]:
         return p
 
     return {
-        name: get_property(cls, name, type) for name, type in cls_annotations.items()
+        name: get_property(cls, name, type)
+        for name, type in cls_annotations.items()  #  noqa: A001 shadowing builtin
     }
 
 
@@ -572,7 +572,6 @@ def output_type(cls: Type[T]) -> Type[T]:
     # the Python name to the Pulumi name, and then pass the Pulumi name to _translate_property() to
     # convert the Pulumi name to whatever name _translate_property() returns (which, for our
     # provider codegen, will be the translated name from _tables.CAMEL_TO_SNAKE_CASE_TABLE).
-    # pylint: disable=too-many-nested-blocks
     if hasattr(cls, _TRANSLATE_PROPERTY):
         python_to_pulumi_table = None
         for python_name, pulumi_name, _ in _py_properties(cls):
@@ -1004,7 +1003,7 @@ def _create_fn(name, args, body, *, globals=None, locals=None):
     txt = f"def __create_fn__({local_vars}):\n{txt}\n return {name}"
 
     ns = {}
-    exec(txt, globals, ns)  # pylint: disable=exec-used
+    exec(txt, globals, ns)  # noqa: S102 exec builtin
     return ns["__create_fn__"](**locals)
 
 

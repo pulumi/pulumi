@@ -193,7 +193,6 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
 
 class MockEngine(proto.EngineServicer):
-
     def __init__(self):
         self.messages = []
 
@@ -447,7 +446,6 @@ class LanghostTest(unittest.TestCase):
     def _run_program(
         self, stub, monitor, project, stack, program, args, config, dryrun, organization
     ):
-
         args = {}
 
         # Assume program is the path to the project, i.e. root, program directory, and pwd.

@@ -179,7 +179,7 @@ class ProjectSettings:
         description: Optional[str] = None,
         author: Optional[str] = None,
         website: Optional[str] = None,
-        license: Optional[str] = None,  # pylint: disable=redefined-builtin
+        license: Optional[str] = None,
         config: Optional[str] = None,
         template: Optional[ProjectTemplate] = None,
         backend: Optional[ProjectBackend] = None,

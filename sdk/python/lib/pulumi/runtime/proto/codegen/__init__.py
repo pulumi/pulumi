@@ -15,6 +15,7 @@
 """
 The Pulumi codegen system's Protobufs and gRPC stubs. These are meant for internal use only.
 """
+
 from __future__ import absolute_import
 
 from .hcl_pb2 import *

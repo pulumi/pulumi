@@ -464,7 +464,6 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
-    # pylint: disable=redefined-builtin
     def __init__(
         self,
         parent: Optional["Resource"] = None,
@@ -625,7 +624,6 @@ class ResourceOptions:
         out.merge = out._merge_instance  # type: ignore
         return out
 
-    # pylint: disable=method-hidden
     @staticmethod
     def merge(
         opts1: Optional["ResourceOptions"], opts2: Optional["ResourceOptions"]
@@ -954,7 +952,9 @@ class Resource:
             action = (
                 "get"
                 if opts.urn is not None
-                else "read" if opts.id is not None else "register"
+                else "read"
+                if opts.id is not None
+                else "register"
             )
             raise ValueError(
                 f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'"

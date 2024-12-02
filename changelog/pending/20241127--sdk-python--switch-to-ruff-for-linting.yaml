@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: Switch to ruff for linting and formatting

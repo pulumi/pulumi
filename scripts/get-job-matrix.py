@@ -139,7 +139,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "go": "1.22.x",
     "nodejs": "18.x",
     # When updating the minimum Python version here, also update `mypy.ini` and
-    # `.pylintrc` to target this version.
+    # `ruff.toml` to target this version.
     "python": "3.8.x",
 }
 

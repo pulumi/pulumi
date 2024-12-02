@@ -109,21 +109,15 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(olds, self._config)
         else:
             provider = get_provider(news, self._config)
-        result = provider.diff(request.id, olds, news)  # pylint: disable=no-member
+        result = provider.diff(request.id, olds, news)
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields["changes"] = (
-                    proto.DiffResponse.DIFF_SOME
-                )  # pylint: disable=no-member
+                fields["changes"] = proto.DiffResponse.DIFF_SOME
             else:
-                fields["changes"] = (
-                    proto.DiffResponse.DIFF_NONE
-                )  # pylint: disable=no-member
+                fields["changes"] = proto.DiffResponse.DIFF_NONE
         else:
-            fields["changes"] = (
-                proto.DiffResponse.DIFF_UNKNOWN
-            )  # pylint: disable=no-member
+            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN
         if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:
@@ -135,7 +129,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         news = rpc.deserialize_properties(request.news)
         provider = get_provider(news, self._config)
 
-        result = provider.update(request.id, olds, news)  # pylint: disable=no-member
+        result = provider.update(request.id, olds, news)
         outs = {}
         if result.outs is not None:
             outs = result.outs
@@ -152,7 +146,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
-        provider.delete(id_, props)  # pylint: disable=no-member
+        provider.delete(id_, props)
         return empty_pb2.Empty()
 
     def Cancel(self, request, context):
@@ -180,7 +174,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news, self._config)
 
-        result = provider.check(olds, news)  # pylint: disable=no-member
+        result = provider.check(olds, news)
         inputs = result.inputs
         failures = result.failures
 
@@ -222,7 +216,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
-        result = provider.read(id_, props)  # pylint: disable=no-member
+        result = provider.read(id_, props)
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -240,9 +234,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
-        futures.ThreadPoolExecutor(
-            max_workers=4
-        ),  # pylint: disable=consider-using-with
+        futures.ThreadPoolExecutor(max_workers=4),
         options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)

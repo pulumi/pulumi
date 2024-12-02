@@ -15,6 +15,7 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
+
 import asyncio
 import functools
 import inspect
@@ -119,9 +120,9 @@ _INT_OR_FLOAT = six.integer_types + (float,)
 # released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
 # python programs using a new version.
 try:
-    from google.protobuf.pyext._message import (  # pylint: disable-msg=C0412
+    from google.protobuf.pyext._message import (
         SetAllowOversizeProtos,
-    )  # pylint: disable-msg=E0611
+    )
 
     SetAllowOversizeProtos(True)
 except ImportError:
@@ -131,7 +132,7 @@ except ImportError:
 try:
     from google.protobuf.pyext import (  # type: ignore
         cpp_message,
-    )  # pylint: disable-msg=E0611
+    )
 
     if cpp_message._message is not None:
         cpp_message._message.SetAllowOversizeProtos(True)
@@ -204,9 +205,7 @@ async def serialize_properties(
     if typ is not None:
         py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
         types = _types.input_type_types(typ)
-        # pylint: disable=C3001
         translate = lambda k: py_name_to_pulumi_name.get(k) or k
-        # pylint: disable=C3001
         get_type = lambda k: types.get(translate(k))  # type: ignore
 
     struct = struct_pb2.Struct()
@@ -245,7 +244,6 @@ async def serialize_properties(
                     log.debug(
                         f"top-level input property translated: {k} -> {translated_name}"
                     )
-            # pylint: disable=unsupported-assignment-operation
             struct[translated_name] = result
             property_deps[translated_name] = deps
 
@@ -344,7 +342,6 @@ async def _expand_dependencies(
     return urns
 
 
-# pylint: disable=too-many-return-statements, too-many-branches
 async def serialize_property(
     value: "Input[Any]",
     deps: List["Resource"],
@@ -628,9 +625,7 @@ async def serialize_property(
             if _types.is_input_type(typ):
                 # If it's intended to be an input type, translate using the type's metadata.
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
-                # pylint: disable=C3001
                 types = _types.input_type_types(typ)
-                # pylint: disable=C3001
                 translate = lambda k: py_name_to_pulumi_name.get(k) or k
 
                 get_type = types.get
@@ -640,7 +635,6 @@ async def serialize_property(
                 if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                     args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
-                        # pylint: disable=C3001
                         get_type = lambda k: args[1]
                         translate = None
                 else:
@@ -693,7 +687,6 @@ async def serialize_property(
     return value
 
 
-# pylint: disable=too-many-return-statements
 def deserialize_properties(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
@@ -827,7 +820,6 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
             contains_secrets = contains_secrets or secret_element
             list_values.append(unwrapped)
         return list_values, contains_secrets
-    # pylint: disable=no-member
     if isinstance(value, struct_pb2.Value):
         if value.WhichOneof("kind") == "struct_value":
             unwrapped, secret_element = _unwrap_rpc_secret_struct_properties(
@@ -1206,7 +1198,6 @@ def translate_output_properties(
             if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                 args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
-                    # pylint: disable=C3001
                     get_type = lambda k: args[1]
                     # If transform_using_type_metadata is True, don't translate its keys because
                     # it is intended to be a user-defined dict.
@@ -1440,7 +1431,7 @@ def resolve_properties(
 
         # If this value is a secret, unwrap its inner value.
         is_secret = is_rpc_secret(value)
-        value = unwrap_rpc_secret(value)
+        unwrapped_value = unwrap_rpc_secret(value)
 
         # If either we are performing a real deployment, or this is a stable property value, we
         # can propagate its final value.  Otherwise, it must be undefined, since we don't know
@@ -1448,11 +1439,17 @@ def resolve_properties(
         if not settings.is_dry_run():
             # normal 'pulumi up'.  resolve the output with the value we got back
             # from the engine.  That output can always run its .apply calls.
-            resolve(value, True, is_secret, deps.get(key), None)
+            resolve(unwrapped_value, True, is_secret, deps.get(key), None)
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None, is_secret, deps.get(key), None)
+            resolve(
+                unwrapped_value,
+                unwrapped_value is not None,
+                is_secret,
+                deps.get(key),
+                None,
+            )
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a

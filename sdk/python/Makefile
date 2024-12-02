@@ -11,8 +11,6 @@ endif
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
-BLACK_FLAGS := ./lib/test ./lib/pulumi --exclude lib/pulumi/runtime/proto
-
 PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
 
 include ../../build/common.mk
@@ -46,11 +44,11 @@ build:: build_package build_plugin
 
 lint:: ensure
 	. venv/*/activate && \
-		python -m black $(BLACK_FLAGS) --check
+		python -m ruff format --check
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
-		python -m pylint ./lib/pulumi --rcfile=.pylintrc
+		python -m ruff check
 	. venv/*/activate && \
 		python -m pyright
 
@@ -60,7 +58,7 @@ lint_fix:: ensure
 
 format:: ensure
 	. venv/*/activate && \
-		python -m black $(BLACK_FLAGS)
+		python -m ruff format
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"

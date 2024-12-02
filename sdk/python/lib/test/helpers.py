@@ -39,7 +39,6 @@ def raises(exception_type):
     """Decorates a test by wrapping its body in `pytest.raises`."""
 
     def decorator(fn):
-
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             with pytest.raises(exception_type):

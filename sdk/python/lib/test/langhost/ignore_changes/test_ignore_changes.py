@@ -47,7 +47,6 @@ class TestIgnoreChanges(LanghostTest):
         _providers,
         source_position,
     ):
-
         # Note that here we expect to receive `ignoredProperty`, even though the user provided `ignored_property`.
         self.assertListEqual(
             _ignore_changes, ["ignoredProperty", "ignored_property_other"]
