@@ -13,6 +13,8 @@ import (
 	"github.com/google/go-github/v55/github"
 )
 
+// This looks up all the repositories in the "pulumiverse" organization and generates a list of plugin names
+// based on those repositories that start with "pulumi-". This is then written to "pulumiverse_list.go".
 func main() {
 	ctx := context.Background()
 	client := github.NewClient(nil)
