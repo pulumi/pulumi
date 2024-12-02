@@ -1410,11 +1410,13 @@ func TestInvokeDependsOn(t *testing.T) {
 		dep := newTestRes(t, ctx, "dep")
 		opts := DependsOn([]Resource{dep})
 
-		err := ctx.Invoke("pkg:index:doEcho", args, &rv, opts)
+		_, deps, err := ctx.InvokePackageRawWithDeps("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
 
 		require.NoError(t, err)
 		require.True(t, resolved)
 		require.Equal(t, "hello", *rv.Echo)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].URN())
 		return nil
 	}, WithMocks("project", "stack", monitor))
 	require.NoError(t, err)
@@ -1445,11 +1447,43 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 		ro := NewResourceOutput(dep)
 		opts := DependsOnInputs(NewResourceArrayOutput(ro))
 
-		err := ctx.Invoke("pkg:index:doEcho", args, &rv, opts)
+		_, deps, err := ctx.InvokePackageRawWithDeps("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
 
 		require.NoError(t, err)
 		require.True(t, resolved)
 		require.Equal(t, "hello", *rv.Echo)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+func TestInvokeDependsOnNotAllowed(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewStringProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var rv DoEchoResult
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		ro := NewResourceOutput(dep)
+		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+
+		err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+
+		require.Error(t, err, "DependsOnInputs is not supported for direct form invoke, use the output form invoke instead")
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
