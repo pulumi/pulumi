@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/go
-  description: Allow specifiying dependencies for output invokes
+  description: Allow specifying dependencies for output invokes
