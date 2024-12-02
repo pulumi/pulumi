@@ -180,7 +180,8 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
-	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet", u.virtualenvPath)
+	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
+		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
 		return errorWithStderr(err, "error creating virtual environment")
 	}
