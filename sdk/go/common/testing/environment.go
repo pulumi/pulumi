@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,21 +72,6 @@ func WriteYarnRCForTest(root string) error {
 	return os.WriteFile(
 		filepath.Join(root, ".yarnrc"),
 		[]byte("--mutex network\n--network-concurrency 1\n"), 0o600)
-}
-
-// NewGoEnvironment returns a new Environment object, located in a GOPATH temp directory.
-func NewGoEnvironment(t *testing.T) *Environment {
-	testRoot, err := tools.CreateTemporaryGoFolder("test-env")
-	if err != nil {
-		t.Errorf("error creating test directory %s", err)
-	}
-
-	t.Logf("Created new go test environment")
-	return &Environment{
-		T:        t,
-		RootPath: testRoot,
-		CWD:      testRoot,
-	}
 }
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
