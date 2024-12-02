@@ -34,21 +34,27 @@ DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
 class ProviderHandshakeRequest(google.protobuf.message.Message):
+    """`ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
-    """The grpc address for the engine."""
+    """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
+    of the [](pulumirpc.Engine) service.
+    """
     root_directory: builtins.str
-    """The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
-    This can't be sent when the engine is attaching to a provider via a port number.
+    """A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
+    In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been
+    asked to attach to an existing running provider instance via a host/port number), this field will be empty.
     """
     program_directory: builtins.str
-    """The optional absolute path to the directory of the provider program to execute. Generally, but not
-    required to be, underneath the root directory. This can't be sent when the engine is attaching to a
-    provider via a port number.
+    """A *program directory* in which the provider should execute. This is generally a subdirectory of the root
+    directory, though this is not required. In the event that the provider is *not* being booted by the engine (e.g.
+    in the case that the engine has been asked to attach to an existing running provider instance via a host/port
+    number), this field will be empty.
     """
     def __init__(
         self,
@@ -63,6 +69,8 @@ global___ProviderHandshakeRequest = ProviderHandshakeRequest
 
 @typing_extensions.final
 class ProviderHandshakeResponse(google.protobuf.message.Message):
+    """`ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     def __init__(
@@ -288,21 +296,23 @@ class ConfigureRequest(google.protobuf.message.Message):
         """
     acceptSecrets: builtins.bool
     """True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
-    provider supports them also.
+    provider supports them also. *Must* be true if the caller has previously called
+    [](pulumirpc.ResourceProvider.Handshake).
     """
     acceptResources: builtins.bool
     """True if and only if the caller supports strongly typed resources. If true, operations should return resources as
-    strongly typed values if the provider supports them also.
+    strongly typed values if the provider supports them also. *Must* be true if the caller has previously called
+    [](pulumirpc.ResourceProvider.Handshake).
     """
     sends_old_inputs: builtins.bool
     """True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
     [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
-    these calls.
+    these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
     sends_old_inputs_to_delete: builtins.bool
     """True if and only if the caller supports sending old inputs and outputs as part of
     [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
-    these calls.
+    these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
     def __init__(
         self,
@@ -334,20 +344,22 @@ class ConfigureResponse(google.protobuf.message.Message):
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
-    values to the provider.
+    values to the provider. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
     """
     supportsPreview: builtins.bool
     """True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
     [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
-    `true` during previews.
+    `true` during previews. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
     """
     acceptResources: builtins.bool
     """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
-    strongly typed values to the provider.
+    strongly typed values to the provider. *Must* be true if the provider implements
+    [](pulumirpc.ResourceProvider.Handshake).
     """
     acceptOutputs: builtins.bool
     """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
-    to the provider where possible.
+    to the provider where possible. *Must* be true if the provider implements
+    [](pulumirpc.ResourceProvider.Handshake).
     """
     supports_autonaming_configuration: builtins.bool
     """True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user."""

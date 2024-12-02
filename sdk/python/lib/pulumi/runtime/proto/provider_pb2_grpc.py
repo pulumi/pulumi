@@ -135,7 +135,12 @@ class ResourceProviderServicer(object):
     """
 
     def Handshake(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+        provider so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+        feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+        references.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -221,7 +226,7 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Configure(self, request, context):
-        """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+        """`Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 
         * Provider-specific configuration, which is the set of inputs that have been validated by a previous
         [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -233,6 +238,19 @@ class ResourceProviderServicer(object):
         Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
         the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
         indicate which keys are missing.
+
+        :::{important}
+        The use of `Configure` to configure protocol features is deprecated in favour of the
+        [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+        compatibility between older engines and providers:
+
+        * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+        set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+        must support them. See [](pulumirpc.ConfigureRequest) for more information.
+        * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+        indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+        [](pulumirpc.ConfigureResponse) for more information.
+        :::
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
