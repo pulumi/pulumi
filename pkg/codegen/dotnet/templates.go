@@ -81,7 +81,16 @@ namespace {{.Namespace}}
             dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
             return dst;
         }
-{{if .HasParameterization }}		public static global::Pulumi.RegisterPackageRequest PackageParameterization()
+
+        public static global::Pulumi.InvokeOutputOptions WithDefaults(this global::Pulumi.InvokeOutputOptions? src)
+        {
+            var dst = src ?? new global::Pulumi.InvokeOutputOptions{};
+            dst.Version = src?.Version ?? Version;{{if ne .PluginDownloadURL "" }}
+            dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
+            return dst;
+        }
+
+        {{if .HasParameterization }}		public static global::Pulumi.RegisterPackageRequest PackageParameterization()
 		{
 			return new global::Pulumi.RegisterPackageRequest(
 				name: "{{.BaseProviderName}}",

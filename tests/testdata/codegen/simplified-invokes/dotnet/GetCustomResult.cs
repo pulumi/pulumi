@@ -26,5 +26,13 @@ namespace Pulumi.Std
             var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
             return global::Pulumi.Deployment.Instance.Invoke<Outputs.CustomResult>("std:index:GetCustomResult", args, invokeOptions.WithDefaults());
         }
+
+        public static Output<Outputs.CustomResult> Invoke(Input<double?> a, InvokeOutputOptions invokeOptions)
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+            builder["a"] = a;
+            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
+            return global::Pulumi.Deployment.Instance.Invoke<Outputs.CustomResult>("std:index:GetCustomResult", args, invokeOptions.WithDefaults());
+        }
     }
 }

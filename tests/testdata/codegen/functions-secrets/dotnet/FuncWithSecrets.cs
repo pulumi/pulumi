@@ -16,6 +16,9 @@ namespace Pulumi.Mypkg
 
         public static Output<FuncWithSecretsResult> Invoke(FuncWithSecretsInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<FuncWithSecretsResult>("mypkg::funcWithSecrets", args ?? new FuncWithSecretsInvokeArgs(), options.WithDefaults());
+
+        public static Output<FuncWithSecretsResult> Invoke(FuncWithSecretsInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithSecretsResult>("mypkg::funcWithSecrets", args ?? new FuncWithSecretsInvokeArgs(), options.WithDefaults());
     }
 
 

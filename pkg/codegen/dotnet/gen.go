@@ -1514,8 +1514,14 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		fmt.Fprint(w, "        }\n")
 	}
 
-	// Emit the Output method if needed.
-	err := mod.genFunctionOutputVersion(w, fun)
+	// Emit the Output method with InvokeOptions
+	err := mod.genFunctionOutputVersion(w, fun, false /* outputOptions */)
+	if err != nil {
+		return err
+	}
+
+	// Emit the Output method with InvokeOutputOutputOptions
+	err = mod.genFunctionOutputVersion(w, fun, true /* outputOptions */)
 	if err != nil {
 		return err
 	}
@@ -1570,7 +1576,7 @@ func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 
 // Generates `${fn}Output(..)` version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function, outputOptions bool) error {
 	if fun.ReturnType == nil {
 		// no need to generate an output version if the function doesn't return anything
 		return nil
@@ -1597,9 +1603,24 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
 
+	optionsClass := "InvokeOptions"
+	if outputOptions {
+		optionsClass = "InvokeOutputOptions"
+	}
+
 	if !fun.MultiArgumentInputs {
-		fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
-			typeParamOrEmpty(typeParameter), outputArgsParamDef)
+		if outputOptions {
+			// For the InvokeOutputOptions variant, arguments can not optional, otherwise we
+			// can't differentiate between the two options variants.
+			if outputArgsParamDef != "" && argsDefault != "" {
+				outputArgsParamDef = fmt.Sprintf("%s args, ", argsTypeName)
+			}
+			fmt.Fprintf(w, "        public static Output%s Invoke(%s%s options)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef, optionsClass)
+		} else {
+			fmt.Fprintf(w, "        public static Output%s Invoke(%s%s? options = null)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef, optionsClass)
+		}
 		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
 	} else {
@@ -1609,7 +1630,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			argumentName := LowerCamelCase(prop.Name)
 			propertyType := &schema.InputType{ElementType: prop.Type}
 			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
-			if prop.IsRequired() {
+			if prop.IsRequired() || outputOptions {
 				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
 			} else {
 				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
@@ -1618,8 +1639,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			fmt.Fprintf(w, "%s", paramDeclaration)
 			fmt.Fprint(w, ", ")
 		}
-
-		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
+		if outputOptions {
+			fmt.Fprintf(w, "%s invokeOptions)\n", optionsClass)
+		} else {
+			fmt.Fprintf(w, "%s? invokeOptions = null)\n", optionsClass)
+		}
 
 		// now the function body
 		fmt.Fprint(w, "        {\n")

@@ -24,6 +24,13 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<ListStorageAccountKeysResult>("mypkg::listStorageAccountKeys", args ?? new ListStorageAccountKeysInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// The response from the ListKeys operation.
+        /// API Version: 2021-02-01.
+        /// </summary>
+        public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<ListStorageAccountKeysResult>("mypkg::listStorageAccountKeys", args ?? new ListStorageAccountKeysInvokeArgs(), options.WithDefaults());
     }
 
 

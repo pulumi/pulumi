@@ -36,5 +36,18 @@ namespace Pulumi.Std
             var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
             return global::Pulumi.Deployment.Instance.InvokeSingle<double>("std:index:AbsMultiArgsReducedOutputSwapped", args, invokeOptions.WithDefaults());
         }
+
+        /// <summary>
+        /// Returns the absolute value of a given float. 
+        /// Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
+        /// </summary>
+        public static Output<double> Invoke(Input<double> b, Input<double> a, InvokeOutputOptions invokeOptions)
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+            builder["b"] = b;
+            builder["a"] = a;
+            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
+            return global::Pulumi.Deployment.Instance.InvokeSingle<double>("std:index:AbsMultiArgsReducedOutputSwapped", args, invokeOptions.WithDefaults());
+        }
     }
 }
