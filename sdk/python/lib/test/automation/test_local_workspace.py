@@ -30,6 +30,7 @@ from pulumi.automation import (
     ConfigValue,
     EngineEvent,
     InvalidVersionError,
+    InlineSourceRuntimeError,
     LocalWorkspace,
     LocalWorkspaceOptions,
     OpType,
@@ -1334,6 +1335,28 @@ class TestLocalWorkspace(unittest.TestCase):
         # not high enough to support install
         mock_cmd.version = VersionInfo(3, 90)
         self.assertRaises(InvalidVersionError, ws.install)
+
+    @pytest.mark.timeout(20)  # This test will hang indefinitely if the bug is present
+    def test_pytest_raises_does_not_hang(self):
+        # This inline program is itself a test, just as a user could write using the
+        # automation API for writing their tests.
+        # This test is a regression test for
+        # https://github.com/pulumi/pulumi/issues/17133 where a test failure
+        # should cause `stack.preview()` to fail, but would instead hang
+        # indefinitely.
+        def program():
+            with pytest.raises(ValueError):
+                _a = 1 + 2  # No error here, pytest.raises should fail
+
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(stack_name, program=program, project_name=project_name)
+
+        # We expect the above program to fail.
+        with pytest.raises(InlineSourceRuntimeError):
+            stack.preview()
+
+        stack.workspace.remove_stack(stack_name)
 
 
 def pulumi_program():
