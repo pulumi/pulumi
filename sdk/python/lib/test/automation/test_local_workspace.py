@@ -1342,7 +1342,7 @@ class TestLocalWorkspace(unittest.TestCase):
         # automation API for writing their tests.
         # This test is a regression test for
         # https://github.com/pulumi/pulumi/issues/17133 where a test failure
-        # should cause `stack.preview()` to fail, but would instead it hangs
+        # should cause `stack.preview()` to fail, but would instead hang
         # indefinitely.
         def program():
             with pytest.raises(ValueError):
