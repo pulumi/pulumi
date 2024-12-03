@@ -121,7 +121,7 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 		}
 	}
 
-	return printJSON(jsonPluginInfo)
+	return ui.PrintJSON(jsonPluginInfo)
 }
 
 func formatPluginConsole(plugins []workspace.PluginInfo) error {

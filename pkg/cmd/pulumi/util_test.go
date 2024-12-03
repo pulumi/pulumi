@@ -29,60 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func Test_makeJSONString(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		input     interface{}
-		multiline bool
-		expected  string
-	}{
-		{
-			name:      "simple-string/multiline",
-			input:     map[string]interface{}{"my_password": "password"},
-			multiline: true,
-			expected: `{
-  "my_password": "password"
-}
-`,
-		},
-		{
-			name:     "simple-string",
-			input:    map[string]interface{}{"my_password": "password"},
-			expected: `{"my_password":"password"}`,
-		},
-		{
-			name:      "special-char-string/multiline",
-			input:     map[string]interface{}{"special_password": "pass&word"},
-			multiline: true,
-			expected: `{
-  "special_password": "pass&word"
-}
-`,
-		},
-		{
-			name:     "special-char-string",
-			input:    map[string]interface{}{"special_password": "pass&word"},
-			expected: `{"special_password":"pass&word"}`,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			got, err := makeJSONString(tt.input, tt.multiline)
-			if err != nil {
-				t.Errorf("makeJSONString() error = %v", err)
-				return
-			}
-			if got != tt.expected {
-				t.Errorf("makeJSONString() got = %v, expected %v", got, tt.expected)
-			}
-		})
-	}
-}
-
 func TestGetRefreshOption(t *testing.T) {
 	t.Parallel()
 

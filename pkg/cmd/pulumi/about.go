@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -68,7 +69,7 @@ func newAboutCmd() *cobra.Command {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
-				return printJSON(summary)
+				return ui.PrintJSON(summary)
 			}
 			summary.Print()
 			return nil

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -99,7 +100,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.jsonOut {
-		return fprintJSON(cmd.Stdout, WhoAmIJSON{
+		return ui.FprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
 			URL:              b.URL(),

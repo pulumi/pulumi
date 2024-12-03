@@ -130,7 +130,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 		if len(imports) == 0 {
 			fprintf(cmd.stdout, "[]\n")
 		} else {
-			err := fprintJSON(cmd.stdout, imports)
+			err := ui.FprintJSON(cmd.stdout, imports)
 			if err != nil {
 				return err
 			}

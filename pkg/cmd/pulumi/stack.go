@@ -245,7 +245,7 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	o, err := makeJSONString(v, false /* single line */)
+	o, err := ui.MakeJSONString(v, false /* single line */)
 	if err != nil {
 		return "error: could not format value"
 	}

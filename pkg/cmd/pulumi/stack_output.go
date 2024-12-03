@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -192,11 +193,11 @@ type jsonStackOutputWriter struct {
 var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
 
 func (w *jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
-	return fprintJSON(w.W, v)
+	return ui.FprintJSON(w.W, v)
 }
 
 func (w *jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
-	return fprintJSON(w.W, outputs)
+	return ui.FprintJSON(w.W, outputs)
 }
 
 // newShellStackOutputWriter builds a stackOutputWriter
