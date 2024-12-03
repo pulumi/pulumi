@@ -93,7 +93,7 @@ class LanguageServer(LanguageRuntimeServicer):
                     log.error(msg)
                     result.error = msg
                     return result
-            except Exception as exn:  # noqa: BLE001 catch blind exception
+            except BaseException as exn:  # noqa: BLE001 catch blind exception
                 msg = str(
                     f"python inline source runtime error: {exn}\n{traceback.format_exc()}"
                 )
