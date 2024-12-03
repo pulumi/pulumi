@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2018-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ui
 
 import (
 	"fmt"
+	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/spf13/cobra"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Print Pulumi's version number",
-		Args:  cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("%v\n", version.Version)
-			return nil
-		}),
-	}
+// Quick and dirty utility function for printing to writers that we know will never fail.
+func Fprintf(writer io.Writer, msg string, args ...interface{}) {
+	_, err := fmt.Fprintf(writer, msg, args...)
+	contract.IgnoreError(err)
 }

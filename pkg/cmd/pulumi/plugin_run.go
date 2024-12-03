@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -137,7 +138,7 @@ func newPluginRunCmd() *cobra.Command {
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
 			"the latest installed plugin will be used.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return c.run(cmd.Context(), args)
 		}),
 	}

@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,7 +41,7 @@ func newAboutEnvCmd() *cobra.Command {
 		// unhide once most existing variables are using the new env var framework and
 		// show up here.
 		Hidden: !env.Experimental.Value(),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			table := cmdutil.Table{
 				Headers: []string{"Variable", "Description", "Value"},
 			}

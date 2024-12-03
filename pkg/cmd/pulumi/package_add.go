@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -47,7 +48,7 @@ dashes, you may need to use '--' to separate the provider name from the paramete
 as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value`,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {

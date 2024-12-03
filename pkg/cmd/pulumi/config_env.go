@@ -128,7 +128,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 
 	if jsonOut {
 		if len(imports) == 0 {
-			fprintf(cmd.stdout, "[]\n")
+			ui.Fprintf(cmd.stdout, "[]\n")
 		} else {
 			err := ui.FprintJSON(cmd.stdout, imports)
 			if err != nil {
@@ -147,7 +147,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 				Rows:    rows,
 			}, nil)
 		} else {
-			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
+			ui.Fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
 				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
 		}
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,7 +37,7 @@ func newOrgCmd() *cobra.Command {
 			"Use this command to manage organization configuration, " +
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
@@ -87,7 +88,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			"Currently, only the managed and self-hosted backends support organizations. " +
 			"If you try and set a default organization for a backend that does not \n" +
 			"support create organizations, then an error will be returned by the CLI",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -133,7 +134,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
