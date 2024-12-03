@@ -2242,8 +2242,10 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
 		pulumiPlugin.Version = pkg.Version.String()
-	}
-	if pkg.SupportPack {
+	} else if pkg.SupportPack {
+		if pkg.Version == nil {
+			return nil, errors.New("package version is required")
+		}
 		pulumiPlugin.Version = pkg.Version.String()
 	}
 	if pkg.Parameterization != nil {
@@ -2280,7 +2282,15 @@ func genPackageMetadata(
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
+	} else if pkg.SupportPack {
+		// Parameterized schemas _always_ respect schema version
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
+	fmt.Fprintf(w, "VERSION = %s\n", version)
+
 	if !ok || typedDictEnabled(info.InputTypes) {
 		// Add typing-extensions to the requires
 		updatedRequires := make(map[string]string, len(requires))
@@ -2290,14 +2300,6 @@ func genPackageMetadata(
 		updatedRequires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
 		requires = updatedRequires
 	}
-	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack {
-		if pkg.Version == nil {
-			return "", errors.New("package version is required")
-		}
-		version = "\"" + PypiVersion(*pkg.Version) + "\""
-	}
-	fmt.Fprintf(w, "VERSION = %s\n", version)
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -3309,8 +3311,7 @@ func genPyprojectTOML(tool string,
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = PypiVersion(*pkg.Version)
-	}
-	if pkg.SupportPack {
+	} else if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}

@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -742,16 +743,6 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 
-		// Check the PCL is valid and get the list of packages it reports
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
-		if err != nil {
-			return nil, fmt.Errorf("bind PCL program: %v", err)
-		}
-		if diags.HasErrors() {
-			return nil, fmt.Errorf("bind PCL program: %v", diags)
-		}
-		programPackages := program.PackageReferences()
-
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
 		if len(test.runs) > 1 {
@@ -771,6 +762,16 @@ func (eng *languageTestServer) RunLanguageTest(
 			sourceDir = filepath.Join(sourceDir, run.main)
 			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
 		}()
+
+		// Check the PCL is valid and get the list of packages it reports
+		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		if err != nil {
+			return nil, fmt.Errorf("bind PCL program: %v", err)
+		}
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("bind PCL program: %v", diags)
+		}
+		programPackages := program.PackageReferences()
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 		diagnostics, err := languageClient.GenerateProject(
@@ -915,6 +916,100 @@ func (eng *languageTestServer) RunLanguageTest(
 			} else if !versionsMatch(expectedDependency.Version, *found) {
 				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
 					expectedDependency.Name, *found, expectedDependency.Version)), nil
+			}
+		}
+
+		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
+		packages, err := languageClient.GetRequiredPackages(programInfo)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
+		}
+		expectedPackages := []workspace.PackageDescriptor{}
+		for _, pkg := range programPackages {
+			if pkg.Name() == "pulumi" {
+				// Skip the pulumi package, the version for that is handled above.
+				continue
+			}
+
+			pkgDef, err := pkg.Definition()
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
+			}
+
+			var desc workspace.PackageDescriptor
+			if pkgDef.Parameterization == nil {
+				desc = workspace.PackageDescriptor{
+					PluginSpec: workspace.PluginSpec{
+						Name:    pkgDef.Name,
+						Version: pkgDef.Version,
+					},
+				}
+			} else {
+				desc = workspace.PackageDescriptor{
+					PluginSpec: workspace.PluginSpec{
+						Name:    pkgDef.Parameterization.BaseProvider.Name,
+						Version: &pkgDef.Parameterization.BaseProvider.Version,
+					},
+					Parameterization: &workspace.Parameterization{
+						Name:    pkgDef.Name,
+						Version: *pkgDef.Version,
+						Value:   pkgDef.Parameterization.Parameter,
+					},
+				}
+			}
+
+			expectedPackages = append(expectedPackages, desc)
+		}
+
+		versionsMatch := func(expected, actual *semver.Version) bool {
+			if expected == nil && actual == nil {
+				return true
+			}
+			if expected == nil || actual == nil {
+				return false
+			}
+			return expected.EQ(*actual)
+		}
+		parameterizationsMatch := func(expected, actual *workspace.Parameterization) bool {
+			if expected == nil && actual == nil {
+				return true
+			}
+			if expected == nil || actual == nil {
+				return false
+			}
+			return expected.Name == actual.Name &&
+				versionsMatch(&expected.Version, &actual.Version) &&
+				slices.Equal(expected.Value, actual.Value)
+		}
+		for _, expectedPackage := range expectedPackages {
+			var found bool
+			for _, actual := range packages {
+				if actual.Name == expectedPackage.Name &&
+					versionsMatch(expectedPackage.Version, actual.Version) &&
+					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
+			}
+		}
+		// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
+		for _, actual := range packages {
+			var found bool
+			for _, expectedPackage := range expectedPackages {
+				if actual.Name == expectedPackage.Name &&
+					versionsMatch(expectedPackage.Version, actual.Version) &&
+					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return makeTestResponse(fmt.Sprintf("unepxected extra package %v", actual)), nil
 			}
 		}
 

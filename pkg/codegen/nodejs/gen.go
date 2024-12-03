@@ -2413,14 +2413,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
 		pluginVersion = version
-	}
-	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack {
+	} else if pkg.SupportPack {
+		// Parameterized schemas _always_ respect schema version
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
-		pluginVersion = pkg.Version.String()
-		version = pluginVersion
+		version = pkg.Version.String()
+		pluginVersion = version
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
