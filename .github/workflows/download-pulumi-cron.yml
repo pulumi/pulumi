@@ -108,6 +108,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Remove Pre-installed Pulumi
+        shell: bash
         run: |
           if command -v "pulumi.exe"; then
             PULUMI_INSTALL_DIR=$(dirname "$(command -v "pulumi.exe")")
