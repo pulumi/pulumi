@@ -1416,3 +1416,23 @@ func compareStackProjectName(b backend.Backend, stackName, projectName string) e
 	return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
 		projectName, stackProjectName)
 }
+
+func buildStackName(stackName string) (string, error) {
+	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
+	if strings.Contains(stackName, "/") {
+		return stackName, nil
+	}
+
+	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
+	// nil for the project and only check the global settings.
+	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(nil)
+	if err != nil {
+		return "", err
+	}
+
+	if defaultOrg != "" {
+		return fmt.Sprintf("%s/%s", defaultOrg, stackName), nil
+	}
+
+	return stackName, nil
+}

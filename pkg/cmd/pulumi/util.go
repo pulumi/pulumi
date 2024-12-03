@@ -757,26 +757,6 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
-func buildStackName(stackName string) (string, error) {
-	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
-	if strings.Contains(stackName, "/") {
-		return stackName, nil
-	}
-
-	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
-	// nil for the project and only check the global settings.
-	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(nil)
-	if err != nil {
-		return "", err
-	}
-
-	if defaultOrg != "" {
-		return fmt.Sprintf("%s/%s", defaultOrg, stackName), nil
-	}
-
-	return stackName, nil
-}
-
 // we only want to log a secrets decryption for a Pulumi Cloud backend project
 // we will allow any secrets provider to be used (Pulumi Cloud or passphrase/cloud/etc)
 // we will log the message and not worry about the response. The types
