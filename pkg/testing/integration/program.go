@@ -2464,12 +2464,12 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
 	gopath, userError := GoPath()
 	if userError != nil {
-		return userError
+		return fmt.Errorf("error getting GOPATH: %w", userError)
 	}
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting project working directory: %w", err)
 	}
 
 	// initialize a go.mod for dependency resolution if one doesn't exist
@@ -2477,7 +2477,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
 		if err != nil {
-			return err
+			return fmt.Errorf("error initializing go.mod: %w", err)
 		}
 	}
 
@@ -2490,7 +2490,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 			goBin, "get", "-u", "github.com/pulumi/pulumi/sdk/v3@" + defaultBranch,
 		}, cwd)
 		if err != nil {
-			return err
+			return fmt.Errorf("error installing dev dependencies: %w", err)
 		}
 	}
 
@@ -2502,14 +2502,14 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
-			return err
+			return fmt.Errorf("error adding go mod replacement for dep %q: %w", dep, err)
 		}
 	}
 
 	// tidy to resolve all transitive dependencies including from local dependencies above.
 	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
 	if err != nil {
-		return err
+		return fmt.Errorf("error running go mod tidy: %w", err)
 	}
 
 	if pt.opts.RunBuild {
@@ -2519,7 +2519,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 		err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
 		if err != nil {
-			return err
+			return fmt.Errorf("error building application: %w", err)
 		}
 
 		_, err = os.Stat(outBin)
