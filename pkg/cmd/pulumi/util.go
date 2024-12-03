@@ -975,28 +975,3 @@ func promptUserMulti(msg string, options []string, defaultOptions []string, colo
 	}
 	return response
 }
-
-func printTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
-	fprintTable(os.Stdout, table, opts)
-}
-
-func fprintTable(out io.Writer, table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
-	fmt.Fprint(out, renderTable(table, opts))
-}
-
-func renderTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) string {
-	if opts == nil {
-		opts = &cmdutil.TableRenderOptions{}
-	}
-	if len(opts.HeaderStyle) == 0 {
-		style := make([]colors.Color, len(table.Headers))
-		for i := range style {
-			style[i] = colors.SpecHeadline
-		}
-		opts.HeaderStyle = style
-	}
-	if opts.Color == "" {
-		opts.Color = cmdutil.GetGlobalColorization()
-	}
-	return table.Render(opts)
-}

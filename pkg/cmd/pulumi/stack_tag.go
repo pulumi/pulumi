@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -140,7 +141,7 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}
 
-	printTable(cmdutil.Table{
+	ui.PrintTable(cmdutil.Table{
 		Headers: []string{"NAME", "VALUE"},
 		Rows:    rows,
 	}, nil)

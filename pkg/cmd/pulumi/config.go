@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -1052,7 +1053,7 @@ func listConfig(
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 		}
 
-		fprintTable(stdout, cmdutil.Table{
+		ui.FprintTable(stdout, cmdutil.Table{
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
 		}, nil)
@@ -1074,7 +1075,7 @@ func listConfig(
 				}
 
 				fmt.Fprintln(stdout)
-				fprintTable(stdout, cmdutil.Table{
+				ui.FprintTable(stdout, cmdutil.Table{
 					Headers: []string{"ENVIRONMENT VARIABLE", "VALUE"},
 					Rows:    environRows,
 				}, nil)
