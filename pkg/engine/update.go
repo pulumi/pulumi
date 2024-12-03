@@ -174,6 +174,9 @@ type UpdateOptions struct {
 
 	// AttachDebugger to launch the language host in debug mode.
 	AttachDebugger bool
+
+	// Autonaming has user's preference for custom autonaming options.
+	Autonaming deploy.Autonamer
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

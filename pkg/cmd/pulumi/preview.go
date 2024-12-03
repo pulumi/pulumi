@@ -33,6 +33,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -440,6 +441,14 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
+			var autonamer deploy.Autonamer
+			if hasExperimentalCommands() {
+				autonamer, err = autonaming.ParseAutonamingConfig(&cfg, decrypter, s)
+				if err != nil {
+					return fmt.Errorf("getting autonaming config: %w", err)
+				}
+			}
+
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -459,6 +468,7 @@ func newPreviewCmd() *cobra.Command {
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
 					Experimental:   env.Experimental.Value(),
 					AttachDebugger: attachDebugger,
+					Autonaming:     autonamer,
 				},
 				Display: displayOpts,
 			}

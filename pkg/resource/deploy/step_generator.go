@@ -623,6 +623,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		contract.Assertf(n == len(randomSeed),
 			"generated fewer (%d) than expected (%d) random bytes", n, len(randomSeed))
 	}
+	var autonaming *plugin.AutonamingOptions
+	var autonamingDeleteBeforeCreate bool
+	if sg.deployment.opts.Autonaming != nil {
+		a, dbc, err := sg.deployment.opts.Autonaming.AutonamingForResource(urn, randomSeed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine autonaming setting: %w", err)
+		}
+		autonaming = a
+		autonamingDeleteBeforeCreate = dbc
+	}
 
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
@@ -697,6 +707,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				News:          goal.Properties,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
+				Autonaming:    autonaming,
 			})
 		} else {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
@@ -705,6 +716,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				News:          inputs,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
+				Autonaming:    autonaming,
 			})
 		}
 		inputs = resp.Properties
@@ -1092,7 +1104,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 
 		updateSteps, err := sg.generateStepsFromDiff(
-			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
+			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed,
+			autonaming, autonamingDeleteBeforeCreate)
 		if err != nil {
 			return nil, err
 		}
@@ -1150,6 +1163,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
+	autonaming *plugin.AutonamingOptions, autonamingDeleteBeforeCreate bool,
 ) ([]Step, error) {
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.opts.DryRun
@@ -1225,6 +1239,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					News:          goal.Properties,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
+					Autonaming:    autonaming,
 				})
 				failures := resp.Failures
 				inputs := resp.Properties
@@ -1257,6 +1272,10 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			deleteBeforeReplace := diff.DeleteBeforeReplace
 			if goal.DeleteBeforeReplace != nil {
 				deleteBeforeReplace = *goal.DeleteBeforeReplace
+			}
+			// If Autonaming settings had no randomness in the name, we must delete before create a replacement.
+			if autonamingDeleteBeforeCreate {
+				deleteBeforeReplace = true
 			}
 			if deleteBeforeReplace {
 				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
