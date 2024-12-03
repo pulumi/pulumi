@@ -742,6 +742,16 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 
+		// Check the PCL is valid and get the list of packages it reports
+		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		if err != nil {
+			return nil, fmt.Errorf("bind PCL program: %v", err)
+		}
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("bind PCL program: %v", diags)
+		}
+		programPackages := program.PackageReferences()
+
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
 		if len(test.runs) > 1 {
@@ -841,20 +851,15 @@ func (eng *languageTestServer) RunLanguageTest(
 				Name: "pulumi", Version: token.CoreVersion,
 			})
 		}
-		for _, provider := range test.providers {
-			pkg := string(provider.Pkg())
-			version, err := getProviderVersion(provider)
-			if err != nil {
-				return nil, err
-			}
-			if pkg == "parameterized" {
-				// TODO: not sure what to do with this yet because we can't get the parameterized package name
-				// unless we call `Parameterize` which we can't do here because we don't have the descriptor info
+		for _, pkg := range programPackages {
+			if pkg.Name() == "pulumi" {
+				// Skip the pulumi package, the version for that is handled above.
 				continue
 			}
+
 			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
-				Name:    pkg,
-				Version: version.String(),
+				Name:    pkg.Name(),
+				Version: pkg.Version().String(),
 			})
 		}
 		for _, expectedDependency := range expectedDependencies {
