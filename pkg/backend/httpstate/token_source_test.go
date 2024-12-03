@@ -92,8 +92,13 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 func TestTokenSourceWithClient(t *testing.T) {
 	t.Parallel()
 
+	var responseLock sync.Mutex
+
 	response := "timeout"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		responseLock.Lock()
+		defer responseLock.Unlock()
+
 		if response == "timeout" {
 			w.WriteHeader(http.StatusGatewayTimeout)
 			_, err := w.Write([]byte("Gateway Timeout"))
@@ -153,7 +158,9 @@ func TestTokenSourceWithClient(t *testing.T) {
 
 	// The http client we're using does retries internally.  So we can't simply base our test on the number of
 	// requests the http server gets, but need to switch the response type here.
+	responseLock.Lock()
 	response = "forbidden"
+	responseLock.Unlock()
 
 	// We're returning a 403 from the test httpserver.  This should cause the token source to stop requesting
 	// new tokens, and return an error.
