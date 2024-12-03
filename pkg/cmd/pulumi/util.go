@@ -51,7 +51,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -756,37 +755,6 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
-}
-
-func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets bool) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer contract.IgnoreClose(f)
-
-	deploymentPlan, err := stack.SerializePlan(plan, enc, showSecrets)
-	if err != nil {
-		return err
-	}
-	encoder := json.NewEncoder(f)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "    ")
-	return encoder.Encode(deploymentPlan)
-}
-
-func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer contract.IgnoreClose(f)
-
-	var deploymentPlan apitype.DeploymentPlanV1
-	if err := json.NewDecoder(f).Decode(&deploymentPlan); err != nil {
-		return nil, err
-	}
-	return stack.DeserializePlan(deploymentPlan, dec, enc)
 }
 
 func buildStackName(stackName string) (string, error) {
