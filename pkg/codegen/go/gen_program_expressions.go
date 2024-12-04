@@ -572,14 +572,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	destType model.Type,
 	typeName string,
 ) {
-	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
-	// if strings.HasSuffix(typeName, "Args") {
-	// 	isInput = true
-	// }
-	// // invokes are not inputty
-	// if strings.Contains(typeName, ".Lookup") || strings.Contains(typeName, ".Get") {
-	// 	isInput = false
-	// }
 	isMap := strings.HasPrefix(typeName, "map[")
 
 	// TODO: retrieve schema and propagate optionals to emit bool ptr, etc.
