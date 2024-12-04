@@ -107,6 +107,14 @@ func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
 	var message strings.Builder
 	message.WriteString(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
 
+You can try to repair your snapshot as follows:
+
+` + "* Using the `pulumi state repair` command." + ` This is the recommended approach.
+  Run ` + "`pulumi state repair --help`" + ` for more information.
+` + "* Passing the `--disable-integrity-checking` flag." + ` This will disable integrity
+  checking on many Pulumi commands. This is riskier, but may allow you to
+  execute fine-grained repairs using e.g. ` + "`pulumi state delete`" + `.
+
 ================================================================================
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 `)
