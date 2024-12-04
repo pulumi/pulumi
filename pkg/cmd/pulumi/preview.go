@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -492,7 +493,7 @@ func newPreviewCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
+					if err = pkgPlan.Write(planFilePath, plan, encrypter, showSecrets); err != nil {
 						return err
 					}
 

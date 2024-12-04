@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -189,11 +190,11 @@ func newUpCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			plan, err := readPlan(planFilePath, dec, enc)
+			p, err := plan.Read(planFilePath, dec, enc)
 			if err != nil {
 				return err
 			}
-			opts.Engine.Plan = plan
+			opts.Engine.Plan = p
 		}
 
 		changes, err := s.Update(ctx, backend.UpdateOperation{
