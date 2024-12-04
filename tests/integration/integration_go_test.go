@@ -40,6 +40,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1200,19 +1201,6 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParameterizedGo(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
-
-	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
-	// work.
-	var err error
-	e.CWD, err = filepath.Abs("go/parameterized")
-	require.NoError(t, err)
-
-	err = os.RemoveAll(filepath.Join("go", "parameterized", "sdk"))
-	require.NoError(t, err)
-
-	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "go")
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("go", "parameterized"),
 		Dependencies: []string{
@@ -1220,6 +1208,13 @@ func TestParameterizedGo(t *testing.T) {
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		PrePrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+			path := info.Proj.Plugins.Providers[0].Path
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+			return nil
 		},
 	})
 }
