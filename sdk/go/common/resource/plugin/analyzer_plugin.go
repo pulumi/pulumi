@@ -69,12 +69,13 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
-	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
+	plug, _, runTrace, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
 		testConnection, dialOpts)
 	if err != nil {
 		return nil, err
 	}
+	runTrace.init(ctx)
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
@@ -136,7 +137,7 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, _, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+	plug, _, runTrace, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, args, env, testConnection,
 		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
@@ -153,6 +154,7 @@ func NewPolicyAnalyzer(
 		return nil, fmt.Errorf("policy pack %q failed to start: %w", string(name), err)
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
+	runTrace.init(ctx)
 
 	return &analyzer{
 		ctx:     ctx,

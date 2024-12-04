@@ -68,13 +68,14 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		return nil, err
 	}
 
-	plug, _, err := newPlugin(ctx, workingDirectory, path, runtime,
+	plug, _, runTrace, err := newPlugin(ctx, workingDirectory, path, runtime,
 		apitype.LanguagePlugin, args, nil, /*env*/
 		testConnection, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
 	}
 	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
+	runTrace.init(ctx)
 
 	return &langhost{
 		ctx:     ctx,

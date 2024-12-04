@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -197,6 +198,46 @@ func testConnection(ctx context.Context, bin string, prefix string, conn *grpc.C
 	return &struct{}{}, err
 }
 
+type runtrace struct {
+	stdout, stderr         io.Reader
+	stdoutDone, stderrDone chan<- bool
+
+	initOnce sync.Once
+}
+
+func (r *runtrace) init(ctx *Context) {
+	r.initOnce.Do(func() {
+		go r.run(ctx, r.stdout, false, r.stdoutDone)
+		go r.run(ctx, r.stderr, true, r.stderrDone)
+	})
+}
+
+func (r *runtrace) run(ctx *Context, t io.Reader, stderr bool, done chan<- bool) {
+	reader := bufio.NewReader(t)
+	streamID := atomic.AddInt32(&nextStreamID, 1)
+
+	for {
+		msg, readerr := reader.ReadString('\n')
+
+		// Even if we've hit the end of the stream, we want to check for non-empty content.
+		// The reason is that if the last line is missing a \n, we still want to include it.
+		if strings.TrimSpace(msg) != "" {
+			if stderr {
+				ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, streamID))
+			} else {
+				ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, streamID))
+			}
+		}
+
+		// If we've hit the end of the stream, break out and close the channel.
+		if readerr != nil {
+			break
+		}
+	}
+
+	close(done)
+}
+
 func newPlugin[T any](
 	ctx *Context,
 	pwd string,
@@ -207,7 +248,7 @@ func newPlugin[T any](
 	env []string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
-) (*plugin, *T, error) {
+) (*plugin, *T, *runtrace, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -234,7 +275,7 @@ func newPlugin[T any](
 	// Try to execute the binary.
 	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
+		return nil, nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
 	contract.Assertf(plug != nil, "plugin %v canot be nil", bin)
 
@@ -245,49 +286,19 @@ func newPlugin[T any](
 		}
 	}()
 
-	outStreamID := atomic.AddInt32(&nextStreamID, 1)
-	errStreamID := atomic.AddInt32(&nextStreamID, 1)
-
-	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
-	var sawPolicyModuleNotFoundErr bool
-	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
-		reader := bufio.NewReader(t)
-
-		for {
-			msg, readerr := reader.ReadString('\n')
-
-			// Even if we've hit the end of the stream, we want to check for non-empty content.
-			// The reason is that if the last line is missing a \n, we still want to include it.
-			if strings.TrimSpace(msg) != "" {
-				// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
-				// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
-				//
-				// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
-				// is a well-known problem and return a better error as appropriate.
-				if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
-					sawPolicyModuleNotFoundErr = true
-				}
-
-				if stderr {
-					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
-				} else {
-					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID))
-				}
-			}
-
-			// If we've hit the end of the stream, break out and close the channel.
-			if readerr != nil {
-				break
-			}
-		}
-
-		close(done)
-	}
-
 	// Set up a tracer on stderr before going any further, since important errors might get communicated this way.
 	stderrDone := make(chan bool)
 	plug.stderrDone = stderrDone
-	go runtrace(plug.Stderr, true, stderrDone)
+	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
+	stdoutDone := make(chan bool)
+	plug.stdoutDone = stdoutDone
+
+	runtrace := &runtrace{
+		stdout:     plug.Stdout,
+		stdoutDone: stdoutDone,
+		stderr:     plug.Stderr,
+		stderrDone: stderrDone,
+	}
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
@@ -296,19 +307,15 @@ func newPlugin[T any](
 	for {
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
+			runtrace.init(ctx) // Dump output so any debug messages are visible.
 			killerr := plug.Kill()
 			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
 
-			// If from the output we have seen, return a specific error if possible.
-			if sawPolicyModuleNotFoundErr {
-				return nil, nil, errRunPolicyModuleNotFound
-			}
-
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
+				return nil, nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
 			}
-			return nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
+			return nil, nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
 				bin, portString, readerr)
 		}
 		if n > 0 && b[0] == '\n' {
@@ -319,25 +326,21 @@ func newPlugin[T any](
 	// Parse the output line to ensure it's a numeric port.
 	var port int
 	if port, err = parsePort(portString); err != nil {
+		runtrace.init(ctx) // Dump output so any debug messages are visible.
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
-		return nil, nil, fmt.Errorf(
+		return nil, nil, nil, fmt.Errorf(
 			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
 	}
 
-	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
-	stdoutDone := make(chan bool)
-	plug.stdoutDone = stdoutDone
-	go runtrace(plug.Stdout, false, stdoutDone)
-
 	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Done; store the connection and return the plugin info.
 	plug.Conn = conn
-	return plug, handshakeRes, nil
+	return plug, handshakeRes, runtrace, nil
 }
 
 func parsePort(portString string) (int, error) {

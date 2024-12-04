@@ -239,11 +239,15 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			return handshake(ctx, bin, prefix, conn, req)
 		}
 
-		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+		var initTrace *runtrace
+		plug, handshakeRes, initTrace, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
+		}
+		if !handshakeRes.SupressStdoutAndStderr {
+			initTrace.init(ctx)
 		}
 	}
 
@@ -346,13 +350,16 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
-	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
+	plug, handshakeRes, initTrace, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 		handshake, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
 	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin at %q", path)
+	if !handshakeRes.SupressStdoutAndStderr {
+		initTrace.init(ctx)
+	}
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
