@@ -2222,3 +2222,73 @@ func TestLogDebugNode(t *testing.T) {
 		},
 	})
 }
+
+// Test custom autonaming configurations.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestAutonaming(t *testing.T) {
+	testCases := []struct {
+		name         string
+		experimental bool
+		autoName     string
+		config       map[string]string
+	}{
+		{
+			name:     "no autonaming configured",
+			autoName: "default-name",
+		},
+		{
+			name: "autonaming ignored in non-experimental mode",
+			config: map[string]string{
+				"pulumi:autonaming.mode": "verbatim",
+			},
+			experimental: false,
+			autoName:     "default-name",
+		},
+		{
+			name: "autonaming configured globally to verbatim",
+			config: map[string]string{
+				"pulumi:autonaming.mode": "verbatim",
+			},
+			experimental: true,
+			autoName:     "test1",
+		},
+		{
+			name: "autonaming configured on provider to a pattern",
+			config: map[string]string{
+				"pulumi:autonaming.providers.testprovider.pattern": "${config.foo}-${name}",
+				"foo": "bar",
+			},
+			experimental: true,
+			autoName:     "bar-test1",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		orderedConfig := []integration.ConfigValue{}
+		for k, v := range tc.config {
+			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
+		}
+		env := []string{}
+		if tc.experimental {
+			env = append(env, "PULUMI_EXPERIMENTAL=1")
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:           "autonaming",
+				Dependencies:  []string{"@pulumi/pulumi"},
+				Env:           env,
+				OrderedConfig: orderedConfig,
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "explicit-name", stackInfo.RootResource.Outputs["explicitName"])
+					assert.Equal(t, tc.autoName, stackInfo.RootResource.Outputs["autoName"])
+				},
+			})
+		})
+	}
+}

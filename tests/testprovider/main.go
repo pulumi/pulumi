@@ -84,8 +84,8 @@ var testProviders = func() map[string]testProvider {
 		"testprovider:index:doMultiEcho":       ep,
 		"testprovider:index:FailsOnDelete":     &failsOnDeleteProvider{},
 		"testprovider:index:FailsOnCreate":     &failsOnCreateProvider{},
+		"testprovider:index:Named":             &namedProvider{},
 	}
-
 	return testProviders
 }()
 
@@ -136,7 +136,8 @@ func (p *testproviderProvider) DiffConfig(ctx context.Context, req *rpc.DiffRequ
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *testproviderProvider) Configure(_ context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
 	return &rpc.ConfigureResponse{
-		AcceptSecrets: true,
+		AcceptSecrets:                   true,
+		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 
