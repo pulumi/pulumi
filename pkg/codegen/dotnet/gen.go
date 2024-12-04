@@ -2231,7 +2231,7 @@ func genPackageMetadata(pkg *schema.Package,
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
-	} else if pkg.SupportPack || pkg.Parameterization != nil {
+	} else if pkg.SupportPack {
 		if pkg.Version == nil {
 			return errors.New("package version is required")
 		}

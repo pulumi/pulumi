@@ -2415,7 +2415,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		pluginVersion = version
 	}
 	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack || pkg.Parameterization != nil {
+	if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
