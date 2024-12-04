@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -63,7 +64,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, ws, DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
@@ -85,7 +86,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
 	err := runTotalStateEdit(
-		ctx, ws, DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to unprotect non-existing resources
 			if snap == nil {
 				return errors.New("no resources found to unprotect")
@@ -108,7 +109,7 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 func unprotectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
+	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
 	if err != nil {
 		return err
 	}

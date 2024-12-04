@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -38,7 +39,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 		},
 	}
 
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,
@@ -83,7 +84,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 		},
 	}
 
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,

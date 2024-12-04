@@ -28,6 +28,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -162,7 +163,7 @@ func newLoginCmd() *cobra.Command {
 				}
 			}
 
-			be, err := DefaultLoginManager.Login(
+			be, err := backend.DefaultLoginManager.Login(
 				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
 			if err != nil {
 				return fmt.Errorf("problem logging in: %w", err)

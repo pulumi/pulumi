@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -54,7 +55,7 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

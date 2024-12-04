@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -49,7 +50,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if cmd.currentBackend == nil {
-		cmd.currentBackend = currentBackend
+		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
 	currentBackend := cmd.currentBackend // shadow the top-level function
 
@@ -66,7 +67,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
+	backend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts.Display)
 	if err != nil {
 		return err
 	}

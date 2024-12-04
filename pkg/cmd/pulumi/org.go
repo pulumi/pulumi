@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -103,7 +104,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -147,7 +148,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}

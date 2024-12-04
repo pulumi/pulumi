@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -35,7 +36,7 @@ func TestStateDeleteNoArgs(t *testing.T) {
 	t.Parallel()
 
 	cmd := &stateDeleteCmd{}
-	err := cmd.Run(context.Background(), []string{}, &pkgWorkspace.MockContext{}, &backend.MockLoginManager{})
+	err := cmd.Run(context.Background(), []string{}, &pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
 	assert.ErrorContains(t, err, "Must supply <resource URN> unless pulumi is run interactively")
 }
 
@@ -44,7 +45,7 @@ func TestNoProject(t *testing.T) {
 
 	mockBackend := &backend.MockBackend{}
 	ws := &pkgWorkspace.MockContext{}
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
@@ -90,7 +91,7 @@ func TestStateDeleteURN(t *testing.T) {
 			}, "/testing/project", nil
 		},
 	}
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ colors.Colorization,
@@ -145,7 +146,7 @@ func TestStateDeleteDependency(t *testing.T) {
 			}, "/testing/project", nil
 		},
 	}
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ colors.Colorization,
@@ -199,7 +200,7 @@ func TestStateDeleteProtected(t *testing.T) {
 			}, "/testing/project", nil
 		},
 	}
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ colors.Colorization,

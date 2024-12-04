@@ -26,6 +26,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -60,7 +61,7 @@ a preview showing a diff of the altered state.`,
 			}
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, display.Options{
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -98,7 +99,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		requireStack: func(
 			ctx context.Context,
 			ws pkgWorkspace.Context,
-			lm backend.LoginManager,
+			lm cmdBackend.LoginManager,
 			stackName string,
 			lopt stackLoadOption,
 			opts display.Options,

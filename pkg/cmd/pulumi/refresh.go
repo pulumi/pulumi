@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -160,7 +161,7 @@ func newRefreshCmd() *cobra.Command {
 				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -171,7 +172,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return err
 			}

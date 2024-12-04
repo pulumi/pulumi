@@ -33,9 +33,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -45,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -92,106 +91,6 @@ func disableOutputValues() bool {
 // operations, such as those that will fail without a --force parameter.
 func skipConfirmations() bool {
 	return env.SkipConfirmations.Value()
-}
-
-// backendInstance is used to inject a backend mock from tests.
-var backendInstance backend.Backend
-
-func isDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
-	if backendInstance != nil {
-		return false, nil
-	}
-
-	// Try to read the current project
-	project, _, err := ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return false, err
-	}
-
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err != nil {
-		return false, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	return diy.IsDIYBackendURL(url), nil
-}
-
-var DefaultLoginManager backend.LoginManager = &lm{}
-
-type lm struct{}
-
-func (f *lm) Current(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-) (backend.Backend, error) {
-	if diy.IsDIYBackendURL(url) {
-		return diy.New(ctx, sink, url, project)
-	}
-
-	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
-	lm := httpstate.NewLoginManager()
-	_, err := lm.Current(ctx, url, insecure, setCurrent)
-	if err != nil {
-		return nil, err
-	}
-	return httpstate.New(sink, url, project, insecure)
-}
-
-func (f *lm) Login(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	color colors.Colorization,
-) (backend.Backend, error) {
-	if diy.IsDIYBackendURL(url) {
-		if setCurrent {
-			return diy.Login(ctx, sink, url, project)
-		}
-		return diy.New(ctx, sink, url, project)
-	}
-
-	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
-	lm := httpstate.NewLoginManager()
-	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
-	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
-	opts := display.Options{
-		Color: color,
-	}
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
-	if err != nil {
-		return nil, err
-	}
-	return httpstate.New(sink, url, project, insecure)
-}
-
-func nonInteractiveCurrentBackend(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, project *workspace.Project,
-) (backend.Backend, error) {
-	if backendInstance != nil {
-		return backendInstance, nil
-	}
-
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err != nil {
-		return nil, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	// Only set current if we don't currently have a cloud URL set.
-	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "")
-}
-
-func currentBackend(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, project *workspace.Project,
-	opts display.Options,
-) (backend.Backend, error) {
-	if backendInstance != nil {
-		return backendInstance, nil
-	}
-
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err != nil {
-		return nil, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
 }
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
@@ -389,7 +288,7 @@ func (o stackLoadOption) SetCurrent() bool {
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+func requireStack(ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	if stackName == "" {
@@ -402,7 +301,7 @@ func requireStack(ctx context.Context, ws pkgWorkspace.Context, lm backend.Login
 		return nil, err
 	}
 
-	b, err := currentBackend(ctx, ws, lm, project, opts)
+	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +336,7 @@ func requireStack(ctx context.Context, ws pkgWorkspace.Context, lm backend.Login
 }
 
 func requireCurrentStack(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, lopt stackLoadOption, opts display.Options,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	// Try to read the current project
 	project, _, err := ws.ReadProject()
@@ -446,7 +345,7 @@ func requireCurrentStack(
 	}
 
 	// Search for the current stack.
-	b, err := currentBackend(ctx, ws, lm, project, opts)
+	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
 	if err != nil {
 		return nil, err
 	}

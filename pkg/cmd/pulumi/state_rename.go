@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -191,7 +192,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				var snap *deploy.Snapshot
 				err := surveyStack(
 					func() (err error) {
-						urn, err = getURNFromState(ctx, ws, DefaultLoginManager, stack, &snap, "Select a resource to rename:")
+						urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, &snap, "Select a resource to rename:")
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
@@ -231,7 +232,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			err := runTotalStateEdit(ctx, ws, DefaultLoginManager, stack, showPrompt,
+			err := runTotalStateEdit(ctx, ws, backend.DefaultLoginManager, stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
 				})

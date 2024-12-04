@@ -24,6 +24,7 @@ import (
 	mobytime "github.com/moby/moby/api/types/time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -71,7 +72,7 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

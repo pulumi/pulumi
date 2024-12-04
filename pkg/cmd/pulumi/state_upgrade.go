@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -67,7 +68,7 @@ type stateUpgradeCmd struct {
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
 	currentBackend func(
-		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 
@@ -83,7 +84,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.currentBackend == nil {
-		cmd.currentBackend = currentBackend
+		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
 	currentBackend := cmd.currentBackend // shadow top-level currentBackend
 
@@ -93,7 +94,13 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		Stdout: cmd.Stdout,
 	}
 
-	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, dopts)
+	b, err := currentBackend(
+		ctx,
+		pkgWorkspace.Instance,
+		cmdBackend.DefaultLoginManager,
+		nil,
+		dopts,
+	)
 	if err != nil {
 		return err
 	}

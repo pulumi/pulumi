@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -829,7 +830,7 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := isDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -841,7 +842,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return err
 			}

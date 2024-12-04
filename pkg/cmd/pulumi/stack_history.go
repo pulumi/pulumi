@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -60,7 +61,7 @@ This command displays data about previous updates for a stack.`,
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

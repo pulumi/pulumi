@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -75,7 +76,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 				return err
 			}
 
-			b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
+			b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts.Display)
 			if err != nil {
 				return err
 			}

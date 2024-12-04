@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -108,7 +109,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, ws, DefaultLoginManager, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, cmd.stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}

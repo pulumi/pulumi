@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -132,7 +133,7 @@ func initializeDeploymentSettingsCmd(
 		return nil, err
 	}
 
-	be, err := currentBackend(ctx, ws, DefaultLoginManager, project, displayOpts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func initializeDeploymentSettingsCmd(
 			be.Name())
 	}
 
-	s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, displayOpts)
+	s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, displayOpts)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -62,7 +63,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		teams:     []string{"red", "blue"},
 		stackName: "dev",
 		currentBackend: func(
-			context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
