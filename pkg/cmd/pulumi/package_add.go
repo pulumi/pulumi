@@ -269,11 +269,11 @@ func printGoLinkInstructions(root string, pkg *schema.Package, out string) error
 		return errors.New("failed to import go language info")
 	}
 
-	fmt.Printf("   go mod edit -replace %s=%s\n", goInfo.ImportBasePath, relOut)
+	fmt.Printf("   go mod edit -replace %s=%s\n", goInfo.ModulePath, relOut)
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your Go code with:")
 	fmt.Println()
-	fmt.Printf("  import \"%s\"\n", goInfo.ImportBasePath)
+	fmt.Printf("  import \"%s\"\n", goInfo.ModulePath)
 	fmt.Println()
 	return nil
 }
