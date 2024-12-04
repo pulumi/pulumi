@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -141,7 +142,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 		}
 
 		if len(imports) > 0 {
-			fprintTable(cmd.stdout, cmdutil.Table{
+			ui.FprintTable(cmd.stdout, cmdutil.Table{
 				Headers: []string{"ENVIRONMENTS"},
 				Rows:    rows,
 			}, nil)

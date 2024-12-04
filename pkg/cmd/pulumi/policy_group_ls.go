@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -134,7 +135,7 @@ func formatPolicyGroupsConsole(policyGroups []apitype.PolicyGroupSummary) error 
 		columns := []string{name, defaultGroup, numPolicyPacks, numStacks}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
-	printTable(cmdutil.Table{
+	ui.PrintTable(cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
 	}, nil)
