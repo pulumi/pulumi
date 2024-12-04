@@ -1,0 +1,10 @@
+{
+  "resource": true,
+  "name": "parameterized",
+  "version": "1.2.3",
+  "parameterization": {
+    "name": "subpackage",
+    "version": "",
+    "value": "SGVsbG9Xb3JsZA=="
+  }
+}
