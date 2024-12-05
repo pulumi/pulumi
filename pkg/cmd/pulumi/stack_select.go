@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -58,7 +59,7 @@ func newStackSelectCmd() *cobra.Command {
 				return err
 			}
 
-			b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
+			b, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, opts)
 			if err != nil {
 				return err
 			}

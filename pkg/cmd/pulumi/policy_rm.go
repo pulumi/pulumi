@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -40,7 +41,7 @@ func newPolicyRmCmd() *cobra.Command {
 			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, args[0], DefaultLoginManager)
+			policyPack, err := requirePolicyPack(ctx, args[0], cmdBackend.DefaultLoginManager)
 			if err != nil {
 				return err
 			}

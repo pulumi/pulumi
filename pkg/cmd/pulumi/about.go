@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -68,7 +69,7 @@ func newAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, DefaultLoginManager, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
 				return ui.PrintJSON(summary)
 			}
@@ -107,7 +108,7 @@ type summaryAbout struct {
 }
 
 func getSummaryAbout(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	transitiveDependencies bool, selectedStack string,
 ) summaryAbout {
 	var err error
@@ -185,7 +186,7 @@ func getSummaryAbout(
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx, ws, lm, proj)
+	backend, err = cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {

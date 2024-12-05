@@ -24,6 +24,7 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -72,7 +73,7 @@ type configEnvCmd struct {
 	requireStack func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
-		lm backend.LoginManager,
+		lm cmdBackend.LoginManager,
 		stackName string,
 		lopt stackLoadOption,
 		opts display.Options,
@@ -101,7 +102,14 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, cmd.ws, DefaultLoginManager, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(
+		ctx,
+		cmd.ws,
+		cmdBackend.DefaultLoginManager,
+		*cmd.stackRef,
+		stackOfferNew|stackSetCurrent,
+		opts,
+	)
 	if err != nil {
 		return nil, nil, nil, err
 	}

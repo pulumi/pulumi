@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -191,7 +192,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 	ctx := context.Background()
 
-	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, display.Options{})
+	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
@@ -223,7 +224,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
 	assert.NoError(t, err)
 
-	b, err = currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, display.Options{})
+	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
 }
@@ -259,7 +260,7 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 
 func currentUser(t *testing.T) string {
 	ctx := context.Background()
-	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, nil, display.Options{})
+	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	assert.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
 	assert.NoError(t, err)
@@ -275,7 +276,7 @@ func loadStackName(t *testing.T) string {
 func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
 	ctx := context.Background()
-	b, err := currentBackend(ctx, pkgWorkspace.Instance, DefaultLoginManager, project, display.Options{})
+	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)

@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -79,7 +80,7 @@ type stackOutputCmd struct {
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
 	requireStack func(
-		ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+		ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 		name string, lopt stackLoadOption, opts display.Options,
 	) (backend.Stack, error)
 
@@ -122,7 +123,14 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Fetch the current stack and its output properties.
-	s, err := requireStack(ctx, cmd.ws, DefaultLoginManager, cmd.stackName, stackLoadOnly, opts)
+	s, err := requireStack(
+		ctx,
+		cmd.ws,
+		cmdBackend.DefaultLoginManager,
+		cmd.stackName,
+		stackLoadOnly,
+		opts,
+	)
 	if err != nil {
 		return err
 	}

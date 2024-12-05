@@ -27,6 +27,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -56,7 +57,7 @@ type stateRepairCmd struct {
 	// The workspace to operate on.
 	Workspace pkgWorkspace.Context
 	// The login manager to use for authenticating with and loading backends.
-	LoginManager backend.LoginManager
+	LoginManager cmdBackend.LoginManager
 }
 
 // A set of arguments for the `state repair` command.
@@ -75,7 +76,7 @@ func newStateRepairCommand() *cobra.Command {
 		Stdout:       os.Stdout,
 		Stderr:       os.Stderr,
 		Workspace:    pkgWorkspace.Instance,
-		LoginManager: DefaultLoginManager,
+		LoginManager: cmdBackend.DefaultLoginManager,
 	}
 
 	cmd := &cobra.Command{

@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -43,7 +44,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			return policyPublishCmd.Run(cmd.Context(), DefaultLoginManager, args)
+			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
 		}),
 	}
 
@@ -55,7 +56,7 @@ type policyPublishCmd struct {
 	defaultOrg func(*workspace.Project) (string, error)
 }
 
-func (cmd *policyPublishCmd) Run(ctx context.Context, lm backend.LoginManager, args []string) error {
+func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
 	}
@@ -141,7 +142,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm backend.LoginManager, a
 func requirePolicyPack(
 	ctx context.Context,
 	policyPack string,
-	lm backend.LoginManager,
+	lm cmdBackend.LoginManager,
 ) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.

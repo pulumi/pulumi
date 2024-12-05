@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -107,7 +108,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	}
 
 	stack, err := cmd.parent.requireStack(
-		ctx, cmd.parent.ws, DefaultLoginManager, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
+		ctx, cmd.parent.ws, cmdBackend.DefaultLoginManager, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return err
 	}

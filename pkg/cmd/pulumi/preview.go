@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -352,7 +353,7 @@ func newPreviewCmd() *cobra.Command {
 				return runDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(ws, displayOpts)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -367,7 +368,7 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stackName, stackOfferNew, displayOpts)
+			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackOfferNew, displayOpts)
 			if err != nil {
 				return err
 			}

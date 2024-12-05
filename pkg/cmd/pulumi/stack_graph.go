@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
@@ -73,7 +74,7 @@ func newStackGraphCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, cmdOpts.stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, cmdOpts.stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

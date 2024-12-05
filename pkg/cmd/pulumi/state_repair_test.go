@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -305,7 +306,7 @@ func newStateRepairCmdFixture(
 		},
 	}
 
-	lm := &backend.MockLoginManager{
+	lm := &cmdBackend.MockLoginManager{
 		CurrentF: func(
 			context.Context,
 			pkgWorkspace.Context,

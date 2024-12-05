@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -49,7 +49,7 @@ func (cmd *stateDeleteCmd) Run(
 		}
 
 		var err error
-		urn, err = getURNFromState(ctx, ws, DefaultLoginManager, cmd.stack, nil,
+		urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, cmd.stack, nil,
 			"Select the resource to delete")
 		if err != nil {
 			return fmt.Errorf("failed to select resource: %w", err)

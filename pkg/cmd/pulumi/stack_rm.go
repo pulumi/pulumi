@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -65,7 +66,7 @@ func newStackRmCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

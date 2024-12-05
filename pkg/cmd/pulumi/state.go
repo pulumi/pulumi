@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -53,7 +54,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	}
 
 	cmd.AddCommand(newStateEditCommand())
-	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, DefaultLoginManager))
+	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
 	cmd.AddCommand(newStateUpgradeCommand())
@@ -120,7 +121,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
 func runStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, stackName string, showPrompt bool,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
 	urn resource.URN, operation edit.OperationFunc,
 ) error {
 	return runTotalStateEdit(ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
@@ -136,7 +137,7 @@ func runStateEdit(
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager, stackName string, showPrompt bool,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 ) error {
 	opts := display.Options{
@@ -210,7 +211,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 //
 // Prompt is displayed to the user when selecting the URN.
 func getURNFromState(
-	ctx context.Context, ws pkgWorkspace.Context, lm backend.LoginManager,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, snap **deploy.Snapshot, prompt string,
 ) (resource.URN, error) {
 	if snap == nil {

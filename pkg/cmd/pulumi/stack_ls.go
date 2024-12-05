@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -145,8 +146,8 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(
-		ctx, ws, DefaultLoginManager, project,
+	b, err := cmdBackend.CurrentBackend(
+		ctx, ws, cmdBackend.DefaultLoginManager, project,
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err

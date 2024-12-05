@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -399,7 +400,7 @@ func runDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
+	b, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}

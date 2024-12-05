@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -39,9 +40,9 @@ import (
 // mockBackendInstance sets the backendInstance for the test and cleans it up after.
 func mockBackendInstance(t *testing.T, b backend.Backend) {
 	t.Cleanup(func() {
-		backendInstance = nil
+		cmdBackend.BackendInstance = nil
 	})
-	backendInstance = b
+	cmdBackend.BackendInstance = b
 }
 
 //nolint:paralleltest // changes directory for process

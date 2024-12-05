@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -50,8 +51,8 @@ func newPolicyLsCmd() *cobra.Command {
 			}
 
 			// Get backend.
-			b, err := currentBackend(
-				ctx, ws, DefaultLoginManager, project,
+			b, err := cmdBackend.CurrentBackend(
+				ctx, ws, cmdBackend.DefaultLoginManager, project,
 				display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err

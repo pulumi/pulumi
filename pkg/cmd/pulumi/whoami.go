@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -65,7 +66,7 @@ type whoAmICmd struct {
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
 	currentBackend func(
-		context.Context, pkgWorkspace.Context, backend.LoginManager, *workspace.Project, display.Options,
+		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 
@@ -75,7 +76,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.currentBackend == nil {
-		cmd.currentBackend = currentBackend
+		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
 	currentBackend := cmd.currentBackend // shadow the top-level function
 
@@ -90,7 +91,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
+	b, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}

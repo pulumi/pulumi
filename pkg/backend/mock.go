@@ -25,10 +25,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -782,58 +780,6 @@ func (mp *MockPolicyPack) Validate(ctx context.Context, op PolicyPackOperation) 
 func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) error {
 	if mp.RemoveF != nil {
 		return mp.RemoveF(ctx, op)
-	}
-	panic("not implemented")
-}
-
-type MockLoginManager struct {
-	CurrentF func(
-		ctx context.Context,
-		ws pkgWorkspace.Context,
-		sink diag.Sink,
-		url string,
-		project *workspace.Project,
-		setCurrent bool,
-	) (Backend, error)
-
-	LoginF func(
-		ctx context.Context,
-		ws pkgWorkspace.Context,
-		sink diag.Sink,
-		url string,
-		project *workspace.Project,
-		setCurrent bool,
-		color colors.Colorization,
-	) (Backend, error)
-}
-
-var _ LoginManager = (*MockLoginManager)(nil)
-
-func (lm *MockLoginManager) Login(
-	ctx context.Context,
-	ws pkgWorkspace.Context,
-	sink diag.Sink,
-	url string,
-	project *workspace.Project,
-	setCurrent bool,
-	color colors.Colorization,
-) (Backend, error) {
-	if lm.LoginF != nil {
-		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, color)
-	}
-	panic("not implemented")
-}
-
-func (lm *MockLoginManager) Current(
-	ctx context.Context,
-	ws pkgWorkspace.Context,
-	sink diag.Sink,
-	url string,
-	project *workspace.Project,
-	setCurrent bool,
-) (Backend, error) {
-	if lm.CurrentF != nil {
-		return lm.CurrentF(ctx, ws, sink, url, project, setCurrent)
 	}
 	panic("not implemented")
 }

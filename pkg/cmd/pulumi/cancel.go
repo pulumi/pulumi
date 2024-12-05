@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -61,7 +62,7 @@ func newCancelCmd() *cobra.Command {
 
 			ws := pkgWorkspace.Instance
 
-			s, err := requireStack(ctx, ws, DefaultLoginManager, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

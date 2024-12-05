@@ -25,6 +25,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -74,17 +75,31 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, ws, DefaultLoginManager, sourceStackName, stackLoadOnly, display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
-			})
+			sourceStack, err := requireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				sourceStackName,
+				stackLoadOnly,
+				display.Options{
+					Color:         cmdutil.GetGlobalColorization(),
+					IsInteractive: true,
+				},
+			)
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, ws, DefaultLoginManager, destStackName, stackLoadOnly, display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
-			})
+			destStack, err := requireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				destStackName,
+				stackLoadOnly,
+				display.Options{
+					Color:         cmdutil.GetGlobalColorization(),
+					IsInteractive: true,
+				},
+			)
 			if err != nil {
 				return err
 			}

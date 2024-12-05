@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -97,7 +98,7 @@ func newUpCmd() *cobra.Command {
 		ctx context.Context,
 		ssml stackSecretsManagerLoader,
 		ws pkgWorkspace.Context,
-		lm backend.LoginManager,
+		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 	) error {
@@ -225,7 +226,7 @@ func newUpCmd() *cobra.Command {
 		ctx context.Context,
 		ssml stackSecretsManagerLoader,
 		ws pkgWorkspace.Context,
-		lm backend.LoginManager,
+		lm cmdBackend.LoginManager,
 		templateNameOrURL string,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
@@ -276,7 +277,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// There is no current project at this point to pass into currentBackend
-		b, err := currentBackend(ctx, ws, lm, nil, opts.Display)
+		b, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, opts.Display)
 		if err != nil {
 			return err
 		}
@@ -547,7 +548,7 @@ func newUpCmd() *cobra.Command {
 				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -567,7 +568,7 @@ func newUpCmd() *cobra.Command {
 					ctx,
 					ssml,
 					ws,
-					DefaultLoginManager,
+					cmdBackend.DefaultLoginManager,
 					args[0],
 					opts,
 					cmd,
@@ -578,7 +579,7 @@ func newUpCmd() *cobra.Command {
 				ctx,
 				ssml,
 				ws,
-				DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				opts,
 				cmd,
 			)

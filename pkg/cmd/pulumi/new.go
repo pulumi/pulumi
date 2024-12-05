@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -139,7 +140,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = currentBackend(ctx, ws, DefaultLoginManager, nil, opts)
+		b, err = cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
 		if err != nil {
 			return err
 		}
@@ -166,7 +167,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
-		b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts)
+		b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
 		if err != nil {
 			return err
 		}
