@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -49,7 +50,7 @@ func newStackImportCmd() *cobra.Command {
 			"hand-edited to correct inconsistencies due to failed updates, manual changes\n" +
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{

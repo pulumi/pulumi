@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -41,7 +42,7 @@ func newPolicyPublishCmd() *cobra.Command {
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return policyPublishCmd.Run(cmd.Context(), DefaultLoginManager, args)
 		}),
 	}

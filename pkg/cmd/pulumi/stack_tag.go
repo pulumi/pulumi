@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -60,7 +61,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Use:   "get <name>",
 		Short: "Get a single stack tag value",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]
@@ -95,7 +96,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Use:   "ls",
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -152,7 +153,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Use:   "rm <name>",
 		Short: "Remove a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]
@@ -183,7 +184,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Use:   "set <name> <value>",
 		Short: "Set a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]

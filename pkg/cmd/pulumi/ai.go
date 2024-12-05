@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -56,7 +57,7 @@ func newAICommand() *cobra.Command {
 		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
 		Hidden: !hasExperimentalCommands(),
 		Args:   cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(args) == 0 {
 				return cmd.Help()

@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ func newPolicyDisableCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
-		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			var err error

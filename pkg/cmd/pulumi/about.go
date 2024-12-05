@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -65,7 +66,7 @@ func newAboutCmd() *cobra.Command {
 			" - the current stack\n" +
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {

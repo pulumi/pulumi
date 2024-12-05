@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,7 +35,7 @@ func newPluginLsCmd() *cobra.Command {
 		Use:   "ls",
 		Short: "List plugins",
 		Args:  cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
 			var err error

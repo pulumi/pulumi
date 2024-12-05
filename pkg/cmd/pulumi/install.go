@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ func newInstallCmd() *cobra.Command {
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			installPolicyPackDeps, err := shouldInstallPolicyPackDependencies()

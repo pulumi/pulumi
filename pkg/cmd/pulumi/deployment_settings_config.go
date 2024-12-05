@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -65,7 +66,7 @@ func newDeploymentCmd() *cobra.Command {
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		}),
 	}
@@ -90,7 +91,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 			"Use this command to manage a stack's deployment settings like\n" +
 			"generating the deployment file, updating secrets or pushing the\n" +
 			"updated settings to Pulumi Cloud.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		}),
 	}
@@ -196,7 +197,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
@@ -309,7 +310,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
 			}

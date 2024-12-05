@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -585,7 +586,7 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]

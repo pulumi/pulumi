@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -41,7 +42,7 @@ func newDeploymentRunCmd() *cobra.Command {
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
 		Args: cmdutil.RangeArgs(1, 2),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 

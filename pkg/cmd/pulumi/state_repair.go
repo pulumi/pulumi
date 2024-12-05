@@ -27,6 +27,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -90,7 +91,7 @@ valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
 		Args: cmdutil.NoArgs,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
 			})

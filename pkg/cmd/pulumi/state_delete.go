@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -114,7 +115,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
 		Args:    cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sdcmd.Run(ctx, args, ws, lm)
 		}),

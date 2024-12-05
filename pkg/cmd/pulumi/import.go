@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -649,7 +650,7 @@ func newImportCmd() *cobra.Command {
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			ssml := newStackSecretsManagerLoaderFromEnv()

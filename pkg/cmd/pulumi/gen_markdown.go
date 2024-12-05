@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -42,7 +43,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 		Args:   cmdutil.ExactArgs(1),
 		Short:  "Generate Pulumi CLI documentation as Markdown (one file per command)",
 		Hidden: true,
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			var files []string
 
 			// filePrepender is used to add front matter to each file, and to keep track of all

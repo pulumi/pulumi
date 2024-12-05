@@ -25,6 +25,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -56,7 +57,7 @@ func newPolicyNewCmd() *cobra.Command {
 			"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
 			"Only organization administrators can publish a Policy Pack.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]

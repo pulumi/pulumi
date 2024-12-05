@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
@@ -45,7 +46,7 @@ func newStackExportCmd() *cobra.Command {
 			"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{

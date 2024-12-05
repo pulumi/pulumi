@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -33,12 +33,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// runCmdFunc wraps cmdutil.RunFunc. While cmdutil.RunFunc provides a standard
+// RunCmdFunc wraps cmdutil.RunFunc. While cmdutil.RunFunc provides a standard
 // wrapper for dealing with and logging errors before exiting with an
-// appropriate error code, runCmdFunc extends this with additional error
+// appropriate error code, RunCmdFunc extends this with additional error
 // handling specific to the Pulumi CLI. This includes e.g. specific and more
 // helpful messages in the case of decryption or snapshot integrity errors.
-func runCmdFunc(
+func RunCmdFunc(
 	run func(cmd *cobra.Command, args []string) error,
 ) func(cmd *cobra.Command, args []string) {
 	return cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -86,8 +86,8 @@ func processCmdErrors(err error) error {
 func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
-	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s\n", e.Key, e.Err)
-	fprintf(writer, ""+
+	ui.Fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s\n", e.Key, e.Err)
+	ui.Fprintf(writer, ""+
 		"This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and "+
 		"it is not possible to share an encrypted configuration value across stacks.\n"+
 		"\n"+
@@ -179,10 +179,4 @@ Stack Trace:
 	))
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, message.String()))
-}
-
-// Quick and dirty utility function for printing to writers that we know will never fail.
-func fprintf(writer io.Writer, msg string, args ...interface{}) {
-	_, err := fmt.Fprintf(writer, msg, args...)
-	contract.IgnoreError(err)
 }

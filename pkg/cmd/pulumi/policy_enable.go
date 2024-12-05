@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -40,7 +41,7 @@ func newPolicyEnableCmd() *cobra.Command {
 		Short: "Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
-		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, cliArgs[0], DefaultLoginManager)

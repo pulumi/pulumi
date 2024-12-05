@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -179,7 +180,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-		PersistentPreRun: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		PersistentPreRun: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()

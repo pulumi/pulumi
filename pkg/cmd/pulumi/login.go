@@ -28,6 +28,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -92,7 +93,7 @@ func newLoginCmd() *cobra.Command {
 			"\n" +
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

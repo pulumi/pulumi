@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -46,7 +47,7 @@ func newLogoutCmd() *cobra.Command {
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" || all {

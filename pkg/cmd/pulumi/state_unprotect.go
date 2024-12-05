@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -44,7 +45,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			yes = yes || skipConfirmations()
