@@ -142,10 +142,13 @@ func TestResolveStackExpressions(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			stack := StackContext{
+				Organization: tt.org,
+				Project:      tt.proj,
+				Stack:        tt.stack,
+			}
 			eval := &stackPatternEval{
-				organization: tt.org,
-				project:      tt.proj,
-				stack:        tt.stack,
+				ctx: stack,
 				getConfigValue: func(key string) (string, error) {
 					if err, hasErr := tt.configErrs[key]; hasErr {
 						return "", err

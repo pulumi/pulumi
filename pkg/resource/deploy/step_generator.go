@@ -626,10 +626,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	var autonaming *plugin.AutonamingOptions
 	if sg.deployment.opts.Autonamer != nil {
 		var dbr bool
-		autonaming, dbr, err = sg.deployment.opts.Autonamer.AutonamingForResource(urn, randomSeed)
-		if err != nil {
-			return nil, fmt.Errorf("failed to determine autonaming setting: %w", err)
-		}
+		autonaming, dbr = sg.deployment.opts.Autonamer.AutonamingForResource(urn, randomSeed)
 		// If autonaming settings had no randomness in the name, we must delete before creating a replacement.
 		if dbr {
 			goal.DeleteBeforeReplace = &dbr

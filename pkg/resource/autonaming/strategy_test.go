@@ -24,14 +24,10 @@ import (
 
 func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 	t.Parallel()
-	makeURN := func(name, typ string) urn.URN {
-		return urn.New("mystack", "myproject", "", tokens.Type(typ), name)
-	}
 
 	tests := []struct {
 		name                    string
 		options                 globalAutonaming
-		urn                     urn.URN
 		wantOptions             *plugin.AutonamingOptions
 		wantDeleteBeforeReplace bool
 		wantErrMsg              string
@@ -39,7 +35,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		{
 			name:        "no config returns no options",
 			options:     globalAutonaming{},
-			urn:         makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: nil,
 		},
 		{
@@ -47,7 +42,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			options: globalAutonaming{
 				Default: &defaultAutonamingConfig,
 			},
-			urn:         makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: nil,
 		},
 		{
@@ -55,7 +49,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			options: globalAutonaming{
 				Default: &verbatimAutonaming{},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "myresource",
 				Mode:            plugin.AutonamingModeEnforce,
@@ -73,7 +66,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "myresource",
 				Mode:            plugin.AutonamingModeEnforce,
@@ -88,13 +80,12 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Providers: map[string]providerAutonaming{
 					"aws": {
 						Default: &defaultAutonamingConfig,
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &verbatimAutonaming{},
 						},
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "myresource",
 				Mode:            plugin.AutonamingModeEnforce,
@@ -107,7 +98,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			options: globalAutonaming{
 				Default: &disabledAutonaming{},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: false,
@@ -124,7 +114,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: true,
@@ -138,13 +127,12 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Providers: map[string]providerAutonaming{
 					"aws": {
 						Default: &verbatimAutonaming{},
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &disabledAutonaming{},
 						},
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: true,
@@ -164,7 +152,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "aws-myresource",
 				Mode:            plugin.AutonamingModePropose,
@@ -182,7 +169,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 							Pattern: "aws-${name}",
 							Enforce: false,
 						},
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &patternAutonaming{
 								Pattern: "bucket-${name}",
 								Enforce: true,
@@ -191,7 +178,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "bucket-myresource",
 				Mode:            plugin.AutonamingModeEnforce,
@@ -204,7 +190,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			options: globalAutonaming{
 				Default: &defaultAutonamingConfig,
 			},
-			urn:        makeURN("myresource", "invalid:type"),
 			wantErrMsg: "invalid resource type format: invalid:type",
 		},
 		{
@@ -217,13 +202,12 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 					"aws": {
 						Default: &defaultAutonamingConfig,
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/object:Object": &disabledAutonaming{},
 						},
 					},
 				},
 			},
-			urn:                     makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions:             nil,
 			wantDeleteBeforeReplace: false,
 		},
@@ -233,13 +217,12 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Default: &verbatimAutonaming{},
 				Providers: map[string]providerAutonaming{
 					"aws": {
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/object:Object": &disabledAutonaming{},
 						},
 					},
 				},
 			},
-			urn: makeURN("myresource", "aws:s3/bucket:Bucket"),
 			wantOptions: &plugin.AutonamingOptions{
 				ProposedName:    "myresource",
 				Mode:            plugin.AutonamingModeEnforce,
@@ -254,15 +237,8 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, deleteBeforeReplace, err := tt.options.AutonamingForResource(tt.urn, nil)
-
-			if tt.wantErrMsg != "" {
-				assert.Error(t, err)
-				assert.Equal(t, tt.wantErrMsg, err.Error())
-				return
-			}
-
-			assert.NoError(t, err)
+			urn := urn.New("mystack", "myproject", "", tokens.Type("aws:s3/bucket:Bucket"), "myresource")
+			got, deleteBeforeReplace := tt.options.AutonamingForResource(urn, nil)
 			assert.Equal(t, tt.wantDeleteBeforeReplace, deleteBeforeReplace)
 			assert.Equal(t, tt.wantOptions, got)
 		})

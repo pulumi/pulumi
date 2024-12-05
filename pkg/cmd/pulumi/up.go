@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
@@ -172,9 +173,9 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		var autonamer deploy.Autonamer
+		var autonamer autonaming.Autonamer
 		if hasExperimentalCommands() {
-			autonamer, err = autonaming.ParseAutonamingConfig(&cfg, decrypter, s)
+			autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(s), cfg.Config, decrypter)
 			if err != nil {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
@@ -895,4 +896,21 @@ func isPreconfiguredEmptyStack(
 	}
 
 	return true
+}
+
+func autonamingStackContext(s backend.Stack) autonaming.StackContext {
+	organization := "organization"
+	if cs, ok := s.(httpstate.Stack); ok {
+		organization = cs.OrgName()
+	}
+	project := "project"
+	if projName, ok := s.Ref().Project(); ok {
+		project = projName.String()
+	}
+	stack := s.Ref().Name().String()
+	return autonaming.StackContext{
+		Organization: organization,
+		Project:      project,
+		Stack:        stack,
+	}
 }

@@ -25,6 +25,7 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
@@ -32,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -85,15 +85,7 @@ type Options struct {
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
-	Autonamer Autonamer
-}
-
-// Autonamer is a resolver for custom autonaming options for resources.
-type Autonamer interface {
-	// AutonamingForResource returns the autonaming options for a resource, and whether it
-	// should be required to be deleted before creating.
-	AutonamingForResource(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions,
-		deleteBeforeReplace bool, err error)
+	Autonamer autonaming.Autonamer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

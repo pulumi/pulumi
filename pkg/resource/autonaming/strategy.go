@@ -15,17 +15,16 @@
 package autonaming
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// autonamingStrategy is a strategy for autonaming a resource.
-type autonamingStrategy interface {
-	GetOptions(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool)
+// Autonamer resolves custom autonaming options for a given resource URN.
+type Autonamer interface {
+	// AutonamingForResource returns the autonaming options for a resource, and whether it
+	// should be required to be deleted before creating.
+	AutonamingForResource(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool)
 }
 
 // defaultAutonaming is the default autonaming strategy, which is equivalent to
@@ -35,7 +34,8 @@ type defaultAutonaming struct{}
 // defaultAutonamingConfig is the default instance of defaultAutonaming.
 var defaultAutonamingConfig = defaultAutonaming{}
 
-func (a *defaultAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
+func (a *defaultAutonaming) AutonamingForResource(urn.URN, []byte,
+) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return nil, false
 }
 
@@ -43,7 +43,7 @@ func (a *defaultAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.Autonaming
 // logical resource name as the physical resource name literally, with no transformations.
 type verbatimAutonaming struct{}
 
-func (a *verbatimAutonaming) GetOptions(urn urn.URN, _ []byte,
+func (a *verbatimAutonaming) AutonamingForResource(urn urn.URN, _ []byte,
 ) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return &plugin.AutonamingOptions{
 		ProposedName: urn.Name(),
@@ -54,7 +54,8 @@ func (a *verbatimAutonaming) GetOptions(urn urn.URN, _ []byte,
 // disabledAutonaming is an autonaming config that disables autonaming altogether.
 type disabledAutonaming struct{}
 
-func (a *disabledAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
+func (a *disabledAutonaming) AutonamingForResource(urn.URN, []byte,
+) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return &plugin.AutonamingOptions{
 		Mode: plugin.AutonamingModeDisabled,
 	}, true
@@ -69,7 +70,7 @@ type patternAutonaming struct {
 	Enforce bool
 }
 
-func (a *patternAutonaming) GetOptions(urn urn.URN, randomSeed []byte,
+func (a *patternAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
 ) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	mode := plugin.AutonamingModePropose
 	if a.Enforce {
@@ -87,65 +88,54 @@ func (a *patternAutonaming) GetOptions(urn urn.URN, randomSeed []byte,
 type providerAutonaming struct {
 	// Default is the default autonaming config for the provider unless overridden by a more specific
 	// resource config.
-	Default autonamingStrategy
+	Default Autonamer
 
 	// Resources maps resource types to their specific configurations
 	// Key format: provider:module:type (e.g., "aws:s3/bucket:Bucket")
-	Resources map[string]autonamingStrategy
+	Resources map[string]Autonamer
 }
 
 // globalAutonaming represents the root configuration object for Pulumi autonaming
 type globalAutonaming struct {
 	// Default is the default autonaming config for all the providers unless overridden by a more specific
 	// provider config.
-	Default autonamingStrategy
+	Default Autonamer
 
 	// Providers maps provider names to their configurations
 	// Key format: provider name (e.g., "aws")
 	Providers map[string]providerAutonaming
 }
 
-func (o *globalAutonaming) pluginOptionsForResourceType(resourceType tokens.Type) (autonamingStrategy, bool, error) {
-	token := string(resourceType)
-
-	// Parse resource type into provider and type
-	parts := strings.Split(token, ":")
-	if len(parts) != 3 {
-		return nil, false, fmt.Errorf("invalid resource type format: %s", resourceType)
-	}
-	provider := parts[0]
+func (o *globalAutonaming) pluginOptionsForResourceType(resourceType tokens.Type) (Autonamer, bool) {
+	token := resourceType.String()
+	provider := resourceType.Package().Name().String()
 
 	// Check type-specific config
 	if pConfig, ok := o.Providers[provider]; ok {
 		if rConfig, ok := pConfig.Resources[token]; ok {
-			return rConfig, false, nil
+			return rConfig, false
 		}
 		if pConfig.Default != nil {
-			return pConfig.Default, false, nil
+			return pConfig.Default, false
 		}
 	}
 	// Fall back to global config
 	if o.Default != nil {
-		return o.Default, true, nil
+		return o.Default, true
 	}
-	return &defaultAutonamingConfig, true, nil
+	return &defaultAutonamingConfig, true
 }
 
 // AutonamingForResource returns the autonaming options for a resource, and whether it should be required
 // to be deleted before creating. The proper configuration is resolved by looking at the resource type
 // and its provider, and falling back to the global default if no specific configuration is found.
 // If the strategy returns nil, it means the user hasn't overridden the default autonaming for this resource.
-func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
-) (*plugin.AutonamingOptions, bool, error) {
-	naming, isTopLevelOrDefault, err := o.pluginOptionsForResourceType(urn.Type())
-	if err != nil {
-		return nil, false, err
-	}
-
-	opts, deleteBeforeReplace := naming.GetOptions(urn, randomSeed)
+func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte) (*plugin.AutonamingOptions, bool) {
+	naming, isTopLevelOrDefault := o.pluginOptionsForResourceType(urn.Type())
+	opts, deleteBeforeReplace := naming.AutonamingForResource(urn, randomSeed)
 	if opts == nil {
 		// If the strategy returns nil, it means the user hasn't overridden the default autonaming for this resource.
-		return nil, false, nil
+		return nil, false
 	}
 
 	if !isTopLevelOrDefault {
@@ -154,5 +144,5 @@ func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
 		// the provider doesn't actually support autonaming customization.
 		opts.WarnIfNoSupport = true
 	}
-	return opts, deleteBeforeReplace, nil
+	return opts, deleteBeforeReplace
 }

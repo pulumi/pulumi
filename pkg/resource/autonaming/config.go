@@ -20,12 +20,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (autonamingStrategy, error) {
+func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer, error) {
 	hasMode := c.Mode != nil
 	hasPattern := c.Pattern != nil
 	hasEnforce := c.Enforce != nil
@@ -83,10 +81,9 @@ func parseConfigSection(v config.Value) (*autonamingSectionJSON, error) {
 	return autonamingConfig, nil
 }
 
-func ParseAutonamingConfig(cfg *backend.StackConfiguration, decrypter config.Decrypter, s backend.Stack,
-) (deploy.Autonamer, error) {
+func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decrypter) (Autonamer, error) {
 	// Get the autonaming config from the stack configuration, return nil if it's not set.
-	v, ok, err := cfg.Config.Get(config.MustParseKey("pulumi:autonaming"), false)
+	v, ok, err := cfg.Get(config.MustParseKey("pulumi:autonaming"), false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get autonaming config: %w", err)
 	}
@@ -125,7 +122,7 @@ func ParseAutonamingConfig(cfg *backend.StackConfiguration, decrypter config.Dec
 
 		provider := providerAutonaming{
 			Default:   naming,
-			Resources: make(map[string]autonamingStrategy),
+			Resources: make(map[string]Autonamer),
 		}
 
 		// Resolve the resource-level naming configs.

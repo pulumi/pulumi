@@ -17,10 +17,7 @@ package autonaming
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -101,7 +98,7 @@ pulumi:autonaming:
 							Pattern: "aws-${name}",
 							Enforce: false,
 						},
-						Resources: map[string]autonamingStrategy{},
+						Resources: map[string]Autonamer{},
 					},
 				},
 			},
@@ -121,7 +118,7 @@ pulumi:autonaming:
 				Providers: map[string]providerAutonaming{
 					"aws": {
 						Default: &defaultAutonamingConfig,
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &patternAutonaming{
 								Pattern: "bucket-${name}",
 								Enforce: true,
@@ -254,7 +251,7 @@ myproj:foo: bar`,
 							Pattern: "mystack-aws-${name}",
 							Enforce: true,
 						},
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &patternAutonaming{
 								Pattern: "bar-bucket-${name}-${uuid}",
 								Enforce: true,
@@ -263,7 +260,7 @@ myproj:foo: bar`,
 					},
 					"azure": {
 						Default: &verbatimAutonaming{},
-						Resources: map[string]autonamingStrategy{
+						Resources: map[string]Autonamer{
 							"azure:storage/account:Account": &disabledAutonaming{},
 						},
 					},
@@ -295,8 +292,12 @@ myproj:foo: bar`,
 			if org == "" {
 				org = "default"
 			}
-			stack := &mockStack{orgName: org}
-			autonamer, err := ParseAutonamingConfig(&backend.StackConfiguration{Config: cfg}, decrypter, stack)
+			stack := StackContext{
+				Organization: org,
+				Project:      "myproj",
+				Stack:        "mystack",
+			}
+			autonamer, err := ParseAutonamingConfig(stack, cfg, decrypter)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -313,21 +314,5 @@ myproj:foo: bar`,
 				assert.Equal(t, tt.wantConfig.Providers, got.Providers)
 			}
 		})
-	}
-}
-
-type mockStack struct {
-	httpstate.Stack
-	orgName string
-}
-
-func (m *mockStack) OrgName() string {
-	return m.orgName
-}
-
-func (m *mockStack) Ref() backend.StackReference {
-	return &backend.MockStackReference{
-		ProjectV: "myproj",
-		NameV:    tokens.MustParseStackName("mystack"),
 	}
 }

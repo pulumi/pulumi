@@ -23,38 +23,31 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"lukechampine.com/frand"
 )
+
+type StackContext struct {
+	Organization string
+	Project      string
+	Stack        string
+}
 
 // stackPatternEval is a helper struct for resolving stack-level expressions in autonaming patterns.
 // It's used to resolve ${organization}, ${project}, ${stack}, and ${config.key} expressions in patterns.
 // These are all expressions that can be resolved at startup time because they don't depend
 // on the resource URN.
 type stackPatternEval struct {
-	organization   string
-	project        string
-	stack          string
+	ctx            StackContext
 	getConfigValue func(key string) (string, error)
 }
 
 // newStackPatternEval creates a new stack pattern evaluator based on the given stack and configuration.
-func newStackPatternEval(s backend.Stack, cfg *backend.StackConfiguration, decrypter config.Decrypter,
+func newStackPatternEval(s StackContext, cfg config.Map, decrypter config.Decrypter,
 ) *stackPatternEval {
-	organization := "organization"
-	if cs, ok := s.(httpstate.Stack); ok {
-		organization = cs.OrgName()
-	}
-	project := "project"
-	if projName, ok := s.Ref().Project(); ok {
-		project = projName.String()
-	}
-	stack := s.Ref().Name().String()
 	getConfigValue := func(key string) (string, error) {
-		c, ok, err := cfg.Config.Get(config.MustMakeKey(project, key), true)
+		c, ok, err := cfg.Get(config.MustMakeKey(s.Project, key), true)
 		if err != nil {
 			return "", fmt.Errorf("failed to get config value for key %q: %w", key, err)
 		}
@@ -68,9 +61,7 @@ func newStackPatternEval(s backend.Stack, cfg *backend.StackConfiguration, decry
 		return v, nil
 	}
 	return &stackPatternEval{
-		organization:   organization,
-		project:        project,
-		stack:          stack,
+		ctx:            s,
 		getConfigValue: getConfigValue,
 	}
 }
@@ -87,9 +78,9 @@ var (
 // resolveStackExpressions resolves the organization, project, stack, and config expressions in the given pattern.
 func (e *stackPatternEval) resolveStackExpressions(pattern string) (string, error) {
 	// Replace ${organization}, ${project}, ${stack} with values from context
-	pattern = strings.ReplaceAll(pattern, "${organization}", e.organization)
-	pattern = strings.ReplaceAll(pattern, "${project}", e.project)
-	pattern = strings.ReplaceAll(pattern, "${stack}", e.stack)
+	pattern = strings.ReplaceAll(pattern, "${organization}", e.ctx.Organization)
+	pattern = strings.ReplaceAll(pattern, "${project}", e.ctx.Project)
+	pattern = strings.ReplaceAll(pattern, "${stack}", e.ctx.Stack)
 
 	// Replace ${config.key} with config values
 	var configErr error
@@ -171,8 +162,8 @@ var randomExpressionReplacers = []func(string, *frand.RNG) string{
 }
 
 // generateName generates a final proposed name based on the configured pattern, the resource URN, and random seed.
-// Note that the pattern is expected to have already had stack-level expressions like ${organization}, ${project}, ${stack},
-// and ${config.key} resolved before passing to this function.
+// Note that the pattern is expected to have already had stack-level expressions like ${organization}, ${project},
+// ${stack}, and ${config.key} resolved before passing to this function.
 func generateName(pattern string, urn urn.URN, randomSeed []byte) (string, bool) {
 	// Replace ${name} with the logical name
 	result := strings.ReplaceAll(pattern, "${name}", urn.Name())
