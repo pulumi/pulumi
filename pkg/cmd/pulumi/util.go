@@ -15,13 +15,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -654,50 +651,6 @@ func readPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string
 	}
 
 	return proj, path, filepath.Dir(path), nil
-}
-
-// makeJSONString turns the given value into a JSON string.
-// If multiline is true, the JSON will be formatted with indentation and a trailing newline.
-func makeJSONString(v interface{}, multiline bool) (string, error) {
-	var out bytes.Buffer
-
-	// json.Marshal escapes HTML characters, which we don't want,
-	// so change that with json.NewEncoder.
-	encoder := json.NewEncoder(&out)
-	encoder.SetEscapeHTML(false)
-
-	if multiline {
-		encoder.SetIndent("", "  ")
-	}
-
-	if err := encoder.Encode(v); err != nil {
-		return "", err
-	}
-
-	// json.NewEncoder always adds a trailing newline. Remove it.
-	bs := out.Bytes()
-	if !multiline {
-		if n := len(bs); n > 0 && bs[n-1] == '\n' {
-			bs = bs[:n-1]
-		}
-	}
-
-	return string(bs), nil
-}
-
-// printJSON simply prints out some object, formatted as JSON, using standard indentation.
-func printJSON(v interface{}) error {
-	return fprintJSON(os.Stdout, v)
-}
-
-// fprintJSON simply prints out some object, formatted as JSON, using standard indentation.
-func fprintJSON(w io.Writer, v interface{}) error {
-	jsonStr, err := makeJSONString(v, true /* multi line */)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(w, jsonStr)
-	return err
 }
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions

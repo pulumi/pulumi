@@ -115,7 +115,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 			tags := s.Tags()
 
 			if jsonOut {
-				return printJSON(tags)
+				return ui.PrintJSON(tags)
 			}
 
 			printStackTags(tags)

@@ -137,5 +137,5 @@ func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
 			Versions: pack.VersionTags,
 		}
 	}
-	return printJSON(output)
+	return ui.PrintJSON(output)
 }

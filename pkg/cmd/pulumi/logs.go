@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	mobytime "github.com/moby/moby/api/types/time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -153,7 +154,7 @@ func newLogsCmd() *cobra.Command {
 						}
 					}
 
-					return printJSON(entries)
+					return ui.PrintJSON(entries)
 				}
 
 				for _, logEntry := range logs {
@@ -168,7 +169,7 @@ func newLogsCmd() *cobra.Command {
 								strings.TrimRight(logEntry.Message, "\n"),
 							)
 						} else {
-							err = printJSON(logEntryJSON{
+							err = ui.PrintJSON(logEntryJSON{
 								ID:        logEntry.ID,
 								Timestamp: eventTime.UTC().Format(timeFormat),
 								Message:   logEntry.Message,

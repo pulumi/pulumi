@@ -251,7 +251,7 @@ func formatStackSummariesJSON(
 		output[idx] = summaryJSON
 	}
 
-	return fprintJSON(stdout, output)
+	return ui.FprintJSON(stdout, output)
 }
 
 func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {

@@ -1038,7 +1038,7 @@ func listConfig(
 
 			configValues[key.String()] = entry
 		}
-		err := fprintJSON(stdout, configValues)
+		err := ui.FprintJSON(stdout, configValues)
 		if err != nil {
 			return err
 		}

@@ -162,5 +162,5 @@ func formatPolicyGroupsJSON(policyGroups []apitype.PolicyGroupSummary) error {
 			NumStacks:      group.NumStacks,
 		}
 	}
-	return printJSON(output)
+	return ui.PrintJSON(output)
 }

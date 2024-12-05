@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -45,7 +46,7 @@ func (se *jsonSnapshotEncoder) SnapshotToText(snap *deploy.Snapshot) (snapshotTe
 		return nil, err
 	}
 
-	s, err := makeJSONString(dep, true /* multiline */)
+	s, err := ui.MakeJSONString(dep, true /* multiline */)
 	return snapshotText(s), err
 }
 
