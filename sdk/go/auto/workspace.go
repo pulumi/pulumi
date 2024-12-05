@@ -61,6 +61,10 @@ type Workspace interface {
 	GetConfigWithOptions(context.Context, string, string, *ConfigOptions) (ConfigValue, error)
 	// GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 	GetAllConfig(context.Context, string) (ConfigMap, error)
+	// GetAllConfigWithOptions returns the config map for the specified stack name
+	// using the optional ConfigOptions,
+	// scoped to the current workspace.
+	GetAllConfigWithOptions(context.Context, string, *ConfigOptions) (ConfigMap, error)
 	// SetConfig sets the specified key-value pair on the provided stack name.
 	SetConfig(context.Context, string, string, ConfigValue) error
 	// SetConfigWithOptions sets the specified key-value pair on the provided stack name
@@ -165,8 +169,12 @@ type ConfigValue struct {
 
 // ConfigOptions is a configuration option used by a Pulumi program.
 // Allows to use the path flag while getting/setting the configuration.
+// Allows to use the config file flag while getting/setting the configuration.
+// Allows to show secrets while getting the configuration.
 type ConfigOptions struct {
-	Path bool
+	Path        bool
+	ConfigFile  string
+	ShowSecrets bool
 }
 
 // ConfigMap is a map of ConfigValue used by Pulumi programs.
