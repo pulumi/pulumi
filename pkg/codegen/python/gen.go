@@ -2291,7 +2291,7 @@ func genPackageMetadata(
 		requires = updatedRequires
 	}
 	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack || pkg.Parameterization != nil {
+	if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
@@ -3310,7 +3310,7 @@ func genPyprojectTOML(tool string,
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = PypiVersion(*pkg.Version)
 	}
-	if pkg.SupportPack || pkg.Parameterization != nil {
+	if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
