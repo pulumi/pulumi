@@ -424,7 +424,7 @@ func TestResourceState(t *testing.T) {
 	assert.NoError(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", "", nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, false, "", "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -898,7 +898,7 @@ func TestDependsOnComponent(t *testing.T) {
 
 	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
-		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
+		state := ctx.makeResourceState("", "", res, nil, nil, false, "", "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil, false)
 
 		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom)

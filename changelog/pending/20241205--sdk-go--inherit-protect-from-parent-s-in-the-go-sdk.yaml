@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Inherit `protect` from `parent`s in the Go SDK

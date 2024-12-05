@@ -61,6 +61,7 @@ type ResourceState struct {
 	children          resourceSet
 	providers         map[string]ProviderResource
 	provider          ProviderResource
+	protect           bool
 	version           string
 	pluginDownloadURL string
 	aliases           []URNOutput
@@ -119,6 +120,10 @@ func (s *ResourceState) getProviders() map[string]ProviderResource {
 
 func (s *ResourceState) getProvider() ProviderResource {
 	return s.provider
+}
+
+func (s *ResourceState) getProtect() bool {
+	return s.protect
 }
 
 func (s *ResourceState) getVersion() string {
@@ -229,6 +234,9 @@ type Resource interface {
 
 	// getProvider returns the provider for the resource.
 	getProvider() ProviderResource
+
+	// getProtect returns the protect flag for the resource.
+	getProtect() bool
 
 	// getVersion returns the version for the resource.
 	getVersion() string
