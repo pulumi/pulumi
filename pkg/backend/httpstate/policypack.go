@@ -83,6 +83,8 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	fmt.Printf("Installing policy pack %s %s...\r\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
+
+	logging.V(7).Infof("Downloading policy pack %s %s from %s", policy.Name, version, policy.PackLocation)
 	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
 	if err != nil {
 		return "", err
