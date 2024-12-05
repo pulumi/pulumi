@@ -121,16 +121,40 @@ func (p *Program) Packages() []*schema.Package {
 
 // PackageReferences returns the list of package referenced used by this program.
 func (p *Program) PackageReferences() []schema.PackageReference {
-	keys := slice.Prealloc[string](len(p.binder.referencedPackages))
+	components := p.CollectComponents()
+
+	keys := map[string]struct{}{}
 	for k := range p.binder.referencedPackages {
-		keys = append(keys, k)
+		keys[k] = struct{}{}
 	}
-	sort.Strings(keys)
+
+	for _, component := range components {
+		pkgs := component.Program.binder.referencedPackages
+		for k := range pkgs {
+			keys[k] = struct{}{}
+		}
+	}
+
+	sortedKeys := slice.Prealloc[string](len(keys))
+	for k := range keys {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
 
 	values := slice.Prealloc[schema.PackageReference](len(p.binder.referencedPackages))
-	for _, k := range keys {
-		values = append(values, p.binder.referencedPackages[k])
+	for _, k := range sortedKeys {
+		if pkg, ok := p.binder.referencedPackages[k]; ok {
+			values = append(values, pkg)
+			continue
+		}
+		for _, component := range components {
+			if pkg, ok := component.Program.binder.referencedPackages[k]; ok {
+				values = append(values, pkg)
+				break
+			}
+		}
 	}
+
 	return values
 }
 

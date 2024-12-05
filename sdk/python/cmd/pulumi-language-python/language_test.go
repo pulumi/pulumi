@@ -174,6 +174,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
+// Add test names here that are expected to fail and the reason why they are failing
+var expectedFailures = map[string]string{
+	"l3-component-simple": "",
+}
+
 func TestLanguage(t *testing.T) {
 	t.Parallel()
 	engineAddress, engine := runTestingHost(t)
@@ -242,6 +247,10 @@ func TestLanguage(t *testing.T) {
 			tt := tt
 
 			t.Run(tt, func(t *testing.T) {
+				if expected, ok := expectedFailures[tt]; ok {
+					t.Skipf("Skipping known failure: %s", expected)
+				}
+
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,
 					Test:  tt,

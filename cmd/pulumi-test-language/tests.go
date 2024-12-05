@@ -1681,6 +1681,49 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	// ==========
+	// L3 (Tests using more advanced features, likely won't work in YAML)
+	// ==========
+	"l3-component-simple": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider, its parent component and the
+					// stack.
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					component := snap.Resources[1]
+					assert.Equal(l, "components:index:MyComponent", component.Type.String(), "expected component")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"output": true,
+					})
+					assert.Empty(l, component.Inputs, "expected component inputs to be empty")
+					assert.Equal(l, want, component.Outputs, "expected component outputs to be %v", want)
+
+					provider := snap.Resources[2]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+
+					simple := snap.Resources[3]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+
+					assert.Equal(l, component.URN, simple.Parent, "expected simple resource to have component as parent")
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": true,
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 }
 
 // Like assert.Equal but also permits the actual value to be the JSON-serialized string form of the expected value.

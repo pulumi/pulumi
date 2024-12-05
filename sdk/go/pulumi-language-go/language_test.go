@@ -176,6 +176,7 @@ var expectedFailures = map[string]string{
 	"l2-map-keys":                  "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 	"l2-parameterized-resource":    "go mod tidy fails",
 	"l2-invoke-options-depends-on": "not implemented yet",
+	"l3-component-simple":          "cannot use res.Value (variable of type pulumi.BoolOutput) as pulumi.AnyOutput value in assignment", //nolint:lll
 }
 
 func TestLanguage(t *testing.T) {
