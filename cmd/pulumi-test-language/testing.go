@@ -251,6 +251,27 @@ func requireSingleResource(t TestingT, resources []*resource.State, typ tokens.T
 	return result
 }
 
+// requireSingleNamedResource returns the single resource with the given name from the given list of resources. If more
+// than one resource has the given name, the test fails. If no resources have the given name, the test fails.
+func requireSingleNamedResource(
+	t TestingT,
+	resources []*resource.State,
+	name string,
+) *resource.State {
+	t.Helper()
+
+	var result *resource.State
+	for _, res := range resources {
+		if res.URN.Name() == name {
+			require.Nil(t, result, "expected exactly 1 resource named %q, got multiple", name)
+			result = res
+		}
+	}
+
+	require.NotNil(t, result, "expected exactly 1 resource named %q, got none", name)
+	return result
+}
+
 // assertPropertyMapMember asserts that the given property map has a member with the given key and value.
 func assertPropertyMapMember(
 	t TestingT,

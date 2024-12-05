@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -1637,6 +1638,74 @@ var languageTests = map[string]languageTest{
 					})
 					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-resource-parent-inheritance": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+
+					// We expect the following resources:
+					//
+					// 0. The stack
+					//
+					// 1. The default simple provider.
+					// 2. The explicit simple provider, used to test provider inheritance.
+					//
+					// 3. A parent using the explicit provider.
+					// 4. A child of the parent using the explicit provider.
+					// 5. An orphan without a parent or explicit provider.
+					//
+					// 6. A parent with its protect flag set.
+					// 7. A child of the parent with its protect flag set.
+					// 8. An orphan without a parent or protect flag set.
+					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
+
+					defaultProvider := requireSingleNamedResource(l, snap.Resources, "default_2_0_0")
+					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
+
+					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
+					require.NoError(l, err, "expected to create default provider reference")
+
+					explicitProvider := requireSingleNamedResource(l, snap.Resources, "provider")
+					require.Equal(l, "pulumi:providers:simple", explicitProvider.Type.String(), "expected explicit simple provider")
+
+					explicitProviderRef, err := deployProviders.NewReference(explicitProvider.URN, explicitProvider.ID)
+					require.NoError(l, err, "expected to create explicit provider reference")
+
+					// Children should inherit providers.
+					providerParent := requireSingleNamedResource(l, snap.Resources, "parent1")
+					providerChild := requireSingleNamedResource(l, snap.Resources, "child1")
+					providerOrphan := requireSingleNamedResource(l, snap.Resources, "orphan1")
+
+					require.Equal(
+						l, explicitProviderRef.String(), providerParent.Provider,
+						"expected parent to set explicit provider",
+					)
+					require.Equal(
+						l, explicitProviderRef.String(), providerChild.Provider,
+						"expected child to inherit explicit provider",
+					)
+					require.Equal(
+						l, defaultProviderRef.String(), providerOrphan.Provider,
+						"expected orphan to use default provider",
+					)
+
+					// Children should inherit protect flags.
+					protectParent := requireSingleNamedResource(l, snap.Resources, "parent2")
+					protectChild := requireSingleNamedResource(l, snap.Resources, "child2")
+					protectOrphan := requireSingleNamedResource(l, snap.Resources, "orphan2")
+
+					require.True(l, protectParent.Protect, "expected parent to be protected")
+					require.True(l, protectChild.Protect, "expected child to inherit protect flag")
+					require.False(l, protectOrphan.Protect, "expected orphan to not be protected")
 				},
 			},
 		},
