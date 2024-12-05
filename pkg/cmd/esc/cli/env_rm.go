@@ -6,15 +6,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	pulumienv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+// PulumiSkipConfirmationsEnvVar is an environment variable that can be used to skip confirmation prompts. This matches
+// the variable used by the core Pulumi CLI.
+const PulumiSkipConfirmationsEnvVar = "PULUMI_SKIP_CONFIRMATIONS"
 
 func newEnvRmCmd(env *envCommand) *cobra.Command {
 	var yes bool
@@ -33,7 +38,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
-			yes = yes || pulumienv.SkipConfirmations.Value()
+			yes = yes || cmdutil.IsTruthy(os.Getenv(PulumiSkipConfirmationsEnvVar))
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
