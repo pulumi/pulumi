@@ -1138,9 +1138,13 @@ func (ctx *Context) readPackageResource(
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
+	protect := options.Protect
+	if parent != nil {
+		protect = protect || parent.getProtect()
+	}
 
 	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, provider,
+	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
@@ -1335,9 +1339,13 @@ func (ctx *Context) registerResource(
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
+	protect := options.Protect
+	if parent != nil {
+		protect = protect || parent.getProtect()
+	}
 
 	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, provider,
+	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
@@ -1527,6 +1535,7 @@ type resourceState struct {
 	outputs           map[string]Output
 	providers         map[string]ProviderResource
 	provider          ProviderResource
+	protect           bool
 	version           string
 	pluginDownloadURL string
 	name              string
@@ -1674,7 +1683,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
+	provider ProviderResource, protect bool, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation,
 ) *resourceState {
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1765,6 +1774,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.providers = providers
 		state.provider = provider
 		rs.provider = provider
+		state.protect = protect
+		rs.protect = protect
 		state.version = version
 		rs.version = version
 		state.rawOutputs = rawOutputs
@@ -2066,9 +2077,9 @@ func (ctx *Context) mapAliases(aliases []Alias,
 func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
 	state *resourceState, remote, custom bool,
 ) (*resourceInputs, error) {
-	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
-	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote, custom)
+	// Get the parent and dependency URNs from the options.  If there wasn't an explicit parent, and a root stack resource
+	// exists, we will automatically parent to that.
+	resOpts, err := ctx.getOpts(res, state.provider, opts, remote, custom)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -2136,7 +2147,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	return &resourceInputs{
 		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
-		protect:                 resOpts.protect,
+		protect:                 res.getProtect(),
 		provider:                resOpts.providerRef,
 		providers:               resOpts.providerRefs,
 		resolvedProps:           resolvedProps,
@@ -2170,7 +2181,6 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 type resourceOpts struct {
 	parentURN               URN
 	depURNs                 []URN
-	protect                 bool
 	providerRef             string
 	providerRefs            map[string]string
 	deleteBeforeReplace     bool
@@ -2183,7 +2193,7 @@ type resourceOpts struct {
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
 func (ctx *Context) getOpts(
-	res Resource, t string, provider ProviderResource, opts *resourceOptions, remote, custom bool,
+	res Resource, provider ProviderResource, opts *resourceOptions, remote, custom bool,
 ) (resourceOpts, error) {
 	var importID ID
 	if opts.Import != nil {
@@ -2242,7 +2252,6 @@ func (ctx *Context) getOpts(
 	return resourceOpts{
 		parentURN:               parentURN,
 		depURNs:                 depURNs,
-		protect:                 opts.Protect,
 		providerRef:             providerRef,
 		providerRefs:            providerRefs,
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,
