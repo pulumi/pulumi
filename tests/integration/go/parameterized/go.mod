@@ -8,7 +8,7 @@ replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-202
 
 require github.com/pulumi/pulumi/sdk/v3 v3.129.0
 
-require example.com/pulumi-pkg/sdk/go/pkg v1.0.0
+require example.com/pulumi-pkg/sdk/go v1.0.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -94,4 +94,4 @@ require (
 	lukechampine.com/frand v1.4.2 // indirect
 )
 
-replace example.com/pulumi-pkg/sdk/go/pkg => ./sdk/go/pkg
+replace example.com/pulumi-pkg/sdk/go => ./sdk/go

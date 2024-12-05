@@ -4687,25 +4687,6 @@ func GeneratePackage(tool string,
 
 	files := codegen.Fs{}
 
-	// If the package is parameterized generate a go.mod for it
-	if pkg.Parameterization != nil {
-		mod := modfile.File{}
-		err = mod.AddModuleStmt(goPkgInfo.ImportBasePath)
-		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
-		err = mod.AddGoStmt("1.21")
-		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
-		// Parameterized packages need the pulumi SDK >= v3.129.0
-		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
-		pulumiVersion := "v3.129.0"
-		err = mod.AddRequire(pulumiPackagePath, pulumiVersion)
-		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
-		bytes, err := mod.Format()
-		if err != nil {
-			return nil, fmt.Errorf("format go.mod: %w", err)
-		}
-		files.Add(path.Join(pathPrefix, "go.mod"), bytes)
-	}
-
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
