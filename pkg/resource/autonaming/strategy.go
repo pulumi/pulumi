@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,17 +25,17 @@ import (
 
 // autonamingStrategy is a strategy for autonaming a resource.
 type autonamingStrategy interface {
-	GetOptions(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions, deleteBeforeCreate bool)
+	GetOptions(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool)
 }
 
-// defaultAutonaming is the default autonaming config, which is equivalent to
+// defaultAutonaming is the default autonaming strategy, which is equivalent to
 // no custom autonaming.
 type defaultAutonaming struct{}
 
 // defaultAutonamingConfig is the default instance of defaultAutonaming.
 var defaultAutonamingConfig = defaultAutonaming{}
 
-func (a *defaultAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeCreate bool) {
+func (a *defaultAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return nil, false
 }
 
@@ -44,7 +44,7 @@ func (a *defaultAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.Autonaming
 type verbatimAutonaming struct{}
 
 func (a *verbatimAutonaming) GetOptions(urn urn.URN, _ []byte,
-) (opts *plugin.AutonamingOptions, deleteBeforeCreate bool) {
+) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return &plugin.AutonamingOptions{
 		ProposedName: urn.Name(),
 		Mode:         plugin.AutonamingModeEnforce,
@@ -54,7 +54,7 @@ func (a *verbatimAutonaming) GetOptions(urn urn.URN, _ []byte,
 // disabledAutonaming is an autonaming config that disables autonaming altogether.
 type disabledAutonaming struct{}
 
-func (a *disabledAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeCreate bool) {
+func (a *disabledAutonaming) GetOptions(urn.URN, []byte) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return &plugin.AutonamingOptions{
 		Mode: plugin.AutonamingModeDisabled,
 	}, true
@@ -70,7 +70,7 @@ type patternAutonaming struct {
 }
 
 func (a *patternAutonaming) GetOptions(urn urn.URN, randomSeed []byte,
-) (opts *plugin.AutonamingOptions, deleteBeforeCreate bool) {
+) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	mode := plugin.AutonamingModePropose
 	if a.Enforce {
 		mode = plugin.AutonamingModeEnforce
@@ -131,6 +131,10 @@ func (o *globalAutonaming) pluginOptionsForResourceType(resourceType tokens.Type
 	return &defaultAutonamingConfig, true, nil
 }
 
+// AutonamingForResource returns the autonaming options for a resource, and whether it should be required
+// to be deleted before creating. The proper configuration is resolved by looking at the resource type
+// and its provider, and falling back to the global default if no specific configuration is found.
+// If the strategy returns nil, it means the user hasn't overridden the default autonaming for this resource.
 func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
 ) (*plugin.AutonamingOptions, bool, error) {
 	naming, isTopLevelOrDefault, err := o.pluginOptionsForResourceType(urn.Type())
@@ -138,7 +142,7 @@ func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
 		return nil, false, err
 	}
 
-	opts, deleteBeforeCreate := naming.GetOptions(urn, randomSeed)
+	opts, deleteBeforeReplace := naming.GetOptions(urn, randomSeed)
 	if opts == nil {
 		// If the strategy returns nil, it means the user hasn't overridden the default autonaming for this resource.
 		return nil, false, nil
@@ -150,5 +154,5 @@ func (o *globalAutonaming) AutonamingForResource(urn urn.URN, randomSeed []byte,
 		// the provider doesn't actually support autonaming customization.
 		opts.WarnIfNoSupport = true
 	}
-	return opts, deleteBeforeCreate, nil
+	return opts, deleteBeforeReplace, nil
 }

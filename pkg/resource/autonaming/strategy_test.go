@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,12 +29,12 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                   string
-		options                globalAutonaming
-		urn                    urn.URN
-		wantOptions            *plugin.AutonamingOptions
-		wantDeleteBeforeCreate bool
-		wantErrMsg             string
+		name                    string
+		options                 globalAutonaming
+		urn                     urn.URN
+		wantOptions             *plugin.AutonamingOptions
+		wantDeleteBeforeReplace bool
+		wantErrMsg              string
 	}{
 		{
 			name:        "no config returns no options",
@@ -61,7 +61,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeEnforce,
 				WarnIfNoSupport: false,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "verbatim config on provider enforces logical name",
@@ -79,7 +79,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeEnforce,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "verbatim config on resource enforces logical name",
@@ -100,7 +100,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeEnforce,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "disabled config",
@@ -112,7 +112,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: false,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "disabled config on provider",
@@ -129,7 +129,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "disabled config on resource",
@@ -149,7 +149,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeDisabled,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "provider-specific config overrides default",
@@ -170,7 +170,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModePropose,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "resource-specific config overrides provider default",
@@ -197,7 +197,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeEnforce,
 				WarnIfNoSupport: true,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 		{
 			name: "invalid resource type returns error",
@@ -223,9 +223,9 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 					},
 				},
 			},
-			urn:                    makeURN("myresource", "aws:s3/bucket:Bucket"),
-			wantOptions:            nil,
-			wantDeleteBeforeCreate: false,
+			urn:                     makeURN("myresource", "aws:s3/bucket:Bucket"),
+			wantOptions:             nil,
+			wantDeleteBeforeReplace: false,
 		},
 		{
 			name: "global config is used if provider does not define a config other than specific resource",
@@ -245,7 +245,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				Mode:            plugin.AutonamingModeEnforce,
 				WarnIfNoSupport: false,
 			},
-			wantDeleteBeforeCreate: true,
+			wantDeleteBeforeReplace: true,
 		},
 	}
 
@@ -254,7 +254,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, deleteBeforeCreate, err := tt.options.AutonamingForResource(tt.urn, nil)
+			got, deleteBeforeReplace, err := tt.options.AutonamingForResource(tt.urn, nil)
 
 			if tt.wantErrMsg != "" {
 				assert.Error(t, err)
@@ -263,7 +263,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantDeleteBeforeCreate, deleteBeforeCreate)
+			assert.Equal(t, tt.wantDeleteBeforeReplace, deleteBeforeReplace)
 			assert.Equal(t, tt.wantOptions, got)
 		})
 	}

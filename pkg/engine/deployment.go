@@ -232,7 +232,7 @@ func newDeployment(
 		DisableOutputValues:       opts.DisableOutputValues,
 		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
-		Autonaming:                opts.Autonaming,
+		Autonamer:                 opts.Autonamer,
 	}
 
 	var depl *deploy.Deployment

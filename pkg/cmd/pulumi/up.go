@@ -199,7 +199,7 @@ func newUpCmd() *cobra.Command {
 			Experimental:    env.Experimental.Value(),
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
-			Autonaming:      autonamer,
+			Autonamer:       autonamer,
 		}
 
 		if planFilePath != "" {

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -136,7 +136,7 @@ pulumi:autonaming:
 			org:  "myorg",
 			configYAML: `
 pulumi:autonaming:
-  pattern: ${org}-${project}-${stack}-${name}-${random(8)}`,
+  pattern: ${organization}-${project}-${stack}-${name}-${random(8)}`,
 			wantConfig: &globalAutonaming{
 				Default: &patternAutonaming{
 					Pattern: "myorg-myproj-mystack-${name}-${random(8)}",

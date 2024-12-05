@@ -135,8 +135,12 @@ const (
 // Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
 // handles resource names, including proposed names and naming modes.
 type AutonamingOptions struct {
-	ProposedName    string
-	Mode            AutonamingMode
+	// ProposedName is the name that the provider should use for the resource.
+	ProposedName string
+	// Mode is the mode that controls how the provider handles the proposed name.
+	Mode AutonamingMode
+	// WarnIfNoSupport indicates whether the provider plugin should log a warning if the provider does not support
+	// autonaming configuration.
 	WarnIfNoSupport bool
 }
 

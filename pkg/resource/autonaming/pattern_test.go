@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ func TestResolveStackExpressions(t *testing.T) {
 	}{
 		{
 			name:     "basic variable replacement",
-			pattern:  "${org}-${project}-${stack}",
+			pattern:  "${organization}-${project}-${stack}",
 			org:      "myorg",
 			proj:     "myproj",
 			stack:    "dev",
@@ -106,7 +106,7 @@ func TestResolveStackExpressions(t *testing.T) {
 		},
 		{
 			name:    "multiple replacements",
-			pattern: "${org}/${project}/${stack}/${config.region}",
+			pattern: "${organization}/${project}/${stack}/${config.region}",
 			org:     "myorg",
 			proj:    "myproj",
 			stack:   "dev",
@@ -143,9 +143,9 @@ func TestResolveStackExpressions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			eval := &stackPatternEval{
-				org:   tt.org,
-				proj:  tt.proj,
-				stack: tt.stack,
+				organization: tt.org,
+				project:      tt.proj,
+				stack:        tt.stack,
 				getConfigValue: func(key string) (string, error) {
 					if err, hasErr := tt.configErrs[key]; hasErr {
 						return "", err

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,12 +31,12 @@ import (
 )
 
 // stackPatternEval is a helper struct for resolving stack-level expressions in autonaming patterns.
-// It's used to resolve ${org}, ${project}, ${stack}, and ${config.key} expressions in patterns.
-// These are all expressions that can be resolved at the startup time because they don't depend
+// It's used to resolve ${organization}, ${project}, ${stack}, and ${config.key} expressions in patterns.
+// These are all expressions that can be resolved at startup time because they don't depend
 // on the resource URN.
 type stackPatternEval struct {
-	org            string
-	proj           string
+	organization   string
+	project        string
 	stack          string
 	getConfigValue func(key string) (string, error)
 }
@@ -44,15 +44,17 @@ type stackPatternEval struct {
 // newStackPatternEval creates a new stack pattern evaluator based on the given stack and configuration.
 func newStackPatternEval(s backend.Stack, cfg *backend.StackConfiguration, decrypter config.Decrypter,
 ) *stackPatternEval {
-	org := "default"
+	organization := "organization"
 	if cs, ok := s.(httpstate.Stack); ok {
-		org = cs.OrgName()
+		organization = cs.OrgName()
 	}
-	projName, _ := s.Ref().Project()
-	projStr := projName.String()
-	stackStr := s.Ref().Name().String()
+	project := "project"
+	if projName, ok := s.Ref().Project(); ok {
+		project = projName.String()
+	}
+	stack := s.Ref().Name().String()
 	getConfigValue := func(key string) (string, error) {
-		c, ok, err := cfg.Config.Get(config.MustMakeKey(projStr, key), true)
+		c, ok, err := cfg.Config.Get(config.MustMakeKey(project, key), true)
 		if err != nil {
 			return "", fmt.Errorf("failed to get config value for key %q: %w", key, err)
 		}
@@ -66,22 +68,30 @@ func newStackPatternEval(s backend.Stack, cfg *backend.StackConfiguration, decry
 		return v, nil
 	}
 	return &stackPatternEval{
-		org:            org,
-		proj:           projStr,
-		stack:          stackStr,
+		organization:   organization,
+		project:        project,
+		stack:          stack,
 		getConfigValue: getConfigValue,
 	}
 }
 
-// resolveStackExpressions resolves the org, project, stack, and config expressions in the given pattern.
+// Regexes for resolving expressions in patterns.
+var (
+	configRegex = regexp.MustCompile(`\${config\.([^}]+)}`)
+	hexRegex    = regexp.MustCompile(`\${hex\((\d+)\)}`)
+	alphaRegex  = regexp.MustCompile(`\${alphanum\((\d+)\)}`)
+	strRegex    = regexp.MustCompile(`\${string\((\d+)\)}`)
+	numRegex    = regexp.MustCompile(`\${num\((\d+)\)}`)
+)
+
+// resolveStackExpressions resolves the organization, project, stack, and config expressions in the given pattern.
 func (e *stackPatternEval) resolveStackExpressions(pattern string) (string, error) {
-	// Replace ${org}, ${project}, ${stack} with values from context
-	pattern = strings.ReplaceAll(pattern, "${org}", e.org)
-	pattern = strings.ReplaceAll(pattern, "${project}", e.proj)
+	// Replace ${organization}, ${project}, ${stack} with values from context
+	pattern = strings.ReplaceAll(pattern, "${organization}", e.organization)
+	pattern = strings.ReplaceAll(pattern, "${project}", e.project)
 	pattern = strings.ReplaceAll(pattern, "${stack}", e.stack)
 
 	// Replace ${config.key} with config values
-	configRegex := regexp.MustCompile(`\${config\.([^}]+)}`)
 	var configErr error
 	pattern = configRegex.ReplaceAllStringFunc(pattern, func(match string) string {
 		key := configRegex.FindStringSubmatch(match)[1]
@@ -98,8 +108,70 @@ func (e *stackPatternEval) resolveStackExpressions(pattern string) (string, erro
 	return pattern, nil
 }
 
+func replaceHex(pattern string, random *frand.RNG) string {
+	return hexRegex.ReplaceAllStringFunc(pattern, func(match string) string {
+		n, _ := strconv.Atoi(hexRegex.FindStringSubmatch(match)[1])
+		b := make([]byte, n/2+1)
+		_, _ = random.Read(b)
+		return hex.EncodeToString(b)[:n]
+	})
+}
+
+func replaceAlphanum(pattern string, random *frand.RNG) string {
+	return alphaRegex.ReplaceAllStringFunc(pattern, func(match string) string {
+		n, _ := strconv.Atoi(alphaRegex.FindStringSubmatch(match)[1])
+		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = chars[random.Intn(len(chars))]
+		}
+		return string(b)
+	})
+}
+
+func replaceString(pattern string, random *frand.RNG) string {
+	return strRegex.ReplaceAllStringFunc(pattern, func(match string) string {
+		n, _ := strconv.Atoi(strRegex.FindStringSubmatch(match)[1])
+		const chars = "abcdefghijklmnopqrstuvwxyz"
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = chars[random.Intn(len(chars))]
+		}
+		return string(b)
+	})
+}
+
+func replaceNum(pattern string, random *frand.RNG) string {
+	return numRegex.ReplaceAllStringFunc(pattern, func(match string) string {
+		n, _ := strconv.Atoi(numRegex.FindStringSubmatch(match)[1])
+		const chars = "0123456789"
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = chars[random.Intn(len(chars))]
+		}
+		return string(b)
+	})
+}
+
+func replaceUUID(pattern string, random *frand.RNG) string {
+	if strings.Contains(pattern, "${uuid}") {
+		uuidBytes := make([]byte, 16)
+		_, _ = random.Read(uuidBytes)
+		pattern = strings.ReplaceAll(pattern, "${uuid}", uuid.Must(uuid.FromBytes(uuidBytes)).String())
+	}
+	return pattern
+}
+
+var randomExpressionReplacers = []func(string, *frand.RNG) string{
+	replaceHex,
+	replaceAlphanum,
+	replaceString,
+	replaceNum,
+	replaceUUID,
+}
+
 // generateName generates a final proposed name based on the configured pattern, the resource URN, and random seed.
-// Note that the pattern is expected to have already had stack-level expressions like ${org}, ${project}, ${stack},
+// Note that the pattern is expected to have already had stack-level expressions like ${organization}, ${project}, ${stack},
 // and ${config.key} resolved before passing to this function.
 func generateName(pattern string, urn urn.URN, randomSeed []byte) (string, bool) {
 	// Replace ${name} with the logical name
@@ -122,61 +194,10 @@ func generateName(pattern string, urn urn.URN, randomSeed []byte) (string, bool)
 		random = frand.NewCustom(seed, bufsize, rounds)
 	}
 
-	// Replace ${hex(n)} with random hex string of length n
-	hexRegex := regexp.MustCompile(`\${hex\((\d+)\)}`)
-	result = hexRegex.ReplaceAllStringFunc(result, func(match string) string {
-		n, _ := strconv.Atoi(hexRegex.FindStringSubmatch(match)[1])
-		b := make([]byte, n/2+1)
-		_, _ = random.Read(b)
-		hasRandom = true
-		return hex.EncodeToString(b)[:n]
-	})
-
-	// Replace ${alphanum(n)} with random alphanumeric string of length n
-	alphaRegex := regexp.MustCompile(`\${alphanum\((\d+)\)}`)
-	result = alphaRegex.ReplaceAllStringFunc(result, func(match string) string {
-		n, _ := strconv.Atoi(alphaRegex.FindStringSubmatch(match)[1])
-		const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-		b := make([]byte, n)
-		for i := range b {
-			b[i] = chars[random.Intn(len(chars))]
-		}
-		hasRandom = true
-		return string(b)
-	})
-
-	// Replace ${string(n)} with random letter string of length n
-	strRegex := regexp.MustCompile(`\${string\((\d+)\)}`)
-	result = strRegex.ReplaceAllStringFunc(result, func(match string) string {
-		n, _ := strconv.Atoi(strRegex.FindStringSubmatch(match)[1])
-		const chars = "abcdefghijklmnopqrstuvwxyz"
-		b := make([]byte, n)
-		for i := range b {
-			b[i] = chars[random.Intn(len(chars))]
-		}
-		hasRandom = true
-		return string(b)
-	})
-
-	// Replace ${num(n)} with random digit string of length n
-	numRegex := regexp.MustCompile(`\${num\((\d+)\)}`)
-	result = numRegex.ReplaceAllStringFunc(result, func(match string) string {
-		n, _ := strconv.Atoi(numRegex.FindStringSubmatch(match)[1])
-		const chars = "0123456789"
-		b := make([]byte, n)
-		for i := range b {
-			b[i] = chars[random.Intn(len(chars))]
-		}
-		hasRandom = true
-		return string(b)
-	})
-
-	// Replace ${uuid} with random UUID
-	if strings.Contains(result, "${uuid}") {
-		uuidBytes := make([]byte, 16)
-		_, _ = random.Read(uuidBytes)
-		result = strings.ReplaceAll(result, "${uuid}", uuid.Must(uuid.FromBytes(uuidBytes)).String())
-		hasRandom = true
+	for _, replacer := range randomExpressionReplacers {
+		newResult := replacer(result, random)
+		hasRandom = hasRandom || newResult != result
+		result = newResult
 	}
 
 	return result, hasRandom

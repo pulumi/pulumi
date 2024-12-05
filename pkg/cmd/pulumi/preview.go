@@ -468,7 +468,7 @@ func newPreviewCmd() *cobra.Command {
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
 					Experimental:   env.Experimental.Value(),
 					AttachDebugger: attachDebugger,
-					Autonaming:     autonamer,
+					Autonamer:      autonamer,
 				},
 				Display: displayOpts,
 			}

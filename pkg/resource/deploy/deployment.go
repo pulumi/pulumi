@@ -84,8 +84,8 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
-	// Autonaming is user's configuration for custom autonaming to apply to (some) resources.
-	Autonaming Autonamer
+	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
+	Autonamer Autonamer
 }
 
 // Autonamer is a resolver for custom autonaming options for resources.
@@ -93,7 +93,7 @@ type Autonamer interface {
 	// AutonamingForResource returns the autonaming options for a resource, and whether it
 	// should be required to be deleted before creating.
 	AutonamingForResource(urn urn.URN, randomSeed []byte) (opts *plugin.AutonamingOptions,
-		deleteBeforeCreate bool, err error)
+		deleteBeforeReplace bool, err error)
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
