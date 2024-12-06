@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"context"
@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -49,7 +48,7 @@ type stackArgs struct {
 	fullyQualifyStackNames bool
 }
 
-func newStackCmd() *cobra.Command {
+func NewStackCmd() *cobra.Command {
 	var stackName string
 	args := stackArgs{}
 
@@ -69,12 +68,12 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
-				cmdStack.OfferNew,
+				OfferNew,
 				opts,
 			)
 			if err != nil {
@@ -200,7 +199,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		}
 
 		if args.showSecrets {
-			log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
+			Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
 		}
 	}
 

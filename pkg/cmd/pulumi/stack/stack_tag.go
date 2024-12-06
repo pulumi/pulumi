@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"fmt"
@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,12 +70,12 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
-				cmdStack.LoadOnly,
+				LoadOnly,
 				opts,
 			)
 			if err != nil {
@@ -112,12 +111,12 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
-				cmdStack.SetCurrent,
+				SetCurrent,
 				opts,
 			)
 			if err != nil {
@@ -177,12 +176,12 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
-				cmdStack.SetCurrent,
+				SetCurrent,
 				opts,
 			)
 			if err != nil {
@@ -216,12 +215,12 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
-				cmdStack.SetCurrent,
+				SetCurrent,
 				opts,
 			)
 			if err != nil {

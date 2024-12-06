@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -57,7 +58,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
-			if !yes && !confirmPrompt(prompt, args[0], opts) {
+			if !yes && !ui.ConfirmPrompt(prompt, args[0], opts) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 

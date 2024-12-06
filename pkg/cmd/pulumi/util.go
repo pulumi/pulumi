@@ -25,13 +25,10 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -112,18 +109,6 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 	}
 }
 
-func checkDeploymentVersionError(err error, stackName string) error {
-	switch err {
-	case stack.ErrDeploymentSchemaVersionTooOld:
-		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-			stackName)
-	case stack.ErrDeploymentSchemaVersionTooNew:
-		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-			"Please update your version of the Pulumi CLI", stackName)
-	}
-	return fmt.Errorf("could not deserialize deployment: %w", err)
-}
-
 func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
 	// refresh is assigned the empty string by default to distinguish the difference between
@@ -145,38 +130,6 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
-}
-
-// we only want to log a secrets decryption for a Pulumi Cloud backend project
-// we will allow any secrets provider to be used (Pulumi Cloud or passphrase/cloud/etc)
-// we will log the message and not worry about the response. The types
-// of messages we will log here will range from single secret decryption events
-// to requesting a list of secrets in an individual event e.g. stack export
-// the logging event will only happen during the `--show-secrets` path within the cli
-func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
-	secretName, commandName string,
-) {
-	if stack, ok := backend.(httpstate.Stack); ok {
-		// we only want to do something if this is a Pulumi Cloud backend
-		if be, ok := stack.Backend().(httpstate.Backend); ok {
-			client := be.Client()
-			if client != nil {
-				id := backend.(httpstate.Stack).StackIdentifier()
-				// we don't really care if these logging calls fail as they should not stop the execution
-				if secretName != "" {
-					contract.Assertf(commandName == "", "Command name must be empty if secret name is set")
-					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
-					contract.IgnoreError(err)
-				}
-
-				if commandName != "" {
-					contract.Assertf(secretName == "", "Secret name must be empty if command name is set")
-					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
-					contract.IgnoreError(err)
-				}
-			}
-		}
-	}
 }
 
 func installPolicyPackDependencies(ctx context.Context, root string, proj *workspace.PolicyPackProject) error {

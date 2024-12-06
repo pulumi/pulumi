@@ -24,6 +24,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -31,10 +32,13 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -309,6 +313,18 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 	return stack, nil
 }
 
+// InitStack creates the stack.
+func InitStack(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
+	root string, setCurrent bool, secretsProvider string,
+) (backend.Stack, error) {
+	stackRef, err := b.ParseStackReference(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
+}
+
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
@@ -376,4 +392,136 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	}
 
 	return stack, nil
+}
+
+func CopyEntireConfigMap(
+	ctx context.Context,
+	ssml SecretsManagerLoader,
+	currentStack backend.Stack,
+	currentProjectStack *workspace.ProjectStack,
+	destinationStack backend.Stack,
+	destinationProjectStack *workspace.ProjectStack,
+) (bool, error) {
+	var decrypter config.Decrypter
+	currentConfig := currentProjectStack.Config
+	currentEnvironments := currentProjectStack.Environment
+
+	if currentConfig.HasSecureValue() {
+		dec, state, decerr := ssml.GetDecrypter(ctx, currentStack, currentProjectStack)
+		if decerr != nil {
+			return false, decerr
+		}
+		contract.Assertf(
+			state == SecretsManagerUnchanged,
+			"We're reading a secure value so the encryption information must be present already",
+		)
+		decrypter = dec
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	encrypter, _, cerr := ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
+	if cerr != nil {
+		return false, cerr
+	}
+
+	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
+	if err != nil {
+		return false, err
+	}
+
+	var requiresSaving bool
+	for key, val := range newProjectConfig {
+		err = destinationProjectStack.Config.Set(key, val, false)
+		if err != nil {
+			return false, err
+		}
+		requiresSaving = true
+	}
+
+	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
+		destinationProjectStack.Environment = currentEnvironments
+		requiresSaving = true
+	}
+
+	return requiresSaving, nil
+}
+
+func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapshot, force bool) error {
+	stackName := s.Ref().Name()
+	var result error
+	for _, res := range snapshot.Resources {
+		if res.URN.Stack() != stackName.Q() {
+			msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
+				res.URN, res.URN.Stack(), stackName)
+			if force {
+				// If --force was passed, just issue a warning and proceed anyway.
+				// Note: we could associate this diagnostic with the resource URN
+				// we have.  However, this sort of message seems to be better as
+				// something associated with the stack as a whole.
+				cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
+			} else {
+				// Otherwise, gather up an error so that we can quit before doing damage.
+				result = multierror.Append(result, errors.New(msg))
+			}
+		}
+	}
+	// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			msg := fmt.Sprintf("state file contains errors: %v", err)
+			if force {
+				cmdutil.Diag().Warningf(diag.Message("", msg))
+			} else {
+				result = multierror.Append(result, errors.New(msg))
+			}
+		}
+	}
+	if result != nil {
+		return multierror.Append(result,
+			errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
+	}
+
+	// Explicitly clear-out any pending operations.
+	if snapshot.PendingOperations != nil {
+		for _, op := range snapshot.PendingOperations {
+			msg := fmt.Sprintf(
+				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
+			cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
+		}
+
+		snapshot.PendingOperations = nil
+	}
+	sdp, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
+	if err != nil {
+		return fmt.Errorf("constructing deployment for upload: %w", err)
+	}
+
+	bytes, err := json.Marshal(sdp)
+	if err != nil {
+		return err
+	}
+
+	dep := apitype.UntypedDeployment{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Deployment: bytes,
+	}
+
+	// Now perform the deployment.
+	if err = s.ImportDeployment(ctx, &dep); err != nil {
+		return fmt.Errorf("could not import deployment: %w", err)
+	}
+	return nil
+}
+
+func checkDeploymentVersionError(err error, stackName string) error {
+	switch err {
+	case stack.ErrDeploymentSchemaVersionTooOld:
+		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+			stackName)
+	case stack.ErrDeploymentSchemaVersionTooNew:
+		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+			"Please update your version of the Pulumi CLI", stackName)
+	}
+	return fmt.Errorf("could not deserialize deployment: %w", err)
 }

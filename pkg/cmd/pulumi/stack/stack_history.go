@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"encoding/json"
@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -57,17 +56,17 @@ func newStackHistoryCmd() *cobra.Command {
 This command displays data about previous updates for a stack.`,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+			ssml := NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
-				cmdStack.LoadOnly,
+				LoadOnly,
 				opts,
 			)
 			if err != nil {
@@ -84,7 +83,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := cmdStack.LoadProjectStack(project, s)
+				ps, err := LoadProjectStack(project, s)
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
@@ -92,8 +91,8 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
-				if state != cmdStack.SecretsManagerUnchanged {
-					if err = cmdStack.SaveProjectStack(s, ps); err != nil {
+				if state != SecretsManagerUnchanged {
+					if err = SaveProjectStack(s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}
@@ -101,7 +100,7 @@ This command displays data about previous updates for a stack.`,
 			}
 
 			if showSecrets {
-				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
+				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
 			if jsonOut {
@@ -129,7 +128,7 @@ This command displays data about previous updates for a stack.`,
 	return cmd
 }
 
-// updateInfoJSON is the shape of the --json output for a configuration value.  While we can add fields to this
+// updateInfoJSON is the shape of the --json output for updates in a stack history. While we can add fields to this
 // structure in the future, we should not change existing fields.
 type updateInfoJSON struct {
 	Version     int                        `json:"version"`
@@ -143,6 +142,14 @@ type updateInfoJSON struct {
 	// These values are only present once the update finishes
 	EndTime         *string         `json:"endTime,omitempty"`
 	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+}
+
+// configValueJSON is the shape of the --json output for a configuration value in an update in a stack history. While we
+// can add fields to this structure in the future, we should not change existing fields.
+type configValueJSON struct {
+	Value       *string     `json:"value,omitempty"`
+	ObjectValue interface{} `json:"objectValue,omitempty"`
+	Secret      bool        `json:"secret"`
 }
 
 func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {

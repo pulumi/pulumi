@@ -454,18 +454,18 @@ This is a bug! We would appreciate a report: https://github.com/pulumi/pulumi/is
 	// We're saving the destination snapshot first, so that if saving a snapshot fails
 	// the resources will always still be tracked.  If the source snapshot fails the user
 	// will have to manually remove the resources from the source stack.
-	err = saveSnapshot(ctx, dest, destSnapshot, false)
+	err = cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
 	if err != nil {
 		return fmt.Errorf(`failed to save destination snapshot: %w
 
 None of the resources have been moved, it is safe to try again`, err)
 	}
 
-	err = saveSnapshot(ctx, source, sourceSnapshot, false)
+	err = cmdStack.SaveSnapshot(ctx, source, sourceSnapshot, false)
 	if err != nil {
 		// Try to restore the destination snapshot to its original state
 		destSnapshot.Resources = originalDestResources
-		errDest := saveSnapshot(ctx, dest, destSnapshot, false)
+		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
 		if errDest != nil {
 			var deleteCommands string
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"encoding/json"
@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
@@ -56,12 +55,12 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := cmdStack.RequireStack(
+			s, err := RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
-				cmdStack.LoadOnly,
+				LoadOnly,
 				opts,
 			)
 			if err != nil {
@@ -122,7 +121,7 @@ func newStackExportCmd() *cobra.Command {
 					Deployment: data,
 				}
 
-				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")
+				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")
 			}
 
 			// Write the deployment.

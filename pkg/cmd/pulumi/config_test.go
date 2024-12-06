@@ -427,7 +427,7 @@ func TestCopyConfig(t *testing.T) {
 		err := yaml.Unmarshal([]byte("environment:\n  - test2"), &destinationProjectStack)
 		require.NoError(t, err)
 
-		requiresSaving, err := copyEntireConfigMap(
+		requiresSaving, err := stack.CopyEntireConfigMap(
 			context.Background(),
 			stack.SecretsManagerLoader{},
 			sourceStack,

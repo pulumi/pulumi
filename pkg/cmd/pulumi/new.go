@@ -814,7 +814,7 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -836,7 +836,7 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -847,18 +847,6 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		}
 		return s, nil
 	}
-}
-
-// stackInit creates the stack.
-func stackInit(
-	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string,
-) (backend.Stack, error) {
-	stackRef, err := b.ParseStackReference(stackName)
-	if err != nil {
-		return nil, err
-	}
-	return cmdStack.CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.

@@ -28,6 +28,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -318,4 +319,36 @@ func ValidateSecretsProvider(typ string) error {
 	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,
 		strings.Join(supportedKinds, ","))
+}
+
+// we only want to log a secrets decryption for a Pulumi Cloud backend project
+// we will allow any secrets provider to be used (Pulumi Cloud or passphrase/cloud/etc)
+// we will log the message and not worry about the response. The types
+// of messages we will log here will range from single secret decryption events
+// to requesting a list of secrets in an individual event e.g. stack export
+// the logging event will only happen during the `--show-secrets` path within the cli
+func Log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
+	secretName, commandName string,
+) {
+	if stack, ok := backend.(httpstate.Stack); ok {
+		// we only want to do something if this is a Pulumi Cloud backend
+		if be, ok := stack.Backend().(httpstate.Backend); ok {
+			client := be.Client()
+			if client != nil {
+				id := backend.(httpstate.Stack).StackIdentifier()
+				// we don't really care if these logging calls fail as they should not stop the execution
+				if secretName != "" {
+					contract.Assertf(commandName == "", "Command name must be empty if secret name is set")
+					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
+					contract.IgnoreError(err)
+				}
+
+				if commandName != "" {
+					contract.Assertf(secretName == "", "Secret name must be empty if command name is set")
+					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
+					contract.IgnoreError(err)
+				}
+			}
+		}
+	}
 }
