@@ -26,6 +26,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -273,7 +274,7 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 		Message:  message,
 		Options:  options,
 		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil

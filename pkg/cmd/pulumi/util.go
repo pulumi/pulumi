@@ -29,13 +29,13 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -411,7 +411,7 @@ func chooseStack(ctx context.Context, ws pkgWorkspace.Context,
 		Message: message,
 		Options: options,
 		Default: defaultOption,
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
 
@@ -639,40 +639,6 @@ func installPolicyPackDependencies(ctx context.Context, root string, proj *works
 	return nil
 }
 
-func surveyIcons(color colors.Colorization) survey.AskOpt {
-	return survey.WithIcons(func(icons *survey.IconSet) {
-		icons.Question = survey.Icon{}
-		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-	})
-}
-
-// Ask multiple survey based questions.
-//
-// Ctrl-C will go back in the stack, and valid answers will go forward.
-func surveyStack(interactions ...func() error) error {
-	for i := 0; i < len(interactions); {
-		err := interactions[i]()
-		switch err {
-		// No error, so go to the next interaction.
-		case nil:
-			i++
-		// We have received an interrupt, so go back to the previous interaction.
-		case terminal.InterruptErr:
-			// If we have received in interrupt at the beginning of the stack,
-			// the user has asked to go back to before the stack. We can't do
-			// that, so we just return the interrupt.
-			if i == 0 {
-				return err
-			}
-			i--
-		// We have received an unexpected error, so return it.
-		default:
-			return err
-		}
-	}
-	return nil
-}
-
 // Format a non-nil error that indicates some arguments are missing for a
 // non-interactive session.
 func missingNonInteractiveArg(args ...string) error {
@@ -688,83 +654,4 @@ func missingNonInteractiveArg(args ...string) error {
 		return fmt.Errorf("Must supply %s and %s unless pulumi is run interactively",
 			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
 	}
-}
-
-// promptUserSkippable wraps over promptUser making it skippable through the "yes" parameter
-// commonly being the value of the --yes flag used in each command.
-// If yes is true, defaultValue is returned without prompting.
-func promptUserSkippable(yes bool, msg string, options []string, defaultOption string,
-	colorization colors.Colorization,
-) string {
-	if yes {
-		return defaultOption
-	}
-	return promptUser(msg, options, defaultOption, colorization)
-}
-
-// promptUser prompts the user for a value with a list of options. Hitting enter accepts the
-// default.
-func promptUser(
-	msg string,
-	options []string,
-	defaultOption string,
-	colorization colors.Colorization,
-	surveyAskOpts ...survey.AskOpt,
-) string {
-	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
-	surveycore.DisableColor = true
-
-	allSurveyAskOpts := append(
-		surveyAskOpts,
-		survey.WithIcons(func(icons *survey.IconSet) {
-			icons.Question = survey.Icon{}
-			icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-		}),
-	)
-
-	var response string
-	if err := survey.AskOne(&survey.Select{
-		Message: prompt,
-		Options: options,
-		Default: defaultOption,
-	}, &response, allSurveyAskOpts...); err != nil {
-		return ""
-	}
-	return response
-}
-
-// promptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter
-// commonly being the value of the --yes flag used in each command.
-// If yes is true, defaultValue is returned without prompting.
-func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOptions []string,
-	colorization colors.Colorization,
-) []string {
-	if yes {
-		return defaultOptions
-	}
-	return promptUserMulti(msg, options, defaultOptions, colorization)
-}
-
-// promptUserMulti prompts the user for a value with a list of options, allowing to select none or multiple options.
-// defaultOptions is a set of values to be selected by default.
-func promptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
-	confirmationHint := " (use enter to accept the current selection)"
-
-	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
-
-	surveycore.DisableColor = true
-	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
-		icons.Question = survey.Icon{}
-		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-	})
-
-	var response []string
-	if err := survey.AskOne(&survey.MultiSelect{
-		Message: prompt,
-		Options: options,
-		Default: defaultOptions,
-	}, &response, surveyIcons); err != nil {
-		return []string{}
-	}
-	return response
 }

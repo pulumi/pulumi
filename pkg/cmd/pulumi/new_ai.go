@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
 
@@ -67,7 +68,7 @@ func runAINew(
 		if err = survey.AskOne(&survey.Select{
 			Message: "Please select a language for your project:",
 			Options: languageOptions,
-		}, &rawLanguageSelect, surveyIcons(opts.Color)); err != nil {
+		}, &rawLanguageSelect, ui.SurveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
 		err = args.aiLanguage.Set(rawLanguageSelect)
@@ -253,7 +254,7 @@ func runAINewPromptStep(
 			Description: func(opt string, _ int) string {
 				return continuePromptOptionsDescriptions[opt]
 			},
-		}, &continueSelection, surveyIcons(opts.Color)); err != nil {
+		}, &continueSelection, ui.SurveyIcons(opts.Color)); err != nil {
 			return "", "", "", "", err
 		}
 		if continueSelection == noSelection {
@@ -284,7 +285,7 @@ func chooseWithAIOrTemplate(opts display.Options) (string, error) {
 		Description: func(opt string, _ int) string {
 			return optionsDescriptionMap[opt]
 		},
-	}, &ai, surveyIcons(opts.Color)); err != nil {
+	}, &ai, ui.SurveyIcons(opts.Color)); err != nil {
 		return "template", err
 	}
 

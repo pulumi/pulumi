@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -191,7 +192,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			switch len(args) {
 			case 0: // We got neither the URN nor the name.
 				var snap *deploy.Snapshot
-				err := surveyStack(
+				err := ui.SurveyStack(
 					func() (err error) {
 						urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, &snap, "Select a resource to rename:")
 						if err != nil {

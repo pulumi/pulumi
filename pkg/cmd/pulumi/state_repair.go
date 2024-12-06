@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -198,7 +199,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		msg := "This command will edit your stack's state directly. Confirm?"
 		options := []string{yes, no}
 
-		switch response := promptUser(
+		switch response := ui.PromptUser(
 			msg, options, no, cmd.Args.Colorizer,
 			survey.WithStdio(cmd.Stdin, cmd.Stdout, cmd.Stderr),
 		); response {

@@ -24,6 +24,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -72,19 +73,19 @@ func (promptHandlers) AskForConfirmation(prompt string, color colors.Colorizatio
 func (promptHandlers) PromptUser(msg string, options []string, defaultOption string,
 	colorization colors.Colorization,
 ) string {
-	return promptUser(msg, options, defaultOption, colorization)
+	return ui.PromptUser(msg, options, defaultOption, colorization)
 }
 
 func (promptHandlers) PromptUserSkippable(yes bool, msg string, options []string, defaultOption string,
 	colorization colors.Colorization,
 ) string {
-	return promptUserSkippable(yes, msg, options, defaultOption, colorization)
+	return ui.PromptUserSkippable(yes, msg, options, defaultOption, colorization)
 }
 
 func (promptHandlers) PromptUserMultiSkippable(yes bool, msg string, options []string, defaultOptions []string,
 	colorization colors.Colorization,
 ) []string {
-	return promptUserMultiSkippable(yes, msg, options, defaultOptions, colorization)
+	return ui.PromptUserMultiSkippable(yes, msg, options, defaultOptions, colorization)
 }
 
 func (promptHandlers) PromptForValue(
@@ -188,7 +189,7 @@ func askForConfirmation(prompt string, color colors.Colorization, defaultValue b
 		def = optYes
 	}
 	options := []string{optYes, optNo}
-	response := promptUserSkippable(yes, prompt, options, def, color)
+	response := ui.PromptUserSkippable(yes, prompt, options, def, color)
 	return response == optYes
 }
 

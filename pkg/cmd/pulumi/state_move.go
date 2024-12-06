@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -426,7 +427,7 @@ func (cmd *stateMoveCmd) Run(
 			no,
 		}
 
-		switch response := promptUser(msg, options, no, cmdutil.GetGlobalColorization()); response {
+		switch response := ui.PromptUser(msg, options, no, cmdutil.GetGlobalColorization()); response {
 		case yes:
 		// continue
 		case no:
