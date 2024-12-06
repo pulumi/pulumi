@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -367,7 +368,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				newVersionCmd(),
-				newAboutCmd(),
+				about.NewAboutCmd(),
 				newGenCompletionCmd(cmd),
 			},
 		},

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package about
 
 import (
 	"context"
@@ -48,7 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newAboutCmd() *cobra.Command {
+func NewAboutCmd() *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string

@@ -16,7 +16,7 @@
 //
 // Public environmental variables should be declared as a module level variable.
 
-package main
+package about
 
 import (
 	"errors"
