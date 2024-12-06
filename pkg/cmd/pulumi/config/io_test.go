@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package config
 
 import (
 	"context"
@@ -60,7 +60,7 @@ func TestSecretDetection(t *testing.T) {
 func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	t.Parallel()
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
-	_, _, _ = getStackConfiguration(
+	_, _, _ = GetStackConfiguration(
 		context.Background(),
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
@@ -89,7 +89,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	t.Parallel()
 	// Don't check return values. Just check that GetLatestConfiguration() is called.
 	called := false
-	_, _, _ = getStackConfigurationOrLatest(
+	_, _, _ = GetStackConfigurationOrLatest(
 		context.Background(),
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{

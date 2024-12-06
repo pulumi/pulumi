@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -126,7 +127,7 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -380,7 +381,7 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := getStackConfiguration(ctx, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -868,7 +869,7 @@ func isPreconfiguredEmptyStack(
 
 	// Can stackConfig satisfy the config requirements of templateConfig?
 	for templateKey, templateVal := range templateConfig {
-		parsedTemplateKey, parseErr := parseConfigKey(templateKey)
+		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(templateKey)
 		if parseErr != nil {
 			contract.IgnoreError(parseErr)
 			return false

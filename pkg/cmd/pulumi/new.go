@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1085,7 +1086,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := parseConfigKey(kvp[0])
+		key, err := cmdConfig.ParseConfigKey(kvp[0])
 		if err != nil {
 			return nil, err
 		}
@@ -1122,7 +1123,7 @@ func promptForConfig(
 	// the project name will be prepended.
 	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
 	for k, v := range templateConfig {
-		parsedKey, parseErr := parseConfigKey(k)
+		parsedKey, parseErr := cmdConfig.ParseConfigKey(k)
 		if parseErr != nil {
 			return nil, parseErr
 		}
@@ -1194,7 +1195,7 @@ func promptForConfig(
 		}
 
 		// Prepare the prompt.
-		promptText := prettyKey(k)
+		promptText := cmdConfig.PrettyKey(k)
 		if templateConfigValue.Description != "" {
 			promptText = templateConfigValue.Description + " (" + promptText + ")"
 		}

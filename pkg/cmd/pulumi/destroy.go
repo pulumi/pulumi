@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -213,11 +214,11 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			getConfig := getStackConfiguration
+			getConfig := config.GetStackConfiguration
 			if stackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
 				// The config may be missing, fallback on the latest configuration in the backend.
-				getConfig = getStackConfigurationOrLatest
+				getConfig = config.GetStackConfigurationOrLatest
 			}
 			cfg, sm, err := getConfig(ctx, ssml, s, proj)
 			if err != nil {

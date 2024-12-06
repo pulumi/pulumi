@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,12 @@
 package main
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli"
 	escWorkspace "github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -40,17 +36,4 @@ func newEnvCmd() *cobra.Command {
 	// Add the `env` command to the root.
 	envCommand := escCLI.Commands()[0]
 	return envCommand
-}
-
-func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {
-	for _, d := range diags {
-		if d.Range != nil {
-			fmt.Fprintf(out, "%v:", d.Range.Environment)
-			if d.Range.Begin.Line != 0 {
-				fmt.Fprintf(out, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
-			}
-			fmt.Fprintf(out, " ")
-		}
-		fmt.Fprintf(out, "%v\n", d.Summary)
-	}
 }
