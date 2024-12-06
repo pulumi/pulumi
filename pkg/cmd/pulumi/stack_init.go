@@ -27,6 +27,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -153,7 +154,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 		}
 
-		name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
+		name, nameErr := ui.PromptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
 		if nameErr != nil {
 			return nameErr
 		}
