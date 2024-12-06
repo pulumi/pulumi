@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -148,12 +149,12 @@ func newWatchCmd() *cobra.Command {
 				Parallel:                  parallel,
 				Debug:                     debug,
 				Refresh:                   refresh,
-				UseLegacyDiff:             useLegacyDiff(),
-				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
-				DisableProviderPreview:    disableProviderPreview(),
-				DisableResourceReferences: disableResourceReferences(),
-				DisableOutputValues:       disableOutputValues(),
-				Experimental:              hasExperimentalCommands(),
+				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:    env.DisableProviderPreview.Value(),
+				DisableResourceReferences: env.DisableResourceReferences.Value(),
+				DisableOutputValues:       env.DisableOutputValues.Value(),
+				Experimental:              env.Experimental.Value(),
 			}
 
 			err = s.Watch(ctx, backend.UpdateOperation{

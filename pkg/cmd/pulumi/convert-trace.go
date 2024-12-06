@@ -41,6 +41,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -714,7 +715,7 @@ func newConvertTraceCmd() *cobra.Command {
 			"pprof format. The converted trace is written to stdout, and can be\n" +
 			"inspected using `go tool pprof`.",
 		Args:   cmdutil.ExactArgs(1),
-		Hidden: !hasDebugCommands(),
+		Hidden: !env.DebugCommands.Value(),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
 			if err := readTrace(args[0], store); err != nil {

@@ -168,17 +168,17 @@ func newUpCmd() *cobra.Command {
 			Debug:                     debug,
 			Refresh:                   refreshOption,
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-			UseLegacyDiff:             useLegacyDiff(),
-			UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
-			DisableProviderPreview:    disableProviderPreview(),
-			DisableResourceReferences: disableResourceReferences(),
-			DisableOutputValues:       disableOutputValues(),
+			UseLegacyDiff:             env.EnableLegacyDiff.Value(),
+			UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
+			DisableProviderPreview:    env.DisableProviderPreview.Value(),
+			DisableResourceReferences: env.DisableResourceReferences.Value(),
+			DisableOutputValues:       env.DisableOutputValues.Value(),
 			Targets:                   deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
 			GeneratePlan:    true,
-			Experimental:    hasExperimentalCommands(),
+			Experimental:    env.Experimental.Value(),
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 		}
@@ -416,10 +416,10 @@ func newUpCmd() *cobra.Command {
 
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan: env.Experimental.Value(),
+			Experimental: env.Experimental.Value(),
 
-			UseLegacyRefreshDiff: useLegacyRefreshDiff(),
+			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
 
 			AttachDebugger: attachDebugger,
@@ -479,7 +479,7 @@ func newUpCmd() *cobra.Command {
 				skipPreview = true
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			yes = yes || skipPreview || env.SkipConfirmations.Value()
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -703,14 +703,14 @@ func newUpCmd() *cobra.Command {
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
-	if !hasExperimentalCommands() {
+	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
 
-	if hasDebugCommands() {
+	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")

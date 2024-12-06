@@ -33,6 +33,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -47,7 +48,7 @@ func newStateEditCommand() *cobra.Command {
 		Use: "edit",
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
 		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
-		Hidden: !hasExperimentalCommands(),
+		Hidden: !env.Experimental.Value(),
 		Short:  "Edit the current stack's state in your EDITOR",
 		Long: `[EXPERIMENTAL] Edit the current stack's state in your EDITOR
 

@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -54,7 +55,7 @@ func newViewTraceCmd() *cobra.Command {
 			"webserver to display the trace. By default, this server will listen\n" +
 			"port 8008; the --port flag can be used to change this if necessary.",
 		Args:   cmdutil.ExactArgs(1),
-		Hidden: !hasDebugCommands(),
+		Hidden: !env.DebugCommands.Value(),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 			if err != nil {

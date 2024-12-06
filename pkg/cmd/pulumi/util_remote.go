@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -37,7 +38,7 @@ var disableRemote bool
 
 // remoteSupported returns true if the CLI supports remote deployments.
 func remoteSupported() bool {
-	return !disableRemote && hasExperimentalCommands()
+	return !disableRemote && env.Experimental.Value()
 }
 
 // parseEnv parses a `--remote-env` flag value for `--remote`. A value should be of the form

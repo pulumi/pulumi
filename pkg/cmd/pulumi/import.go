@@ -793,7 +793,7 @@ func newImportCmd() *cobra.Command {
 				return err
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
 				return errors.New("--yes or --skip-preview or --preview-only" +
@@ -942,9 +942,9 @@ func newImportCmd() *cobra.Command {
 			opts.Engine = engine.UpdateOptions{
 				Parallel:             parallel,
 				Debug:                debug,
-				UseLegacyDiff:        useLegacyDiff(),
-				UseLegacyRefreshDiff: useLegacyRefreshDiff(),
-				Experimental:         hasExperimentalCommands(),
+				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
+				Experimental:         env.Experimental.Value(),
 			}
 
 			_, err = s.Import(ctx, backend.UpdateOperation{
@@ -1082,7 +1082,7 @@ func newImportCmd() *cobra.Command {
 		&from, "from", "",
 		"Invoke a converter to import the resources")
 
-	if hasDebugCommands() {
+	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
