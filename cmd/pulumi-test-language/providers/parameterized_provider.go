@@ -34,6 +34,7 @@ type ParameterizedProvider struct {
 	parameterValue   []byte
 	parameterVersion string
 	parameterPackage string
+	config           string
 }
 
 var _ plugin.Provider = (*ParameterizedProvider)(nil)
@@ -77,6 +78,15 @@ func (p *ParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
 		Version: version,
+		Provider: schema.ResourceSpec{
+			InputProperties: map[string]schema.PropertySpec{
+				"text": {
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			token: {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -135,7 +145,7 @@ func (p *ParameterizedProvider) Parameterize(
 func (p *ParameterizedProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	// Expect just the version
+	// Expect the version
 	version, ok := req.News["version"]
 	if !ok {
 		return plugin.CheckConfigResponse{
@@ -155,7 +165,18 @@ func (p *ParameterizedProvider) CheckConfig(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	// Optionally expect the text config
+	text, ok := req.News["text"]
+	if ok {
+		if !text.IsString() {
+			return plugin.CheckConfigResponse{
+				Failures: makeCheckFailure("text", "text is not a string"),
+			}, nil
+		}
+		p.config = text.StringValue()
+	}
+
+	if len(req.News) > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -195,9 +216,14 @@ func (p *ParameterizedProvider) Create(
 		id = ""
 	}
 
+	var configText string
+	if p.config != "" {
+		configText = " " + p.config
+	}
+
 	// parameterized resource outputs will include the parameter value that the provider was parameterized with
 	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		"parameterValue": string(p.parameterValue),
+		"parameterValue": string(p.parameterValue) + configText,
 	})
 
 	return plugin.CreateResponse{

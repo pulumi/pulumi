@@ -1750,6 +1750,25 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-explicit-parameterized-provider": {
+		providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					require.Equal(l,
+						resource.NewStringProperty("Goodbye World"),
+						stack.Outputs["parameterValue"],
+						"parameter value and provider config should be correct")
+				},
+			},
+		},
+	},
 }
 
 // Like assert.Equal but also permits the actual value to be the JSON-serialized string form of the expected value.
