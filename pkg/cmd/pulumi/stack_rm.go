@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/spf13/cobra"
@@ -53,7 +54,7 @@ func newStackRmCmd() *cobra.Command {
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
-			yes = yes || skipConfirmations()
+			yes = yes || env.SkipConfirmations.Value()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {

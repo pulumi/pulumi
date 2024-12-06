@@ -415,7 +415,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 		"Include the tracing header with the given contents.")
 
-	if !hasDebugCommands() {
+	if !env.DebugCommands.Value() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
 		contract.IgnoreError(err)
 	}

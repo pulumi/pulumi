@@ -111,7 +111,7 @@ func newDestroyCmd() *cobra.Command {
 				skipPreview = true
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
 				return errors.New("--yes or --skip-preview or --preview-only " +
@@ -277,12 +277,12 @@ func newDestroyCmd() *cobra.Command {
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
 				TargetDependents:          targetDependents,
-				UseLegacyDiff:             useLegacyDiff(),
-				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
-				DisableProviderPreview:    disableProviderPreview(),
-				DisableResourceReferences: disableResourceReferences(),
-				DisableOutputValues:       disableOutputValues(),
-				Experimental:              hasExperimentalCommands(),
+				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:    env.DisableProviderPreview.Value(),
+				DisableResourceReferences: env.DisableResourceReferences.Value(),
+				DisableOutputValues:       env.DisableOutputValues.Value(),
+				Experimental:              env.Experimental.Value(),
 				ContinueOnError:           continueOnError,
 			}
 
@@ -405,7 +405,7 @@ func newDestroyCmd() *cobra.Command {
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
 
-	if hasDebugCommands() {
+	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")

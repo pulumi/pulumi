@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
@@ -41,7 +42,7 @@ type stateDeleteCmd struct {
 func (cmd *stateDeleteCmd) Run(
 	ctx context.Context, args []string, ws pkgWorkspace.Context, lm backend.LoginManager,
 ) error {
-	cmd.yes = cmd.yes || skipConfirmations()
+	cmd.yes = cmd.yes || env.SkipConfirmations.Value()
 	var urn resource.URN
 	if len(args) == 0 {
 		if !cmdutil.Interactive() {

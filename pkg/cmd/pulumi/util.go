@@ -46,7 +46,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -54,44 +53,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-func hasDebugCommands() bool {
-	return env.DebugCommands.Value()
-}
-
-func hasExperimentalCommands() bool {
-	return env.Experimental.Value()
-}
-
-func useLegacyDiff() bool {
-	return env.EnableLegacyDiff.Value()
-}
-
-func useLegacyRefreshDiff() bool {
-	return env.EnableLegacyRefreshDiff.Value()
-}
-
-func disableProviderPreview() bool {
-	return env.DisableProviderPreview.Value()
-}
-
-func disableResourceReferences() bool {
-	return env.DisableResourceReferences.Value()
-}
-
-func disableOutputValues() bool {
-	return env.DisableOutputValues.Value()
-}
-
-// skipConfirmations returns whether or not confirmation prompts should
-// be skipped. This should be used by pass any requirement that a --yes
-// parameter has been set for non-interactive scenarios.
-//
-// This should NOT be used to bypass protections for destructive
-// operations, such as those that will fail without a --force parameter.
-func skipConfirmations() bool {
-	return env.SkipConfirmations.Value()
-}
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.

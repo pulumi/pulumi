@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -59,7 +60,7 @@ func newReplayEventsCmd() *cobra.Command {
 			"This command loads events from the indicated file and renders them\n" +
 			"using either the progress view or the diff view.\n",
 		Args:   cmdutil.ExactArgs(2),
-		Hidden: !hasDebugCommands(),
+		Hidden: !env.DebugCommands.Value(),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			var action apitype.UpdateKind
 			switch args[0] {

@@ -36,6 +36,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -101,7 +102,7 @@ func newRefreshCmd() *cobra.Command {
 				skipPreview = true
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
 				return errors.New("--yes or --skip-preview or --preview-only " +
@@ -269,13 +270,13 @@ func newRefreshCmd() *cobra.Command {
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
-				UseLegacyDiff:             useLegacyDiff(),
-				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
-				DisableProviderPreview:    disableProviderPreview(),
-				DisableResourceReferences: disableResourceReferences(),
-				DisableOutputValues:       disableOutputValues(),
+				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:    env.DisableProviderPreview.Value(),
+				DisableResourceReferences: env.DisableResourceReferences.Value(),
+				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Targets:                   deploy.NewUrnTargets(targetUrns),
-				Experimental:              hasExperimentalCommands(),
+				Experimental:              env.Experimental.Value(),
 			}
 
 			changes, err := s.Refresh(ctx, backend.UpdateOperation{
@@ -373,7 +374,7 @@ func newRefreshCmd() *cobra.Command {
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
 
-	if hasDebugCommands() {
+	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")

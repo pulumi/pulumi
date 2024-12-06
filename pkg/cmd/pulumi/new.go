@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -607,7 +608,7 @@ func newNewCmd() *cobra.Command {
 				return nil
 			}
 
-			args.yes = args.yes || skipConfirmations()
+			args.yes = args.yes || env.SkipConfirmations.Value()
 			args.interactive = isInteractive()
 			return runNew(ctx, args)
 		}),

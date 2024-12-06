@@ -24,6 +24,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -56,7 +57,7 @@ func newAICommand() *cobra.Command {
 		Use:    "ai",
 		Short:  "Basic Pulumi AI CLI commands.",
 		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
-		Hidden: !hasExperimentalCommands(),
+		Hidden: !env.Experimental.Value(),
 		Args:   cmdutil.NoArgs,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

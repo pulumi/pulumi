@@ -38,6 +38,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -438,17 +439,17 @@ func newPreviewCmd() *cobra.Command {
 					Debug:                     debug,
 					Refresh:                   refreshOption,
 					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-					UseLegacyDiff:             useLegacyDiff(),
-					UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
-					DisableProviderPreview:    disableProviderPreview(),
-					DisableResourceReferences: disableResourceReferences(),
-					DisableOutputValues:       disableOutputValues(),
+					UseLegacyDiff:             env.EnableLegacyDiff.Value(),
+					UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
+					DisableProviderPreview:    env.DisableProviderPreview.Value(),
+					DisableResourceReferences: env.DisableResourceReferences.Value(),
+					DisableOutputValues:       env.DisableOutputValues.Value(),
 					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   hasExperimentalCommands() || planFilePath != "",
-					Experimental:   hasExperimentalCommands(),
+					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
+					Experimental:   env.Experimental.Value(),
 					AttachDebugger: attachDebugger,
 				},
 				Display: displayOpts,
@@ -557,7 +558,7 @@ func newPreviewCmd() *cobra.Command {
 		&showSecrets, "show-secrets", "", false,
 		"[EXPERIMENTAL] Emit secrets in plaintext in the plan file. Defaults to `false`")
 
-	if !hasExperimentalCommands() {
+	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
 			`Could not mark "save-plan" as hidden`)
 		contract.AssertNoErrorf(cmd.Flags().MarkHidden("show-secrets"),
@@ -643,7 +644,7 @@ func newPreviewCmd() *cobra.Command {
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
 
-	if hasDebugCommands() {
+	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
