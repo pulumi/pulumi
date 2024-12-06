@@ -58,6 +58,7 @@
         "runtime/rpc.ts",
         "runtime/settings.ts",
         "runtime/stack.ts",
+        "schema/index.ts",
         "cmd/dynamic-provider/index.ts",
         "cmd/dynamic-provider/config.ts",
         "cmd/run/index.ts",
