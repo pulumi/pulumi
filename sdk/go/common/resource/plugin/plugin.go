@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -100,6 +102,12 @@ type plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
+	// The unstructured output of the process.
+	//
+	// unstructuredOutput is only non-nil if Pulumi launched the process and is hiding
+	// unstructured output.
+	unstructuredOutput *unstructuredOutput
+
 	Bin  string
 	Args []string
 	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
@@ -111,6 +119,25 @@ type plugin struct {
 	Stdin  io.WriteCloser
 	Stdout io.ReadCloser
 	Stderr io.ReadCloser
+}
+
+type unstructuredOutput struct {
+	output bytes.Buffer
+	// outputLock prevents concurrent writes to output.
+	outputLock sync.Mutex
+	diag       diag.Sink
+
+	// done is true when the output has already been written to the user.
+	done atomic.Bool
+}
+
+// WriteString a string of unstructured output.
+//
+// WriteString is safe to call concurrently.
+func (uo *unstructuredOutput) WriteString(msg string) {
+	uo.outputLock.Lock()
+	defer uo.outputLock.Unlock()
+	uo.output.WriteString(msg)
 }
 
 // pluginRPCConnectionTimeout dictates how long we wait for the plugin's RPC to become available.
@@ -245,16 +272,23 @@ func newPlugin[T any](
 		}
 	}()
 
-	outStreamID := atomic.AddInt32(&nextStreamID, 1)
-	errStreamID := atomic.AddInt32(&nextStreamID, 1)
+	type streamID int32
+	outStreamID := streamID(atomic.AddInt32(&nextStreamID, 1))
+	errStreamID := streamID(atomic.AddInt32(&nextStreamID, 1))
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
-	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
+	if kind == apitype.ResourcePlugin {
+		plug.unstructuredOutput = &unstructuredOutput{diag: ctx.Diag}
+	}
+	runtrace := func(t io.Reader, streamID streamID, done chan<- bool) {
 		reader := bufio.NewReader(t)
 
 		for {
 			msg, readerr := reader.ReadString('\n')
+			if plug.unstructuredOutput != nil {
+				plug.unstructuredOutput.WriteString(msg)
+			}
 
 			// Even if we've hit the end of the stream, we want to check for non-empty content.
 			// The reason is that if the last line is missing a \n, we still want to include it.
@@ -268,11 +302,16 @@ func newPlugin[T any](
 					sawPolicyModuleNotFoundErr = true
 				}
 
-				if stderr {
-					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
+				var log func(*diag.Diag, ...interface{})
+				if plug.unstructuredOutput != nil {
+					log = ctx.Diag.Debugf
+				} else if streamID == outStreamID {
+					log = ctx.Diag.Infof
 				} else {
-					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID))
+					contract.Assertf(streamID == errStreamID, "invalid")
+					log = ctx.Diag.Infoerrf
 				}
+				log(diag.StreamMessage("" /*urn*/, msg, int32(streamID)))
 			}
 
 			// If we've hit the end of the stream, break out and close the channel.
@@ -287,7 +326,7 @@ func newPlugin[T any](
 	// Set up a tracer on stderr before going any further, since important errors might get communicated this way.
 	stderrDone := make(chan bool)
 	plug.stderrDone = stderrDone
-	go runtrace(plug.Stderr, true, stderrDone)
+	go runtrace(plug.Stderr, errStreamID, stderrDone)
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
@@ -328,7 +367,7 @@ func newPlugin[T any](
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
 	stdoutDone := make(chan bool)
 	plug.stdoutDone = stdoutDone
-	go runtrace(plug.Stdout, false, stdoutDone)
+	go runtrace(plug.Stdout, outStreamID, stdoutDone)
 
 	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
 	if err != nil {
@@ -515,6 +554,10 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 }
 
 func (p *plugin) Close() error {
+	// Something has gone wrong with the plugin if it is not ready to handle requests
+	// and we have not yet shut it down.
+	pluginCrashed := p.Conn.GetState() != connectivity.Ready
+
 	if p.Conn != nil {
 		contract.IgnoreClose(p.Conn)
 	}
@@ -527,6 +570,35 @@ func (p *plugin) Close() error {
 	}
 	if p.stderrDone != nil {
 		<-p.stderrDone
+	}
+
+	// If the plugin has crashed and p.unstructuredOutput != nil is non-nil, then we
+	// have not displayed any unstructured output to the user - including any
+	// potential stack trace.
+	//
+	// To help debug (and to avoid attempting to detect the stack trace), we dump the captured stdout.
+	if pluginCrashed && p.unstructuredOutput != nil && p.unstructuredOutput.done.CompareAndSwap(false, true) {
+		id := atomic.AddInt32(&nextStreamID, 1)
+		d := p.unstructuredOutput.diag
+		// This outputs an error block:
+		//
+		//	error:
+		//
+		//	        Detected that <bin> exited prematurely.
+		//	        This is *always* a bug in the provider. Please report the issue to the provider author as appropriate.
+		//
+		//	To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:
+		//
+		//	<output>
+		d.Errorf(diag.StreamMessage("", fmt.Sprintf("\n\n         Detected that %s exited prematurely.\n", p.Bin), id))
+		d.Errorf(diag.StreamMessage("",
+			"         This is *always* a bug in the provider. "+
+				"Please report the issue to the provider author as appropriate.\n\n", id))
+		d.Errorf(diag.StreamMessage("",
+			"To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:\n\n", id))
+		p.unstructuredOutput.outputLock.Lock()
+		defer p.unstructuredOutput.outputLock.Unlock()
+		d.Errorf(diag.StreamMessage("", p.unstructuredOutput.output.String(), id))
 	}
 
 	return result
