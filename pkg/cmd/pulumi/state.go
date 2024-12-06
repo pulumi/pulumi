@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -144,7 +145,14 @@ func runTotalStateEdit(
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(ctx, ws, lm, stackName, stackOfferNew, opts)
+	s, err := cmdStack.RequireStack(
+		ctx,
+		ws,
+		lm,
+		stackName,
+		cmdStack.OfferNew,
+		opts,
+	)
 	if err != nil {
 		return err
 	}
@@ -224,7 +232,14 @@ func getURNFromState(
 			Color: cmdutil.GetGlobalColorization(),
 		}
 
-		s, err := requireStack(ctx, ws, lm, stackName, stackLoadOnly, opts)
+		s, err := cmdStack.RequireStack(
+			ctx,
+			ws,
+			lm,
+			stackName,
+			cmdStack.LoadOnly,
+			opts,
+		)
 		if err != nil {
 			return "", err
 		}

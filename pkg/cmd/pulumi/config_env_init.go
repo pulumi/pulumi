@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -108,7 +109,13 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	}
 
 	stack, err := cmd.parent.requireStack(
-		ctx, cmd.parent.ws, cmdBackend.DefaultLoginManager, *cmd.parent.stackRef, stackOfferNew|stackSetCurrent, opts)
+		ctx,
+		cmd.parent.ws,
+		cmdBackend.DefaultLoginManager,
+		*cmd.parent.stackRef,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		opts,
+	)
 	if err != nil {
 		return err
 	}
@@ -202,12 +209,12 @@ func (cmd *configEnvInitCmd) getStackConfig(
 		return nil, nil, err
 	}
 
-	decrypter, state, err := cmd.parent.ssml.getDecrypter(ctx, stack, ps)
+	decrypter, state, err := cmd.parent.ssml.GetDecrypter(ctx, stack, ps)
 	if err != nil {
 		return nil, nil, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
-	if state != stackSecretsManagerUnchanged {
+	if state != cmdStack.SecretsManagerUnchanged {
 		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}

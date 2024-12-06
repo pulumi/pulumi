@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func TestNewStackSecretsManagerLoaderFromEnv(t *testing.T) {
 		t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", c.envValue)
 
 		// Act.
-		loader := newStackSecretsManagerLoaderFromEnv()
+		loader := NewStackSecretsManagerLoaderFromEnv()
 
 		// Assert.
 		assert.Equal(
@@ -76,10 +76,10 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: true}
+	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.getDecrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
 
 	// Assert.
 	//
@@ -88,7 +88,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	// our fallback was called as a proxy.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerUnchanged, state,
+		t, SecretsManagerUnchanged, state,
 		"A mock decrypter should have no effect on the project stack",
 	)
 	assert.True(t, fellback, "Should have fallen back to the mock decrypter")
@@ -112,15 +112,15 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: true}
+	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.getDecrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
 
 	// Assert.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerShouldSave, state,
+		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase decrypter should be written to the project stack",
 	)
 	assert.Equal(t, "test-salt", ps.EncryptionSalt, "The encryption salt should be set on the project stack")
@@ -149,15 +149,15 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: false}
+	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	_, state, err := ssml.getDecrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
 
 	// Assert.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerUnchanged, state,
+		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
 	)
 	assert.True(t, defaulted, "Should have loaded the default decrypter")
@@ -184,10 +184,10 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: true}
+	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.getEncrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
 
 	// Assert.
 	//
@@ -196,7 +196,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	// our fallback was called as a proxy.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerUnchanged, state,
+		t, SecretsManagerUnchanged, state,
 		"A mock encrypter should have no effect on the project stack",
 	)
 	assert.True(t, fellback, "Should have fallen back to the mock encrypter")
@@ -220,15 +220,15 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: true}
+	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.getEncrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
 
 	// Assert.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerShouldSave, state,
+		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase encrypter should be written to the project stack",
 	)
 	assert.Equal(t, "test-salt", ps.EncryptionSalt, "The encryption salt should be set on the project stack")
@@ -257,15 +257,15 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	ps := &workspace.ProjectStack{}
-	ssml := stackSecretsManagerLoader{FallbackToState: false}
+	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	_, state, err := ssml.getEncrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
 
 	// Assert.
 	assert.NoError(t, err)
 	assert.Equal(
-		t, stackSecretsManagerUnchanged, state,
+		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
 	)
 	assert.True(t, defaulted, "Should have loaded the default encrypter")

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -56,12 +57,19 @@ func newStackHistoryCmd() *cobra.Command {
 This command displays data about previous updates for a stack.`,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stack, stackLoadOnly, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stack,
+				cmdStack.LoadOnly,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -76,16 +84,16 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := loadProjectStack(project, s)
+				ps, err := cmdStack.LoadProjectStack(project, s)
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
-				crypter, state, err := ssml.getDecrypter(ctx, s, ps)
+				crypter, state, err := ssml.GetDecrypter(ctx, s, ps)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
-				if state != stackSecretsManagerUnchanged {
-					if err = saveProjectStack(s, ps); err != nil {
+				if state != cmdStack.SecretsManagerUnchanged {
+					if err = cmdStack.SaveProjectStack(s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}

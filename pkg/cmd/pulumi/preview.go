@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -302,7 +303,7 @@ func newPreviewCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -337,7 +338,7 @@ func newPreviewCmd() *cobra.Command {
 				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
-					targetReplaces, targetDependents, planFilePath, stackConfigFile)
+					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile)
 				if err != nil {
 					return err
 				}
@@ -369,7 +370,14 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackOfferNew, displayOpts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stackName,
+				cmdStack.OfferNew,
+				displayOpts,
+			)
 			if err != nil {
 				return err
 			}
@@ -543,7 +551,7 @@ func newPreviewCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},

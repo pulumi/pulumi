@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -96,13 +97,20 @@ func newUpCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
 		ctx context.Context,
-		ssml stackSecretsManagerLoader,
+		ssml cmdStack.SecretsManagerLoader,
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 	) error {
-		s, err := requireStack(ctx, ws, lm, stackName, stackOfferNew, opts.Display)
+		s, err := cmdStack.RequireStack(
+			ctx,
+			ws,
+			lm,
+			stackName,
+			cmdStack.OfferNew,
+			opts.Display,
+		)
 		if err != nil {
 			return err
 		}
@@ -224,7 +232,7 @@ func newUpCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
 	upTemplateNameOrURL := func(
 		ctx context.Context,
-		ssml stackSecretsManagerLoader,
+		ssml cmdStack.SecretsManagerLoader,
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		templateNameOrURL string,
@@ -258,7 +266,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Validate secrets provider type
-		if err := validateSecretsProvider(secretsProvider); err != nil {
+		if err := cmdStack.ValidateSecretsProvider(secretsProvider); err != nil {
 			return err
 		}
 
@@ -471,7 +479,7 @@ func newUpCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
@@ -531,7 +539,7 @@ func newUpCmd() *cobra.Command {
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
-					targetDependents, planFilePath, stackConfigFile)
+					targetDependents, planFilePath, cmdStack.ConfigFile)
 				if err != nil {
 					return err
 				}
@@ -596,7 +604,7 @@ func newUpCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
@@ -747,7 +755,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
 	project *workspace.Project,

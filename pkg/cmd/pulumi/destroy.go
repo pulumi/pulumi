@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -102,7 +103,7 @@ func newDestroyCmd() *cobra.Command {
 
 			// Destroy is always permitted to fall back to looking for secrets providers in state, since we explicitly
 			// want to support use cases where a user is trying to destroy a stack they no longer have configuration for.
-			ssml := stackSecretsManagerLoader{FallbackToState: true}
+			ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
 
 			ws := pkgWorkspace.Instance
 
@@ -154,7 +155,7 @@ func newDestroyCmd() *cobra.Command {
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
-					targetDependents, "", stackConfigFile)
+					targetDependents, "", cmdStack.ConfigFile)
 				if err != nil {
 					return err
 				}
@@ -182,7 +183,14 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stackName,
+				cmdStack.LoadOnly,
+				opts.Display,
+			)
 			if err != nil {
 				return err
 			}
@@ -337,7 +345,7 @@ func newDestroyCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

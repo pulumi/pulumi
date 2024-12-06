@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -111,7 +112,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stackLoadOption, display.Options,
+				string, stack.LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -223,7 +224,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stackLoadOption, display.Options,
+				string, stack.LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -345,7 +346,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stackLoadOption, display.Options,
+				string, stack.LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -383,7 +384,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, string, stackLoadOption, display.Options,
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, string, stack.LoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
