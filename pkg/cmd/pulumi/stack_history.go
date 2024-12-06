@@ -155,7 +155,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		info := updateInfoJSON{
 			Version:     update.Version,
 			Kind:        string(update.Kind),
-			StartTime:   time.Unix(update.StartTime, 0).UTC().Format(timeFormat),
+			StartTime:   cmd.FormatTime(time.Unix(update.StartTime, 0).UTC()),
 			Message:     update.Message,
 			Environment: update.Environment,
 		}
@@ -187,7 +187,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		}
 		info.Result = string(update.Result)
 		if update.Result != backend.InProgressResult {
-			info.EndTime = makeStringRef(time.Unix(update.EndTime, 0).UTC().Format(timeFormat))
+			info.EndTime = makeStringRef(cmd.FormatTime(time.Unix(update.EndTime, 0).UTC()))
 			resourceChanges := make(map[string]int)
 			for k, v := range update.ResourceChanges {
 				resourceChanges[string(k)] = v

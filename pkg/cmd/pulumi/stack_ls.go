@@ -240,7 +240,7 @@ func formatStackSummariesJSON(
 					updateInProgress := false
 					summaryJSON.UpdateInProgress = &updateInProgress
 				}
-				summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
+				summaryJSON.LastUpdate = cmd.FormatTime(summary.LastUpdate().UTC())
 			}
 		}
 
