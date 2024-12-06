@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -167,21 +166,4 @@ func installPolicyPackDependencies(ctx context.Context, root string, proj *works
 	}
 
 	return nil
-}
-
-// Format a non-nil error that indicates some arguments are missing for a
-// non-interactive session.
-func missingNonInteractiveArg(args ...string) error {
-	switch len(args) {
-	case 0:
-		panic("cannot create an error message for missing zero args")
-	case 1:
-		return fmt.Errorf("Must supply <%s> unless pulumi is run interactively", args[0])
-	default:
-		for i, s := range args {
-			args[i] = "<" + s + ">"
-		}
-		return fmt.Errorf("Must supply %s and %s unless pulumi is run interactively",
-			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
-	}
 }

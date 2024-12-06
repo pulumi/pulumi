@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Terminal detection utilities.
-package main
+package cmd
 
 import (
 	"testing"
@@ -24,9 +24,9 @@ import (
 func TestOptimalPageSize(t *testing.T) {
 	t.Parallel()
 	opt := func(nopts, termHeight int) int {
-		return optimalPageSize(optimalPageSizeOpts{
-			nopts:          nopts,
-			terminalHeight: termHeight,
+		return OptimalPageSize(OptimalPageSizeOpts{
+			Nopts:          nopts,
+			TerminalHeight: termHeight,
 		})
 	}
 
