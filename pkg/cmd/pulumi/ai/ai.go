@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ai
 
 import (
 	"context"
@@ -51,7 +51,7 @@ func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAICommand() *cobra.Command {
+func NewAICommand() *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",

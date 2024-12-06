@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -407,7 +408,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				newAICommand(),
+				ai.NewAICommand(),
 			},
 		},
 	})
