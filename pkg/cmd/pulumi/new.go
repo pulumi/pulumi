@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -730,7 +731,7 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 
 		accept := fmt.Sprintf("Use '%s' anyway", projectName)
 		retry := "Specify a different project name"
-		response := promptUser(prompt, []string{accept, retry}, accept, opts.Color)
+		response := ui.PromptUser(prompt, []string{accept, retry}, accept, opts.Color)
 
 		if response != accept {
 			return errRetry
@@ -939,7 +940,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				if err := survey.AskOne(&survey.Select{
 					Message: message,
 					Options: choices,
-				}, &response, surveyIcons(opts.Color), nil); err != nil {
+				}, &response, ui.SurveyIcons(opts.Color), nil); err != nil {
 					return nil, err
 				}
 				options[optionPrompt.Key] = choiceMap[response]
@@ -1079,7 +1080,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		Message:  message,
 		Options:  options,
 		PageSize: pageSize,
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
 	}
 

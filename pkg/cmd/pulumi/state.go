@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -112,7 +113,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		Message:  prompt,
 		Options:  options,
 		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no resource selected")
 	}
 
@@ -167,7 +168,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		prompt += "This command will edit your stack's state directly. Confirm?"
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
-		}, &confirm, surveyIcons(opts.Color)); err != nil || !confirm {
+		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
 			return result.FprintBailf(os.Stdout, "confirmation declined")
 		}
 	}
@@ -243,7 +244,7 @@ func getURNFromState(
 	err := survey.AskOne(&survey.Select{
 		Message: prompt,
 		Options: urnList,
-	}, &urn, survey.WithValidator(survey.Required), surveyIcons(cmdutil.GetGlobalColorization()))
+	}, &urn, survey.WithValidator(survey.Required), ui.SurveyIcons(cmdutil.GetGlobalColorization()))
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +259,7 @@ func getNewResourceName() (tokens.QName, error) {
 	var resourceName string
 	err := survey.AskOne(&survey.Input{
 		Message: "Choose a new resource name:",
-	}, &resourceName, surveyIcons(cmdutil.GetGlobalColorization()),
+	}, &resourceName, ui.SurveyIcons(cmdutil.GetGlobalColorization()),
 		survey.WithValidator(func(ans interface{}) error {
 			if tokens.IsQName(ans.(string)) {
 				return nil

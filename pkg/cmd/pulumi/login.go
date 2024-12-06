@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -239,7 +240,7 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 		Message:  message,
 		Options:  acts,
 		PageSize: pageSize,
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return "", errors.New("no account selected; please use `pulumi login --interactive` to choose one")
 	}
 

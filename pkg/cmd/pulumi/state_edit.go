@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -196,7 +197,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 			}
 		}
 
-		switch response := promptUser(msg, options, edit, cmd.Colorizer); response {
+		switch response := ui.PromptUser(msg, options, edit, cmd.Colorizer); response {
 		case accept:
 			return saveSnapshot(ctx, s, news, false /* force */)
 		case edit:
