@@ -1481,6 +1481,7 @@ func TestPackageAddPython(t *testing.T) {
 			err = fsutil.CopyFile(e.CWD, templatePath, nil)
 			require.NoError(t, err)
 
+			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
 
 			assert.True(t, e.PathExists("sdks/random"))

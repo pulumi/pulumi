@@ -1231,6 +1231,7 @@ func TestPackageAddGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 	_, _ = e.RunCommand("pulumi", "package", "add", "random")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
@@ -1253,6 +1254,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random")
 
 	assert.True(t, e.PathExists("sdks/random/go.mod"))
