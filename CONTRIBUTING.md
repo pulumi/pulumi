@@ -51,12 +51,6 @@ brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
 ```
 
-### Working on Pulumi in Gitpod
-
-If you have a web browser, you can get a fully pre-configured Pulumi development environment in one click:
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/pulumi/pulumi)
-
 ### Make build system
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
