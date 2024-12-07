@@ -30,6 +30,10 @@ class LoaderStub:
         pulumi.codegen.loader_pb2.GetSchemaResponse,
     ]
     """GetSchema tries to find a schema for the given package and version."""
+    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetSchemaRequest,
+        pulumi.codegen.loader_pb2.PackageInfo,
+    ]
 
 class LoaderServicer(metaclass=abc.ABCMeta):
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -43,5 +47,36 @@ class LoaderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.codegen.loader_pb2.GetSchemaResponse:
         """GetSchema tries to find a schema for the given package and version."""
+    @abc.abstractmethod
+    def GetPackageInfo(
+        self,
+        request: pulumi.codegen.loader_pb2.GetSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.loader_pb2.PackageInfo: ...
 
 def add_LoaderServicer_to_server(servicer: LoaderServicer, server: grpc.Server) -> None: ...
+
+class PartialLoaderStub:
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    def __init__(self, channel: grpc.Channel) -> None: ...
+    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        pulumi.codegen.loader_pb2.PackageInfo,
+    ]
+
+class PartialLoaderServicer(metaclass=abc.ABCMeta):
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    @abc.abstractmethod
+    def GetPackageInfo(
+        self,
+        request: pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.loader_pb2.PackageInfo: ...
+
+def add_PartialLoaderServicer_to_server(servicer: PartialLoaderServicer, server: grpc.Server) -> None: ...

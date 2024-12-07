@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type LoaderClient interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
+	GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error)
 }
 
 type loaderClient struct {
@@ -43,12 +44,22 @@ func (c *loaderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts
 	return out, nil
 }
 
+func (c *loaderClient) GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error) {
+	out := new(PackageInfo)
+	err := c.cc.Invoke(ctx, "/codegen.Loader/GetPackageInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoaderServer is the server API for Loader service.
 // All implementations must embed UnimplementedLoaderServer
 // for forward compatibility
 type LoaderServer interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
+	GetPackageInfo(context.Context, *GetSchemaRequest) (*PackageInfo, error)
 	mustEmbedUnimplementedLoaderServer()
 }
 
@@ -58,6 +69,9 @@ type UnimplementedLoaderServer struct {
 
 func (UnimplementedLoaderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
+}
+func (UnimplementedLoaderServer) GetPackageInfo(context.Context, *GetSchemaRequest) (*PackageInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
 }
 func (UnimplementedLoaderServer) mustEmbedUnimplementedLoaderServer() {}
 
@@ -90,6 +104,24 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Loader_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoaderServer).GetPackageInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/codegen.Loader/GetPackageInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoaderServer).GetPackageInfo(ctx, req.(*GetSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Loader_ServiceDesc is the grpc.ServiceDesc for Loader service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +132,96 @@ var Loader_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSchema",
 			Handler:    _Loader_GetSchema_Handler,
+		},
+		{
+			MethodName: "GetPackageInfo",
+			Handler:    _Loader_GetPackageInfo_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "pulumi/codegen/loader.proto",
+}
+
+// PartialLoaderClient is the client API for PartialLoader service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type PartialLoaderClient interface {
+	GetPackageInfo(ctx context.Context, in *GetPartialSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error)
+}
+
+type partialLoaderClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewPartialLoaderClient(cc grpc.ClientConnInterface) PartialLoaderClient {
+	return &partialLoaderClient{cc}
+}
+
+func (c *partialLoaderClient) GetPackageInfo(ctx context.Context, in *GetPartialSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error) {
+	out := new(PackageInfo)
+	err := c.cc.Invoke(ctx, "/codegen.PartialLoader/GetPackageInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PartialLoaderServer is the server API for PartialLoader service.
+// All implementations must embed UnimplementedPartialLoaderServer
+// for forward compatibility
+type PartialLoaderServer interface {
+	GetPackageInfo(context.Context, *GetPartialSchemaRequest) (*PackageInfo, error)
+	mustEmbedUnimplementedPartialLoaderServer()
+}
+
+// UnimplementedPartialLoaderServer must be embedded to have forward compatible implementations.
+type UnimplementedPartialLoaderServer struct {
+}
+
+func (UnimplementedPartialLoaderServer) GetPackageInfo(context.Context, *GetPartialSchemaRequest) (*PackageInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
+}
+func (UnimplementedPartialLoaderServer) mustEmbedUnimplementedPartialLoaderServer() {}
+
+// UnsafePartialLoaderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PartialLoaderServer will
+// result in compilation errors.
+type UnsafePartialLoaderServer interface {
+	mustEmbedUnimplementedPartialLoaderServer()
+}
+
+func RegisterPartialLoaderServer(s grpc.ServiceRegistrar, srv PartialLoaderServer) {
+	s.RegisterService(&PartialLoader_ServiceDesc, srv)
+}
+
+func _PartialLoader_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPartialSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PartialLoaderServer).GetPackageInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/codegen.PartialLoader/GetPackageInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PartialLoaderServer).GetPackageInfo(ctx, req.(*GetPartialSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// PartialLoader_ServiceDesc is the grpc.ServiceDesc for PartialLoader service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var PartialLoader_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "codegen.PartialLoader",
+	HandlerType: (*PartialLoaderServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetPackageInfo",
+			Handler:    _PartialLoader_GetPackageInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\"y\n\x0bPackageInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x07version\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x11\n\tnamespace\x18\x04 \x01(\t\x12\x12\n\nrepository\x18\x05 \x01(\tB\n\n\x08_version\";\n\x17GetPartialSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t2\x93\x01\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12\x43\n\x0eGetPackageInfo\x12\x19.codegen.GetSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x32[\n\rPartialLoader\x12J\n\x0eGetPackageInfo\x12 .codegen.GetPartialSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2', globals())
@@ -27,6 +27,12 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GETSCHEMAREQUEST._serialized_end=233
   _GETSCHEMARESPONSE._serialized_start=235
   _GETSCHEMARESPONSE._serialized_end=270
-  _LOADER._serialized_start=272
-  _LOADER._serialized_end=350
+  _PACKAGEINFO._serialized_start=272
+  _PACKAGEINFO._serialized_end=393
+  _GETPARTIALSCHEMAREQUEST._serialized_start=395
+  _GETPARTIALSCHEMAREQUEST._serialized_end=454
+  _LOADER._serialized_start=457
+  _LOADER._serialized_end=604
+  _PARTIALLOADER._serialized_start=606
+  _PARTIALLOADER._serialized_end=697
 # @@protoc_insertion_point(module_scope)

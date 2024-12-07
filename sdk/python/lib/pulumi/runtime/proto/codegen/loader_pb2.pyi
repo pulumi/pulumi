@@ -102,3 +102,50 @@ class GetSchemaResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["schema", b"schema"]) -> None: ...
 
 global___GetSchemaResponse = GetSchemaResponse
+
+@typing_extensions.final
+class PackageInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    NAMESPACE_FIELD_NUMBER: builtins.int
+    REPOSITORY_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    version: builtins.str
+    description: builtins.str
+    namespace: builtins.str
+    repository: builtins.str
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str | None = ...,
+        description: builtins.str = ...,
+        namespace: builtins.str = ...,
+        repository: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_version", b"_version", "version", b"version"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_version", b"_version", "description", b"description", "name", b"name", "namespace", b"namespace", "repository", b"repository", "version", b"version"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_version", b"_version"]) -> typing_extensions.Literal["version"] | None: ...
+
+global___PackageInfo = PackageInfo
+
+@typing_extensions.final
+class GetPartialSchemaRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    package: builtins.str
+    version: builtins.str
+    def __init__(
+        self,
+        *,
+        package: builtins.str = ...,
+        version: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "version", b"version"]) -> None: ...
+
+global___GetPartialSchemaRequest = GetPartialSchemaRequest
