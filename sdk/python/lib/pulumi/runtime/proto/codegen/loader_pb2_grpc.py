@@ -41,6 +41,11 @@ class LoaderStub(object):
                 request_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
                 response_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
                 _registered_method=True)
+        self.GetPackageInfo = channel.unary_unary(
+                '/codegen.Loader/GetPackageInfo',
+                request_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_loader__pb2.PackageInfo.FromString,
+                _registered_method=True)
 
 
 class LoaderServicer(object):
@@ -55,6 +60,12 @@ class LoaderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetPackageInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LoaderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -62,6 +73,11 @@ def add_LoaderServicer_to_server(servicer, server):
                     servicer.GetSchema,
                     request_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.FromString,
                     response_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.SerializeToString,
+            ),
+            'GetPackageInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPackageInfo,
+                    request_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_loader__pb2.PackageInfo.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -93,6 +109,111 @@ class Loader(object):
             '/codegen.Loader/GetSchema',
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetPackageInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/codegen.Loader/GetPackageInfo',
+            pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
+            pulumi_dot_codegen_dot_loader__pb2.PackageInfo.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class PartialLoaderStub(object):
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetPackageInfo = channel.unary_unary(
+                '/codegen.PartialLoader/GetPackageInfo',
+                request_serializer=pulumi_dot_codegen_dot_loader__pb2.GetPartialSchemaRequest.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_loader__pb2.PackageInfo.FromString,
+                _registered_method=True)
+
+
+class PartialLoaderServicer(object):
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    def GetPackageInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PartialLoaderServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetPackageInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPackageInfo,
+                    request_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetPartialSchemaRequest.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_loader__pb2.PackageInfo.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'codegen.PartialLoader', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('codegen.PartialLoader', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PartialLoader(object):
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    @staticmethod
+    def GetPackageInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/codegen.PartialLoader/GetPackageInfo',
+            pulumi_dot_codegen_dot_loader__pb2.GetPartialSchemaRequest.SerializeToString,
+            pulumi_dot_codegen_dot_loader__pb2.PackageInfo.FromString,
             options,
             channel_credentials,
             insecure,

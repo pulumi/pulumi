@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
@@ -93,6 +94,63 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 	logging.V(7).Infof("%s success: data=#%d", label, len(data))
 	return &codegenrpc.GetSchemaResponse{
 		Schema: data,
+	}, nil
+}
+
+func (m *loaderServer) GetPackageInfo(
+	ctx context.Context, req *codegen.GetSchemaRequest,
+) (*codegen.PackageInfo, error) {
+	label := "GetSchema"
+	logging.V(7).Infof("%s executing: package=%s, version=%s", label, req.Package, req.Version)
+
+	var version *semver.Version
+	if req.Version != "" {
+		v, err := semver.ParseTolerant(req.Version)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
+		}
+		version = &v
+	}
+
+	var parameterization *ParameterizationDescriptor
+	if req.Parameterization != nil {
+		v, err := semver.ParseTolerant(req.Version)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
+		}
+
+		parameterization = &ParameterizationDescriptor{
+			Name:    req.Parameterization.Name,
+			Version: v,
+			Value:   req.Parameterization.Value,
+		}
+	}
+
+	pkg, err := m.loader.LoadPackageReferenceV2(ctx, &PackageDescriptor{
+		Name:             req.Package,
+		Version:          version,
+		DownloadURL:      req.DownloadUrl,
+		Parameterization: parameterization,
+	})
+	if err != nil {
+		logging.V(7).Infof("%s failed: %v", label, err)
+		return nil, err
+	}
+
+	toString := func(v *semver.Version) *string {
+		if v == nil {
+			return nil
+		}
+		s := v.String()
+		return &s
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return &codegenrpc.PackageInfo{
+		Name:    pkg.Name(),
+		Version: toString(pkg.Version()),
 	}, nil
 }
 

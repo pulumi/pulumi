@@ -87,3 +87,52 @@ export namespace GetSchemaResponse {
         schema: Uint8Array | string,
     }
 }
+
+export class PackageInfo extends jspb.Message { 
+    getName(): string;
+    setName(value: string): PackageInfo;
+
+    hasVersion(): boolean;
+    clearVersion(): void;
+    getVersion(): string | undefined;
+    setVersion(value: string): PackageInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageInfo): PackageInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageInfo;
+    static deserializeBinaryFromReader(message: PackageInfo, reader: jspb.BinaryReader): PackageInfo;
+}
+
+export namespace PackageInfo {
+    export type AsObject = {
+        name: string,
+        version?: string,
+    }
+}
+
+export class GetPartialSchemaRequest extends jspb.Message { 
+    getPackage(): string;
+    setPackage(value: string): GetPartialSchemaRequest;
+    getVersion(): string;
+    setVersion(value: string): GetPartialSchemaRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetPartialSchemaRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetPartialSchemaRequest): GetPartialSchemaRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetPartialSchemaRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetPartialSchemaRequest;
+    static deserializeBinaryFromReader(message: GetPartialSchemaRequest, reader: jspb.BinaryReader): GetPartialSchemaRequest;
+}
+
+export namespace GetPartialSchemaRequest {
+    export type AsObject = {
+        pb_package: string,
+        version: string,
+    }
+}

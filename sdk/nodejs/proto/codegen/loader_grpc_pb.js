@@ -19,6 +19,17 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_codegen_loader_pb = require('../codegen/loader_pb.js');
 
+function serialize_codegen_GetPartialSchemaRequest(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.GetPartialSchemaRequest)) {
+    throw new Error('Expected argument of type codegen.GetPartialSchemaRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_GetPartialSchemaRequest(buffer_arg) {
+  return pulumi_codegen_loader_pb.GetPartialSchemaRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_codegen_GetSchemaRequest(arg) {
   if (!(arg instanceof pulumi_codegen_loader_pb.GetSchemaRequest)) {
     throw new Error('Expected argument of type codegen.GetSchemaRequest');
@@ -41,6 +52,17 @@ function deserialize_codegen_GetSchemaResponse(buffer_arg) {
   return pulumi_codegen_loader_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_codegen_PackageInfo(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.PackageInfo)) {
+    throw new Error('Expected argument of type codegen.PackageInfo');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_PackageInfo(buffer_arg) {
+  return pulumi_codegen_loader_pb.PackageInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
 // This is currently unstable and experimental.
@@ -57,6 +79,34 @@ getSchema: {
     responseSerialize: serialize_codegen_GetSchemaResponse,
     responseDeserialize: deserialize_codegen_GetSchemaResponse,
   },
+  getPackageInfo: {
+    path: '/codegen.Loader/GetPackageInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_loader_pb.GetSchemaRequest,
+    responseType: pulumi_codegen_loader_pb.PackageInfo,
+    requestSerialize: serialize_codegen_GetSchemaRequest,
+    requestDeserialize: deserialize_codegen_GetSchemaRequest,
+    responseSerialize: serialize_codegen_PackageInfo,
+    responseDeserialize: deserialize_codegen_PackageInfo,
+  },
 };
 
 exports.LoaderClient = grpc.makeGenericClientConstructor(LoaderService, 'Loader');
+// PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+// This uses many of the same response message as the engine Loader service, but takes different requests.
+var PartialLoaderService = exports.PartialLoaderService = {
+  getPackageInfo: {
+    path: '/codegen.PartialLoader/GetPackageInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_loader_pb.GetPartialSchemaRequest,
+    responseType: pulumi_codegen_loader_pb.PackageInfo,
+    requestSerialize: serialize_codegen_GetPartialSchemaRequest,
+    requestDeserialize: deserialize_codegen_GetPartialSchemaRequest,
+    responseSerialize: serialize_codegen_PackageInfo,
+    responseDeserialize: deserialize_codegen_PackageInfo,
+  },
+};
+
+exports.PartialLoaderClient = grpc.makeGenericClientConstructor(PartialLoaderService, 'PartialLoader');

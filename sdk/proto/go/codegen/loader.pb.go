@@ -215,6 +215,110 @@ func (x *GetSchemaResponse) GetSchema() []byte {
 	return nil
 }
 
+type PackageInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version       *string                `protobuf:"bytes,2,opt,name=version,proto3,oneof" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PackageInfo) Reset() {
+	*x = PackageInfo{}
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageInfo) ProtoMessage() {}
+
+func (x *PackageInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PackageInfo.ProtoReflect.Descriptor instead.
+func (*PackageInfo) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PackageInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetVersion() string {
+	if x != nil && x.Version != nil {
+		return *x.Version
+	}
+	return ""
+}
+
+type GetPartialSchemaRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Package       string                 `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPartialSchemaRequest) Reset() {
+	*x = GetPartialSchemaRequest{}
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPartialSchemaRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPartialSchemaRequest) ProtoMessage() {}
+
+func (x *GetPartialSchemaRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPartialSchemaRequest.ProtoReflect.Descriptor instead.
+func (*GetPartialSchemaRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetPartialSchemaRequest) GetPackage() string {
+	if x != nil {
+		return x.Package
+	}
+	return ""
+}
+
+func (x *GetPartialSchemaRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_pulumi_codegen_loader_proto protoreflect.FileDescriptor
 
 const file_pulumi_codegen_loader_proto_rawDesc = "" +
@@ -230,9 +334,20 @@ const file_pulumi_codegen_loader_proto_rawDesc = "" +
 	"\fdownload_url\x18\x03 \x01(\tR\vdownloadUrl\x12E\n" +
 	"\x10parameterization\x18\x04 \x01(\v2\x19.codegen.ParameterizationR\x10parameterization\"+\n" +
 	"\x11GetSchemaResponse\x12\x16\n" +
-	"\x06schema\x18\x01 \x01(\fR\x06schema2N\n" +
+	"\x06schema\x18\x01 \x01(\fR\x06schema\"L\n" +
+	"\vPackageInfo\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
+	"\aversion\x18\x02 \x01(\tH\x00R\aversion\x88\x01\x01B\n" +
+	"\n" +
+	"\b_version\"M\n" +
+	"\x17GetPartialSchemaRequest\x12\x18\n" +
+	"\apackage\x18\x01 \x01(\tR\apackage\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion2\x93\x01\n" +
 	"\x06Loader\x12D\n" +
-	"\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
+	"\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12C\n" +
+	"\x0eGetPackageInfo\x12\x19.codegen.GetSchemaRequest\x1a\x14.codegen.PackageInfo\"\x002[\n" +
+	"\rPartialLoader\x12J\n" +
+	"\x0eGetPackageInfo\x12 .codegen.GetPartialSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
 	file_pulumi_codegen_loader_proto_rawDescOnce sync.Once
@@ -246,18 +361,24 @@ func file_pulumi_codegen_loader_proto_rawDescGZIP() []byte {
 	return file_pulumi_codegen_loader_proto_rawDescData
 }
 
-var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_pulumi_codegen_loader_proto_goTypes = []any{
-	(*Parameterization)(nil),  // 0: codegen.Parameterization
-	(*GetSchemaRequest)(nil),  // 1: codegen.GetSchemaRequest
-	(*GetSchemaResponse)(nil), // 2: codegen.GetSchemaResponse
+	(*Parameterization)(nil),        // 0: codegen.Parameterization
+	(*GetSchemaRequest)(nil),        // 1: codegen.GetSchemaRequest
+	(*GetSchemaResponse)(nil),       // 2: codegen.GetSchemaResponse
+	(*PackageInfo)(nil),             // 3: codegen.PackageInfo
+	(*GetPartialSchemaRequest)(nil), // 4: codegen.GetPartialSchemaRequest
 }
 var file_pulumi_codegen_loader_proto_depIdxs = []int32{
 	0, // 0: codegen.GetSchemaRequest.parameterization:type_name -> codegen.Parameterization
 	1, // 1: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
-	2, // 2: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	1, // 2: codegen.Loader.GetPackageInfo:input_type -> codegen.GetSchemaRequest
+	4, // 3: codegen.PartialLoader.GetPackageInfo:input_type -> codegen.GetPartialSchemaRequest
+	2, // 4: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
+	3, // 5: codegen.Loader.GetPackageInfo:output_type -> codegen.PackageInfo
+	3, // 6: codegen.PartialLoader.GetPackageInfo:output_type -> codegen.PackageInfo
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -268,15 +389,16 @@ func file_pulumi_codegen_loader_proto_init() {
 	if File_pulumi_codegen_loader_proto != nil {
 		return
 	}
+	file_pulumi_codegen_loader_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_loader_proto_rawDesc), len(file_pulumi_codegen_loader_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_pulumi_codegen_loader_proto_goTypes,
 		DependencyIndexes: file_pulumi_codegen_loader_proto_depIdxs,

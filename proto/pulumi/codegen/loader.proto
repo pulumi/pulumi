@@ -23,6 +23,8 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
 service Loader {
     // GetSchema tries to find a schema for the given package and version.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+
+    rpc GetPackageInfo(GetSchemaRequest) returns (PackageInfo) {}
 }
 
 // Parameterization specifies the name, version, and value for a parameterized package.
@@ -48,4 +50,20 @@ message GetSchemaRequest {
 message GetSchemaResponse {
     // the JSON encoded schema.
     bytes schema = 1;
+}
+
+message PackageInfo {
+    string name = 1;
+    optional string version = 2;
+}
+
+// PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+// This uses many of the same response message as the engine Loader service, but takes different requests.
+service PartialLoader {
+    rpc GetPackageInfo(GetPartialSchemaRequest) returns (PackageInfo) {}
+}
+
+message GetPartialSchemaRequest {
+    string package = 1;
+    string version = 2;
 }

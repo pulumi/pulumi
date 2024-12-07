@@ -33,7 +33,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Loader_GetSchema_FullMethodName = "/codegen.Loader/GetSchema"
+	Loader_GetSchema_FullMethodName      = "/codegen.Loader/GetSchema"
+	Loader_GetPackageInfo_FullMethodName = "/codegen.Loader/GetPackageInfo"
 )
 
 // LoaderClient is the client API for Loader service.
@@ -45,6 +46,7 @@ const (
 type LoaderClient interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
+	GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error)
 }
 
 type loaderClient struct {
@@ -65,6 +67,16 @@ func (c *loaderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts
 	return out, nil
 }
 
+func (c *loaderClient) GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PackageInfo)
+	err := c.cc.Invoke(ctx, Loader_GetPackageInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoaderServer is the server API for Loader service.
 // All implementations must embed UnimplementedLoaderServer
 // for forward compatibility.
@@ -74,6 +86,7 @@ func (c *loaderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts
 type LoaderServer interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
+	GetPackageInfo(context.Context, *GetSchemaRequest) (*PackageInfo, error)
 	mustEmbedUnimplementedLoaderServer()
 }
 
@@ -86,6 +99,9 @@ type UnimplementedLoaderServer struct{}
 
 func (UnimplementedLoaderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
+}
+func (UnimplementedLoaderServer) GetPackageInfo(context.Context, *GetSchemaRequest) (*PackageInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
 }
 func (UnimplementedLoaderServer) mustEmbedUnimplementedLoaderServer() {}
 func (UnimplementedLoaderServer) testEmbeddedByValue()                {}
@@ -126,6 +142,24 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Loader_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoaderServer).GetPackageInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Loader_GetPackageInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoaderServer).GetPackageInfo(ctx, req.(*GetSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Loader_ServiceDesc is the grpc.ServiceDesc for Loader service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -136,6 +170,118 @@ var Loader_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSchema",
 			Handler:    _Loader_GetSchema_Handler,
+		},
+		{
+			MethodName: "GetPackageInfo",
+			Handler:    _Loader_GetPackageInfo_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "pulumi/codegen/loader.proto",
+}
+
+const (
+	PartialLoader_GetPackageInfo_FullMethodName = "/codegen.PartialLoader/GetPackageInfo"
+)
+
+// PartialLoaderClient is the client API for PartialLoader service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+// This uses many of the same response message as the engine Loader service, but takes different requests.
+type PartialLoaderClient interface {
+	GetPackageInfo(ctx context.Context, in *GetPartialSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error)
+}
+
+type partialLoaderClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewPartialLoaderClient(cc grpc.ClientConnInterface) PartialLoaderClient {
+	return &partialLoaderClient{cc}
+}
+
+func (c *partialLoaderClient) GetPackageInfo(ctx context.Context, in *GetPartialSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PackageInfo)
+	err := c.cc.Invoke(ctx, PartialLoader_GetPackageInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PartialLoaderServer is the server API for PartialLoader service.
+// All implementations must embed UnimplementedPartialLoaderServer
+// for forward compatibility.
+//
+// PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+// This uses many of the same response message as the engine Loader service, but takes different requests.
+type PartialLoaderServer interface {
+	GetPackageInfo(context.Context, *GetPartialSchemaRequest) (*PackageInfo, error)
+	mustEmbedUnimplementedPartialLoaderServer()
+}
+
+// UnimplementedPartialLoaderServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedPartialLoaderServer struct{}
+
+func (UnimplementedPartialLoaderServer) GetPackageInfo(context.Context, *GetPartialSchemaRequest) (*PackageInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
+}
+func (UnimplementedPartialLoaderServer) mustEmbedUnimplementedPartialLoaderServer() {}
+func (UnimplementedPartialLoaderServer) testEmbeddedByValue()                       {}
+
+// UnsafePartialLoaderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PartialLoaderServer will
+// result in compilation errors.
+type UnsafePartialLoaderServer interface {
+	mustEmbedUnimplementedPartialLoaderServer()
+}
+
+func RegisterPartialLoaderServer(s grpc.ServiceRegistrar, srv PartialLoaderServer) {
+	// If the following call pancis, it indicates UnimplementedPartialLoaderServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&PartialLoader_ServiceDesc, srv)
+}
+
+func _PartialLoader_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPartialSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PartialLoaderServer).GetPackageInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PartialLoader_GetPackageInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PartialLoaderServer).GetPackageInfo(ctx, req.(*GetPartialSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// PartialLoader_ServiceDesc is the grpc.ServiceDesc for PartialLoader service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var PartialLoader_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "codegen.PartialLoader",
+	HandlerType: (*PartialLoaderServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetPackageInfo",
+			Handler:    _PartialLoader_GetPackageInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
