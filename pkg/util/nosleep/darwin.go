@@ -27,7 +27,7 @@ import (
 
 func keepRunning() DoneFunc {
 	// Run caffeinate to keep the system awake.
-	cmd := exec.Command("caffeinate", "-i", "-w", strconv.Itoa(os.Getpid()))
+	cmd := exec.Command("caffeinate", "-i", "-w", strconv.Itoa(os.Getpid())) //nolint:gosec Getpid known to be safe
 	// we intentionally ignore the error here.  If we can't keep the system awake we still want to continue.
 	err := cmd.Start()
 	if err != nil {
