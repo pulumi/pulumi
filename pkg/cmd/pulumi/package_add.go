@@ -36,18 +36,38 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider> [provider-parameter...]",
+		Use:   "add <provider|schema> [provider-parameter...]",
 		Args:  cobra.MinimumNArgs(1),
 		Short: "Add a package to your Pulumi project",
 		Long: `Add a package to your Pulumi project.
 
-For parameterized providers, parameters should be specified as additional arguments.
-The exact format of parameters is provider-specific; consult the provider's
-documentation for more information. If the parameters include flags that begin with
-dashes, you may need to use '--' to separate the provider name from the parameters,
-as in:
+This command locally generates an SDK in the currently selected Pulumi language
+and prints instructions on how to link it into your project. The SDK is based on
+a Pulumi package schema extracted from a given resource plugin or provided
+directly.
 
-  pulumi package add <provider> -- --provider-parameter-flag value`,
+When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to
+resolve a resource plugin first, installing it on-demand, similarly to:
+
+  pulumi plugin install resource PLUGIN [VERSION]
+
+When <provider> is specified as a local path, Pulumi executes the provider
+binary to extract its package schema:
+
+  pulumi package add ./my-provider
+
+For parameterized providers, parameters may be specified as additional
+arguments. The exact format of parameters is provider-specific; consult the
+provider's documentation for more information. If the parameters include flags
+that begin with dashes, you may need to use '--' to separate the provider name
+from the parameters, as in:
+
+  pulumi package add <provider> -- --provider-parameter-flag value
+
+When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
+extension, Pulumi package schema is read from it directly:
+
+  pulumi package add ./my/schema.json`,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
