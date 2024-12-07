@@ -402,11 +402,21 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
 }
 
-func (p *provider) requestContext() context.Context {
+func (p *provider) requestContext(ctx context.Context) context.Context {
 	if p.ctx == nil {
-		return context.Background()
+		return ctx
 	}
-	return p.ctx.Request()
+
+	reqContext, cancel := p.ctx.request()
+	go func() {
+		defer cancel()
+		select {
+		case <-reqContext.Done():
+		case <-ctx.Done():
+		}
+	}()
+
+	return reqContext
 }
 
 // isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
@@ -469,7 +479,7 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	default:
 		panic(fmt.Sprintf("Impossible - type is constrained to ParameterizeArgs or ParameterizeValue, found %T", p))
 	}
-	resp, err := p.clientRaw.Parameterize(p.requestContext(), &params)
+	resp, err := p.clientRaw.Parameterize(p.requestContext(ctx), &params)
 	if err != nil {
 		return ParameterizeResponse{}, err
 	}
@@ -487,7 +497,7 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 		subpackageVersion = req.SubpackageVersion.String()
 	}
 
-	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
+	resp, err := p.clientRaw.GetSchema(p.requestContext(ctx), &pulumirpc.GetSchemaRequest{
 		Version:           req.Version,
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,
@@ -525,7 +535,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		return CheckConfigResponse{}, err
 	}
 
-	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
+	resp, err := p.clientRaw.CheckConfig(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:  string(req.URN),
 		Name: req.URN.Name(),
 		Type: req.URN.Type().String(),
@@ -642,7 +652,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
+	resp, err := p.clientRaw.DiffConfig(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Urn:           string(req.URN),
 		Name:          req.URN.Name(),
 		Type:          req.URN.Type().String(),
@@ -920,7 +930,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+		resp, err := p.clientRaw.Configure(p.requestContext(ctx), &pulumirpc.ConfigureRequest{
 			AcceptSecrets:          true,
 			AcceptResources:        true,
 			SendsOldInputs:         true,
@@ -996,7 +1006,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{}, err
 	}
 
-	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
+	resp, err := client.Check(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
@@ -1110,7 +1120,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		return DiffResult{}, err
 	}
 
-	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
+	resp, err := client.Diff(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Id:            string(req.ID),
 		Urn:           string(req.URN),
 		Name:          req.URN.Name(),
@@ -1216,7 +1226,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	var liveObject *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
+	resp, err := client.Create(p.requestContext(ctx), &pulumirpc.CreateRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
@@ -1328,7 +1338,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var liveInputs *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.requestContext(ctx), &pulumirpc.ReadRequest{
 		Id:         string(req.ID),
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
@@ -1481,7 +1491,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	var liveObject *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
+	resp, err := client.Update(p.requestContext(ctx), &pulumirpc.UpdateRequest{
 		Id:            string(req.ID),
 		Urn:           string(req.URN),
 		Name:          req.URN.Name(),
@@ -1574,7 +1584,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
+	if _, err := client.Delete(p.requestContext(ctx), &pulumirpc.DeleteRequest{
 		Id:         string(req.ID),
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
@@ -1719,7 +1729,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		}
 	}
 
-	resp, err := client.Construct(p.requestContext(), rpcReq)
+	resp, err := client.Construct(p.requestContext(ctx), rpcReq)
 	if err != nil {
 		return ConstructResult{}, err
 	}
@@ -1780,7 +1790,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		return InvokeResponse{}, err
 	}
 
-	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
+	resp, err := client.Invoke(p.requestContext(ctx), &pulumirpc.InvokeRequest{
 		Tok:  string(req.Tok),
 		Args: margs,
 	})
@@ -1843,7 +1853,7 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 		return StreamInvokeResponse{}, err
 	}
 
-	streamClient, err := client.StreamInvoke(p.requestContext(), &pulumirpc.InvokeRequest{
+	streamClient, err := client.StreamInvoke(p.requestContext(ctx), &pulumirpc.InvokeRequest{
 		Tok:  string(req.Tok),
 		Args: margs,
 	})
@@ -1891,7 +1901,7 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
-func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error) {
+func (p *provider) Call(ctx context.Context, req CallRequest) (CallResponse, error) {
 	contract.Assertf(req.Tok != "", "Call requires a token")
 
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), req.Tok)
@@ -1938,7 +1948,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		config[k.String()] = v
 	}
 
-	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
+	resp, err := client.Call(p.requestContext(ctx), &pulumirpc.CallRequest{
 		Tok:                 string(req.Tok),
 		Args:                margs,
 		ArgDependencies:     argDependencies,
@@ -1994,7 +2004,7 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 
 	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
+	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(ctx), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -2031,7 +2041,7 @@ func (p *provider) Attach(address string) error {
 
 	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
+	_, err := p.clientRaw.Attach(p.requestContext(context.Background()), &pulumirpc.PluginAttach{Address: address})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -2042,7 +2052,7 @@ func (p *provider) Attach(address string) error {
 }
 
 func (p *provider) SignalCancellation(ctx context.Context) error {
-	_, err := p.clientRaw.Cancel(p.requestContext(), &emptypb.Empty{})
+	_, err := p.clientRaw.Cancel(p.requestContext(ctx), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
@@ -2196,7 +2206,7 @@ func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMa
 	label := p.label() + ".GetMapping"
 	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, req.Key, req.Provider)
 
-	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
+	resp, err := p.clientRaw.GetMapping(p.requestContext(ctx), &pulumirpc.GetMappingRequest{
 		Key:      req.Key,
 		Provider: req.Provider,
 	})
@@ -2224,7 +2234,7 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 	label := p.label() + ".GetMappings"
 	logging.V(7).Infof("%s executing: key=%s", label, req.Key)
 
-	resp, err := p.clientRaw.GetMappings(p.requestContext(), &pulumirpc.GetMappingsRequest{
+	resp, err := p.clientRaw.GetMappings(p.requestContext(ctx), &pulumirpc.GetMappingsRequest{
 		Key: req.Key,
 	})
 	if err != nil {

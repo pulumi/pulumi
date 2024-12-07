@@ -141,6 +141,11 @@ func (ctx *Context) Base() context.Context {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
+	c, _ := ctx.request()
+	return c
+}
+
+func (ctx *Context) request() (context.Context, func()) {
 	c := ctx.baseContext
 	contract.Assertf(c != nil, "Context must have a base context")
 	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
@@ -148,7 +153,7 @@ func (ctx *Context) Request() context.Context {
 	ctx.cancelLock.Lock()
 	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
 	ctx.cancelLock.Unlock()
-	return c
+	return c, cancel
 }
 
 // Close reclaims all resources associated with this context.
