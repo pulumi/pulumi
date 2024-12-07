@@ -21,6 +21,16 @@ class LoaderStub(object):
                 request_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
                 response_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
                 )
+        self.GetPackageSpec = channel.unary_unary(
+                '/codegen.Loader/GetPackageSpec',
+                request_serializer=pulumi_dot_codegen_dot_loader__pb2.PackageDescriptor.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_loader__pb2.PackageSpec.FromString,
+                )
+        self.GetResourceSpec = channel.unary_unary(
+                '/codegen.Loader/GetResourceSpec',
+                request_serializer=pulumi_dot_codegen_dot_loader__pb2.PackageDescriptorMember.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_loader__pb2.ResourceSpec.FromString,
+                )
 
 
 class LoaderServicer(object):
@@ -35,6 +45,20 @@ class LoaderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetPackageSpec(self, request, context):
+        """GetPackageSpec returns information about a package, such as its name, version, description, and repository.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetResourceSpec(self, request, context):
+        """GetResourceSpec returns information about a resource in a package, such as its name, description, and properties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LoaderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -42,6 +66,16 @@ def add_LoaderServicer_to_server(servicer, server):
                     servicer.GetSchema,
                     request_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.FromString,
                     response_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.SerializeToString,
+            ),
+            'GetPackageSpec': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPackageSpec,
+                    request_deserializer=pulumi_dot_codegen_dot_loader__pb2.PackageDescriptor.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_loader__pb2.PackageSpec.SerializeToString,
+            ),
+            'GetResourceSpec': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetResourceSpec,
+                    request_deserializer=pulumi_dot_codegen_dot_loader__pb2.PackageDescriptorMember.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_loader__pb2.ResourceSpec.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -69,5 +103,39 @@ class Loader(object):
         return grpc.experimental.unary_unary(request, target, '/codegen.Loader/GetSchema',
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetPackageSpec(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/codegen.Loader/GetPackageSpec',
+            pulumi_dot_codegen_dot_loader__pb2.PackageDescriptor.SerializeToString,
+            pulumi_dot_codegen_dot_loader__pb2.PackageSpec.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetResourceSpec(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/codegen.Loader/GetResourceSpec',
+            pulumi_dot_codegen_dot_loader__pb2.PackageDescriptorMember.SerializeToString,
+            pulumi_dot_codegen_dot_loader__pb2.ResourceSpec.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

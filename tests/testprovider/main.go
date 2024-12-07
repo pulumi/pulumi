@@ -32,17 +32,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-const (
-	providerName = "testprovider"
-	version      = "0.0.1"
-)
-
 var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
+	Version:     "0.0.1",
 	Description: "A test provider.",
 	DisplayName: "testprovider",
 
@@ -101,8 +98,8 @@ func main() {
 	// Basic --help support, used for some `plugin run` tests.
 	flag.Parse()
 
-	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
-		return makeProvider(host, providerName, version)
+	if err := provider.Main(providerSchema.Name, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
+		return makeProvider(host, providerSchema.Name, providerSchema.Version)
 	}); err != nil {
 		cmdutil.ExitError(err.Error())
 	}
@@ -110,6 +107,7 @@ func main() {
 
 type testproviderProvider struct {
 	rpc.UnimplementedResourceProviderServer
+	codegen.UnimplementedPartialLoaderServer
 
 	parameter string
 
@@ -169,7 +167,7 @@ func (p *testproviderProvider) Parameterize(_ context.Context, req *rpc.Paramete
 
 	return &rpc.ParameterizeResponse{
 		Name:    p.parameter,
-		Version: version,
+		Version: providerSchema.Version,
 	}, nil
 }
 
@@ -314,8 +312,8 @@ func (p *testproviderProvider) GetSchema(ctx context.Context,
 				Version: "1.0.0",
 				Parameterization: &pschema.ParameterizationSpec{
 					BaseProvider: pschema.BaseProviderSpec{
-						Name:    "testprovider",
-						Version: version,
+						Name:    providerSchema.Name,
+						Version: providerSchema.Version,
 					},
 					Parameter: []byte(p.parameter),
 				},
@@ -349,6 +347,13 @@ func (p *testproviderProvider) GetSchema(ctx context.Context,
 	}
 	return &rpc.GetSchemaResponse{
 		Schema: string(schemaJSON),
+	}, nil
+}
+
+func (p *testproviderProvider) GetPackageInfo(ctx context.Context, req *codegen.GetPartialSchemaRequest) (*codegen.PackageInfo, error) {
+	return &codegen.PackageInfo{
+		Name:    providerSchema.Name,
+		Version: &providerSchema.Version,
 	}, nil
 }
 

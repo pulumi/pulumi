@@ -16,9 +16,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import builtins
+import collections.abc
 import google.protobuf.descriptor
+import google.protobuf.internal.containers
 import google.protobuf.message
 import sys
+import typing
 
 if sys.version_info >= (3, 8):
     import typing as typing_extensions
@@ -86,6 +89,60 @@ class GetSchemaRequest(google.protobuf.message.Message):
 global___GetSchemaRequest = GetSchemaRequest
 
 @typing_extensions.final
+class PackageDescriptor(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    package: builtins.str
+    """the package name for the schema being requested."""
+    version: builtins.str
+    """the version for the schema being requested, must be a valid semver or empty."""
+    download_url: builtins.str
+    """the optional download url for the schema being requested."""
+    @property
+    def parameterization(self) -> global___Parameterization:
+        """the parameterization for the schema being requested, can be empty."""
+    def __init__(
+        self,
+        *,
+        package: builtins.str = ...,
+        version: builtins.str = ...,
+        download_url: builtins.str = ...,
+        parameterization: global___Parameterization | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["download_url", b"download_url", "package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
+
+global___PackageDescriptor = PackageDescriptor
+
+@typing_extensions.final
+class PackageDescriptorMember(google.protobuf.message.Message):
+    """PackageDescriptorMember allows the engine to return a member from a schema for a given package and version."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SCHEMA_FIELD_NUMBER: builtins.int
+    MEMBER_FIELD_NUMBER: builtins.int
+    @property
+    def schema(self) -> global___PackageDescriptor:
+        """the overall request for the schema being queried."""
+    member: builtins.str
+    """the member for which to return information, such as a resource or function."""
+    def __init__(
+        self,
+        *,
+        schema: global___PackageDescriptor | None = ...,
+        member: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["schema", b"schema"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["member", b"member", "schema", b"schema"]) -> None: ...
+
+global___PackageDescriptorMember = PackageDescriptorMember
+
+@typing_extensions.final
 class GetSchemaResponse(google.protobuf.message.Message):
     """GetSchemaResponse returns the schema data for the requested package."""
 
@@ -102,3 +159,221 @@ class GetSchemaResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["schema", b"schema"]) -> None: ...
 
 global___GetSchemaResponse = GetSchemaResponse
+
+@typing_extensions.final
+class MetaSpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    MODULE_FORMAT_FIELD_NUMBER: builtins.int
+    SUPPORT_PACK_FIELD_NUMBER: builtins.int
+    module_format: builtins.str
+    support_pack: builtins.bool
+    def __init__(
+        self,
+        *,
+        module_format: builtins.str = ...,
+        support_pack: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["module_format", b"module_format", "support_pack", b"support_pack"]) -> None: ...
+
+global___MetaSpec = MetaSpec
+
+@typing_extensions.final
+class ParameterizationSpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    BASE_PROVIDER_NAME_FIELD_NUMBER: builtins.int
+    BASE_PROVIDER_VERSION_FIELD_NUMBER: builtins.int
+    PARAMETER_FIELD_NUMBER: builtins.int
+    base_provider_name: builtins.str
+    base_provider_version: builtins.str
+    parameter: builtins.bytes
+    def __init__(
+        self,
+        *,
+        base_provider_name: builtins.str = ...,
+        base_provider_version: builtins.str = ...,
+        parameter: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["base_provider_name", b"base_provider_name", "base_provider_version", b"base_provider_version", "parameter", b"parameter"]) -> None: ...
+
+global___ParameterizationSpec = ParameterizationSpec
+
+@typing_extensions.final
+class PackageSpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class DependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___PackageDescriptor: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___PackageDescriptor | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    NAME_FIELD_NUMBER: builtins.int
+    DISPLAY_NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    KEYWORDS_FIELD_NUMBER: builtins.int
+    HOMEPAGE_FIELD_NUMBER: builtins.int
+    LICENSE_FIELD_NUMBER: builtins.int
+    ATTRIBUTION_FIELD_NUMBER: builtins.int
+    REPOSITORY_FIELD_NUMBER: builtins.int
+    LOGO_URL_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    PUBLISHER_FIELD_NUMBER: builtins.int
+    NAMESPACE_FIELD_NUMBER: builtins.int
+    DEPENDENCIES_FIELD_NUMBER: builtins.int
+    META_FIELD_NUMBER: builtins.int
+    ALLOWED_PACKAGE_NAMES_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    display_name: builtins.str
+    version: builtins.str
+    description: builtins.str
+    @property
+    def keywords(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    homepage: builtins.str
+    license: builtins.str
+    attribution: builtins.str
+    repository: builtins.str
+    logo_url: builtins.str
+    plugin_download_url: builtins.str
+    publisher: builtins.str
+    namespace: builtins.str
+    @property
+    def dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PackageDescriptor]: ...
+    @property
+    def meta(self) -> global___MetaSpec: ...
+    @property
+    def allowed_package_names(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def parameterization(self) -> global___ParameterizationSpec: ...
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        display_name: builtins.str = ...,
+        version: builtins.str | None = ...,
+        description: builtins.str = ...,
+        keywords: collections.abc.Iterable[builtins.str] | None = ...,
+        homepage: builtins.str = ...,
+        license: builtins.str = ...,
+        attribution: builtins.str = ...,
+        repository: builtins.str = ...,
+        logo_url: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        publisher: builtins.str = ...,
+        namespace: builtins.str = ...,
+        dependencies: collections.abc.Mapping[builtins.str, global___PackageDescriptor] | None = ...,
+        meta: global___MetaSpec | None = ...,
+        allowed_package_names: collections.abc.Iterable[builtins.str] | None = ...,
+        parameterization: global___ParameterizationSpec | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_meta", b"_meta", "_parameterization", b"_parameterization", "_version", b"_version", "meta", b"meta", "parameterization", b"parameterization", "version", b"version"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_meta", b"_meta", "_parameterization", b"_parameterization", "_version", b"_version", "allowed_package_names", b"allowed_package_names", "attribution", b"attribution", "dependencies", b"dependencies", "description", b"description", "display_name", b"display_name", "homepage", b"homepage", "keywords", b"keywords", "license", b"license", "logo_url", b"logo_url", "meta", b"meta", "name", b"name", "namespace", b"namespace", "parameterization", b"parameterization", "plugin_download_url", b"plugin_download_url", "publisher", b"publisher", "repository", b"repository", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_meta", b"_meta"]) -> typing_extensions.Literal["meta"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_parameterization", b"_parameterization"]) -> typing_extensions.Literal["parameterization"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_version", b"_version"]) -> typing_extensions.Literal["version"] | None: ...
+
+global___PackageSpec = PackageSpec
+
+@typing_extensions.final
+class ResourceSpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PropertiesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
+    class InputsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
+    class OutputsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    NAME_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    description: builtins.str
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """aliases for the resource."""
+    @property
+    def properties(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """properties of the resource."""
+    @property
+    def inputs(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """input properties of the resource."""
+    @property
+    def outputs(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """output properties of the resource."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        description: builtins.str = ...,
+        aliases: collections.abc.Iterable[builtins.str] | None = ...,
+        properties: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        inputs: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        outputs: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["aliases", b"aliases", "description", b"description", "inputs", b"inputs", "name", b"name", "outputs", b"outputs", "properties", b"properties"]) -> None: ...
+
+global___ResourceSpec = ResourceSpec

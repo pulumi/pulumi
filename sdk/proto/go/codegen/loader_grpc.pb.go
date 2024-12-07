@@ -24,6 +24,10 @@ const _ = grpc.SupportPackageIsVersion7
 type LoaderClient interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
+	// GetPackageSpec returns information about a package, such as its name, version, description, and repository.
+	GetPackageSpec(ctx context.Context, in *PackageDescriptor, opts ...grpc.CallOption) (*PackageSpec, error)
+	// GetResourceSpec returns information about a resource in a package, such as its name, description, and properties.
+	GetResourceSpec(ctx context.Context, in *PackageDescriptorMember, opts ...grpc.CallOption) (*ResourceSpec, error)
 }
 
 type loaderClient struct {
@@ -43,12 +47,34 @@ func (c *loaderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts
 	return out, nil
 }
 
+func (c *loaderClient) GetPackageSpec(ctx context.Context, in *PackageDescriptor, opts ...grpc.CallOption) (*PackageSpec, error) {
+	out := new(PackageSpec)
+	err := c.cc.Invoke(ctx, "/codegen.Loader/GetPackageSpec", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loaderClient) GetResourceSpec(ctx context.Context, in *PackageDescriptorMember, opts ...grpc.CallOption) (*ResourceSpec, error) {
+	out := new(ResourceSpec)
+	err := c.cc.Invoke(ctx, "/codegen.Loader/GetResourceSpec", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoaderServer is the server API for Loader service.
 // All implementations must embed UnimplementedLoaderServer
 // for forward compatibility
 type LoaderServer interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
+	// GetPackageSpec returns information about a package, such as its name, version, description, and repository.
+	GetPackageSpec(context.Context, *PackageDescriptor) (*PackageSpec, error)
+	// GetResourceSpec returns information about a resource in a package, such as its name, description, and properties.
+	GetResourceSpec(context.Context, *PackageDescriptorMember) (*ResourceSpec, error)
 	mustEmbedUnimplementedLoaderServer()
 }
 
@@ -58,6 +84,12 @@ type UnimplementedLoaderServer struct {
 
 func (UnimplementedLoaderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
+}
+func (UnimplementedLoaderServer) GetPackageSpec(context.Context, *PackageDescriptor) (*PackageSpec, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageSpec not implemented")
+}
+func (UnimplementedLoaderServer) GetResourceSpec(context.Context, *PackageDescriptorMember) (*ResourceSpec, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetResourceSpec not implemented")
 }
 func (UnimplementedLoaderServer) mustEmbedUnimplementedLoaderServer() {}
 
@@ -90,6 +122,42 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Loader_GetPackageSpec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PackageDescriptor)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoaderServer).GetPackageSpec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/codegen.Loader/GetPackageSpec",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoaderServer).GetPackageSpec(ctx, req.(*PackageDescriptor))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Loader_GetResourceSpec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PackageDescriptorMember)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoaderServer).GetResourceSpec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/codegen.Loader/GetResourceSpec",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoaderServer).GetResourceSpec(ctx, req.(*PackageDescriptorMember))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Loader_ServiceDesc is the grpc.ServiceDesc for Loader service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +168,14 @@ var Loader_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSchema",
 			Handler:    _Loader_GetSchema_Handler,
+		},
+		{
+			MethodName: "GetPackageSpec",
+			Handler:    _Loader_GetPackageSpec_Handler,
+		},
+		{
+			MethodName: "GetResourceSpec",
+			Handler:    _Loader_GetResourceSpec_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -41,6 +41,50 @@ function deserialize_codegen_GetSchemaResponse(buffer_arg) {
   return pulumi_codegen_loader_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_codegen_PackageDescriptor(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.PackageDescriptor)) {
+    throw new Error('Expected argument of type codegen.PackageDescriptor');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_PackageDescriptor(buffer_arg) {
+  return pulumi_codegen_loader_pb.PackageDescriptor.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_PackageDescriptorMember(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.PackageDescriptorMember)) {
+    throw new Error('Expected argument of type codegen.PackageDescriptorMember');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_PackageDescriptorMember(buffer_arg) {
+  return pulumi_codegen_loader_pb.PackageDescriptorMember.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_PackageSpec(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.PackageSpec)) {
+    throw new Error('Expected argument of type codegen.PackageSpec');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_PackageSpec(buffer_arg) {
+  return pulumi_codegen_loader_pb.PackageSpec.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_ResourceSpec(arg) {
+  if (!(arg instanceof pulumi_codegen_loader_pb.ResourceSpec)) {
+    throw new Error('Expected argument of type codegen.ResourceSpec');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_ResourceSpec(buffer_arg) {
+  return pulumi_codegen_loader_pb.ResourceSpec.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
 // This is currently unstable and experimental.
@@ -56,6 +100,30 @@ getSchema: {
     requestDeserialize: deserialize_codegen_GetSchemaRequest,
     responseSerialize: serialize_codegen_GetSchemaResponse,
     responseDeserialize: deserialize_codegen_GetSchemaResponse,
+  },
+  // GetPackageSpec returns information about a package, such as its name, version, description, and repository.
+getPackageSpec: {
+    path: '/codegen.Loader/GetPackageSpec',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_loader_pb.PackageDescriptor,
+    responseType: pulumi_codegen_loader_pb.PackageSpec,
+    requestSerialize: serialize_codegen_PackageDescriptor,
+    requestDeserialize: deserialize_codegen_PackageDescriptor,
+    responseSerialize: serialize_codegen_PackageSpec,
+    responseDeserialize: deserialize_codegen_PackageSpec,
+  },
+  // GetResourceSpec returns information about a resource in a package, such as its name, description, and properties.
+getResourceSpec: {
+    path: '/codegen.Loader/GetResourceSpec',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_loader_pb.PackageDescriptorMember,
+    responseType: pulumi_codegen_loader_pb.ResourceSpec,
+    requestSerialize: serialize_codegen_PackageDescriptorMember,
+    requestDeserialize: deserialize_codegen_PackageDescriptorMember,
+    responseSerialize: serialize_codegen_ResourceSpec,
+    responseDeserialize: deserialize_codegen_ResourceSpec,
   },
 };
 

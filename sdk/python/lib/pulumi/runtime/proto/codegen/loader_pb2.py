@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"\x80\x01\n\x11PackageDescriptor\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"U\n\x17PackageDescriptorMember\x12*\n\x06schema\x18\x01 \x01(\x0b\x32\x1a.codegen.PackageDescriptor\x12\x0e\n\x06member\x18\x02 \x01(\t\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\"7\n\x08MetaSpec\x12\x15\n\rmodule_format\x18\x01 \x01(\t\x12\x14\n\x0csupport_pack\x18\x02 \x01(\x08\"d\n\x14ParameterizationSpec\x12\x1a\n\x12\x62\x61se_provider_name\x18\x01 \x01(\t\x12\x1d\n\x15\x62\x61se_provider_version\x18\x02 \x01(\t\x12\x11\n\tparameter\x18\x03 \x01(\x0c\"\xcb\x04\n\x0bPackageSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x14\n\x07version\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x10\n\x08keywords\x18\x05 \x03(\t\x12\x10\n\x08homepage\x18\x06 \x01(\t\x12\x0f\n\x07license\x18\x07 \x01(\t\x12\x13\n\x0b\x61ttribution\x18\x08 \x01(\t\x12\x12\n\nrepository\x18\t \x01(\t\x12\x10\n\x08logo_url\x18\n \x01(\t\x12\x1b\n\x13plugin_download_url\x18\x0b \x01(\t\x12\x11\n\tpublisher\x18\x0c \x01(\t\x12\x11\n\tnamespace\x18\r \x01(\t\x12<\n\x0c\x64\x65pendencies\x18\x0e \x03(\x0b\x32&.codegen.PackageSpec.DependenciesEntry\x12$\n\x04meta\x18\x0f \x01(\x0b\x32\x11.codegen.MetaSpecH\x01\x88\x01\x01\x12\x1d\n\x15\x61llowed_package_names\x18\x10 \x03(\t\x12<\n\x10parameterization\x18\x11 \x01(\x0b\x32\x1d.codegen.ParameterizationSpecH\x02\x88\x01\x01\x1aO\n\x11\x44\x65pendenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12)\n\x05value\x18\x02 \x01(\x0b\x32\x1a.codegen.PackageDescriptor:\x02\x38\x01\x42\n\n\x08_versionB\x07\n\x05_metaB\x13\n\x11_parameterization\"\xf7\x02\n\x0cResourceSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x0f\n\x07\x61liases\x18\x03 \x03(\t\x12\x39\n\nproperties\x18\x04 \x03(\x0b\x32%.codegen.ResourceSpec.PropertiesEntry\x12\x31\n\x06inputs\x18\x05 \x03(\x0b\x32!.codegen.ResourceSpec.InputsEntry\x12\x33\n\x07outputs\x18\x06 \x03(\x0b\x32\".codegen.ResourceSpec.OutputsEntry\x1a\x31\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a-\n\x0bInputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a.\n\x0cOutputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\xe2\x01\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12\x44\n\x0eGetPackageSpec\x12\x1a.codegen.PackageDescriptor\x1a\x14.codegen.PackageSpec\"\x00\x12L\n\x0fGetResourceSpec\x12 .codegen.PackageDescriptorMember\x1a\x15.codegen.ResourceSpec\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2', globals())
@@ -21,12 +21,40 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
+  _PACKAGESPEC_DEPENDENCIESENTRY._options = None
+  _PACKAGESPEC_DEPENDENCIESENTRY._serialized_options = b'8\001'
+  _RESOURCESPEC_PROPERTIESENTRY._options = None
+  _RESOURCESPEC_PROPERTIESENTRY._serialized_options = b'8\001'
+  _RESOURCESPEC_INPUTSENTRY._options = None
+  _RESOURCESPEC_INPUTSENTRY._serialized_options = b'8\001'
+  _RESOURCESPEC_OUTPUTSENTRY._options = None
+  _RESOURCESPEC_OUTPUTSENTRY._serialized_options = b'8\001'
   _PARAMETERIZATION._serialized_start=40
   _PARAMETERIZATION._serialized_end=104
   _GETSCHEMAREQUEST._serialized_start=106
   _GETSCHEMAREQUEST._serialized_end=233
-  _GETSCHEMARESPONSE._serialized_start=235
-  _GETSCHEMARESPONSE._serialized_end=270
-  _LOADER._serialized_start=272
-  _LOADER._serialized_end=350
+  _PACKAGEDESCRIPTOR._serialized_start=236
+  _PACKAGEDESCRIPTOR._serialized_end=364
+  _PACKAGEDESCRIPTORMEMBER._serialized_start=366
+  _PACKAGEDESCRIPTORMEMBER._serialized_end=451
+  _GETSCHEMARESPONSE._serialized_start=453
+  _GETSCHEMARESPONSE._serialized_end=488
+  _METASPEC._serialized_start=490
+  _METASPEC._serialized_end=545
+  _PARAMETERIZATIONSPEC._serialized_start=547
+  _PARAMETERIZATIONSPEC._serialized_end=647
+  _PACKAGESPEC._serialized_start=650
+  _PACKAGESPEC._serialized_end=1237
+  _PACKAGESPEC_DEPENDENCIESENTRY._serialized_start=1116
+  _PACKAGESPEC_DEPENDENCIESENTRY._serialized_end=1195
+  _RESOURCESPEC._serialized_start=1240
+  _RESOURCESPEC._serialized_end=1615
+  _RESOURCESPEC_PROPERTIESENTRY._serialized_start=1471
+  _RESOURCESPEC_PROPERTIESENTRY._serialized_end=1520
+  _RESOURCESPEC_INPUTSENTRY._serialized_start=1522
+  _RESOURCESPEC_INPUTSENTRY._serialized_end=1567
+  _RESOURCESPEC_OUTPUTSENTRY._serialized_start=1569
+  _RESOURCESPEC_OUTPUTSENTRY._serialized_end=1615
+  _LOADER._serialized_start=1618
+  _LOADER._serialized_end=1844
 # @@protoc_insertion_point(module_scope)

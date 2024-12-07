@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
@@ -94,24 +95,39 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 		}
 	}
 
-	resp, err := l.clientRaw.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
+	schemaRequest := &codegenrpc.GetSchemaRequest{
 		Package:          descriptor.Name,
 		Version:          versionString,
 		DownloadUrl:      descriptor.DownloadURL,
 		Parameterization: parameterization,
-	})
+	}
+
+	// See if the server supports the new GetPackageSpec method and can return a LoaderPackage.
+	spec, err := l.clientRaw.GetPackageSpec(ctx, schemaRequest)
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		if rpcError.Code() != codes.Unimplemented {
+			return nil, err
+		}
+		logging.V(7).Infof("%s falling back to GetScheam: %v", label)
+	} else {
+		// If the server supports GetPackageSpec, return a PartialPackageSpec wrapper around the connection.
+		return ImportClientSpec(l.clientRaw, schemaRequest, spec, l)
+	}
+
+	resp, err := l.clientRaw.GetSchema(ctx, schemaRequest)
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError)
 		return nil, err
 	}
 
-	var spec PartialPackageSpec
-	if _, err := json.Parse(resp.Schema, &spec, json.ZeroCopy); err != nil {
+	var partialPackageSpec PartialPackageSpec
+	if _, err := json.Parse(resp.Schema, &partialPackageSpec, json.ZeroCopy); err != nil {
 		return nil, err
 	}
 
-	p, err := ImportPartialSpec(spec, nil, l)
+	p, err := ImportPartialSpec(partialPackageSpec, nil, l)
 	if err != nil {
 		return nil, err
 	}

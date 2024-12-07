@@ -30,6 +30,16 @@ class LoaderStub:
         pulumi.codegen.loader_pb2.GetSchemaResponse,
     ]
     """GetSchema tries to find a schema for the given package and version."""
+    GetPackageSpec: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.PackageDescriptor,
+        pulumi.codegen.loader_pb2.PackageSpec,
+    ]
+    """GetPackageSpec returns information about a package, such as its name, version, description, and repository."""
+    GetResourceSpec: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.PackageDescriptorMember,
+        pulumi.codegen.loader_pb2.ResourceSpec,
+    ]
+    """GetResourceSpec returns information about a resource in a package, such as its name, description, and properties."""
 
 class LoaderServicer(metaclass=abc.ABCMeta):
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -43,5 +53,19 @@ class LoaderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.codegen.loader_pb2.GetSchemaResponse:
         """GetSchema tries to find a schema for the given package and version."""
+    @abc.abstractmethod
+    def GetPackageSpec(
+        self,
+        request: pulumi.codegen.loader_pb2.PackageDescriptor,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.loader_pb2.PackageSpec:
+        """GetPackageSpec returns information about a package, such as its name, version, description, and repository."""
+    @abc.abstractmethod
+    def GetResourceSpec(
+        self,
+        request: pulumi.codegen.loader_pb2.PackageDescriptorMember,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.loader_pb2.ResourceSpec:
+        """GetResourceSpec returns information about a resource in a package, such as its name, description, and properties."""
 
 def add_LoaderServicer_to_server(servicer: LoaderServicer, server: grpc.Server) -> None: ...

@@ -11,7 +11,7 @@
 2663220814 13511 proto/pulumi/analyzer.proto
 2045336065 1464 proto/pulumi/callback.proto
 2452746699 3822 proto/pulumi/codegen/hcl.proto
-3175736954 2019 proto/pulumi/codegen/loader.proto
+2465090093 4323 proto/pulumi/codegen/loader.proto
 96164532 3982 proto/pulumi/codegen/mapper.proto
 3996736482 3519 proto/pulumi/converter.proto
 1998652962 3845 proto/pulumi/engine.proto

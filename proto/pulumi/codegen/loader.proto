@@ -23,6 +23,12 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
 service Loader {
     // GetSchema tries to find a schema for the given package and version.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+
+    // GetPackageSpec returns information about a package, such as its name, version, description, and repository.
+    rpc GetPackageSpec(PackageDescriptor) returns (PackageSpec) {}
+
+    // GetResourceSpec returns information about a resource in a package, such as its name, description, and properties.
+    rpc GetResourceSpec(PackageDescriptorMember) returns (ResourceSpec) {}
 }
 
 // Parameterization specifies the name, version, and value for a parameterized package.
@@ -44,8 +50,67 @@ message GetSchemaRequest {
     Parameterization parameterization = 4;
 }
 
+message PackageDescriptor {
+    // the package name for the schema being requested.
+    string package = 1;
+    // the version for the schema being requested, must be a valid semver or empty.
+    string version = 2;
+    // the optional download url for the schema being requested.
+    string download_url = 3;
+    // the parameterization for the schema being requested, can be empty.
+    Parameterization parameterization = 4;
+}
+
+// PackageDescriptorMember allows the engine to return a member from a schema for a given package and version.
+message PackageDescriptorMember {
+    // the overall request for the schema being queried.
+    PackageDescriptor schema = 1;
+    // the member for which to return information, such as a resource or function.
+    string member = 2;
+}
+
 // GetSchemaResponse returns the schema data for the requested package.
 message GetSchemaResponse {
     // the JSON encoded schema.
     bytes schema = 1;
+}
+
+message MetaSpec {
+    string module_format = 1;
+    bool support_pack = 2;
+}
+
+message ParameterizationSpec {
+    string base_provider_name = 1;
+    string base_provider_version = 2;
+    bytes parameter = 3;
+}
+
+message PackageSpec{
+    string name = 1;
+    string display_name = 2;
+    optional string version = 3;
+    string description = 4;
+    repeated string keywords = 5;
+    string homepage = 6;
+    string license = 7;
+    string attribution = 8;
+    string repository = 9;
+    string logo_url = 10;
+    string plugin_download_url = 11;
+    string publisher = 12;
+    string namespace = 13;
+    map<string, PackageDescriptor> dependencies = 14;
+    optional MetaSpec meta = 15;
+    repeated string allowed_package_names = 16;
+    optional ParameterizationSpec parameterization = 17;
+}
+
+message ResourceSpec {
+    string name = 1;
+    string description = 2;
+    repeated string aliases = 3; // aliases for the resource.
+    map<string, string> properties = 4; // properties of the resource.
+    map<string, string> inputs = 5; // input properties of the resource.
+    map<string, string> outputs = 6; // output properties of the resource.
 }
