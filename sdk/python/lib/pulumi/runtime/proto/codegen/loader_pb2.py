@@ -11,9 +11,10 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from pulumi.codegen.schema import schema_pb2 as pulumi_dot_codegen_dot_schema_dot_schema__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\x1a\"pulumi/codegen/schema/schema.proto\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"P\n\x14GetSchemaPartRequest\x12*\n\x07request\x18\x01 \x01(\x0b\x32\x19.codegen.GetSchemaRequest\x12\x0c\n\x04item\x18\x02 \x01(\t\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\";\n\x17GetPartialSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"^\n\x1bGetPartialSchemaPartRequest\x12\x31\n\x07request\x18\x01 \x01(\x0b\x32 .codegen.GetPartialSchemaRequest\x12\x0c\n\x04item\x18\x02 \x01(\t2\xc5\x02\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12T\n\x0eGetPackageInfo\x12\x19.codegen.GetSchemaRequest\x1a%.pulumirpc.codegen.schema.PackageInfo\"\x00\x12K\n\x0cGetResources\x12\x19.codegen.GetSchemaRequest\x1a\x1e.pulumirpc.codegen.schema.List\"\x00\x12R\n\x0bGetResource\x12\x1d.codegen.GetSchemaPartRequest\x1a\".pulumirpc.codegen.schema.Resource\"\x00\x32\x9b\x02\n\rPartialLoader\x12[\n\x0eGetPackageInfo\x12 .codegen.GetPartialSchemaRequest\x1a%.pulumirpc.codegen.schema.PackageInfo\"\x00\x12R\n\x0cGetResources\x12 .codegen.GetPartialSchemaRequest\x1a\x1e.pulumirpc.codegen.schema.List\"\x00\x12Y\n\x0bGetResource\x12$.codegen.GetPartialSchemaPartRequest\x1a\".pulumirpc.codegen.schema.Resource\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2', globals())
@@ -21,12 +22,20 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
-  _PARAMETERIZATION._serialized_start=40
-  _PARAMETERIZATION._serialized_end=104
-  _GETSCHEMAREQUEST._serialized_start=106
-  _GETSCHEMAREQUEST._serialized_end=233
-  _GETSCHEMARESPONSE._serialized_start=235
-  _GETSCHEMARESPONSE._serialized_end=270
-  _LOADER._serialized_start=272
-  _LOADER._serialized_end=350
+  _PARAMETERIZATION._serialized_start=76
+  _PARAMETERIZATION._serialized_end=140
+  _GETSCHEMAREQUEST._serialized_start=142
+  _GETSCHEMAREQUEST._serialized_end=269
+  _GETSCHEMAPARTREQUEST._serialized_start=271
+  _GETSCHEMAPARTREQUEST._serialized_end=351
+  _GETSCHEMARESPONSE._serialized_start=353
+  _GETSCHEMARESPONSE._serialized_end=388
+  _GETPARTIALSCHEMAREQUEST._serialized_start=390
+  _GETPARTIALSCHEMAREQUEST._serialized_end=449
+  _GETPARTIALSCHEMAPARTREQUEST._serialized_start=451
+  _GETPARTIALSCHEMAPARTREQUEST._serialized_end=545
+  _LOADER._serialized_start=548
+  _LOADER._serialized_end=873
+  _PARTIALLOADER._serialized_start=876
+  _PARTIALLOADER._serialized_end=1159
 # @@protoc_insertion_point(module_scope)

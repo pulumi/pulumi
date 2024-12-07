@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+import "pulumi/codegen/schema/schema.proto";
+
 package codegen;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
@@ -23,6 +25,10 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
 service Loader {
     // GetSchema tries to find a schema for the given package and version.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+
+    rpc GetPackageInfo(GetSchemaRequest) returns (pulumirpc.codegen.schema.PackageInfo) {}
+    rpc GetResources(GetSchemaRequest) returns (pulumirpc.codegen.schema.List) {}
+    rpc GetResource(GetSchemaPartRequest) returns (pulumirpc.codegen.schema.Resource) {}
 }
 
 // Parameterization specifies the name, version, and value for a parameterized package.
@@ -44,8 +50,31 @@ message GetSchemaRequest {
     Parameterization parameterization = 4;
 }
 
+message GetSchemaPartRequest {
+    GetSchemaRequest request = 1;
+    string item = 2;
+}
+
 // GetSchemaResponse returns the schema data for the requested package.
 message GetSchemaResponse {
     // the JSON encoded schema.
     bytes schema = 1;
+}
+
+// PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+// This uses many of the same response message as the engine Loader service, but takes different requests.
+service PartialLoader {
+    rpc GetPackageInfo(GetPartialSchemaRequest) returns (pulumirpc.codegen.schema.PackageInfo) {}
+    rpc GetResources(GetPartialSchemaRequest) returns (pulumirpc.codegen.schema.List) {}
+    rpc GetResource(GetPartialSchemaPartRequest) returns (pulumirpc.codegen.schema.Resource) {}
+}
+
+message GetPartialSchemaRequest {
+    string package = 1;
+    string version = 2;
+}
+
+message GetPartialSchemaPartRequest {
+    GetPartialSchemaRequest request = 1;
+    string item = 2;
 }

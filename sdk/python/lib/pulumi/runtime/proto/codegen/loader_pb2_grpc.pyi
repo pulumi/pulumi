@@ -18,6 +18,7 @@ limitations under the License.
 import abc
 import grpc
 import pulumi.codegen.loader_pb2
+import pulumi.codegen.schema.schema_pb2
 
 class LoaderStub:
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -30,6 +31,18 @@ class LoaderStub:
         pulumi.codegen.loader_pb2.GetSchemaResponse,
     ]
     """GetSchema tries to find a schema for the given package and version."""
+    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetSchemaRequest,
+        pulumi.codegen.schema.schema_pb2.PackageInfo,
+    ]
+    GetResources: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetSchemaRequest,
+        pulumi.codegen.schema.schema_pb2.List,
+    ]
+    GetResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetSchemaPartRequest,
+        pulumi.codegen.schema.schema_pb2.Resource,
+    ]
 
 class LoaderServicer(metaclass=abc.ABCMeta):
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -43,5 +56,68 @@ class LoaderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.codegen.loader_pb2.GetSchemaResponse:
         """GetSchema tries to find a schema for the given package and version."""
+    @abc.abstractmethod
+    def GetPackageInfo(
+        self,
+        request: pulumi.codegen.loader_pb2.GetSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.PackageInfo: ...
+    @abc.abstractmethod
+    def GetResources(
+        self,
+        request: pulumi.codegen.loader_pb2.GetSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.List: ...
+    @abc.abstractmethod
+    def GetResource(
+        self,
+        request: pulumi.codegen.loader_pb2.GetSchemaPartRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.Resource: ...
 
 def add_LoaderServicer_to_server(servicer: LoaderServicer, server: grpc.Server) -> None: ...
+
+class PartialLoaderStub:
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    def __init__(self, channel: grpc.Channel) -> None: ...
+    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        pulumi.codegen.schema.schema_pb2.PackageInfo,
+    ]
+    GetResources: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        pulumi.codegen.schema.schema_pb2.List,
+    ]
+    GetResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetPartialSchemaPartRequest,
+        pulumi.codegen.schema.schema_pb2.Resource,
+    ]
+
+class PartialLoaderServicer(metaclass=abc.ABCMeta):
+    """PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.
+    This uses many of the same response message as the engine Loader service, but takes different requests.
+    """
+
+    @abc.abstractmethod
+    def GetPackageInfo(
+        self,
+        request: pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.PackageInfo: ...
+    @abc.abstractmethod
+    def GetResources(
+        self,
+        request: pulumi.codegen.loader_pb2.GetPartialSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.List: ...
+    @abc.abstractmethod
+    def GetResource(
+        self,
+        request: pulumi.codegen.loader_pb2.GetPartialSchemaPartRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.Resource: ...
+
+def add_PartialLoaderServicer_to_server(servicer: PartialLoaderServicer, server: grpc.Server) -> None: ...

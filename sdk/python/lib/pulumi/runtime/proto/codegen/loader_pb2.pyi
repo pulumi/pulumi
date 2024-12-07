@@ -86,6 +86,26 @@ class GetSchemaRequest(google.protobuf.message.Message):
 global___GetSchemaRequest = GetSchemaRequest
 
 @typing_extensions.final
+class GetSchemaPartRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REQUEST_FIELD_NUMBER: builtins.int
+    ITEM_FIELD_NUMBER: builtins.int
+    @property
+    def request(self) -> global___GetSchemaRequest: ...
+    item: builtins.str
+    def __init__(
+        self,
+        *,
+        request: global___GetSchemaRequest | None = ...,
+        item: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["request", b"request"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["item", b"item", "request", b"request"]) -> None: ...
+
+global___GetSchemaPartRequest = GetSchemaPartRequest
+
+@typing_extensions.final
 class GetSchemaResponse(google.protobuf.message.Message):
     """GetSchemaResponse returns the schema data for the requested package."""
 
@@ -102,3 +122,41 @@ class GetSchemaResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["schema", b"schema"]) -> None: ...
 
 global___GetSchemaResponse = GetSchemaResponse
+
+@typing_extensions.final
+class GetPartialSchemaRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    package: builtins.str
+    version: builtins.str
+    def __init__(
+        self,
+        *,
+        package: builtins.str = ...,
+        version: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "version", b"version"]) -> None: ...
+
+global___GetPartialSchemaRequest = GetPartialSchemaRequest
+
+@typing_extensions.final
+class GetPartialSchemaPartRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REQUEST_FIELD_NUMBER: builtins.int
+    ITEM_FIELD_NUMBER: builtins.int
+    @property
+    def request(self) -> global___GetPartialSchemaRequest: ...
+    item: builtins.str
+    def __init__(
+        self,
+        *,
+        request: global___GetPartialSchemaRequest | None = ...,
+        item: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["request", b"request"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["item", b"item", "request", b"request"]) -> None: ...
+
+global___GetPartialSchemaPartRequest = GetPartialSchemaPartRequest

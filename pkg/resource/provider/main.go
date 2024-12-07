@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // Tracing is the optional command line flag passed to this provider for configuring a  Zipkin-compatible tracing
@@ -81,6 +82,12 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 				return fmt.Errorf("failed to create resource provider: %v", proverr)
 			}
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
+
+			// See if the provider object implements the partial loader interface
+			if partialLoader, ok := prov.(codegen.PartialLoaderServer); ok {
+				codegen.RegisterPartialLoaderServer(srv, partialLoader)
+			}
+
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
