@@ -159,6 +159,7 @@
                     "additionalProperties": false
                 },
                 "parameter": {
+                    "description": "The parameter for the provider.",
                     "type": "string",
                     "contentEncoding": "base64"
                 }
@@ -296,7 +297,7 @@
                                     "minLength": 1
                                 },
                                 "mapping": {
-                                    "description": "an optional object to hold mappings between payload values and schema names or references",
+                                    "description": "An optional object to hold mappings between payload values and schema names or references",
                                     "type": "object",
                                     "additionalProperties": {
                                         "type": "string"
@@ -497,7 +498,7 @@
                     }
                 },
                 "stateInputs": {
-                    "description": "An optional objectTypeSpec that describes additional inputs that mau be necessary to get an existing resource. If this is unset, only an ID is necessary.",
+                    "description": "An optional objectTypeSpec that describes additional inputs that may be necessary to get an existing resource. If this is unset, only an ID is necessary.",
                     "$ref": "#/$defs/objectTypeSpec"
                 },
                 "aliases": {
@@ -681,7 +682,7 @@
             "type": "object",
             "properties": {
                 "packageName": {
-                    "description": "NPM package name (includes @namespace)",
+                    "description": "The PyPI package name.",
                     "type": "string"
                 },
                 "readme": {
