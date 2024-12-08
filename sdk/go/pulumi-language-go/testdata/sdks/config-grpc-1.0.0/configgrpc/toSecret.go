@@ -223,19 +223,8 @@ func ToSecretOutput(ctx *pulumi.Context, args ToSecretOutputArgs, opts ...pulumi
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ToSecretResultOutput, error) {
 			args := v.(ToSecretArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv ToSecretResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("config-grpc:index:toSecret", args, &rv, "", opts...)
-			if err != nil {
-				return ToSecretResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(ToSecretResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ToSecretResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(ToSecretResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("config-grpc:index:toSecret", args, ToSecretResultOutput{}, options).(ToSecretResultOutput), nil
 		}).(ToSecretResultOutput)
 }
 

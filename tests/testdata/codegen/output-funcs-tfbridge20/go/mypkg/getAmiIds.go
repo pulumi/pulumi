@@ -61,19 +61,8 @@ func GetAmiIdsOutput(ctx *pulumi.Context, args GetAmiIdsOutputArgs, opts ...pulu
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetAmiIdsResultOutput, error) {
 			args := v.(GetAmiIdsArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv GetAmiIdsResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::getAmiIds", args, &rv, "", opts...)
-			if err != nil {
-				return GetAmiIdsResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(GetAmiIdsResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(GetAmiIdsResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(GetAmiIdsResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::getAmiIds", args, GetAmiIdsResultOutput{}, options).(GetAmiIdsResultOutput), nil
 		}).(GetAmiIdsResultOutput)
 }
 

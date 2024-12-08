@@ -44,19 +44,8 @@ func ListConfigurationsOutput(ctx *pulumi.Context, args ListConfigurationsOutput
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ListConfigurationsResultOutput, error) {
 			args := v.(ListConfigurationsArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv ListConfigurationsResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("myedgeorder::listConfigurations", args, &rv, "", opts...)
-			if err != nil {
-				return ListConfigurationsResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(ListConfigurationsResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ListConfigurationsResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(ListConfigurationsResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("myedgeorder::listConfigurations", args, ListConfigurationsResultOutput{}, options).(ListConfigurationsResultOutput), nil
 		}).(ListConfigurationsResultOutput)
 }
 

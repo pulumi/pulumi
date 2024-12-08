@@ -37,19 +37,8 @@ func FuncWithSecretsOutput(ctx *pulumi.Context, args FuncWithSecretsOutputArgs, 
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithSecretsResultOutput, error) {
 			args := v.(FuncWithSecretsArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv FuncWithSecretsResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithSecrets", args, &rv, "", opts...)
-			if err != nil {
-				return FuncWithSecretsResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(FuncWithSecretsResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithSecretsResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(FuncWithSecretsResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::funcWithSecrets", args, FuncWithSecretsResultOutput{}, options).(FuncWithSecretsResultOutput), nil
 		}).(FuncWithSecretsResultOutput)
 }
 

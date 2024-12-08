@@ -43,19 +43,8 @@ func GetBastionShareableLinkOutput(ctx *pulumi.Context, args GetBastionShareable
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetBastionShareableLinkResultOutput, error) {
 			args := v.(GetBastionShareableLinkArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv GetBastionShareableLinkResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::getBastionShareableLink", args, &rv, "", opts...)
-			if err != nil {
-				return GetBastionShareableLinkResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(GetBastionShareableLinkResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(GetBastionShareableLinkResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(GetBastionShareableLinkResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::getBastionShareableLink", args, GetBastionShareableLinkResultOutput{}, options).(GetBastionShareableLinkResultOutput), nil
 		}).(GetBastionShareableLinkResultOutput)
 }
 

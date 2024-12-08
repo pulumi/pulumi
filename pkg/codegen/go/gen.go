@@ -3125,22 +3125,20 @@ func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType}
 	}
 }
 
-func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function, useGenericTypes bool) {
+func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function, useGenericTypes bool) error {
 	if f.ReturnType == nil {
-		return
+		return nil
 	}
 
 	if useGenericTypes {
 		pkg.genFunctionOutputGenericVersion(w, f)
-		return
+		return nil
 	}
 
 	originalName := pkg.functionName(f)
 	name := originalName + "Output"
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := originalResultTypeName + "Output"
-
-	var code string
 
 	var inputsVar string
 	if f.Inputs == nil {
@@ -3151,57 +3149,49 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		inputsVar = "args"
 	}
 
-	if f.Inputs != nil {
-		code = `
-func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (${outputType}, error) {
-			args := v.(${fn}Args)
-			opts = ${internalModule}.PkgInvokeDefaultOpts(opts)
-			var rv ${fn}Result
-			secret, deps, err := ctx.InvokePackageRawWithDeps("${token}", ${args}, &rv, "", opts...)
-			if err != nil {
-				return ${outputType}{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(${outputType})
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(${outputType})
-			if secret {
-				return pulumi.ToSecret(output).(${outputType}), nil
-			}
-			return output, nil
-		}).(${outputType})
-}
-
-`
-	} else {
-		code = `
-func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType} {
-	return pulumi.ToOutput(0).ApplyT(func(int) (${outputType}, error) {
-		opts = ${internalModule}.PkgInvokeDefaultOpts(opts)
-		var rv ${fn}Result
-		secret, err := ctx.InvokePackageRaw("${token}", nil, &rv, "", opts...)
-		if err != nil {
-			return ${outputType}{}, err
-		}
-
-		output := pulumi.ToOutput(rv).(${outputType})
-		if secret {
-			return pulumi.ToSecret(output).(${outputType}), nil
-		}
-		return output, nil
-	}).(${outputType})
-}
-
-`
+	def, err := pkg.pkg.Definition()
+	if err != nil {
+		return err
 	}
 
-	code = strings.ReplaceAll(code, "${fn}", originalName)
-	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
-	code = strings.ReplaceAll(code, "${token}", f.Token)
-	code = strings.ReplaceAll(code, "${args}", inputsVar)
-	code = strings.ReplaceAll(code, "${internalModule}", pkg.internalModuleName)
-	fmt.Fprint(w, code)
+	if f.Inputs != nil {
+		fmt.Fprintf(w, "func %[1]sOutput(ctx *pulumi.Context, args %[1]sOutputArgs, opts ...pulumi.InvokeOption) %[2]s {\n",
+			originalName, resultTypeName)
+		fmt.Fprint(w, "	return pulumi.ToOutputWithContext(ctx.Context(), args).\n")
+		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
+		fmt.Fprintf(w, "			args := v.(%sArgs)\n", originalName)
+		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+		if def.Parameterization != nil {
+			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(w, "			options.PackageRef := ref\n")
+		}
+		fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
+			f.Token, inputsVar, resultTypeName, resultTypeName,
+		)
+		fmt.Fprintf(w, "		}).(%s)\n", resultTypeName)
+		fmt.Fprint(w, "}\n")
+		fmt.Fprint(w, "\n")
+	} else {
+		fmt.Fprintf(w, "func %sOutput(ctx *pulumi.Context, opts ...pulumi.InvokeOption) %s {\n",
+			originalName, resultTypeName)
+		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
+		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+		if def.Parameterization != nil {
+			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(w, "			options.PackageRef := ref\n")
+		}
+		fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, ref, options).(%s), nil\n",
+			f.Token, inputsVar, resultTypeName, resultTypeName)
+		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
+		fmt.Fprint(w, "}\n")
+		fmt.Fprint(w, "\n")
+	}
 
 	if f.Inputs != nil {
 		pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, false /*emitGenericVariant*/)
@@ -3233,6 +3223,8 @@ func init() {
 `
 	initCode = strings.ReplaceAll(initCode, "${outputType}", resultTypeName)
 	fmt.Fprint(w, initCode)
+
+	return nil
 }
 
 type objectProperty struct {

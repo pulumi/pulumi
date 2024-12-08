@@ -33,19 +33,8 @@ func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ArgFunctionResultOutput, error) {
 			args := v.(ArgFunctionArgs)
-			opts = utilities.PkgInvokeDefaultOpts(opts)
-			var rv ArgFunctionResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("example::argFunction", args, &rv, "", opts...)
-			if err != nil {
-				return ArgFunctionResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(ArgFunctionResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ArgFunctionResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(ArgFunctionResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: utilities.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("example::argFunction", args, ArgFunctionResultOutput{}, options).(ArgFunctionResultOutput), nil
 		}).(ArgFunctionResultOutput)
 }
 

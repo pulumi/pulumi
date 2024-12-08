@@ -46,19 +46,8 @@ func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutp
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ListProductFamiliesResultOutput, error) {
 			args := v.(ListProductFamiliesArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv ListProductFamiliesResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("myedgeorder::listProductFamilies", args, &rv, "", opts...)
-			if err != nil {
-				return ListProductFamiliesResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(ListProductFamiliesResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(ListProductFamiliesResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(ListProductFamiliesResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("myedgeorder::listProductFamilies", args, ListProductFamiliesResultOutput{}, options).(ListProductFamiliesResultOutput), nil
 		}).(ListProductFamiliesResultOutput)
 }
 

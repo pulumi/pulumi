@@ -36,19 +36,8 @@ func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputAr
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithDictParamResultOutput, error) {
 			args := v.(FuncWithDictParamArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv FuncWithDictParamResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithDictParam", args, &rv, "", opts...)
-			if err != nil {
-				return FuncWithDictParamResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(FuncWithDictParamResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithDictParamResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(FuncWithDictParamResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::funcWithDictParam", args, FuncWithDictParamResultOutput{}, options).(FuncWithDictParamResultOutput), nil
 		}).(FuncWithDictParamResultOutput)
 }
 

@@ -874,6 +874,41 @@ func (ctx *Context) InvokePackageRawWithDeps(
 	return hasSecret, deps, nil
 }
 
+// InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
+type InvokeOutputOptions struct {
+	// The package reference for parameterized providers.
+	PackageRef string
+	// The options provided by the user for the invoke call, such as `Provider`,
+	// `Version, `DependsOn`, etc.
+	InvokeOptions []InvokeOption
+}
+
+// InvokeOutput will invoke a provider's function, identified by its token tok. This function is
+// used by generated SDK code for Output form invokes.
+// `output` is used to determine the output type to return.
+func (ctx *Context) InvokeOutput(
+	tok string, args interface{}, output Output, options InvokeOutputOptions,
+) Output {
+	output = ctx.newOutput(reflect.TypeOf(output))
+
+	go func() {
+		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, options.InvokeOptions...)
+		if err != nil {
+			internal.RejectOutput(output, err)
+		}
+
+		dest := reflect.New(output.ElementType()).Elem()
+		known := !outProps.ContainsUnknowns()
+		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
+		if err != nil {
+			internal.RejectOutput(output, err)
+		}
+		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+	}()
+
+	return output
+}
+
 // Call will invoke a provider call function, identified by its token tok.
 //
 // output is used to determine the output type to return; self is optional for methods.

@@ -35,19 +35,8 @@ func GetAssetsOutput(ctx *pulumi.Context, args GetAssetsOutputArgs, opts ...pulu
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetAssetsResultOutput, error) {
 			args := v.(GetAssetsArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv GetAssetsResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("example::GetAssets", args, &rv, "", opts...)
-			if err != nil {
-				return GetAssetsResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(GetAssetsResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(GetAssetsResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(GetAssetsResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("example::GetAssets", args, GetAssetsResultOutput{}, options).(GetAssetsResultOutput), nil
 		}).(GetAssetsResultOutput)
 }
 

@@ -36,19 +36,8 @@ func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputAr
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithListParamResultOutput, error) {
 			args := v.(FuncWithListParamArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv FuncWithListParamResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("mypkg::funcWithListParam", args, &rv, "", opts...)
-			if err != nil {
-				return FuncWithListParamResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(FuncWithListParamResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(FuncWithListParamResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(FuncWithListParamResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::funcWithListParam", args, FuncWithListParamResultOutput{}, options).(FuncWithListParamResultOutput), nil
 		}).(FuncWithListParamResultOutput)
 }
 

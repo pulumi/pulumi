@@ -32,19 +32,8 @@ func UnitOutput(ctx *pulumi.Context, args UnitOutputArgs, opts ...pulumi.InvokeO
 	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (UnitResultOutput, error) {
 			args := v.(UnitArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv UnitResult
-			secret, deps, err := ctx.InvokePackageRawWithDeps("simple-invoke:index:unit", args, &rv, "", opts...)
-			if err != nil {
-				return UnitResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(UnitResultOutput)
-			output = pulumi.OutputWithDependencies(ctx.Context(), output, deps...).(UnitResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(UnitResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("simple-invoke:index:unit", args, UnitResultOutput{}, options).(UnitResultOutput), nil
 		}).(UnitResultOutput)
 }
 
