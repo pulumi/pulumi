@@ -38,7 +38,7 @@ type GetClientConfigResult struct {
 func GetClientConfigOutput(ctx *pulumi.Context, opts ...pulumi.InvokeOption) GetClientConfigResultOutput {
 	return pulumi.ToOutput(0).ApplyT(func(int) (GetClientConfigResultOutput, error) {
 		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-		return ctx.InvokeOutput("mypkg::getClientConfig", nil, GetClientConfigResultOutput{}, ref, options).(GetClientConfigResultOutput), nil
+		return ctx.InvokeOutput("mypkg::getClientConfig", nil, GetClientConfigResultOutput{}, options).(GetClientConfigResultOutput), nil
 	}).(GetClientConfigResultOutput)
 }
 

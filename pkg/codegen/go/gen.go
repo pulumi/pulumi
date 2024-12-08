@@ -3170,7 +3170,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(w, "			options.PackageRef := ref\n")
+			fmt.Fprint(w, "			options.PackageRef = ref\n")
 		}
 		fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
 			f.Token, inputsVar, resultTypeName, resultTypeName,
@@ -3188,9 +3188,9 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(w, "			options.PackageRef := ref\n")
+			fmt.Fprint(w, "			options.PackageRef = ref\n")
 		}
-		fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, ref, options).(%s), nil\n",
+		fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
 			f.Token, inputsVar, resultTypeName, resultTypeName)
 		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
