@@ -854,26 +854,6 @@ func (ctx *Context) InvokePackageRaw(
 	return hasSecret, nil
 }
 
-func (ctx *Context) InvokePackageRawWithDeps(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
-) (isSecret bool, _ []Resource, err error) {
-	resultV := reflect.ValueOf(result)
-	if !validInvokeResult(resultV) {
-		return false, []Resource{}, errors.New("result must be a pointer to a struct or map value")
-	}
-
-	outProps, deps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
-	if err != nil {
-		return false, []Resource{}, err
-	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
-	if err != nil {
-		return false, []Resource{}, err
-	}
-	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
-	return hasSecret, deps, nil
-}
-
 // InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
 type InvokeOutputOptions struct {
 	// The package reference for parameterized providers.

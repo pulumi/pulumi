@@ -1405,16 +1405,15 @@ func TestInvokeDependsOn(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
-		var rv DoEchoResult
 		var args DoEchoArgs
 		dep := newTestRes(t, ctx, "dep")
 		opts := DependsOn([]Resource{dep})
 
-		_, deps, err := ctx.InvokePackageRawWithDeps("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
 
 		require.NoError(t, err)
+		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
 		require.True(t, resolved)
-		require.Equal(t, "hello", *rv.Echo)
 		require.Len(t, deps, 1)
 		require.Equal(t, dep.URN(), deps[0].URN())
 		return nil
@@ -1441,17 +1440,16 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
-		var rv DoEchoResult
 		var args DoEchoArgs
 		dep := newTestRes(t, ctx, "dep")
 		ro := NewResourceOutput(dep)
 		opts := DependsOnInputs(NewResourceArrayOutput(ro))
 
-		_, deps, err := ctx.InvokePackageRawWithDeps("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
 
 		require.NoError(t, err)
+		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
 		require.True(t, resolved)
-		require.Equal(t, "hello", *rv.Echo)
 		require.Len(t, deps, 1)
 		require.Equal(t, dep.URN(), deps[0].URN())
 
