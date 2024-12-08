@@ -2825,7 +2825,9 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	if err := pkg.genFunction(buffer, f, emitGenericVariant); err != nil {
 		return "", err
 	}
-	pkg.genFunctionOutputVersion(buffer, f, emitGenericVariant)
+	if err := pkg.genFunctionOutputVersion(buffer, f, emitGenericVariant); err != nil {
+		return "", err
+	}
 	return buffer.String(), nil
 }
 
@@ -2850,7 +2852,9 @@ func (pkg *pkgContext) genGenericVariantFunctionCodeFile(f *schema.Function) (st
 	if err := pkg.genFunction(buffer, f, useGenericTypes); err != nil {
 		return "", err
 	}
-	pkg.genFunctionOutputVersion(buffer, f, useGenericTypes)
+	if err := pkg.genFunctionOutputVersion(buffer, f, useGenericTypes); err != nil {
+		return "", err
+	}
 	return buffer.String(), nil
 }
 
