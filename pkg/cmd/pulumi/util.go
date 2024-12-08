@@ -326,6 +326,7 @@ func requireCurrentStack(
 func chooseStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
+	lopt ^= stackSetCurrent
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if lopt.OfferNew() {
