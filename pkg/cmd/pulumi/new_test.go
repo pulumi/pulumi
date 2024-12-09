@@ -38,7 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockBackendInstance sets the backendInstance for the test and cleans it up after.
+// mockBackendInstance sets the backend instance for the test and cleans it up after.
 func mockBackendInstance(t *testing.T, b backend.Backend) {
 	t.Cleanup(func() {
 		cmdBackend.BackendInstance = nil

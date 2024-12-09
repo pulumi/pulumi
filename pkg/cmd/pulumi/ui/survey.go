@@ -15,8 +15,10 @@
 package ui
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -223,4 +225,30 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 		return []string{}
 	}
 	return response
+}
+
+func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	in := opts.Stdin
+	if in == nil {
+		in = os.Stdin
+	}
+
+	if prompt != "" {
+		fmt.Fprint(out,
+			opts.Color.Colorize(
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
+	}
+
+	fmt.Fprint(out,
+		opts.Color.Colorize(
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
+				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
+
+	reader := bufio.NewReader(in)
+	line, _ := reader.ReadString('\n')
+	return strings.TrimSpace(line) == name
 }

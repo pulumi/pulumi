@@ -226,7 +226,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				)
 			}
 
-			requiresSaving, err := copyEntireConfigMap(
+			requiresSaving, err := cmdStack.CopyEntireConfigMap(
 				ctx,
 				ssml,
 				currentStack,
@@ -314,59 +314,6 @@ func copySingleConfigKey(
 	}
 
 	return cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
-}
-
-func copyEntireConfigMap(
-	ctx context.Context,
-	ssml cmdStack.SecretsManagerLoader,
-	currentStack backend.Stack,
-	currentProjectStack *workspace.ProjectStack,
-	destinationStack backend.Stack,
-	destinationProjectStack *workspace.ProjectStack,
-) (bool, error) {
-	var decrypter config.Decrypter
-	currentConfig := currentProjectStack.Config
-	currentEnvironments := currentProjectStack.Environment
-
-	if currentConfig.HasSecureValue() {
-		dec, state, decerr := ssml.GetDecrypter(ctx, currentStack, currentProjectStack)
-		if decerr != nil {
-			return false, decerr
-		}
-		contract.Assertf(
-			state == cmdStack.SecretsManagerUnchanged,
-			"We're reading a secure value so the encryption information must be present already",
-		)
-		decrypter = dec
-	} else {
-		decrypter = config.NewPanicCrypter()
-	}
-
-	encrypter, _, cerr := ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
-	if cerr != nil {
-		return false, cerr
-	}
-
-	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
-	if err != nil {
-		return false, err
-	}
-
-	var requiresSaving bool
-	for key, val := range newProjectConfig {
-		err = destinationProjectStack.Config.Set(key, val, false)
-		if err != nil {
-			return false, err
-		}
-		requiresSaving = true
-	}
-
-	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
-		destinationProjectStack.Environment = currentEnvironments
-		requiresSaving = true
-	}
-
-	return requiresSaving, nil
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
@@ -1127,7 +1074,7 @@ func listConfig(
 	}
 
 	if showSecrets {
-		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, "", "pulumi config")
+		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, "", "pulumi config")
 	}
 
 	return nil
@@ -1248,7 +1195,7 @@ func getConfig(
 			printESCDiagnostics(os.Stdout, diags)
 		}
 
-		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
+		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
 
 		return nil
 	}

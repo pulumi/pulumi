@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"context"
@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -120,7 +119,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	ssml := NewStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Try to read the current project
@@ -143,7 +142,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Validate secrets provider type
-	if err := cmdStack.ValidateSecretsProvider(cmd.secretsProvider); err != nil {
+	if err := ValidateSecretsProvider(cmd.secretsProvider); err != nil {
 		return err
 	}
 
@@ -180,7 +179,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := cmdStack.CreateStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	newStack, err := CreateStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -195,30 +194,30 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := cmdStack.RequireStack(
+		copyStack, err := RequireStack(
 			ctx,
 			ws,
 			cmdBackend.DefaultLoginManager,
 			cmd.stackToCopy,
-			cmdStack.LoadOnly,
+			LoadOnly,
 			opts,
 		)
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := cmdStack.LoadProjectStack(proj, copyStack)
+		copyProjectStack, err := LoadProjectStack(proj, copyStack)
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := cmdStack.LoadProjectStack(proj, newStack)
+		newProjectStack, err := LoadProjectStack(proj, newStack)
 		if err != nil {
 			return err
 		}
 
 		// copy the config from the old to the new
-		requiresSaving, err := copyEntireConfigMap(
+		requiresSaving, err := CopyEntireConfigMap(
 			ctx,
 			ssml,
 			copyStack,
@@ -233,7 +232,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := cmdStack.SaveProjectStack(newStack, newProjectStack)
+			err := SaveProjectStack(newStack, newProjectStack)
 			if err != nil {
 				return err
 			}

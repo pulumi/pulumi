@@ -207,7 +207,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 
 		switch response := ui.PromptUser(msg, options, edit, cmd.Colorizer); response {
 		case accept:
-			return saveSnapshot(ctx, s, news, false /* force */)
+			return cmdStack.SaveSnapshot(ctx, s, news, false /* force */)
 		case edit:
 			continue
 		case reset:

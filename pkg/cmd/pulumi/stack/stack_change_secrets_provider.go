@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"context"
@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -92,7 +91,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.
-	ssml := cmdStack.SecretsManagerLoader{}
+	ssml := SecretsManagerLoader{}
 
 	ws := pkgWorkspace.Instance
 
@@ -100,7 +99,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	if err := cmdStack.ValidateSecretsProvider(args[0]); err != nil {
+	if err := ValidateSecretsProvider(args[0]); err != nil {
 		return err
 	}
 
@@ -110,19 +109,19 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := cmdStack.RequireStack(
+	currentStack, err := RequireStack(
 		ctx,
 		ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stack,
-		cmdStack.LoadOnly,
+		LoadOnly,
 		opts,
 	)
 	if err != nil {
 		return err
 	}
 
-	currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
+	currentProjectStack, err := LoadProjectStack(project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -135,7 +134,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 			return decerr
 		}
 		contract.Assertf(
-			state == cmdStack.SecretsManagerUnchanged,
+			state == SecretsManagerUnchanged,
 			"We're reading a secure value so the encryption information must be present already",
 		)
 		decrypter = dec
@@ -150,7 +149,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := cmdStack.CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
+	if err := CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}
@@ -170,14 +169,14 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	ctx context.Context,
-	ssml cmdStack.SecretsManagerLoader,
+	ssml SecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
 	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -188,7 +187,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		return err
 	}
 	contract.Assertf(
-		state == cmdStack.SecretsManagerUnchanged,
+		state == SecretsManagerUnchanged,
 		"We've just saved and reloaded the stack, so the encryption information must be present already",
 	)
 
@@ -210,7 +209,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		}
 	}
 
-	if err := cmdStack.SaveProjectStack(currentStack, reloadedProjectStack); err != nil {
+	if err := SaveProjectStack(currentStack, reloadedProjectStack); err != nil {
 		return err
 	}
 

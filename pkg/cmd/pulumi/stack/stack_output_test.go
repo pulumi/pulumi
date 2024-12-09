@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"bytes"
@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -112,7 +111,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stack.LoadOption, display.Options,
+				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -224,7 +223,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stack.LoadOption, display.Options,
+				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -346,7 +345,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, stack.LoadOption, display.Options,
+				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -384,7 +383,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, string, stack.LoadOption, display.Options,
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")

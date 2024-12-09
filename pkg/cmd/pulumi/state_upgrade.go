@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -117,7 +118,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	prompt := "This will upgrade the current backend to the latest supported version.\n" +
 		"Older versions of Pulumi will not be able to read the new format.\n" +
 		"Are you sure you want to proceed?"
-	if !cmd.yes && !confirmPrompt(prompt, "yes", dopts) {
+	if !cmd.yes && !ui.ConfirmPrompt(prompt, "yes", dopts) {
 		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
 		return nil
 	}
