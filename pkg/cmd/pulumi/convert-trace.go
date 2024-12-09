@@ -648,8 +648,7 @@ func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 
 func (t *otelTrace) getNextSpanID() trace.SpanID {
 	var id trace.SpanID
-	//nolint:gosec // len is always positive
-	binary.BigEndian.PutUint64(id[:], uint64(len(t.spans)+1))
+	binary.BigEndian.PutUint64(id[:], uint64(len(t.spans))+1)
 	return id
 }
 

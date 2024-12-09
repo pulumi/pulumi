@@ -898,7 +898,7 @@ type PluginInfo struct {
 	Path         string             // the path that a plugin was loaded from (this will always be a directory)
 	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version      *semver.Version    // the plugin's semantic version, if present.
-	Size         int64              // the size of the plugin, in bytes.
+	Size         uint64             // the size of the plugin, in bytes.
 	InstallTime  time.Time          // the time the plugin was installed.
 	LastUsedTime time.Time          // the last time the plugin was used.
 	SchemaPath   string             // if set, used as the path for loading and caching the schema
@@ -2275,13 +2275,13 @@ func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bo
 }
 
 // getPluginSize recursively computes how much space is devoted to a given plugin.
-func getPluginSize(path string) (int64, error) {
+func getPluginSize(path string) (uint64, error) {
 	file, err := os.Stat(path)
 	if err != nil {
 		return 0, nil
 	}
 
-	size := int64(0)
+	size := uint64(0)
 	if file.IsDir() {
 		subs, err := os.ReadDir(path)
 		if err != nil {
@@ -2295,7 +2295,12 @@ func getPluginSize(path string) (int64, error) {
 			size += add
 		}
 	} else {
-		size += file.Size()
+		fs := file.Size()
+		if fs < 0 {
+			fmt.Fprintf(os.Stderr, "file %s has negative size %d\n", path, fs)
+		}
+		//nolint:gosec // Guarded by the check above.
+		size += uint64(fs)
 	}
 	return size, nil
 }
