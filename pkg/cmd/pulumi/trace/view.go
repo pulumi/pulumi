@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/pulumi/appdash"
 	"github.com/pulumi/appdash/traceapp"
@@ -28,20 +26,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func readTrace(path string, store io.ReaderFrom) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer contract.IgnoreClose(f)
-	_, err = store.ReadFrom(f)
-	return err
-}
-
-func newViewTraceCmd() *cobra.Command {
+func NewViewTraceCmd() *cobra.Command {
 	var port int
 	cmd := &cobra.Command{
 		Use:   "view-trace [trace-file]",
