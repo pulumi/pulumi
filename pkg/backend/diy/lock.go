@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path"
@@ -95,7 +96,7 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 			}
 
 			errorString += fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
-				b.url+"/"+lock,
+				b.lockURLForError(lock),
 				l.Username,
 				l.Hostname,
 				l.Pid,
@@ -106,6 +107,17 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 		return errors.New(errorString)
 	}
 	return nil
+}
+
+// lockURLForError returns a URL that can be used in error messages to help users find the lock file.
+func (b *diyBackend) lockURLForError(lockPath string) string {
+	if parsedURL, err := url.Parse(b.url); err == nil {
+		parsedURL.Path = path.Join(parsedURL.Path, lockPath)
+		return parsedURL.String()
+	}
+	// If we couldn't parse the URL, we'll just return a naive concatenation,
+	// which is what we used to do before we started using URL parsing.
+	return b.url + "/" + lockPath
 }
 
 func (b *diyBackend) Lock(ctx context.Context, stackRef backend.StackReference) error {
