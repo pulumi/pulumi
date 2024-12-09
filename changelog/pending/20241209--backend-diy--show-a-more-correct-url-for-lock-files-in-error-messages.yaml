@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/diy
+  description: Show a more correct URL for lock files in error messages
