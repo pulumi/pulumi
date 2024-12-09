@@ -2297,7 +2297,7 @@ func getPluginSize(path string) (uint64, error) {
 	} else {
 		fs := file.Size()
 		if fs < 0 {
-			fmt.Fprintf(os.Stderr, "file %s has negative size %d\n", path, fs)
+			return 0, fmt.Errorf("file size is negative: %d", fs)
 		}
 		//nolint:gosec // Guarded by the check above.
 		size += uint64(fs)
