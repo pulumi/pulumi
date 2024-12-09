@@ -1041,8 +1041,9 @@ func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
 }
 
-// GetAllConfigWithOptions returns the full config map using the optional ConfigOptions.
-func (s *Stack) GetAllConfigWithOptions(ctx context.Context, opts *ConfigOptions) (ConfigMap, error) {
+// GetAllConfigWithOptions returns the full config map with optional ConfigAllConfigOptions.
+// Allows using a config file and controlling how secrets are shown
+func (s *Stack) GetAllConfigWithOptions(ctx context.Context, opts *GetAllConfigOptions) (ConfigMap, error) {
 	return s.Workspace().GetAllConfigWithOptions(ctx, s.Name(), opts)
 }
 

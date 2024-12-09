@@ -17,7 +17,6 @@ package auto
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -1603,13 +1602,6 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	// test ShowSecrets option fails with SetConfigWithOptions
-	err = s.SetConfigWithOptions(ctx, "key15.subKey3", ConfigValue{"value1", false}, &ConfigOptions{ShowSecrets: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t, newAutoError(errors.New("SetConfigWithOptions does not support ShowSecrets option"), "", "", 1), err)
-	}
-
 	// test backward compatibility
 	cv1, err := s.GetConfigWithOptions(ctx, "key1", nil)
 	if err != nil {
@@ -1722,13 +1714,6 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	// test ShowSecrets option fails with GetConfigWithOptions
-	_, err = s.GetConfigWithOptions(ctx, "key15.subKey2", &ConfigOptions{ShowSecrets: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t, newAutoError(errors.New("GetConfigWithOptions does not support ShowSecrets option"), "", "", 1), err)
-	}
-
 	assert.Equalf(t, "value1", cv1.Value, "wrong key")
 	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
 	assert.Equalf(t, "value2", cv2.Value, "wrong key")
@@ -1838,14 +1823,6 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = s.RemoveConfigWithOptions(ctx, "key15", &ConfigOptions{ShowSecrets: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t, newAutoError(
-			errors.New("RemoveConfigWithOptions does not support ShowSecrets option"), "", "", 1,
-		), err)
-	}
-
 	cfg, err := s.GetAllConfig(ctx)
 	if err != nil {
 		t.Error(err)
@@ -1853,7 +1830,8 @@ func TestConfigWithOptions(t *testing.T) {
 	assert.Equalf(t, "{\"subKey2\":\"value8\",\"subKey3\":\"value9\"}",
 		cfg["testproj:key7"].Value, "subKey2 and subKey3 have been removed")
 
-	cfgJSON, err := s.GetAllConfigWithOptions(ctx, &ConfigOptions{ConfigFile: filepath.Join(".", configJSON)})
+	cfgJSON, err := s.GetAllConfigWithOptions(ctx,
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configJSON)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1865,7 +1843,7 @@ func TestConfigWithOptions(t *testing.T) {
 		cfgJSON["testproj:key9"].Value, "subKey1 should have been removed")
 
 	cfgJSONSecret, err := s.GetAllConfigWithOptions(ctx,
-		&ConfigOptions{ConfigFile: filepath.Join(".", configJSON), ShowSecrets: true})
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configJSON), ShowSecrets: true})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1874,7 +1852,8 @@ func TestConfigWithOptions(t *testing.T) {
 	assert.Equalf(t, true,
 		cfgJSONSecret["testproj:key11"].Secret, "key11 should be secret when ShowSecrets is true")
 
-	cfgYAML, err := s.GetAllConfigWithOptions(ctx, &ConfigOptions{ConfigFile: filepath.Join(".", configYAML)})
+	cfgYAML, err := s.GetAllConfigWithOptions(ctx,
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configYAML)})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1886,7 +1865,7 @@ func TestConfigWithOptions(t *testing.T) {
 		cfgYAML["testproj:key13"].Value, "subKey1 should have been removed")
 
 	cfgYAMLSecret, err := s.GetAllConfigWithOptions(ctx,
-		&ConfigOptions{ConfigFile: filepath.Join(".", configYAML), ShowSecrets: true})
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configYAML), ShowSecrets: true})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1894,12 +1873,6 @@ func TestConfigWithOptions(t *testing.T) {
 		cfgYAMLSecret["testproj:key15"].Value, "key15 should have value when ShowSecrets is true")
 	assert.Equalf(t, true,
 		cfgYAMLSecret["testproj:key15"].Secret, "key15 should be secret when ShowSecrets is true")
-
-	_, err = s.GetAllConfigWithOptions(ctx, &ConfigOptions{Path: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t, newAutoError(errors.New("GetAllConfigWithOptions does not support path option"), "", "", 1), err)
-	}
 }
 
 func TestConfigAllWithOptions(t *testing.T) {
@@ -2149,20 +2122,6 @@ func TestConfigAllWithOptions(t *testing.T) {
 	assert.Equalf(t, "value18", cv15.Value, "wrong key")
 	assert.Equalf(t, true, cv15.Secret, "key should be secret")
 
-	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
-		"key13": ConfigValue{
-			Value:  "value18",
-			Secret: false,
-		},
-	},
-		&ConfigOptions{ShowSecrets: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t,
-			newAutoError(errors.New("SetAllConfigWithOptions does not support ShowSecrets option"), "", "", 1),
-			err)
-	}
-
 	err = s.RemoveAllConfigWithOptions(ctx,
 		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true})
 	if err != nil {
@@ -2183,15 +2142,6 @@ func TestConfigAllWithOptions(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = s.RemoveAllConfigWithOptions(ctx, []string{"key13"},
-		&ConfigOptions{ShowSecrets: true})
-	if err != nil {
-		assert.Error(t, err)
-		assert.Equal(t,
-			newAutoError(errors.New("RemoveAllConfigWithOptions does not support ShowSecrets option"), "", "", 1),
-			err)
-	}
-
 	cfg, err := s.GetAllConfig(ctx)
 	if err != nil {
 		t.Error(err)
@@ -2199,14 +2149,16 @@ func TestConfigAllWithOptions(t *testing.T) {
 	assert.Equalf(t,
 		"{\"subKey3\":\"value5\"}", cfg["testproj:key3"].Value, "key subKey3 has been removed")
 
-	cfgJSON, err := s.GetAllConfigWithOptions(ctx, &ConfigOptions{ConfigFile: filepath.Join(".", configJSON)})
+	cfgJSON, err := s.GetAllConfigWithOptions(ctx,
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configJSON), ShowSecrets: true})
 	if err != nil {
 		t.Error(err)
 	}
 	assert.Equalf(t,
 		"{\"subKey3\":\"value11\"}", cfgJSON["testproj:key7"].Value, "keys other than subKey3 have been removed")
 
-	cfgYAML, err := s.GetAllConfigWithOptions(ctx, &ConfigOptions{ConfigFile: filepath.Join(".", configYAML)})
+	cfgYAML, err := s.GetAllConfigWithOptions(ctx,
+		&GetAllConfigOptions{ConfigFile: filepath.Join(".", configYAML), ShowSecrets: true})
 	if err != nil {
 		t.Error(err)
 	}

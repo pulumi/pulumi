@@ -207,9 +207,6 @@ func (l *LocalWorkspace) GetConfigWithOptions(
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
 		}
-		if opts.ShowSecrets {
-			return val, newAutoError(errors.New("GetConfigWithOptions does not support ShowSecrets option"), "", "", 1)
-		}
 	}
 	args = append(args, key, "--json", "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -226,14 +223,14 @@ func (l *LocalWorkspace) GetConfigWithOptions(
 // GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 // LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (ConfigMap, error) {
-	return l.GetAllConfigWithOptions(ctx, stackName, &ConfigOptions{ShowSecrets: true})
+	return l.GetAllConfigWithOptions(ctx, stackName, &GetAllConfigOptions{ShowSecrets: true})
 }
 
 // GetAllConfigWithOptions returns the config map for the specified stack name
-// using the optional ConfigOptions, scoped to the current workspace.
+// using the optional GetAllConfigOptions, scoped to the current workspace.
 // LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfigWithOptions(
-	ctx context.Context, stackName string, opts *ConfigOptions,
+	ctx context.Context, stackName string, opts *GetAllConfigOptions,
 ) (ConfigMap, error) {
 	var val ConfigMap
 	args := []string{"config"}
@@ -243,9 +240,6 @@ func (l *LocalWorkspace) GetAllConfigWithOptions(
 		}
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
-		}
-		if opts.Path {
-			return val, newAutoError(errors.New("GetAllConfigWithOptions does not support path option"), "", "", 1)
 		}
 	}
 	args = append(args, "--json", "--stack", stackName)
@@ -278,9 +272,6 @@ func (l *LocalWorkspace) SetConfigWithOptions(
 		}
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
-		}
-		if opts.ShowSecrets {
-			return newAutoError(errors.New("SetConfigWithOptions does not support ShowSecrets option"), "", "", 1)
 		}
 	}
 	secretArg := "--plaintext"
@@ -315,9 +306,6 @@ func (l *LocalWorkspace) SetAllConfigWithOptions(
 		}
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
-		}
-		if opts.ShowSecrets {
-			return newAutoError(errors.New("SetAllConfigWithOptions does not support ShowSecrets option"), "", "", 1)
 		}
 	}
 	for k, v := range config {
@@ -354,9 +342,6 @@ func (l *LocalWorkspace) RemoveConfigWithOptions(
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
 		}
-		if opts.ShowSecrets {
-			return newAutoError(errors.New("RemoveConfigWithOptions does not support ShowSecrets option"), "", "", 1)
-		}
 	}
 	args = append(args, key, "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -385,9 +370,6 @@ func (l *LocalWorkspace) RemoveAllConfigWithOptions(
 		}
 		if opts.ConfigFile != "" {
 			args = append(args, "--config-file", opts.ConfigFile)
-		}
-		if opts.ShowSecrets {
-			return newAutoError(errors.New("RemoveAllConfigWithOptions does not support ShowSecrets option"), "", "", 1)
 		}
 	}
 	args = append(args, keys...)
