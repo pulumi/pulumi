@@ -355,6 +355,8 @@ type ResourceV3 struct {
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// If set to True, the engine will only evaluate ImportId if the resource doesn't exist in the state.
+	ImportIfNew bool `json:"importIfNew,omitempty" yaml:"importIfNew,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

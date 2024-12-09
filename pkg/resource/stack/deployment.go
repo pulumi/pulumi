@@ -373,6 +373,7 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		IgnoreChanges:           res.IgnoreChanges,
+		ImportIfNew:             res.ImportIfNew,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -560,6 +561,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
 		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
+		res.ImportIfNew,
 	), nil
 }
 

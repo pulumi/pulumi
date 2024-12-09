@@ -156,6 +156,7 @@ type ResourceOptions struct {
 
 	SupportsResultReporting bool
 	PackageRef              string
+	ImportIfNew             bool
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -287,6 +288,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
+		ImportIfNew:                opts.ImportIfNew,
 	}
 
 	ctx := context.Background()

@@ -216,6 +216,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* modified */
 		event.SourcePosition(),
 		nil, /* ignoreChanges */
+		false, /* importIfNew */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -580,7 +581,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
+		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ImportIfNew)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -635,7 +636,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			oldImportID = old.ImportID
 		}
 	}
-	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
+	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || (oldImportID != goal.ID && !goal.ImportIfNew))
 	if isImport {
 		// TODO(seqnum) Not sure how sequence numbers should interact with imports
 

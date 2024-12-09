@@ -360,6 +360,11 @@ type ResourceOptions struct {
 	// should import its state from a cloud resource with the given ID.
 	Import IDInput
 
+	// Only attempt to import this resource if it is not yet tracked by Pulumi,
+	// instead of Pulumi's default behavior of checking for changes in the
+	// Import option after the resource is tracked.
+	ImportIfNew bool
+
 	// Parent is the parent resource for the resource being created,
 	// or nil if this resource does not have a parent.
 	Parent Resource
@@ -434,6 +439,7 @@ type resourceOptions struct {
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
 	Import                  IDInput
+	ImportIfNew             bool
 	Parent                  Resource
 	Protect                 bool
 	Provider                ProviderResource
@@ -491,6 +497,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
 		Import:                  ro.Import,
+		ImportIfNew:             ro.ImportIfNew,
 		Parent:                  ro.Parent,
 		Protect:                 ro.Protect,
 		Provider:                ro.Provider,
@@ -741,11 +748,19 @@ func IgnoreChanges(o []string) ResourceOption {
 
 // Import, when provided with a resource ID, indicates that this resource's provider should import its state from
 // the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
-// current state. Once a resource has been imported, the import property must be removed from the resource's
-// options.
+// current state.
 func Import(o IDInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Import = o
+	})
+}
+
+// Only attempt to import this resource if is not yet tracked by Pulumi,
+// instead of Pulumi's default behavior of checking for changes in the
+// Import option after the resource is tracked.
+func ImportIfNew(o bool) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ImportIfNew = o
 	})
 }
 

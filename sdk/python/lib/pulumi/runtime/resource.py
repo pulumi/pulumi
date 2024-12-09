@@ -1026,6 +1026,7 @@ def register_resource(
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
+                importIfNew=opts.import_if_new or False,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

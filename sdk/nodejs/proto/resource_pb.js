@@ -1666,7 +1666,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
     pulumi_callback_pb.Callback.toObject, includeInstance),
     supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
-    packageref: jspb.Message.getFieldWithDefault(msg, 33, "")
+    packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
+    importifnew: jspb.Message.getBooleanFieldWithDefault(msg, 34, false)
   };
 
   if (includeInstance) {
@@ -1845,6 +1846,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 33:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
+      break;
+    case 34:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setImportifnew(value);
       break;
     default:
       reader.skipField();
@@ -2099,6 +2104,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       33,
+      f
+    );
+  }
+  f = message.getImportifnew();
+  if (f) {
+    writer.writeBool(
+      34,
       f
     );
   }
@@ -3246,6 +3258,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getPackageref = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setPackageref = function(value) {
   return jspb.Message.setProto3StringField(this, 33, value);
+};
+
+
+/**
+ * optional bool importIfNew = 34;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getImportifnew = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 34, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setImportifnew = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 34, value);
 };
 
 

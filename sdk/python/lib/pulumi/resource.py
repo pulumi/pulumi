@@ -437,8 +437,14 @@ class ResourceOptions:
     """
     When provided with a resource ID, import indicates that this resource's provider should import
     its state from the cloud resource with the given ID. The inputs to the resource's constructor
-    must align with the resource's current state. Once a resource has been imported, the import
-    property must be removed from the resource's options.
+    must align with the resource's current state.
+    """
+
+    import_if_new: Optional[bool]
+    """
+    Only attempt to import this resource if is not yet tracked by Pulumi,
+    instead of Pulumi's default behavior of checking for changes in the
+    import_ option after the resource is tracked.
     """
 
     urn: Optional[str]
@@ -482,6 +488,7 @@ class ResourceOptions:
         additional_secret_outputs: Optional[List[str]] = None,
         id: Optional["Input[str]"] = None,
         import_: Optional[str] = None,
+        import_if_new: Optional[bool] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[List[ResourceTransformation]] = None,
         transforms: Optional[List[ResourceTransform]] = None,
@@ -519,6 +526,7 @@ class ResourceOptions:
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
+        :param Optional[bool] import_if_new: 
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
@@ -554,6 +562,7 @@ class ResourceOptions:
         self.custom_timeouts = custom_timeouts
         self.id = id
         self.import_ = import_
+        self.import_if_new = import_if_new
         self.transformations = transformations
         self.transforms = transforms
         self.urn = urn
@@ -719,6 +728,11 @@ class ResourceOptions:
         )
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
+        dest.import_if_new = (
+            dest.import_if_new
+            if source.import_if_new is None
+            else source.import_if_new
+        )
         dest.urn = dest.urn if source.urn is None else source.urn
         dest.provider = dest.provider if source.provider is None else source.provider
         dest.retain_on_delete = (
