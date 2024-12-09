@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package whoami
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newWhoAmICmd() *cobra.Command {
+func NewWhoAmICmd() *cobra.Command {
 	var whocmd whoAmICmd
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -102,7 +102,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.jsonOut {
-		return ui.FprintJSON(cmd.Stdout, WhoAmIJSON{
+		return ui.FprintJSON(cmd.Stdout, whoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
 			URL:              b.URL(),
@@ -133,8 +133,8 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	return nil
 }
 
-// WhoAmIJSON is the shape of the --json output of this command.
-type WhoAmIJSON struct {
+// whoAmIJSON is the shape of the --json output of this command.
+type whoAmIJSON struct {
 	User             string                      `json:"user"`
 	Organizations    []string                    `json:"organizations,omitempty"`
 	URL              string                      `json:"url"`
