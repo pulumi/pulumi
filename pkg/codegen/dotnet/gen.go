@@ -1520,9 +1520,9 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		return err
 	}
 
-	// Emit the Output method with InvokeOutputOutputOptions
+	// Emit the Output method with InvokeOutputOptions
 	//
-	// We have to make the `InvokeOutputOutputOptions options` required so that
+	// We have to make the `InvokeOutputOptions options` required so that
 	// it can be differentiated from the overload that takes `InvokeOptions
 	// options`. This means that preceding arguments to the method must also be
 	// required.
