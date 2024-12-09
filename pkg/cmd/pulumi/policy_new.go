@@ -26,6 +26,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -99,7 +100,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {
-		cwd, err = useSpecifiedDir(args.dir)
+		cwd, err = newcmd.UseSpecifiedDir(args.dir)
 		if err != nil {
 			return err
 		}
@@ -107,7 +108,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// Return an error if the directory isn't empty.
 	if !args.force {
-		if err = errorIfNotEmptyDirectory(cwd); err != nil {
+		if err = newcmd.ErrorIfNotEmptyDirectory(cwd); err != nil {
 			return err
 		}
 	}
@@ -300,7 +301,7 @@ func policyTemplatesToOptionArrayAndMap(
 	for _, template := range templates {
 		// If template is broken, indicate it in the project description.
 		if template.Errored() {
-			template.Description = brokenTemplateDescription
+			template.Description = newcmd.BrokenTemplateDescription
 		}
 
 		// Create the option string that combines the name, padding, and description.

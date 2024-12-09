@@ -24,6 +24,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -37,12 +38,12 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 	if len(configArray) == 0 {
 		return nil
 	}
-	commandLineConfig, err := parseConfig(configArray, path)
+	commandLineConfig, err := newcmd.ParseConfig(configArray, path)
 	if err != nil {
 		return err
 	}
 
-	if err = saveConfig(ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil
