@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package convert
 
 import (
 	"os"
@@ -27,8 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestYamlConvert is an entrypoint for debugging `pulumi convert“. To use this with an editor such as
-// VS Code, drop a Pulumi.yaml in the convert_testdata folder and with the VS Code Go extension, the
+// TestYamlConvert is an entrypoint for debugging `pulumi convert`. To use this with an editor such as
+// VS Code, drop a Pulumi.yaml in the testdata folder and with the VS Code Go extension, the
 // code lens (grayed out text above TestConvert) should display an option to "debug test".
 //
 // This is ideal for debugging panics in the convert command, as the debugger will break on the
@@ -40,7 +40,7 @@ import (
 func TestYamlConvert(t *testing.T) {
 	t.Parallel()
 
-	if info, err := os.Stat("convert_testdata/Pulumi.yaml"); err != nil && os.IsNotExist(err) {
+	if info, err := os.Stat("testdata/Pulumi.yaml"); err != nil && os.IsNotExist(err) {
 		t.Skip("skipping test, no Pulumi.yaml found")
 	} else if err != nil {
 		t.Fatalf("failed to stat Pulumi.yaml: %v", err)
@@ -48,12 +48,12 @@ func TestYamlConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
-	cwd, err := filepath.Abs("convert_testdata")
+	cwd, err := filepath.Abs("testdata")
 	require.NoError(t, err)
 
 	result := runConvert(
 		pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
-		"yaml", "go", "convert_testdata/go", true, true, "")
+		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -63,7 +63,7 @@ func TestPclConvert(t *testing.T) {
 	// Check that we can run convert from PCL to PCL
 	tmp := t.TempDir()
 
-	cwd, err := filepath.Abs("pcl_convert_testdata")
+	cwd, err := filepath.Abs("pcl_testdata")
 	require.NoError(t, err)
 
 	result := runConvert(
@@ -95,7 +95,7 @@ func TestProjectNameDefaults(t *testing.T) {
 	// Arrange.
 	outDir := t.TempDir()
 
-	cwd, err := filepath.Abs("pcl_convert_testdata")
+	cwd, err := filepath.Abs("pcl_testdata")
 	require.NoError(t, err)
 
 	// Act.
@@ -117,7 +117,7 @@ func TestProjectNameDefaults(t *testing.T) {
 	// Assert.
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
 	assert.NoError(t, err)
-	assert.Contains(t, string(yamlBytes), "name: pcl_convert_testdata")
+	assert.Contains(t, string(yamlBytes), "name: pcl_testdata")
 }
 
 // Tests that project names can be overridden by the user.
@@ -128,7 +128,7 @@ func TestProjectNameOverrides(t *testing.T) {
 	outDir := t.TempDir()
 	name := "test-project-name"
 
-	cwd, err := filepath.Abs("pcl_convert_testdata")
+	cwd, err := filepath.Abs("pcl_testdata")
 	require.NoError(t, err)
 
 	// Act.
