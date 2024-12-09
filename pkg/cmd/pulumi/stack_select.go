@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -98,7 +99,13 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(ctx, ws, b, stackOfferNew|stackSetCurrent, opts)
+			stack, err := cmdStack.ChooseStack(
+				ctx,
+				ws,
+				b,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}

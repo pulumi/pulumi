@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package stack
 
 import (
 	"context"
@@ -20,61 +20,161 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// A stackSecretsManagerLoader provides methods for loading secrets managers and
+// Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
+// changes back to the stack's configuration where applicable.
+func CreateSecretsManagerForExistingStack(
+	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	rotateSecretsProvider, creatingStack bool,
+) error {
+	// As part of creating the stack, we also need to configure the secrets provider for the stack.
+	// We need to do this configuration step for cases where we will be using with the passphrase
+	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
+	// for the Pulumi Cloud backend secrets provider.
+	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
+	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
+
+	// If we're creating the stack, it's the default secrets provider, and it's the cloud backend
+	// return early to avoid probing for the project and stack config files, which otherwise
+	// would fail when creating a stack from a directory that does not have a project file.
+	if isDefaultSecretsProvider && creatingStack {
+		if _, isCloud := stack.Backend().(httpstate.Backend); isCloud {
+			return nil
+		}
+	}
+
+	project, _, err := ws.ReadProject()
+	if err != nil {
+		return err
+	}
+	ps, err := LoadProjectStack(project, stack)
+	if err != nil {
+		return err
+	}
+
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+	if isDefaultSecretsProvider {
+		_, err = stack.DefaultSecretManager(ps)
+	} else if secretsProvider == passphrase.Type {
+		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
+	} else {
+		// All other non-default secrets providers are handled by the cloud secrets provider which
+		// uses a URL schema to identify the provider
+		_, err = cloud.NewCloudSecretsManager(ps, secretsProvider, rotateSecretsProvider)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Handle if the configuration changed any of EncryptedKey, etc
+	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
+		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
+			return fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Creates a secrets manager for a new stack. If a stack configuration already exists (e.g. the user has created a
+// Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
+// fall back to a default defined by the backend that will manage the stack.
+func createSecretsManagerForNewStack(
+	ws pkgWorkspace.Context,
+	b backend.Backend,
+	stackRef backend.StackReference,
+	secretsProvider string,
+) (*workspace.ProjectStack, bool, secrets.Manager, error) {
+	var sm secrets.Manager
+
+	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
+	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
+	// populate it as we go.
+	var ps *workspace.ProjectStack
+	project, _, err := ws.ReadProject()
+	if err != nil {
+		ps = &workspace.ProjectStack{}
+	} else {
+		ps, err = loadProjectStackByReference(project, stackRef)
+		if err != nil {
+			ps = &workspace.ProjectStack{}
+		}
+	}
+
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+
+	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
+	if isDefaultSecretsProvider {
+		sm, err = b.DefaultSecretManager(ps)
+	} else if secretsProvider == passphrase.Type {
+		sm, err = passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotateSecretsProvider*/)
+	} else {
+		sm, err = cloud.NewCloudSecretsManager(ps, secretsProvider, false /*rotateSecretsProvider*/)
+	}
+	if err != nil {
+		return nil, false, nil, err
+	}
+
+	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
+	return ps, needsSave, sm, err
+}
+
+// A SecretsManagerLoader provides methods for loading secrets managers and
 // their encrypters and decrypters for a given stack and project stack. A loader
 // encapsulates the logic for determining which secrets manager to use based on
 // a given configuration, such as whether or not to fallback to the stack state
 // if there is no secrets manager configured in the project stack.
-type stackSecretsManagerLoader struct {
+type SecretsManagerLoader struct {
 	// True if the loader should fallback to the stack state if there is no
 	// secrets manager configured in the project stack.
 	FallbackToState bool
 }
 
 // The state of a stack's secret manager configuration following an operation.
-type stackSecretsManagerState string
+type SecretsManagerState string
 
 const (
 	// The state of the stack's secret manager configuration is unchanged.
-	stackSecretsManagerUnchanged stackSecretsManagerState = "unchanged"
+	SecretsManagerUnchanged SecretsManagerState = "unchanged"
 
 	// The stack's secret manager configuration has changed and should be saved to
 	// the stack configuration file if possible. If saving is not possible, the
 	// configuration can be restored by falling back to the state file.
-	stackSecretsManagerShouldSave stackSecretsManagerState = "should-save"
+	SecretsManagerShouldSave SecretsManagerState = "should-save"
 
 	// The stack's secret manager configuration has changed and must be saved to the
 	// stack configuration file. Changes have been made that do not align with the
 	// state and so the state file cannot be used to restore the configuration.
-	stackSecretsManagerMustSave stackSecretsManagerState = "must-save"
+	SecretsManagerMustSave SecretsManagerState = "must-save"
 )
 
 // Creates a new stack secrets manager loader from the environment.
-func newStackSecretsManagerLoaderFromEnv() stackSecretsManagerLoader {
-	return stackSecretsManagerLoader{
+func NewStackSecretsManagerLoaderFromEnv() SecretsManagerLoader {
+	return SecretsManagerLoader{
 		FallbackToState: env.FallbackToStateSecretsManager.Value(),
 	}
 }
 
 // Returns a decrypter for the given stack and project stack.
-func (l *stackSecretsManagerLoader) getDecrypter(
+func (l *SecretsManagerLoader) GetDecrypter(
 	ctx context.Context,
 	s backend.Stack,
 	ps *workspace.ProjectStack,
-) (config.Decrypter, stackSecretsManagerState, error) {
-	sm, state, err := l.getSecretsManager(ctx, s, ps)
+) (config.Decrypter, SecretsManagerState, error) {
+	sm, state, err := l.GetSecretsManager(ctx, s, ps)
 	if err != nil {
-		return nil, stackSecretsManagerUnchanged, err
+		return nil, SecretsManagerUnchanged, err
 	}
 
 	dec, err := sm.Decrypter()
@@ -85,14 +185,14 @@ func (l *stackSecretsManagerLoader) getDecrypter(
 }
 
 // Returns an encrypter for the given stack and project stack.
-func (l *stackSecretsManagerLoader) getEncrypter(
+func (l *SecretsManagerLoader) GetEncrypter(
 	ctx context.Context,
 	s backend.Stack,
 	ps *workspace.ProjectStack,
-) (config.Encrypter, stackSecretsManagerState, error) {
-	sm, state, err := l.getSecretsManager(ctx, s, ps)
+) (config.Encrypter, SecretsManagerState, error) {
+	sm, state, err := l.GetSecretsManager(ctx, s, ps)
 	if err != nil {
-		return nil, stackSecretsManagerUnchanged, err
+		return nil, SecretsManagerUnchanged, err
 	}
 
 	enc, err := sm.Encrypter()
@@ -103,11 +203,11 @@ func (l *stackSecretsManagerLoader) getEncrypter(
 }
 
 // Returns a secrets manager for the given stack and project stack.
-func (l *stackSecretsManagerLoader) getSecretsManager(
+func (l *SecretsManagerLoader) GetSecretsManager(
 	ctx context.Context,
 	s backend.Stack,
 	ps *workspace.ProjectStack,
-) (secrets.Manager, stackSecretsManagerState, error) {
+) (secrets.Manager, SecretsManagerState, error) {
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
 	var sm secrets.Manager
@@ -138,7 +238,7 @@ func (l *stackSecretsManagerLoader) getSecretsManager(
 		if l.FallbackToState {
 			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
-				return nil, stackSecretsManagerUnchanged, err
+				return nil, SecretsManagerUnchanged, err
 			}
 
 			if snap != nil {
@@ -168,7 +268,7 @@ func (l *stackSecretsManagerLoader) getSecretsManager(
 		}
 	}
 	if err != nil {
-		return nil, stackSecretsManagerUnchanged, err
+		return nil, SecretsManagerUnchanged, err
 	}
 
 	// First, work out if the new configuration is different to the old one. If it is, and we fell back
@@ -177,15 +277,15 @@ func (l *stackSecretsManagerLoader) getSecretsManager(
 	// us from an unknown source) then we will return that the configuration *must* be saved, lest it
 	// be lost.
 	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
-	var state stackSecretsManagerState
+	var state SecretsManagerState
 	if needsSave {
 		if fellBack {
-			state = stackSecretsManagerShouldSave
+			state = SecretsManagerShouldSave
 		} else {
-			state = stackSecretsManagerMustSave
+			state = SecretsManagerMustSave
 		}
 	} else {
-		state = stackSecretsManagerUnchanged
+		state = SecretsManagerUnchanged
 	}
 
 	return stack.NewCachingSecretsManager(sm), state, nil
@@ -207,7 +307,7 @@ func needsSaveProjectStackAfterSecretManger(
 	return false
 }
 
-func validateSecretsProvider(typ string) error {
+func ValidateSecretsProvider(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
 	for _, supportedKind := range supportedKinds {

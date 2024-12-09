@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -79,7 +80,14 @@ func newDeploymentRunCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, display)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				backend.DefaultLoginManager,
+				stack,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				display,
+			)
 			if err != nil {
 				return err
 			}

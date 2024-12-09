@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -101,7 +102,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		IsInteractive: args.interactive,
 	}
 
-	ssml := newStackSecretsManagerLoaderFromEnv()
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Validate name (if specified) before further prompts/operations.
@@ -110,7 +111,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(args.secretsProvider); err != nil {
+	if err := cmdStack.ValidateSecretsProvider(args.secretsProvider); err != nil {
 		return err
 	}
 
@@ -857,7 +858,7 @@ func stackInit(
 	if err != nil {
 		return nil, err
 	}
-	return createStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
+	return cmdStack.CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
@@ -867,7 +868,7 @@ func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		return err
 	}
 
-	ps, err := loadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack)
 	if err != nil {
 		return err
 	}
@@ -876,7 +877,7 @@ func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		ps.Config[k] = v
 	}
 
-	return saveProjectStack(stack, ps)
+	return cmdStack.SaveProjectStack(stack, ps)
 }
 
 func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
@@ -1119,7 +1120,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -1149,17 +1150,17 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := loadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
-	sm, state, err := ssml.getSecretsManager(ctx, stack, ps)
+	sm, state, err := ssml.GetSecretsManager(ctx, stack, ps)
 	if err != nil {
 		return nil, err
 	}
-	if state != stackSecretsManagerUnchanged {
-		if err = saveProjectStack(stack, ps); err != nil {
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}

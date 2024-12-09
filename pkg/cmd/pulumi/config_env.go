@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -38,9 +39,9 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
 		ws:               pkgWorkspace.Instance,
-		requireStack:     requireStack,
-		loadProjectStack: loadProjectStack,
-		saveProjectStack: saveProjectStack,
+		requireStack:     cmdStack.RequireStack,
+		loadProjectStack: cmdStack.LoadProjectStack,
+		saveProjectStack: cmdStack.SaveProjectStack,
 		stackRef:         stackRef,
 	}
 
@@ -67,7 +68,7 @@ type configEnvCmd struct {
 	interactive bool
 	color       colors.Colorization
 
-	ssml stackSecretsManagerLoader
+	ssml cmdStack.SecretsManagerLoader
 	ws   pkgWorkspace.Context
 
 	requireStack func(
@@ -75,7 +76,7 @@ type configEnvCmd struct {
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		stackName string,
-		lopt stackLoadOption,
+		lopt cmdStack.LoadOption,
 		opts display.Options,
 	) (backend.Stack, error)
 
@@ -90,7 +91,7 @@ func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
 
-	cmd.ssml = newStackSecretsManagerLoaderFromEnv()
+	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
@@ -107,7 +108,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.stackRef,
-		stackOfferNew|stackSetCurrent,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
 		opts,
 	)
 	if err != nil {

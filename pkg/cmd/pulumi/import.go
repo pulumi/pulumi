@@ -35,6 +35,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -654,7 +655,7 @@ func newImportCmd() *cobra.Command {
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -842,7 +843,14 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackLoadOnly, opts.Display)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stackName,
+				cmdStack.LoadOnly,
+				opts.Display,
+			)
 			if err != nil {
 				return err
 			}
@@ -1043,7 +1051,7 @@ func newImportCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.

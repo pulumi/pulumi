@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -60,7 +61,7 @@ func newLogsCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -72,7 +73,14 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stackName, stackLoadOnly, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				backend.DefaultLoginManager,
+				stackName,
+				cmdStack.LoadOnly,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -198,7 +206,7 @@ func newLogsCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")

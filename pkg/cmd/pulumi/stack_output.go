@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -81,7 +82,7 @@ type stackOutputCmd struct {
 	// from tests.
 	requireStack func(
 		ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt stackLoadOption, opts display.Options,
+		name string, lopt cmdStack.LoadOption, opts display.Options,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -92,7 +93,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	requireStack := requireStack
+	requireStack := cmdStack.RequireStack
 	if cmd.requireStack != nil {
 		requireStack = cmd.requireStack
 	}
@@ -128,7 +129,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stackName,
-		stackLoadOnly,
+		cmdStack.LoadOnly,
 		opts,
 	)
 	if err != nil {

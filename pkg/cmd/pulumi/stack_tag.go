@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -70,7 +71,14 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackLoadOnly, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.LoadOnly,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -104,7 +112,14 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackSetCurrent, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -162,7 +177,14 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackSetCurrent, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -194,7 +216,14 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackSetCurrent, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}

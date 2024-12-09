@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -76,12 +77,12 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(
+			sourceStack, err := cmdStack.RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				sourceStackName,
-				stackLoadOnly,
+				cmdStack.LoadOnly,
 				display.Options{
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
@@ -90,12 +91,12 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(
+			destStack, err := cmdStack.RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destStackName,
-				stackLoadOnly,
+				cmdStack.LoadOnly,
 				display.Options{
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
@@ -190,11 +191,11 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = createSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
+		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
 		if err != nil {
 			return err
 		}
-		ps, err := loadProjectStack(project, dest)
+		ps, err := cmdStack.LoadProjectStack(project, dest)
 		if err != nil {
 			return err
 		}

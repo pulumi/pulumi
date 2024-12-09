@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -118,7 +119,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	ssml := newStackSecretsManagerLoaderFromEnv()
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Try to read the current project
@@ -141,7 +142,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(cmd.secretsProvider); err != nil {
+	if err := cmdStack.ValidateSecretsProvider(cmd.secretsProvider); err != nil {
 		return err
 	}
 
@@ -178,7 +179,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := createStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	newStack, err := cmdStack.CreateStack(ctx, ws, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -193,24 +194,24 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(
+		copyStack, err := cmdStack.RequireStack(
 			ctx,
 			ws,
 			cmdBackend.DefaultLoginManager,
 			cmd.stackToCopy,
-			stackLoadOnly,
+			cmdStack.LoadOnly,
 			opts,
 		)
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := loadProjectStack(proj, copyStack)
+		copyProjectStack, err := cmdStack.LoadProjectStack(proj, copyStack)
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := loadProjectStack(proj, newStack)
+		newProjectStack, err := cmdStack.LoadProjectStack(proj, newStack)
 		if err != nil {
 			return err
 		}
@@ -231,7 +232,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := saveProjectStack(newStack, newProjectStack)
+			err := cmdStack.SaveProjectStack(newStack, newProjectStack)
 			if err != nil {
 				return err
 			}

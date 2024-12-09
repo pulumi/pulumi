@@ -30,6 +30,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -94,7 +95,7 @@ func newRefreshCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
@@ -145,7 +146,7 @@ func newRefreshCmd() *cobra.Command {
 				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
-					false, "", stackConfigFile)
+					false, "", cmdStack.ConfigFile)
 				if err != nil {
 					return err
 				}
@@ -173,7 +174,14 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stackName, stackOfferNew, opts.Display)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stackName,
+				cmdStack.OfferNew,
+				opts.Display,
+			)
 			if err != nil {
 				return err
 			}
@@ -313,7 +321,7 @@ func newRefreshCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	cmd.PersistentFlags().StringVarP(
