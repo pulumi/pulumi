@@ -23,6 +23,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/spf13/cobra"
@@ -61,11 +62,11 @@ func newInstallCmd() *cobra.Command {
 				}
 				policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
 				if err == nil && policyPackPath != "" {
-					proj, _, root, err := readPolicyProject(policyPackPath)
+					proj, _, root, err := policy.ReadPolicyProject(policyPackPath)
 					if err != nil {
 						return err
 					}
-					return installPolicyPackDependencies(ctx, root, proj)
+					return policy.InstallPolicyPackDependencies(ctx, root, proj)
 				}
 			}
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package policy
 
 import (
 	"context"
@@ -164,7 +164,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	fmt.Println("Created Policy Pack!")
 
-	proj, projPath, root, err := readPolicyProject(cwd)
+	proj, projPath, root, err := ReadPolicyProject(cwd)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(ctx, root, proj); err != nil {
+		if err := InstallPolicyPackDependencies(ctx, root, proj); err != nil {
 			return err
 		}
 	}
