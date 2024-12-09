@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
@@ -357,7 +358,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Environment Commands",
 			Commands: []*cobra.Command{
-				newEnvCmd(),
+				cmdEnv.NewEnvCmd(),
 			},
 		},
 		{
