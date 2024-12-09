@@ -174,8 +174,8 @@ func newUpCmd() *cobra.Command {
 		}
 
 		var autonamer autonaming.Autonamer
-		if hasExperimentalCommands() {
-			autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(s), cfg.Config, decrypter)
+		if env.Experimental.Value() {
+			autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
 			if err != nil {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
@@ -898,15 +898,12 @@ func isPreconfiguredEmptyStack(
 	return true
 }
 
-func autonamingStackContext(s backend.Stack) autonaming.StackContext {
+func autonamingStackContext(proj *workspace.Project, s backend.Stack) autonaming.StackContext {
 	organization := "organization"
 	if cs, ok := s.(httpstate.Stack); ok {
 		organization = cs.OrgName()
 	}
-	project := "project"
-	if projName, ok := s.Ref().Project(); ok {
-		project = projName.String()
-	}
+	project := proj.Name.String()
 	stack := s.Ref().Name().String()
 	return autonaming.StackContext{
 		Organization: organization,

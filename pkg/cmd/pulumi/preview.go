@@ -442,8 +442,8 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			var autonamer autonaming.Autonamer
-			if hasExperimentalCommands() {
-				autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(s), cfg.Config, decrypter)
+			if env.Experimental.Value() {
+				autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
 				if err != nil {
 					return fmt.Errorf("getting autonaming config: %w", err)
 				}

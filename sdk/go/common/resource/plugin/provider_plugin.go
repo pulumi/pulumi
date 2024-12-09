@@ -37,6 +37,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -1010,7 +1011,10 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 				Mode:         pulumirpc.CheckRequest_AutonamingOptions_Mode(req.Autonaming.Mode),
 			}
 		} else if req.Autonaming.WarnIfNoSupport {
-			logging.V(3).Infof("%s warning: provider does not support autonaming configuration", label)
+			p.ctx.Diag.Warningf(diag.Message(req.URN,
+				"%s resource has a custom autonaming setting but the provider does not support "+
+					"autonaming configuration, consider upgrading to a newer version"),
+				req.URN)
 		}
 	}
 
