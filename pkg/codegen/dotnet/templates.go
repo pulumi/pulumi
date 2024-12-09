@@ -90,7 +90,7 @@ namespace {{.Namespace}}
             return dst;
         }
 {{if .HasParameterization }}
-public static global::Pulumi.RegisterPackageRequest PackageParameterization()
+        public static global::Pulumi.RegisterPackageRequest PackageParameterization()
         {
             return new global::Pulumi.RegisterPackageRequest(
                 name: "{{.BaseProviderName}}",
