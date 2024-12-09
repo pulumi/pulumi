@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.12" />
+    <PackageReference Include="Pulumi" Version="3.71" />
   </ItemGroup>
 
   <ItemGroup>

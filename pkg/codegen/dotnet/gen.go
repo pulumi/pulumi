@@ -1521,9 +1521,20 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	}
 
 	// Emit the Output method with InvokeOutputOutputOptions
-	err = mod.genFunctionOutputVersion(w, fun, true /* outputOptions */)
-	if err != nil {
-		return err
+	//
+	// We have to make the `InvokeOutputOutputOptions options` required so that
+	// it can be differentiated from the overload that takes `InvokeOptions
+	// options`. This means that preceding arguments to the method must also be
+	// required.
+	//
+	// When using multi-argument inputs, this would make all the optional
+	// arguments required. For now we skip the InvokeOutputOptions variant for
+	// multi-argument inputs.
+	if !fun.MultiArgumentInputs {
+		err = mod.genFunctionOutputVersion(w, fun, true /* outputOptions */)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Close the class.
@@ -1582,6 +1593,10 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		return nil
 	}
 
+	if fun.MultiArgumentInputs && outputOptions {
+		return fmt.Errorf("output options are not supported when using multi-argument inputs ")
+	}
+
 	var argsDefault, sigil string
 	if allOptionalInputs(fun) {
 		// If the number of required input properties was zero, we can make the args object optional.
@@ -1603,11 +1618,6 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
 
-	optionsClass := "InvokeOptions"
-	if outputOptions {
-		optionsClass = "InvokeOutputOptions"
-	}
-
 	if !fun.MultiArgumentInputs {
 		if outputOptions {
 			// For the InvokeOutputOptions variant, arguments can not optional, otherwise we
@@ -1615,11 +1625,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			if outputArgsParamDef != "" && argsDefault != "" {
 				outputArgsParamDef = fmt.Sprintf("%s args, ", argsTypeName)
 			}
-			fmt.Fprintf(w, "        public static Output%s Invoke(%s%s options)\n",
-				typeParamOrEmpty(typeParameter), outputArgsParamDef, optionsClass)
+			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOutputOptions options)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef)
 		} else {
-			fmt.Fprintf(w, "        public static Output%s Invoke(%s%s? options = null)\n",
-				typeParamOrEmpty(typeParameter), outputArgsParamDef, optionsClass)
+			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef)
 		}
 		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
@@ -1630,7 +1640,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			argumentName := LowerCamelCase(prop.Name)
 			propertyType := &schema.InputType{ElementType: prop.Type}
 			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
-			if prop.IsRequired() || outputOptions {
+			if prop.IsRequired() {
 				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
 			} else {
 				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
@@ -1639,11 +1649,8 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			fmt.Fprintf(w, "%s", paramDeclaration)
 			fmt.Fprint(w, ", ")
 		}
-		if outputOptions {
-			fmt.Fprintf(w, "%s invokeOptions)\n", optionsClass)
-		} else {
-			fmt.Fprintf(w, "%s? invokeOptions = null)\n", optionsClass)
-		}
+
+		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
 
 		// now the function body
 		fmt.Fprint(w, "        {\n")
@@ -2345,16 +2352,10 @@ func genProjectFile(pkg *schema.Package,
 			}
 		}
 
-		// The minimum version we use needs to be higher if using parameterization.
-		minimumVersion := "3.66.1.0"
-		if pkg.Parameterization != nil {
-			minimumVersion = "3.68.0.0"
-		}
-
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = fmt.Sprintf("[%s,4)", minimumVersion)
+			packageReferences["Pulumi"] = "[3.71.0.0,4)"
 		}
 	}
 

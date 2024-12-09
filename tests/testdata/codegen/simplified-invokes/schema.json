@@ -12,7 +12,7 @@
     "language": {
       "csharp": {
         "packageReferences": {
-          "Pulumi": "3.50.0"
+          "Pulumi": "3.71.0"
         }
       },
       "nodejs": {

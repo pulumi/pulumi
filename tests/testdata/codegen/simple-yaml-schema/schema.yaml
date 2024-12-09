@@ -140,7 +140,7 @@ functions:
         result:
           "$ref": "#/resources/example::Resource"
 language:
-  csharp: { "packageReferences": { "Pulumi": "3.23" } }
+  csharp: { "packageReferences": { "Pulumi": "3.71" } }
   go:
     {
       "importBasePath": "simple-yaml-schema/example",
