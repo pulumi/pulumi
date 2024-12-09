@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -303,7 +304,7 @@ func newUpCmd() *cobra.Command {
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
 			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
-			name, err = promptForValue(
+			name, err = ui.PromptForValue(
 				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return err
@@ -314,7 +315,7 @@ func newUpCmd() *cobra.Command {
 		if description == "" {
 			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
-			description, err = promptForValue(
+			description, err = ui.PromptForValue(
 				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return err
@@ -340,7 +341,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, ws, b, promptForValue, stackName, root, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return err
 			}
@@ -352,7 +353,7 @@ func newUpCmd() *cobra.Command {
 			ctx,
 			ssml,
 			ws,
-			promptForValue,
+			ui.PromptForValue,
 			proj,
 			s,
 			templateNameOrURL,

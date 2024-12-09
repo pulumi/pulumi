@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -55,7 +56,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	args := newArgs{
 		interactive:       false,
 		yes:               false,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "typescript",
@@ -75,7 +76,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             "org/projectA/stack",
 		name:              "projectB",
@@ -99,7 +100,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             orgStackName,
 		templateNameOrURL: "typescript",
@@ -150,7 +151,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             fullStackName,
 		templateNameOrURL: "typescript",
@@ -175,7 +176,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		interactive:       false,
 		yes:               true,
 		name:              uniqueProjectName,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "typescript",
@@ -231,7 +232,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		interactive:       false,
 		yes:               true,
 		name:              projectName,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -283,7 +284,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		interactive:       false,
 		yes:               true,
 		name:              projectName,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -382,7 +383,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		interactive:       false,
 		yes:               true,
 		name:              "not#valid",
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -1009,7 +1010,7 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 				generateOnly:      true,
 				interactive:       false,
 				yes:               true,
-				prompt:            promptForValue,
+				prompt:            ui.PromptForValue,
 				secretsProvider:   "default",
 				stack:             tt.stack,
 				name:              "project",
@@ -1172,7 +1173,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		yes:                  true,
 		templateMode:         true,
 		name:                 projectName,
-		prompt:               promptForValue,
+		prompt:               ui.PromptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
 		secretsProvider:      "default",
 		templateNameOrURL:    "python",

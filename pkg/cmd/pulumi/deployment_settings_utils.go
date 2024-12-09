@@ -92,7 +92,7 @@ func (promptHandlers) PromptForValue(
 	yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options,
 ) (string, error) {
-	return promptForValue(yes, valueType, defaultValue, secret, isValidFn, opts)
+	return ui.PromptForValue(yes, valueType, defaultValue, secret, isValidFn, opts)
 }
 
 func (promptHandlers) Print(prompt string) {

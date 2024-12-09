@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -89,7 +90,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		description:       "foo: bar", // Needs special escaping for YAML
 		stack:             stackName,
@@ -121,7 +122,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		interactive:       false,
 		yes:               true,
 		name:              numericProjectName, // Should be serialized as a string.
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "yaml",
@@ -171,7 +172,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 
 	args := newArgs{
 		interactive:       true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "typescript",
@@ -209,7 +210,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 
 	args := newArgs{
 		interactive:       true,
-		prompt:            promptForValue,
+		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "typescript",
