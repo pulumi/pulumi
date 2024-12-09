@@ -17,6 +17,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -272,14 +273,26 @@ func printGoLinkInstructions(root string, pkg *schema.Package, out string) error
 	fmt.Println("To use this SDK in your Go project, run the following command:")
 	fmt.Println()
 
+	// All go code is placed under a relative package root so it is nested one
+	// more directory deep equal to the package name.  This extra path is equal
+	// to the paramaterization name if it is parameterized, else it is the same
+	// as the base package name.
+	//
+	// (see pulumi-language-go  GeneratePackage for the pathPrefix).
 	relOut, err := filepath.Rel(root, out)
 	if err != nil {
 		return err
+	}
+	if pkg.Parameterization == nil {
+		relOut = filepath.Join(relOut, pkg.Name)
 	}
 	if runtime.GOOS == "windows" {
 		relOut = ".\\" + relOut
 	} else {
 		relOut = "./" + relOut
+	}
+	if _, err := os.Stat(relOut); err != nil {
+		return fmt.Errorf("could not find sdk path %s: %w", relOut, err)
 	}
 
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": go_gen.Importer}); err != nil {
@@ -290,11 +303,16 @@ func printGoLinkInstructions(root string, pkg *schema.Package, out string) error
 		return errors.New("failed to import go language info")
 	}
 
-	fmt.Printf("   go mod edit -replace %s=%s\n", goInfo.ModulePath, relOut)
+	modulePath := goInfo.ModulePath
+	if modulePath == "" {
+		modulePath = extractModulePath(pkg.Reference())
+	}
+
+	fmt.Printf("   go mod edit -replace %s=%s\n", modulePath, relOut)
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your Go code with:")
 	fmt.Println()
-	fmt.Printf("  import \"%s\"\n", goInfo.ModulePath)
+	fmt.Printf("  import \"%s\"\n", modulePath)
 	fmt.Println()
 	return nil
 }
@@ -401,4 +419,36 @@ func copyAll(dst string, src string) error {
 	}
 
 	return nil
+}
+
+func extractModulePath(pkgRef schema.PackageReference) string {
+	var vPath string
+	version := pkgRef.Version()
+	name := pkgRef.Name()
+	if version != nil && version.Major > 1 {
+		vPath = fmt.Sprintf("/v%d", version.Major)
+	}
+
+	// Default to example.com/pulumi-pkg if we have no other information.
+	root := "example.com/pulumi-" + name
+	// But if we have a publisher use that instead, assuming it's from github
+	if pkgRef.Publisher() != "" {
+		root = fmt.Sprintf("github.com/%s/pulumi-%s", pkgRef.Publisher(), name)
+	}
+	// And if we have a repository, use that instead of the publisher
+	if pkgRef.Repository() != "" {
+		url, err := url.Parse(pkgRef.Repository())
+		if err == nil {
+			// If there's any errors parsing the URL ignore it. Else use the host and path as go doesn't expect http://
+			root = url.Host + url.Path
+		}
+	}
+
+	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
+	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
+	if pkgRef.SupportPack() {
+		return fmt.Sprintf("%s/sdk/go%s", root, vPath)
+	}
+
+	return fmt.Sprintf("%s/sdk%s", root, vPath)
 }
