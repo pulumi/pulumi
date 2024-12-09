@@ -54,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
@@ -333,8 +334,8 @@ func NewPulumiCmd() *cobra.Command {
 				config.NewConfigCmd(),
 				cmdStack.NewStackCmd(),
 				console.NewConsoleCmd(),
-				newImportCmd(),
-				newRefreshCmd(),
+				operations.NewImportCmd(),
+				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
 				newInstallCmd(),
 			},
@@ -342,9 +343,9 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
-				newUpCmd(),
-				newDestroyCmd(),
-				newPreviewCmd(),
+				operations.NewUpCmd(),
+				operations.NewDestroyCmd(),
+				operations.NewPreviewCmd(),
 				newCancelCmd(),
 			},
 		},
@@ -402,7 +403,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newQueryCmd(),
 				convert.NewConvertCmd(),
-				newWatchCmd(),
+				operations.NewWatchCmd(),
 				logs.NewLogsCmd(),
 			},
 		},

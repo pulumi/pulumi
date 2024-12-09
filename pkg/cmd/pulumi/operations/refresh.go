@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"context"
@@ -46,7 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newRefreshCmd() *cobra.Command {
+func NewRefreshCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"bytes"
@@ -535,7 +535,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	}, resources, names)
 }
 
-func newImportCmd() *cobra.Command {
+func NewImportCmd() *cobra.Command {
 	var parentSpec string
 	var providerSpec string
 	var importFilePath string

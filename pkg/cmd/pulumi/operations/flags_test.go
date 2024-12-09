@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"testing"
@@ -24,8 +24,8 @@ import (
 //nolint:paralleltest // Changes environment variables
 func TestContinueOnErrorEnvVar(t *testing.T) {
 	commands := []func() *cobra.Command{
-		newUpCmd,
-		newDestroyCmd,
+		NewUpCmd,
+		NewDestroyCmd,
 	}
 	testCases := []struct {
 		EnvVarValue string
