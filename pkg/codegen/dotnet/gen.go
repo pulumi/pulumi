@@ -1594,7 +1594,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 
 	if fun.MultiArgumentInputs && outputOptions {
-		return fmt.Errorf("output options are not supported when using multi-argument inputs ")
+		return errors.New("outputOptions is not supported when using multi-argument inputs")
 	}
 
 	var argsDefault, sigil string
@@ -1623,7 +1623,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			// For the InvokeOutputOptions variant, arguments can not optional, otherwise we
 			// can't differentiate between the two options variants.
 			if outputArgsParamDef != "" && argsDefault != "" {
-				outputArgsParamDef = fmt.Sprintf("%s args, ", argsTypeName)
+				outputArgsParamDef = argsTypeName + " args, "
 			}
 			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOutputOptions options)\n",
 				typeParamOrEmpty(typeParameter), outputArgsParamDef)
