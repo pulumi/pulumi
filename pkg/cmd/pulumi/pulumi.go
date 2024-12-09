@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -416,7 +417,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
-				newReplayEventsCmd(),
+				events.NewReplayEventsCmd(),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service
