@@ -60,6 +60,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
+	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -379,7 +380,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
-				newVersionCmd(),
+				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(),
 				newGenCompletionCmd(cmd),
 			},
