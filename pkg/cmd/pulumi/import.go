@@ -35,6 +35,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -736,7 +737,7 @@ func newImportCmd() *cobra.Command {
 					return err
 				}
 
-				printDiagnostics(sink, resp.Diagnostics)
+				cmdDiag.PrintDiagnostics(sink, resp.Diagnostics)
 				if resp.Diagnostics.HasErrors() {
 					// If we've got error diagnostics then state conversion failed, we've printed the error above so
 					// just return a plain message here.

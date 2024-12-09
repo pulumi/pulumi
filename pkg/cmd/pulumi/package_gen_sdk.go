@@ -24,6 +24,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 
@@ -186,7 +188,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string, local bo
 
 			// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
 			// going to print them.
-			printDiagnostics(pCtx.Diag, diags)
+			cmdDiag.PrintDiagnostics(pCtx.Diag, diags)
 			if diags.HasErrors() {
 				// If we've got error diagnostics then package generation failed, we've printed the error above so
 				// just return a plain message here.
