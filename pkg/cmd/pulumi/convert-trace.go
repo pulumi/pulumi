@@ -494,15 +494,15 @@ func (t *otelTrace) criticalPath(span *otelSpan) (string, time.Duration) {
 		_, duration := t.criticalPath(span)
 		return edge{urn: span.urn, length: duration + span.EndTime().Sub(span.StartTime())}
 	}))
-	var max edge
+	var maximum edge
 	for _, e := range edges {
-		if e.length > max.length {
-			max = e
+		if e.length > maximum.length {
+			maximum = e
 		}
 	}
-	span.criticalDependency = max.urn
-	span.criticalPathLength = &max.length
-	return max.urn, max.length
+	span.criticalDependency = maximum.urn
+	span.criticalPathLength = &maximum.length
+	return maximum.urn, maximum.length
 }
 
 // Extract the start and end times from a trace
@@ -648,6 +648,7 @@ func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 
 func (t *otelTrace) getNextSpanID() trace.SpanID {
 	var id trace.SpanID
+	//nolint:gosec // len is always positive
 	binary.BigEndian.PutUint64(id[:], uint64(len(t.spans)+1))
 	return id
 }

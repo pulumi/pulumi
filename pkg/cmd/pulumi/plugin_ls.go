@@ -139,6 +139,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		if plugin.Size == 0 {
 			bytes = naString
 		} else {
+			//nolint:gosec // size is always positive
 			bytes = humanize.Bytes(uint64(plugin.Size))
 		}
 		var installTime string
@@ -158,6 +159,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
 		})
 
+		//nolint:gosec // size is always positive
 		totalSize += uint64(plugin.Size)
 	}
 

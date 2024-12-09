@@ -616,12 +616,12 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},
@@ -670,12 +670,12 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},
@@ -737,12 +737,12 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},
@@ -818,12 +818,12 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},

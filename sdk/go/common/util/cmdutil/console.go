@@ -314,10 +314,3 @@ func (table Table) Render(opts *TableRenderOptions) string {
 	}
 	return result.String()
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
