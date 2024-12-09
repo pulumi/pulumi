@@ -187,6 +187,14 @@ export interface Provider {
     schema?: string;
 
     /**
+     * Gets the JSON-encoded schema for this provider's package.
+     * Implementations can lazily load or generate the schema when needed.
+     *
+     * @returns A promise that resolves to the JSON-encoded schema string.
+     */
+    getSchema?: () => Promise<string>;
+
+    /**
      * Validates that the given property bag is valid for a resource of the
      * given type.
      *
