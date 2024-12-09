@@ -88,10 +88,24 @@ class Server implements grpc.UntypedServiceImplementation {
         const req: any = call.request;
         if (req.getVersion() !== 0) {
             callback(new Error(`unsupported schema version ${req.getVersion()}`), undefined);
+            return;
         }
         const resp: any = new provproto.GetSchemaResponse();
-        resp.setSchema(this.provider.schema || "{}");
-        callback(undefined, resp);
+        if (this.provider.schema) {
+            resp.setSchema(this.provider.schema);
+            callback(undefined, resp);
+        } else if (this.provider.getSchema) {
+            this.provider
+                .getSchema()
+                .then((schema) => {
+                    resp.setSchema(schema);
+                    callback(undefined, resp);
+                })
+                .catch((err) => callback(err, undefined));
+        } else {
+            resp.setSchema("{}");
+            callback(undefined, resp);
+        }
     }
 
     // Config methods

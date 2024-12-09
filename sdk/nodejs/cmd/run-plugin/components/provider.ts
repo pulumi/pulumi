@@ -25,19 +25,20 @@ function getInputsFromOutputs<T extends ComponentResource>(resource: T): Outputs
 }
 
 class ComponentProvider implements provider.Provider {
-    schema: string;
+    pack: any;
     version: string;
     path: string;
     constructor(readonly dir: string, readonly reqRequest: any) {
         const absDir = path.resolve(dir)
         const packStr = readFileSync(`${absDir}/package.json`, {encoding: "utf-8"});
-        const pack = JSON.parse(packStr);
-        this.version = pack.version;
+        this.pack = JSON.parse(packStr);
+        this.version = this.pack.version;
         this.path = absDir;
-        // It's inefficient to generate the schema on startup, given it's only needed for GetSchema calls.
-        // However, the current provider.Provider interface doesn't allow conditional schema generation.
-        const schema = generateSchema(pack, absDir);
-        this.schema = JSON.stringify(schema);
+    }
+
+    async getSchema(): Promise<string> {
+        const schema = generateSchema(this.pack, this.path);
+        return JSON.stringify(schema);
     }
 
     async construct(name: string, type: string, inputs: Inputs,

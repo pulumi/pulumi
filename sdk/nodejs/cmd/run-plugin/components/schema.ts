@@ -1,73 +1,8 @@
 import * as analyzer from "./analyzer";
+import * as schema from "../../../schema";
 
-interface PropertySchema {
-    description?: string;
-    type?: string;
-    willReplaceOnChanges?: boolean;
-    items?: { type: string }; // For arrays
-    $ref?: string; // For references to other schemas
-}
-
-interface ResourceSchema {
-    isComponent: boolean;
-    description?: string;
-    inputProperties: {
-        [propertyName: string]: PropertySchema;
-    };
-    requiredInputs: string[];
-    properties: {
-        [propertyName: string]: PropertySchema;
-    };
-    required: string[];
-}
-
-interface TypeSchema {
-    type: "object";
-    properties: {
-        [propertyName: string]: PropertySchema;
-    };
-    required: string[];
-}
-
-interface LanguageSchema {
-    [language: string]: {
-        dependencies?: { [packageName: string]: string };
-        devDependencies?: { [packageName: string]: string };
-        respectSchemaVersion?: boolean;
-    };
-}
-
-interface BaseProviderSchema {
-	// Name is the name of the provider.
-	name: string;
-	// Version is the version of the provider.
-	version: string;
-	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
-	pluginDownloadURL?: string;
-}
-
-interface ParameterizationSchema {
-    baseProvider: BaseProviderSchema;
-	parameter: string;
-}
-
-export interface Schema {
-    name: string;
-    displayName: string;
-    version: string;
-	pluginDownloadURL?: string;
-    resources: {
-        [resourceName: string]: ResourceSchema;
-    };
-    types: {
-        [typeName: string]: TypeSchema;
-    };
-    language: LanguageSchema;
-    parameterization?: ParameterizationSchema;
-}
-
-function generateComponent(pkg: string, component: analyzer.ComponentSchema): ResourceSchema {
-    const result: ResourceSchema = {
+function generateComponent(pkg: string, component: analyzer.ComponentSchema): schema.ResourceSpec {
+    const result: schema.ResourceSpec = {
         isComponent: true,
         description: component.description,
         inputProperties: {},
@@ -78,23 +13,23 @@ function generateComponent(pkg: string, component: analyzer.ComponentSchema): Re
     for (const propName in component.inputs) {
         const inputProp = component.inputs[propName];
         const prop = generateProperty(pkg, inputProp);
-        result.inputProperties[propName] = prop;
+        result.inputProperties![propName] = prop;
     }
     for (const output in component.outputs) {
         const outputSchema = component.outputs[output];
-        result.properties[output] = {
+        result.properties![output] = {
             description: outputSchema.description,
             type: outputSchema.type,
         };
         if (!outputSchema.optional) {
-            result.required.push(output);
+            result.required!.push(output);
         }
     }
     return result;
 }
 
-export function generateSchema(pack: any, path: string): Schema {
-    const result: Schema = {
+export function generateSchema(pack: any, path: string): schema.PackageSpec {
+    const result: schema.PackageSpec = {
         name: pack.name,
         displayName: pack.description,
         pluginDownloadURL: path,
@@ -114,27 +49,27 @@ export function generateSchema(pack: any, path: string): Schema {
     const components = new analyzer.ComponentAnalyzer(path).analyzeComponents();    
     for (const component in components) {
         const tok = `${pack.name}:index:${component}`;
-        result.resources[tok] = generateComponent(pack.name, components[component]);
+        result.resources![tok] = generateComponent(pack.name, components[component]);
         for (const type in components[component].typeDefinitions) {
             const typeDef = components[component].typeDefinitions[type];
-            const typ: TypeSchema = {
+            const typ: schema.ObjectTypeSpec = {
                 type: "object",
-                properties: typeDef.properties,
+                properties: typeDef.properties as Record<string, schema.PropertySpec>,
                 required: Object.keys(typeDef.properties).filter((k) => !typeDef.properties[k].optional),
             };
             for (const propName in typeDef.properties) {
                 const prop = generateProperty(pack.name, typeDef.properties[propName]);
-                typ.properties[propName] = prop;
+                typ.properties![propName] = prop;
             }
-            result.types[`${pack.name}:index:${type}`] = typ;
+            result.types![`${pack.name}:index:${type}`] = typ;
         }
     }
     return result;
 }
 
-function generateProperty(pkg: string, inputSchema: analyzer.SchemaProperty): PropertySchema {
+function generateProperty(pkg: string, inputSchema: analyzer.SchemaProperty): schema.PropertySpec {
     let type = inputSchema.type;
-    let items = undefined;
+    let items: schema.TypeSpec | undefined = undefined;
     let ref = undefined;
     if (inputSchema.ref) {
         ref = `#/types/${pkg}:index:${inputSchema.ref}`;
