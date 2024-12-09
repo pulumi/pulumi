@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -257,7 +258,7 @@ func newPreviewCmd() *cobra.Command {
 	var showSecrets bool
 
 	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+	remoteArgs := deployment.RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -282,7 +283,7 @@ func newPreviewCmd() *cobra.Command {
 	var attachDebugger bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
-	if remoteSupported() {
+	if deployment.RemoteSupported() {
 		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
 	}
 
@@ -336,8 +337,8 @@ func newPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
-				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
+			if remoteArgs.Remote {
+				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
 					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile)
@@ -350,11 +351,11 @@ func newPreviewCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+				if errResult := deployment.ValidateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
 					return errResult
 				}
 
-				return runDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
+				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
@@ -661,7 +662,7 @@ func newPreviewCmd() *cobra.Command {
 		"Enable the ability to attach a debugger to the program being executed")
 
 	// Remote flags
-	remoteArgs.applyFlags(cmd)
+	remoteArgs.ApplyFlags(cmd)
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
