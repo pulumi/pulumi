@@ -17,7 +17,7 @@ class LoaderStub(object):
             channel: A grpc.Channel.
         """
         self.GetSchema = channel.unary_unary(
-                '/codegen.Loader/GetSchema',
+                '/pulumirpc.codegen.Loader/GetSchema',
                 request_serializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
                 response_deserializer=pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
                 )
@@ -45,7 +45,7 @@ def add_LoaderServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'codegen.Loader', rpc_method_handlers)
+            'pulumirpc.codegen.Loader', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -66,7 +66,7 @@ class Loader(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/codegen.Loader/GetSchema',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.codegen.Loader/GetSchema',
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaRequest.SerializeToString,
             pulumi_dot_codegen_dot_loader__pb2.GetSchemaResponse.FromString,
             options, channel_credentials,

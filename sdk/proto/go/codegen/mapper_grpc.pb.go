@@ -36,7 +36,7 @@ func NewMapperClient(cc grpc.ClientConnInterface) MapperClient {
 
 func (c *mapperClient) GetMapping(ctx context.Context, in *GetMappingRequest, opts ...grpc.CallOption) (*GetMappingResponse, error) {
 	out := new(GetMappingResponse)
-	err := c.cc.Invoke(ctx, "/codegen.Mapper/GetMapping", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.codegen.Mapper/GetMapping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func _Mapper_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/codegen.Mapper/GetMapping",
+		FullMethod: "/pulumirpc.codegen.Mapper/GetMapping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MapperServer).GetMapping(ctx, req.(*GetMappingRequest))
@@ -94,7 +94,7 @@ func _Mapper_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Mapper_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codegen.Mapper",
+	ServiceName: "pulumirpc.codegen.Mapper",
 	HandlerType: (*MapperServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

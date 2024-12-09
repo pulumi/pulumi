@@ -36,7 +36,7 @@ func NewLoaderClient(cc grpc.ClientConnInterface) LoaderClient {
 
 func (c *loaderClient) GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error) {
 	out := new(GetSchemaResponse)
-	err := c.cc.Invoke(ctx, "/codegen.Loader/GetSchema", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.codegen.Loader/GetSchema", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/codegen.Loader/GetSchema",
+		FullMethod: "/pulumirpc.codegen.Loader/GetSchema",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LoaderServer).GetSchema(ctx, req.(*GetSchemaRequest))
@@ -94,7 +94,7 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Loader_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codegen.Loader",
+	ServiceName: "pulumirpc.codegen.Loader",
 	HandlerType: (*LoaderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

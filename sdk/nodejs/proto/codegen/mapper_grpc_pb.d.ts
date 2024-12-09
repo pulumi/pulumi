@@ -1,4 +1,4 @@
-// package: codegen
+// package: pulumirpc.codegen
 // file: pulumi/codegen/mapper.proto
 
 /* tslint:disable */
@@ -12,7 +12,7 @@ interface IMapperService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
 }
 
 interface IMapperService_IGetMapping extends grpc.MethodDefinition<pulumi_codegen_mapper_pb.GetMappingRequest, pulumi_codegen_mapper_pb.GetMappingResponse> {
-    path: "/codegen.Mapper/GetMapping";
+    path: "/pulumirpc.codegen.Mapper/GetMapping";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_codegen_mapper_pb.GetMappingRequest>;

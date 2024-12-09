@@ -19,25 +19,25 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_codegen_mapper_pb = require('../codegen/mapper_pb.js');
 
-function serialize_codegen_GetMappingRequest(arg) {
+function serialize_pulumirpc_codegen_GetMappingRequest(arg) {
   if (!(arg instanceof pulumi_codegen_mapper_pb.GetMappingRequest)) {
-    throw new Error('Expected argument of type codegen.GetMappingRequest');
+    throw new Error('Expected argument of type pulumirpc.codegen.GetMappingRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_codegen_GetMappingRequest(buffer_arg) {
+function deserialize_pulumirpc_codegen_GetMappingRequest(buffer_arg) {
   return pulumi_codegen_mapper_pb.GetMappingRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_codegen_GetMappingResponse(arg) {
+function serialize_pulumirpc_codegen_GetMappingResponse(arg) {
   if (!(arg instanceof pulumi_codegen_mapper_pb.GetMappingResponse)) {
-    throw new Error('Expected argument of type codegen.GetMappingResponse');
+    throw new Error('Expected argument of type pulumirpc.codegen.GetMappingResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_codegen_GetMappingResponse(buffer_arg) {
+function deserialize_pulumirpc_codegen_GetMappingResponse(buffer_arg) {
   return pulumi_codegen_mapper_pb.GetMappingResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
@@ -47,15 +47,15 @@ function deserialize_codegen_GetMappingResponse(buffer_arg) {
 var MapperService = exports.MapperService = {
   // GetMapping tries to find a mapping for the given provider.
 getMapping: {
-    path: '/codegen.Mapper/GetMapping',
+    path: '/pulumirpc.codegen.Mapper/GetMapping',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_codegen_mapper_pb.GetMappingRequest,
     responseType: pulumi_codegen_mapper_pb.GetMappingResponse,
-    requestSerialize: serialize_codegen_GetMappingRequest,
-    requestDeserialize: deserialize_codegen_GetMappingRequest,
-    responseSerialize: serialize_codegen_GetMappingResponse,
-    responseDeserialize: deserialize_codegen_GetMappingResponse,
+    requestSerialize: serialize_pulumirpc_codegen_GetMappingRequest,
+    requestDeserialize: deserialize_pulumirpc_codegen_GetMappingRequest,
+    responseSerialize: serialize_pulumirpc_codegen_GetMappingResponse,
+    responseDeserialize: deserialize_pulumirpc_codegen_GetMappingResponse,
   },
 };
 

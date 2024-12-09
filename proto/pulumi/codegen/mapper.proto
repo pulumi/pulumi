@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package codegen;
+package pulumirpc.codegen;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
 
