@@ -218,7 +218,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Equal(t, "pip-install-test", pipInstallTest.Name)
 		assert.NotEmpty(t, pipInstallTest.Location)
 
-		plugin, err := determinePluginDependency(pipInstallTest)
+		plugin, err := determinePackageDependency(pipInstallTest)
 		assert.NoError(t, err)
 		assert.NotNil(t, plugin)
 		assert.Equal(t, "thing1", plugin.Name)
@@ -261,7 +261,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NotEmpty(t, packages[0].Location)
 
 		// There should be no associated plugin since its `resource` field is set to `false`.
-		plugin, err := determinePluginDependency(packages[0])
+		plugin, err := determinePackageDependency(packages[0])
 		assert.NoError(t, err)
 		assert.Nil(t, plugin)
 	})

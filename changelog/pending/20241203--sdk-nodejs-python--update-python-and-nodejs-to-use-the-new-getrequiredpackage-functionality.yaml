@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs,python
+  description: Update Python and NodeJS to use the new GetRequiredPackage functionality

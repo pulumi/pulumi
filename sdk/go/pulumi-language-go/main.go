@@ -579,11 +579,11 @@ func normalizeVersion(version string) (string, error) {
 	return version, nil
 }
 
-// getPlugin loads information about this plugin.
+// getPackage loads information about this package.
 //
-// moduleRoot is the root directory of the Go module that imports this plugin.
+// moduleRoot is the root directory of the Go module that imports this package.
 // It must hold the go.mod file and the vendor directory (if any).
-func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, error) {
+func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON(moduleRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
@@ -613,17 +613,25 @@ func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, err
 	}
 
 	var server string
-
+	var parameterization *pulumirpc.PackageParameterization
 	if pulumiPlugin != nil {
-		// There is no way to specify server without using `pulumi-plugin.json`.
+		// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
 		server = pulumiPlugin.Server
+		if pulumiPlugin.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    pulumiPlugin.Parameterization.Name,
+				Version: pulumiPlugin.Parameterization.Version,
+				Value:   pulumiPlugin.Parameterization.Value,
+			}
+		}
 	}
 
-	plugin := &pulumirpc.PluginDependency{
-		Name:    name,
-		Version: version,
-		Kind:    "resource",
-		Server:  server,
+	plugin := &pulumirpc.PackageDependency{
+		Name:             name,
+		Version:          version,
+		Kind:             "resource",
+		Server:           server,
+		Parameterization: parameterization,
 	}
 
 	return plugin, nil
@@ -678,21 +686,15 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 	return filepath.Dir(modPath), f, nil
 }
 
-func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
-	req *pulumirpc.GetRequiredPackagesRequest,
-) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
-}
-
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+// GetRequiredPackages computes the complete set of anticipated packages required by a program.
 // We're lenient here as this relies on the `go list` command and the use of modules.
 // If the consumer insists on using some other form of dependency management tool like
 // dep or glide, the list command fails with "go list -m: not using modules".
 // However, we do enforce that go 1.14.0 or higher is installed.
-func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest,
-) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
+func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
+	req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
@@ -706,8 +708,8 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	moduleDir, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		// Don't fail if not using Go modules.
-		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
-		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		logging.V(5).Infof("GetRequiredPackages: Error reading go.mod: %v", err)
+		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
 	modulePaths := slice.Prealloc[string](len(gomod.Require))
@@ -717,16 +719,16 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	modInfos, err := findModuleSources(ctx, gobin, moduleDir, modulePaths)
 	if err != nil {
-		logging.V(5).Infof("GetRequiredPlugins: Error finding module sources: %v", err)
-		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		logging.V(5).Infof("GetRequiredPackages: Error finding module sources: %v", err)
+		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
-	plugins := []*pulumirpc.PluginDependency{}
+	packages := []*pulumirpc.PackageDependency{}
 	for _, m := range modInfos {
-		plugin, err := m.getPlugin(moduleDir)
+		pkg, err := m.getPackage(moduleDir)
 		if err != nil {
 			logging.V(5).Infof(
-				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
+				"GetRequiredPackages: Ignoring dependency: %s, version: %s, error: %s",
 				m.Path,
 				m.Version,
 				err,
@@ -734,13 +736,19 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 			continue
 		}
 
-		logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
-		plugins = append(plugins, plugin)
+		logging.V(5).Infof("GetRequiredPackages: Found package name: %s, version: %s", pkg.Name, pkg.Version)
+		packages = append(packages, pkg)
 	}
 
-	return &pulumirpc.GetRequiredPluginsResponse{
-		Plugins: plugins,
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: packages,
 	}, nil
+}
+
+func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
 func runCmdStatus(runF func() error) (int, error) {
