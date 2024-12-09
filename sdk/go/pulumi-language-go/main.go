@@ -25,12 +25,14 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver"
 
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
@@ -48,7 +50,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -111,109 +112,39 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 	return outfile, nil
 }
 
-// runParams defines the command line arguments accepted by this program.
-type runParams struct {
-	tracing       string
-	engineAddress string
-}
-
-// parseRunParams parses the given arguments into a runParams structure,
-// using the provided FlagSet.
-func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
-	var p runParams
-	flag.StringVar(&p.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
-	flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
-	flag.String("root", "", "[obsolete] Project root path to use")
-
-	if err := flag.Parse(args); err != nil {
-		return nil, err
-	}
-
-	// Pluck out the engine so we can do logging, etc.
-	args = flag.Args()
-	if len(args) == 0 {
-		return nil, errors.New("missing required engine RPC address argument")
-	}
-	p.engineAddress = args[0]
-
-	return &p, nil
-}
-
-// Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
+// Launches the language host RPC endpoint, which in turn fires
+// up an RPC server implementing the LanguageRuntimeServer RPC
+// endpoint.
 func main() {
-	p, err := parseRunParams(flag.CommandLine, os.Args[1:])
-	if err != nil {
-		cmdutil.Exit(err)
-	}
-
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
-
-	var cmd mainCmd
-	if err := cmd.Run(p); err != nil {
-		cmdutil.Exit(err)
-	}
-}
-
-type mainCmd struct {
-	Stdout io.Writer              // == os.Stdout
-	Getwd  func() (string, error) // == os.Getwd
-}
-
-func (cmd *mainCmd) init() {
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-	if cmd.Getwd == nil {
-		cmd.Getwd = os.Getwd
-	}
-}
-
-func (cmd *mainCmd) Run(p *runParams) error {
-	cmd.init()
-
-	cwd, err := cmd.Getwd()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	// map the context Done channel to the rpcutil boolean cancel channel
-	cancelChannel := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		cancel() // deregister handler so we don't catch another interrupt
-		close(cancelChannel)
-	}()
-	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
-	if err != nil {
-		return fmt.Errorf("could not start health check host RPC server: %w", err)
-	}
-
-	// Fire up a gRPC server, letting the kernel choose a free port.
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	server, err := rpcserver.NewServer(rpcserver.Config{
+		Flag:         flag.CommandLine,
+		TracingName:  "pulumi-language-go",
+		RootSpanName: "pulumi-language-go",
 	})
 	if err != nil {
-		return fmt.Errorf("could not start language host RPC server: %w", err)
+		cmdutil.Exit(err)
 	}
 
-	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Fprintf(cmd.Stdout, "%d\n", handle.Port)
-
-	// And finally wait for the server to stop serving.
-	if err := <-handle.Done; err != nil {
-		return fmt.Errorf("language host RPC stopped serving: %w", err)
+	server.Flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
+	server.Flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
+	server.Flag.String("root", "", "[obsolete] Project root path to use")
+	// Parse only to show error message in case of unknown flag.
+	err = server.Flag.Parse(os.Args[1:])
+	if err != nil {
+		cmdutil.Exit(err)
 	}
 
-	return nil
+	cwd, err := os.Getwd()
+	if err != nil {
+		cmdutil.Exit(err)
+	}
+
+	server.Run(func(srv *grpc.Server) error {
+		host := newLanguageHost(server.GetEngineAddress(), cwd, server.GetTracing())
+		pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+		return nil
+	})
 }
 
 // goLanguageHost implements the LanguageRuntimeServer interface for use as an API endpoint.

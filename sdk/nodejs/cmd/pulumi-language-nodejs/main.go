@@ -39,12 +39,13 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcserver"
 
 	"github.com/blang/semver"
 	"github.com/google/shlex"
@@ -101,62 +102,33 @@ const (
 // up an RPC server implementing the LanguageRuntimeServer RPC
 // endpoint.
 func main() {
-	var tracing string
-	flag.StringVar(&tracing, "tracing", "",
-		"Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.Bool("typescript", true,
-		"[obsolete] Use ts-node at runtime to support typescript source natively")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("tsconfig", "",
-		"[obsolete] Path to tsconfig.json to use")
-	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
-	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
-	flag.Parse()
-
-	args := flag.Args()
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
-
-	// Optionally pluck out the engine so we can do logging, etc.
-	var engineAddress string
-	if len(args) > 0 {
-		engineAddress = args[0]
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	// map the context Done channel to the rpcutil boolean cancel channel
-	cancelChannel := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		cancel() // deregister the interrupt handler
-		close(cancelChannel)
-	}()
-	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
-	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
-	}
-
-	// Fire up a gRPC server, letting the kernel choose a free port.
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	server, err := rpcserver.NewServer(rpcserver.Config{
+		Flag:         flag.CommandLine,
+		TracingName:  "pulumi-language-nodejs",
+		RootSpanName: "pulumi-language-nodejs",
 	})
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
+		cmdutil.Exit(err)
 	}
 
-	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Printf("%d\n", handle.Port)
-
-	// And finally wait for the server to stop serving.
-	if err := <-handle.Done; err != nil {
-		cmdutil.Exit(fmt.Errorf("language host RPC stopped serving: %w", err))
+	server.Flag.Bool("typescript", true,
+		"[obsolete] Use ts-node at runtime to support typescript source natively")
+	server.Flag.String("root", "", "[obsolete] Project root path to use")
+	server.Flag.String("tsconfig", "",
+		"[obsolete] Path to tsconfig.json to use")
+	server.Flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
+	server.Flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
+	err = server.Flag.Parse(os.Args[1:])
+	if err != nil {
+		cmdutil.Exit(err)
 	}
+
+	server.Run(func(srv *grpc.Server) error {
+		host := newLanguageHost(server.GetEngineAddress(), server.GetTracing(), false /* forceTsc */)
+		pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+		return nil
+	})
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
