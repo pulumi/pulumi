@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package packagecmd
 
 import (
 	"context"
@@ -39,7 +39,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func newPackageCmd() *cobra.Command {
+func NewPackageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",
