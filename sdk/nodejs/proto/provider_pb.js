@@ -1068,15 +1068,15 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
       f
     );
   }
-  f = message.getRootDirectory();
-  if (f.length > 0) {
+  f = /** @type {string} */ (jspb.Message.getField(message, 2));
+  if (f != null) {
     writer.writeString(
       2,
       f
     );
   }
-  f = message.getProgramDirectory();
-  if (f.length > 0) {
+  f = /** @type {string} */ (jspb.Message.getField(message, 3));
+  if (f != null) {
     writer.writeString(
       3,
       f
@@ -1117,7 +1117,25 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getRootDirectory = function()
  * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.setRootDirectory = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
+  return jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.clearRootDirectory = function() {
+  return jspb.Message.setField(this, 2, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.hasRootDirectory = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
@@ -1135,7 +1153,25 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getProgramDirectory = functio
  * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.setProgramDirectory = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setField(this, 3, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.clearProgramDirectory = function() {
+  return jspb.Message.setField(this, 3, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.hasProgramDirectory = function() {
+  return jspb.Message.getField(this, 3) != null;
 };
 
 

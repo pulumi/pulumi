@@ -179,8 +179,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			req := &ProviderHandshakeRequest{
 				EngineAddress: host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:    "",
-				ProgramDirectory: "",
+				RootDirectory:    nil,
+				ProgramDirectory: nil,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -231,10 +231,11 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		handshake := func(
 			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 		) (*ProviderHandshakeResponse, error) {
+			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
 				EngineAddress:    host.ServerAddr(),
-				RootDirectory:    filepath.Dir(bin),
-				ProgramDirectory: filepath.Dir(bin),
+				RootDirectory:    &dir,
+				ProgramDirectory: &dir,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -338,10 +339,11 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
+		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
 			EngineAddress:    host.ServerAddr(),
-			RootDirectory:    filepath.Dir(bin),
-			ProgramDirectory: filepath.Dir(bin),
+			RootDirectory:    &dir,
+			ProgramDirectory: &dir,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
