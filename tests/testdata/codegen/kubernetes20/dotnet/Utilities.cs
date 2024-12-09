@@ -63,7 +63,6 @@ namespace Pulumi.Kubernetes
             return dst;
         }
 
-        
         private readonly static string version;
         public static string Version => version;
 

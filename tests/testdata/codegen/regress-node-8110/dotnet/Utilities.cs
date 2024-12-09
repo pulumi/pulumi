@@ -63,7 +63,6 @@ namespace Pulumi.My8110
             return dst;
         }
 
-        
         private readonly static string version;
         public static string Version => version;
 

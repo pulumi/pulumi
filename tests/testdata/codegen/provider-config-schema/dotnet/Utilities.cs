@@ -63,7 +63,6 @@ namespace Configstation.Pulumi.Configstation
             return dst;
         }
 
-        
         private readonly static string version;
         public static string Version => version;
 

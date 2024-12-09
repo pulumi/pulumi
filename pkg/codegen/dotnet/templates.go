@@ -89,18 +89,19 @@ namespace {{.Namespace}}
             dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
             return dst;
         }
-
-        {{if .HasParameterization }}		public static global::Pulumi.RegisterPackageRequest PackageParameterization()
-		{
-			return new global::Pulumi.RegisterPackageRequest(
-				name: "{{.BaseProviderName}}",
-				version: "{{.BaseProviderVersion}}",
-				downloadUrl: "{{.BaseProviderPluginDownloadURL}}",
-				parameterization: new global::Pulumi.RegisterPackageRequest.PackageParameterization(
-					name: "{{.PackageName}}",
-					version: "{{.PackageVersion}}",
-					value: global::System.Convert.FromBase64String("{{.ParameterValue}}")));
-        }{{end}}
+{{if .HasParameterization }}
+public static global::Pulumi.RegisterPackageRequest PackageParameterization()
+        {
+            return new global::Pulumi.RegisterPackageRequest(
+                name: "{{.BaseProviderName}}",
+                version: "{{.BaseProviderVersion}}",
+                downloadUrl: "{{.BaseProviderPluginDownloadURL}}",
+                parameterization: new global::Pulumi.RegisterPackageRequest.PackageParameterization(
+                    name: "{{.PackageName}}",
+                    version: "{{.PackageVersion}}",
+                    value: global::System.Convert.FromBase64String("{{.ParameterValue}}")));
+        }
+{{end}}
         private readonly static string version;
         public static string Version => version;
 

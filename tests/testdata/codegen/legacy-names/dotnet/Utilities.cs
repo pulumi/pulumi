@@ -63,7 +63,6 @@ namespace Pulumi.Legacy_names
             return dst;
         }
 
-        
         private readonly static string version;
         public static string Version => version;
 
