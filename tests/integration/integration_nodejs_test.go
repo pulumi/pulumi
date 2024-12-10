@@ -2221,6 +2221,36 @@ func TestPackageAddNode(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
+
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	assert.NoError(t, err)
+	packagesJSON := make(map[string]any)
+	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+	assert.NoError(t, err)
+
+	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+	assert.True(t, ok)
+	cf, ok := dependencies["@pulumi/supabase"]
+	assert.True(t, ok)
+	cf, ok = cf.(string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "file:sdks/supabase", cf)
+}
+
 func TestConstructFailuresNode(t *testing.T) {
 	t.Parallel()
 	testConstructFailures(t, "nodejs", "@pulumi/pulumi")

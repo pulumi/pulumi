@@ -17,6 +17,7 @@ package pcl
 import (
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -263,26 +264,9 @@ func BindDirectory(
 		return nil, nil, err
 	}
 
-	var parseDiagnostics hcl.Diagnostics
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fileName := file.Name()
-		path := filepath.Join(directory, fileName)
-
-		if filepath.Ext(path) == ".pp" {
-			file, err := os.Open(path)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			err = parser.ParseFile(file, filepath.Base(path))
-			if err != nil {
-				return nil, nil, err
-			}
-			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
-		}
+	parseDiagnostics, err := ParseFiles(parser, directory, files)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if parseDiagnostics.HasErrors() {
@@ -307,6 +291,32 @@ func BindDirectory(
 
 	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
 	return program, allDiagnostics, err
+}
+
+func ParseFiles(parser *syntax.Parser, directory string, files []fs.DirEntry) (hcl.Diagnostics, error) {
+	var parseDiagnostics hcl.Diagnostics
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+		path := filepath.Join(directory, fileName)
+
+		if filepath.Ext(path) == ".pp" {
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
+
+			err = parser.ParseFile(file, filepath.Base(path))
+			if err != nil {
+				return nil, err
+			}
+			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
+		}
+	}
+
+	return parseDiagnostics, nil
 }
 
 func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {

@@ -113,7 +113,58 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeArgs{Args: args}})
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeArgs{Args: args},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize: %w", err)
+		}
+
+		request = plugin.GetSchemaRequest{
+			SubpackageName:    resp.Name,
+			SubpackageVersion: &resp.Version,
+		}
+	}
+
+	schema, err := p.GetSchema(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(schema.Schema, &spec)
+	if err != nil {
+		return nil, err
+	}
+	return bind(spec)
+}
+
+func schemaFromSchemaSourceValueArgs(
+	ctx context.Context,
+	packageSource string,
+	parameterizationValue []byte,
+) (*schema.Package, error) {
+	var spec schema.PackageSpec
+	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
+		pkg, diags, err := schema.BindSpec(spec, nil)
+		if err != nil {
+			return nil, err
+		}
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		return pkg, nil
+	}
+
+	p, err := providerFromSource(packageSource)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Close()
+
+	var request plugin.GetSchemaRequest
+	if parameterizationValue != nil {
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{Value: parameterizationValue},
+		})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
 		}

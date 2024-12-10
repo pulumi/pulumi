@@ -4628,7 +4628,9 @@ func packageRoot(pkg schema.PackageReference) (string, error) {
 	if goInfo, ok := def.Language["go"].(GoPackageInfo); ok {
 		info = goInfo
 	}
-	if info.RootPackageName != "" {
+	if !pkg.SupportPack() && info.RootPackageName != "" {
+		// Flat packages are not supported in SupportPack, otherwise we can't get
+		// the proper base path.
 		// package structure is flat
 		return "", nil
 	}

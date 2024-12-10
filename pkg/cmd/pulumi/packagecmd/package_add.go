@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -125,7 +126,7 @@ extension, Pulumi package schema is read from it directly:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			return printLinkInstructions(ws, language, root, pkg, out)
+			return doLocalSdkLinking(ws, language, root, pkg, out)
 		}),
 	}
 
@@ -134,7 +135,7 @@ extension, Pulumi package schema is read from it directly:
 
 // Prints instructions for linking a locally generated SDK to an existing
 // project, in the absence of us attempting to perform this linking automatically.
-func printLinkInstructions(
+func doLocalSdkLinking(
 	ws pkgWorkspace.Context, language string, root string, pkg *schema.Package, out string,
 ) error {
 	switch language {
@@ -166,7 +167,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg.Name, relOut)
+	packageSpecifier := fmt.Sprintf("@pulumi/%s@file:%s", pkg.Name, relOut)
 	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
@@ -355,7 +356,13 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 
 	modulePath := goInfo.ModulePath
 	if modulePath == "" {
-		modulePath = extractModulePath(pkg.Reference())
+		if goInfo.ImportBasePath != "" {
+			modulePath = path.Dir(goInfo.ImportBasePath)
+		}
+
+		if modulePath == "" {
+			modulePath = extractModulePath(pkg.Reference())
+		}
 	}
 
 	err = gomod.AddReplace(modulePath, "", relOut, "")

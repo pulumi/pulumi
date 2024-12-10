@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
+	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -83,6 +85,7 @@ func NewConvertCmd() *cobra.Command {
 			}
 
 			return runConvert(
+				cmd.Context(),
 				pkgWorkspace.Instance,
 				env.Global(),
 				args,
@@ -187,6 +190,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 }
 
 func runConvert(
+	ctx context.Context,
 	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
@@ -276,13 +280,34 @@ func runConvert(
 			}
 			projectJSON := string(projectBytes)
 
-			diagnostics, err := languagePlugin.GenerateProject(
+			var diags hcl.Diagnostics
+			ds, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
 				strict, grpcServer.Addr(), nil /*localDependencies*/)
+			diags = append(diags, ds...)
 			if err != nil {
-				return diagnostics, err
+				return nil, err
 			}
-			return diagnostics, nil
+
+			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
+			diags = append(diags, ds...)
+			if err != nil {
+				return diags, fmt.Errorf("error parsing pcl: %w", err)
+			}
+
+			err = generateAndLinkSdksForPackages(
+				ctx,
+				ws,
+				language,
+				filepath.Join(targetDirectory, "sdks"),
+				targetDirectory,
+				packageBlockDescriptors,
+			)
+			if err != nil {
+				return diags, fmt.Errorf("error generating packages: %w", err)
+			}
+
+			return diags, nil
 		}
 	}
 
@@ -457,6 +482,130 @@ func runConvert(
 	return nil
 }
 
+// getPackagesToGenerateSdks parses the pcl files back in to read the package
+// blocks and for sdk generation.
+func getPackagesToGenerateSdks(
+	sourceDirectory string,
+) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
+	// TODO use the package block to get the packages and parameterize them and generate SDKs.
+	files, err := os.ReadDir(sourceDirectory)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not read sourceDirectory: %w", err)
+	}
+
+	parser := hclsyntax.NewParser()
+	_, err = pcl.ParseFiles(parser, sourceDirectory, files)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse pcl file: %w", err)
+	}
+
+	allPackageDescriptors := make(map[string]*schema.PackageDescriptor)
+
+	var diagnostics hcl.Diagnostics
+	for _, file := range parser.Files {
+		packageDescriptors, diags := pcl.ReadPackageDescriptors(file)
+		diagnostics = append(diagnostics, diags...)
+		for packageName, descriptor := range packageDescriptors {
+			if _, ok := allPackageDescriptors[packageName]; ok {
+				diagnostics = append(diagnostics, errorf(file.Body.Range(), "package %q was already defined", packageName))
+				continue
+			}
+			allPackageDescriptors[packageName] = descriptor
+		}
+	}
+
+	if len(diagnostics) != 0 {
+		var errorDiags hcl.Diagnostics
+		for _, d := range diagnostics {
+			if d.Severity == hcl.DiagError {
+				errorDiags = append(errorDiags, d)
+			}
+		}
+
+		if len(errorDiags) != 0 {
+			return nil, diagnostics, nil
+		}
+	}
+
+	return allPackageDescriptors, diagnostics, nil
+}
+
+func generateAndLinkSdksForPackages(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	language string,
+	sdkTargetDirectory string,
+	convertOutputDirectory string,
+	pkgs map[string]*schema.PackageDescriptor,
+) error {
+	for _, pkg := range pkgs {
+		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary directory: %w", err)
+		}
+
+		var parameterizationValue []byte
+		if pkg.Parameterization != nil {
+			parameterizationValue = pkg.Parameterization.Value
+		} else {
+			// Only generate SDKs for packages that have parameterization for now, others should be implicit.
+			continue
+		}
+
+		pkgSchema, err := schemaFromSchemaSourceValueArgs(ctx, pkg.Name, parameterizationValue)
+		if err != nil {
+			return fmt.Errorf("creating package schema: %w", err)
+		}
+
+		err = genSDK(
+			language,
+			tempOut,
+			pkgSchema,
+			/*overlays*/ "",
+			/*local*/ true,
+		)
+		if err != nil {
+			return fmt.Errorf("error generating sdk: %w", err)
+		}
+
+		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
+		err = copyAll(sdkOut, filepath.Join(tempOut, language))
+		if err != nil {
+			return fmt.Errorf("failed to move SDK to project: %w", err)
+		}
+
+		err = os.RemoveAll(tempOut)
+		if err != nil {
+			return fmt.Errorf("could not remove temp dir: %w", err)
+		}
+
+		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+
+		// Change working directory to the newly generated project output so
+		// workspace instance behaves.
+		startingDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("could not get working directory: %w", err)
+		}
+		defer returnToStartingDir()
+
+					err.Error(),
+				)
+			}
+		}()
+
+		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
+		err = doLocalSdkLinking(ws, language, "./", pkgSchema, sdkRelPath)
+		if err != nil {
+			return fmt.Errorf("failed to link SDK to project: %w", err)
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
 func newPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
@@ -466,4 +615,18 @@ func newPluginContext(cwd string) (*plugin.Context, error) {
 		return nil, err
 	}
 	return pluginCtx, nil
+}
+
+func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	return diagf(hcl.DiagError, subject, f, args...)
+}
+
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	message := fmt.Sprintf(f, args...)
+	return &hcl.Diagnostic{
+		Severity: severity,
+		Summary:  message,
+		Detail:   message,
+		Subject:  &subject,
+	}
 }
