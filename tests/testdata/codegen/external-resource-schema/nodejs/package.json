@@ -7,7 +7,7 @@
     "dependencies": {
         "@pulumi/aws": "^4.19.0",
         "@pulumi/kubernetes": "^3.7.0",
-        "@pulumi/pulumi": "^3.136.0",
+        "@pulumi/pulumi": "^3.142.0",
         "@pulumi/random": "^4.2.0"
     },
     "devDependencies": {
