@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package packagecmd
 
 import (
 	"errors"
@@ -226,4 +226,15 @@ func genSDK(language, out string, pkg *schema.Package, overlays string, local bo
 		return err
 	}
 	return nil
+}
+
+func newPluginContext(cwd string) (*plugin.Context, error) {
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	if err != nil {
+		return nil, err
+	}
+	return pluginCtx, nil
 }
