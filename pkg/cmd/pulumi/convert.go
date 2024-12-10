@@ -26,6 +26,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -161,17 +163,6 @@ func newConvertCmd() *cobra.Command {
 		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
 
 	return cmd
-}
-
-// prints the diagnostics to the diagnostic sink
-func printDiagnostics(sink diag.Sink, diagnostics hcl.Diagnostics) {
-	for _, diagnostic := range diagnostics {
-		if diagnostic.Severity == hcl.DiagError {
-			sink.Errorf(diag.Message("", "%s"), diagnostic)
-		} else {
-			sink.Warningf(diag.Message("", "%s"), diagnostic)
-		}
-	}
 }
 
 // Same pcl.BindDirectory but recovers from panics
@@ -429,7 +420,7 @@ func runConvert(
 
 		// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
 		// going to print them.
-		printDiagnostics(pCtx.Diag, resp.Diagnostics)
+		cmdDiag.PrintDiagnostics(pCtx.Diag, resp.Diagnostics)
 		if resp.Diagnostics.HasErrors() {
 			// If we've got error diagnostics then program generation failed, we've printed the error above so
 			// just return a plain message here.
@@ -462,7 +453,7 @@ func runConvert(
 			fmt.Fprintln(os.Stderr, "================================================================================")
 			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
 		}
-		printDiagnostics(pCtx.Diag, diagnostics)
+		cmdDiag.PrintDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
 			return fmt.Errorf("could not generate output program: %w", err)
 		}
@@ -476,7 +467,7 @@ func runConvert(
 
 	// If we've got code generation warnings only print them if we've got PULUMI_DEV set or emitting pcl
 	if e.GetBool(env.Dev) || language == "pcl" {
-		printDiagnostics(pCtx.Diag, diagnostics)
+		cmdDiag.PrintDiagnostics(pCtx.Diag, diagnostics)
 	}
 
 	// Project should now exist at outDir. Run installDependencies in that directory (if requested)
