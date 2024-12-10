@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ import (
 
 // Helper for writing asserts against gRPC requests received by the test provider. See also config_grpc_provider.go.
 type grpcTestContext struct {
-	l *L
+	l *tests.L
 	s *deploy.Snapshot
 }
 

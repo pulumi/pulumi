@@ -15,22 +15,19 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"encoding/json"
 	"math"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -40,27 +37,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type testRun struct {
-	config config.Map
-	// This can be used to set a main value for the test.
-	main string
-	// TODO: This should just return "string", if == "" then ok, else fail
-	assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges)
-	// updateOptions can be used to set the update options for the engine.
-	updateOptions engine.UpdateOptions
-}
-
-type languageTest struct {
-	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	providers []plugin.Provider
-
-	// stackReferences specifies other stack data that this test depends on.
-	stackReferences map[string]resource.PropertyMap
-
-	// runs is a list of test runs to execute.
-	runs []testRun
-}
 
 // lorem is a long string used for testing large string values.
 const lorem string = "Lorem ipsum dolor sit amet, consectetur adipiscing elit," +
@@ -73,37 +49,37 @@ const lorem string = "Lorem ipsum dolor sit amet, consectetur adipiscing elit," 
 //go:embed testdata
 var languageTestdata embed.FS
 
-var languageTests = map[string]languageTest{
+var languageTests = map[string]tests.LanguageTest{
 	// ==========
 	// INTERNAL
 	// ==========
 	"internal-bad-schema": {
-		providers: []plugin.Provider{&providers.BadProvider{}},
-		runs:      []testRun{{}},
+		Providers: []plugin.Provider{&providers.BadProvider{}},
+		Runs:      []tests.TestRun{{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
 	// ==========
 	"l1-empty": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					assertStackResource(l, err, changes)
+					tests.AssertStackResource(l, err, changes)
 				},
 			},
 		},
 	},
 	"l1-output-bool": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have two outputs in the stack for true and false
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -112,20 +88,20 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
-					assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+					tests.AssertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+					tests.AssertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
 				},
 			},
 		},
 	},
 	"l1-output-number": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -134,24 +110,24 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 6, "expected 6 outputs")
-					assertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
-					assertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
-					assertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
-					assertPropertyMapMember(l, outputs, "minInt32", resource.NewNumberProperty(math.MinInt32))
-					assertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
-					assertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
+					tests.AssertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
+					tests.AssertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
+					tests.AssertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
+					tests.AssertPropertyMapMember(l, outputs, "minInt32", resource.NewNumberProperty(math.MinInt32))
+					tests.AssertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
+					tests.AssertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
 				},
 			},
 		},
 	},
 	"l1-output-string": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -160,30 +136,30 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 6, "expected 6 outputs")
-					assertPropertyMapMember(l, outputs, "empty", resource.NewStringProperty(""))
-					assertPropertyMapMember(l, outputs, "small", resource.NewStringProperty("Hello world!"))
-					assertPropertyMapMember(l, outputs, "emoji", resource.NewStringProperty("👋 \"Hello \U0001019b!\" 😊"))
-					assertPropertyMapMember(l, outputs, "escape", resource.NewStringProperty(
+					tests.AssertPropertyMapMember(l, outputs, "empty", resource.NewStringProperty(""))
+					tests.AssertPropertyMapMember(l, outputs, "small", resource.NewStringProperty("Hello world!"))
+					tests.AssertPropertyMapMember(l, outputs, "emoji", resource.NewStringProperty("👋 \"Hello \U0001019b!\" 😊"))
+					tests.AssertPropertyMapMember(l, outputs, "escape", resource.NewStringProperty(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
-					assertPropertyMapMember(l, outputs, "escapeNewline", resource.NewStringProperty(
+					tests.AssertPropertyMapMember(l, outputs, "escapeNewline", resource.NewStringProperty(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
 
 					large := strings.Repeat(lorem+"\n", 150)
-					assertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
+					tests.AssertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
 				},
 			},
 		},
 	},
 	"l1-output-array": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -192,16 +168,16 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 5, "expected 5 outputs")
-					assertPropertyMapMember(l, outputs, "empty", resource.NewArrayProperty([]resource.PropertyValue{}))
-					assertPropertyMapMember(l, outputs, "small", resource.NewArrayProperty([]resource.PropertyValue{
+					tests.AssertPropertyMapMember(l, outputs, "empty", resource.NewArrayProperty([]resource.PropertyValue{}))
+					tests.AssertPropertyMapMember(l, outputs, "small", resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewStringProperty("Hello"),
 						resource.NewStringProperty("World"),
 					}))
-					assertPropertyMapMember(l, outputs, "numbers", resource.NewArrayProperty([]resource.PropertyValue{
+					tests.AssertPropertyMapMember(l, outputs, "numbers", resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewNumberProperty(0), resource.NewNumberProperty(1), resource.NewNumberProperty(2),
 						resource.NewNumberProperty(3), resource.NewNumberProperty(4), resource.NewNumberProperty(5),
 					}))
-					assertPropertyMapMember(l, outputs, "nested", resource.NewArrayProperty([]resource.PropertyValue{
+					tests.AssertPropertyMapMember(l, outputs, "nested", resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewArrayProperty([]resource.PropertyValue{
 							resource.NewNumberProperty(1), resource.NewNumberProperty(2), resource.NewNumberProperty(3),
 						}),
@@ -217,20 +193,20 @@ var languageTests = map[string]languageTest{
 					for i := 0; i < 150; i++ {
 						large = append(large, resource.NewStringProperty(lorem))
 					}
-					assertPropertyMapMember(l, outputs, "large", resource.NewArrayProperty(large))
+					tests.AssertPropertyMapMember(l, outputs, "large", resource.NewArrayProperty(large))
 				},
 			},
 		},
 	},
 	"l1-main": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				main: "subdir",
-				assert: func(l *L,
+				Main: "subdir",
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have an output in the stack for true
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -239,25 +215,25 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+					tests.AssertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 				},
 			},
 		},
 	},
 	"l1-stack-reference": {
-		stackReferences: map[string]resource.PropertyMap{
+		StackReferences: map[string]resource.PropertyMap{
 			"organization/other/dev": {
 				"plain":  resource.NewStringProperty("plain"),
 				"secret": resource.MakeSecret(resource.NewStringProperty("secret")),
 			},
 		},
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
 					stack := snap.Resources[0]
@@ -270,20 +246,20 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 2, "expected 2 outputs")
-					assertPropertyMapMember(l, outputs, "plain", resource.NewStringProperty("plain"))
-					assertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewStringProperty("secret")))
+					tests.AssertPropertyMapMember(l, outputs, "plain", resource.NewStringProperty("plain"))
+					tests.AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewStringProperty("secret")))
 				},
 			},
 		},
 	},
 	"l1-builtin-info": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -292,21 +268,21 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 3, "expected 3 outputs")
-					assertPropertyMapMember(l, outputs, "stackOutput", resource.NewStringProperty("test"))
-					assertPropertyMapMember(l, outputs, "projectOutput", resource.NewStringProperty("l1-builtin-info"))
-					assertPropertyMapMember(l, outputs, "organizationOutput", resource.NewStringProperty("organization"))
+					tests.AssertPropertyMapMember(l, outputs, "stackOutput", resource.NewStringProperty("test"))
+					tests.AssertPropertyMapMember(l, outputs, "projectOutput", resource.NewStringProperty("l1-builtin-info"))
+					tests.AssertPropertyMapMember(l, outputs, "organizationOutput", resource.NewStringProperty("organization"))
 				},
 			},
 		},
 	},
 	"l1-output-map": {
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
@@ -315,16 +291,16 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 4, "expected 4 outputs")
-					assertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
-					assertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
+					tests.AssertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
+					tests.AssertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
 						"greeting": resource.NewStringProperty("Hello, world!"),
 						"farewell": resource.NewStringProperty("Goodbye, world!"),
 					}))
-					assertPropertyMapMember(l, outputs, "numbers", resource.NewObjectProperty(resource.PropertyMap{
+					tests.AssertPropertyMapMember(l, outputs, "numbers", resource.NewObjectProperty(resource.PropertyMap{
 						"1": resource.NewNumberProperty(1),
 						"2": resource.NewNumberProperty(2),
 					}))
-					assertPropertyMapMember(l, outputs, "keys", resource.NewObjectProperty(resource.PropertyMap{
+					tests.AssertPropertyMapMember(l, outputs, "keys", resource.NewObjectProperty(resource.PropertyMap{
 						"my.key": resource.NewNumberProperty(1),
 						"my-key": resource.NewNumberProperty(2),
 						"my_key": resource.NewNumberProperty(3),
@@ -340,14 +316,14 @@ var languageTests = map[string]languageTest{
 	// L2 (Tests using providers)
 	// ==========
 	"l2-resource-simple": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -366,14 +342,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-primitives": {
-		providers: []plugin.Provider{&providers.PrimitiveProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.PrimitiveProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -399,14 +375,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-alpha": {
-		providers: []plugin.Provider{&providers.AlphaProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.AlphaProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -425,14 +401,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-explicit-provider": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -453,15 +429,15 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-asset-archive": {
-		providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		Runs: []tests.TestRun{
 			{
-				main: "subdir",
-				assert: func(l *L,
+				Main: "subdir",
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
 					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
@@ -569,19 +545,19 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-engine-update-options": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				updateOptions: engine.UpdateOptions{
+				UpdateOptions: engine.UpdateOptions{
 					Targets: deploy.NewUrnTargets([]string{
 						"**target**",
 					}),
 				},
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
 
 					// Check that we have the target in the snapshot, but not the other resource.
@@ -597,14 +573,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-destroy": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					// check that both expected resources are in the snapshot
@@ -627,7 +603,7 @@ var languageTests = map[string]languageTest{
 				},
 			},
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -646,14 +622,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-target-up-with-new-dependency": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 					err = snap.VerifyIntegrity()
 					require.NoError(l, err, "expected snapshot to be valid")
@@ -672,12 +648,12 @@ var languageTests = map[string]languageTest{
 				},
 			},
 			{
-				updateOptions: engine.UpdateOptions{
+				UpdateOptions: engine.UpdateOptions{
 					Targets: deploy.NewUrnTargets([]string{
 						"**targetOnly**",
 					}),
 				},
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -699,13 +675,13 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-failed-create-continue-on-error": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		Runs: []tests.TestRun{
 			{
-				updateOptions: engine.UpdateOptions{
+				UpdateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -726,14 +702,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-large-string": {
-		providers: []plugin.Provider{&providers.LargeProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.LargeProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					// Check that the large string is in the snapshot
@@ -758,17 +734,17 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-config": {
-		providers: []plugin.Provider{&providers.ConfigProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ConfigProvider{}},
+		Runs: []tests.TestRun{
 			{
-				config: config.Map{
+				Config: config.Map{
 					config.MustParseKey("config:name"): config.NewValue("hello"),
 				},
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					explicitProvider := snap.Resources[1]
@@ -807,10 +783,10 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-provider-grpc-config": {
-		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -820,62 +796,72 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "", r.News.Fields["string1"].AsInterface(), "string1")
 					assert.Equal(l, "x", r.News.Fields["string2"].AsInterface(), "string2")
 					assert.Equal(l, "{}", r.News.Fields["string3"].AsInterface(), "string3")
-					assertEqualOrJSONEncoded(l, float64(0), r.News.Fields["int1"].AsInterface(), "int1")
-					assertEqualOrJSONEncoded(l, float64(42), r.News.Fields["int2"].AsInterface(), "int2")
-					assertEqualOrJSONEncoded(l, float64(0), r.News.Fields["num1"].AsInterface(), "num1")
-					assertEqualOrJSONEncoded(l, float64(42.42), r.News.Fields["num2"].AsInterface(), "num2")
-					assertEqualOrJSONEncoded(l, true, r.News.Fields["bool1"].AsInterface(), "bool1")
-					assertEqualOrJSONEncoded(l, false, r.News.Fields["bool2"].AsInterface(), "bool2")
-					assertEqualOrJSONEncoded(l, []any{}, r.News.Fields["listString1"].AsInterface(), "listString1")
-					assertEqualOrJSONEncoded(l, []any{"", "foo"}, r.News.Fields["listString2"].AsInterface(), "listString2")
-					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, r.News.Fields["listInt1"].AsInterface(), "listInt1")
-					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["mapString1"].AsInterface(), "mapString1")
+					tests.AssertEqualOrJSONEncoded(l, float64(0), r.News.Fields["int1"].AsInterface(), "int1")
+					tests.AssertEqualOrJSONEncoded(l, float64(42), r.News.Fields["int2"].AsInterface(), "int2")
+					tests.AssertEqualOrJSONEncoded(l, float64(0), r.News.Fields["num1"].AsInterface(), "num1")
+					tests.AssertEqualOrJSONEncoded(l, float64(42.42), r.News.Fields["num2"].AsInterface(), "num2")
+					tests.AssertEqualOrJSONEncoded(l, true, r.News.Fields["bool1"].AsInterface(), "bool1")
+					tests.AssertEqualOrJSONEncoded(l, false, r.News.Fields["bool2"].AsInterface(), "bool2")
+					tests.AssertEqualOrJSONEncoded(l, []any{}, r.News.Fields["listString1"].AsInterface(), "listString1")
+					tests.AssertEqualOrJSONEncoded(l, []any{"", "foo"}, r.News.Fields["listString2"].AsInterface(), "listString2")
+					tests.AssertEqualOrJSONEncoded(l,
+						[]any{float64(1), float64(2)},
+						r.News.Fields["listInt1"].AsInterface(), "listInt1")
 
-					assertEqualOrJSONEncoded(l,
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["mapString1"].AsInterface(), "mapString1")
+
+					tests.AssertEqualOrJSONEncoded(l,
 						map[string]any{"key1": "value1", "key2": "value2"},
 						r.News.Fields["mapString2"].AsInterface(), "mapString2")
 
-					assertEqualOrJSONEncoded(l,
+					tests.AssertEqualOrJSONEncoded(l,
 						map[string]any{"key1": float64(0), "key2": float64(42)},
 						r.News.Fields["mapInt1"].AsInterface(), "mapInt1")
 
-					assertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["objString1"].AsInterface(), "objString1")
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{}, r.News.Fields["objString1"].AsInterface(), "objString1")
 
-					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
 						r.News.Fields["objString2"].AsInterface(), "objString2")
 
-					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, r.News.Fields["objInt1"].AsInterface(), "objInt1")
+					tests.AssertEqualOrJSONEncoded(l,
+						map[string]any{"x": float64(42)},
+						r.News.Fields["objInt1"].AsInterface(), "objInt1")
 
 					// Check what schemaprov received in ConfigureRequest.
 					c := g.ConfigureReq("config")
 					assert.Equal(l, "", c.Args.Fields["string1"].AsInterface(), "string1")
 					assert.Equal(l, "x", c.Args.Fields["string2"].AsInterface(), "string2")
 					assert.Equal(l, "{}", c.Args.Fields["string3"].AsInterface(), "string3")
-					assertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["int1"].AsInterface(), "int1")
-					assertEqualOrJSONEncoded(l, float64(42), c.Args.Fields["int2"].AsInterface(), "int2")
-					assertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["num1"].AsInterface(), "num1")
-					assertEqualOrJSONEncoded(l, float64(42.42), c.Args.Fields["num2"].AsInterface(), "num2")
-					assertEqualOrJSONEncoded(l, true, c.Args.Fields["bool1"].AsInterface(), "bool1")
-					assertEqualOrJSONEncoded(l, false, c.Args.Fields["bool2"].AsInterface(), "bool2")
-					assertEqualOrJSONEncoded(l, []any{}, c.Args.Fields["listString1"].AsInterface(), "listString1")
-					assertEqualOrJSONEncoded(l, []any{"", "foo"}, c.Args.Fields["listString2"].AsInterface(), "listString2")
-					assertEqualOrJSONEncoded(l, []any{float64(1), float64(2)}, c.Args.Fields["listInt1"].AsInterface(), "listInt1")
-					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["mapString1"].AsInterface(), "mapString1")
+					tests.AssertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["int1"].AsInterface(), "int1")
+					tests.AssertEqualOrJSONEncoded(l, float64(42), c.Args.Fields["int2"].AsInterface(), "int2")
+					tests.AssertEqualOrJSONEncoded(l, float64(0), c.Args.Fields["num1"].AsInterface(), "num1")
+					tests.AssertEqualOrJSONEncoded(l, float64(42.42), c.Args.Fields["num2"].AsInterface(), "num2")
+					tests.AssertEqualOrJSONEncoded(l, true, c.Args.Fields["bool1"].AsInterface(), "bool1")
+					tests.AssertEqualOrJSONEncoded(l, false, c.Args.Fields["bool2"].AsInterface(), "bool2")
+					tests.AssertEqualOrJSONEncoded(l, []any{}, c.Args.Fields["listString1"].AsInterface(), "listString1")
+					tests.AssertEqualOrJSONEncoded(l, []any{"", "foo"}, c.Args.Fields["listString2"].AsInterface(), "listString2")
+					tests.AssertEqualOrJSONEncoded(l,
+						[]any{float64(1), float64(2)},
+						c.Args.Fields["listInt1"].AsInterface(), "listInt1")
 
-					assertEqualOrJSONEncoded(l,
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["mapString1"].AsInterface(), "mapString1")
+
+					tests.AssertEqualOrJSONEncoded(l,
 						map[string]any{"key1": "value1", "key2": "value2"},
 						c.Args.Fields["mapString2"].AsInterface(), "mapString2")
 
-					assertEqualOrJSONEncoded(l,
+					tests.AssertEqualOrJSONEncoded(l,
 						map[string]any{"key1": float64(0), "key2": float64(42)},
 						c.Args.Fields["mapInt1"].AsInterface(), "mapInt1")
 
-					assertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["objString1"].AsInterface(), "objString1")
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{}, c.Args.Fields["objString1"].AsInterface(), "objString1")
 
-					assertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{"x": "x-value"},
 						c.Args.Fields["objString2"].AsInterface(), "objString2")
 
-					assertEqualOrJSONEncoded(l, map[string]any{"x": float64(42)}, c.Args.Fields["objInt1"].AsInterface(), "objInt1")
+					tests.AssertEqualOrJSONEncoded(l,
+						map[string]any{"x": float64(42)},
+						c.Args.Fields["objInt1"].AsInterface(), "objInt1")
 
 					v := c.GetVariables()
 					assert.Equal(l, "", v["config-grpc:config:string1"], "string1")
@@ -897,7 +883,7 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{\"x\":\"x-value\"}", v["config-grpc:config:objString2"], "objString2")
 					assert.JSONEq(l, "{\"x\":42}", v["config-grpc:config:objInt1"], "objInt1")
 
-					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+					tests.AssertNoSecretLeaks(l, snap, tests.AssertNoSecretLeaksOpts{
 						// ConfigFetcher is a test helper that retains secret material in its
 						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
@@ -912,10 +898,10 @@ var languageTests = map[string]languageTest{
 	// provider per test case. To compensate, more test cases are added.
 	"l2-provider-grpc-config-secret": {
 		// Check what schemaprov received in CheckRequest.
-		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -927,57 +913,57 @@ var languageTests = map[string]languageTest{
 					// These asserts do not look right, but are based on Go behavior. Should SECRET
 					// be wrapped in secret tags instead when passing to CheckConfig? Or not?
 					assert.Equal(l, "SECRET", r.News.Fields["string1"].AsInterface(), "string1")
-					assertEqualOrJSONEncoded(l, float64(1234567890), r.News.Fields["int1"].AsInterface(), "int1")
-					assertEqualOrJSONEncoded(l, float64(123456.789), r.News.Fields["num1"].AsInterface(), "num1")
-					assertEqualOrJSONEncoded(l, true, r.News.Fields["bool1"].AsInterface(), "bool1")
-					assertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
+					tests.AssertEqualOrJSONEncoded(l, float64(1234567890), r.News.Fields["int1"].AsInterface(), "int1")
+					tests.AssertEqualOrJSONEncoded(l, float64(123456.789), r.News.Fields["num1"].AsInterface(), "num1")
+					tests.AssertEqualOrJSONEncoded(l, true, r.News.Fields["bool1"].AsInterface(), "bool1")
+					tests.AssertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
 						r.News.Fields["listString1"].AsInterface(), "listString1")
-					assertEqualOrJSONEncoded(l, []any{"VALUE", "SECRET"},
+					tests.AssertEqualOrJSONEncoded(l, []any{"VALUE", "SECRET"},
 						r.News.Fields["listString2"].AsInterface(), "listString2")
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "SECRET"},
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{"key1": "value1", "key2": "SECRET"},
 						r.News.Fields["mapString2"].AsInterface(), "mapString2")
-					assertEqualOrJSONEncoded(l, map[string]any{"x": "SECRET"},
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{"x": "SECRET"},
 						r.News.Fields["objString2"].AsInterface(), "objString2")
 
 					// The secret versions have two options, JSON-encoded or not. Languages do not
 					// agree yet on which form to use.
 					c := g.ConfigureReq("config")
-					assert.Equal(l, secret("SECRET"), c.Args.Fields["string1"].AsInterface(), "string1")
+					assert.Equal(l, tests.Secret("SECRET"), c.Args.Fields["string1"].AsInterface(), "string1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(float64(1234567890)),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(float64(1234567890)),
 						float64(1234567890),
 						c.Args.Fields["int1"].AsInterface(), "int1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(float64(123456.789)),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(float64(123456.789)),
 						float64(123456.789),
 						c.Args.Fields["num1"].AsInterface(), "num1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(true),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(true),
 						true,
 						c.Args.Fields["bool1"].AsInterface(), "bool1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret([]any{"SECRET", "SECRET2"}),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret([]any{"SECRET", "SECRET2"}),
 						[]any{"SECRET", "SECRET2"},
 						c.Args.Fields["listString1"].AsInterface(), "listString1")
 
-					// Secret floating happened here, perhaps []any{"VALUE", secret("SECRET")}
+					// Secret floating happened here, perhaps []any{"VALUE", tests.Secret("SECRET")}
 					// would be preferable instead at some point.
-					assertEqualOrJSONEncodedSecret(l,
-						secret([]any{"VALUE", "SECRET"}),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret([]any{"VALUE", "SECRET"}),
 						[]any{"VALUE", "SECRET"},
 						c.Args.Fields["listString2"].AsInterface(), "listString2")
 
-					assertEqualOrJSONEncodedSecret(l,
-						map[string]any{"key1": "value1", "key2": secret("SECRET")},
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						map[string]any{"key1": "value1", "key2": tests.Secret("SECRET")},
 						map[string]any{"key1": "value1", "key2": "SECRET"},
 						c.Args.Fields["mapString2"].AsInterface(), "mapString2")
 
-					assertEqualOrJSONEncodedSecret(l,
-						map[string]any{"x": secret("SECRET")},
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						map[string]any{"x": tests.Secret("SECRET")},
 						map[string]any{"x": "SECRET"},
 						c.Args.Fields["objString2"].AsInterface(), "objString2")
 
@@ -992,7 +978,7 @@ var languageTests = map[string]languageTest{
 					assert.JSONEq(l, "{\"key1\":\"value1\",\"key2\":\"SECRET\"}", v["config-grpc:config:mapString2"], "mapString2")
 					assert.JSONEq(l, "{\"x\":\"SECRET\"}", v["config-grpc:config:objString2"], "objString2")
 
-					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+					tests.AssertNoSecretLeaks(l, snap, tests.AssertNoSecretLeaksOpts{
 						// ConfigFetcher is a test helper that retains secret material in its
 						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
@@ -1004,10 +990,10 @@ var languageTests = map[string]languageTest{
 	},
 	// This test checks how SDKs propagate properties marked as secret to the provider Configure on the gRPC level.
 	"l2-provider-grpc-config-schema-secret": {
-		providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
@@ -1022,47 +1008,47 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "SECRET",
 						r.News.Fields["secretString1"].AsInterface(), "secretString1")
 
-					assertEqualOrJSONEncoded(l, float64(16),
+					tests.AssertEqualOrJSONEncoded(l, float64(16),
 						r.News.Fields["secretInt1"].AsInterface(), "secretInt1")
 
-					assertEqualOrJSONEncoded(l, float64(123456.7890),
+					tests.AssertEqualOrJSONEncoded(l, float64(123456.7890),
 						r.News.Fields["secretNum1"].AsInterface(), "secretNum1")
 
-					assertEqualOrJSONEncoded(l, true,
+					tests.AssertEqualOrJSONEncoded(l, true,
 						r.News.Fields["secretBool1"].AsInterface(), "secretBool1")
 
-					assertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
+					tests.AssertEqualOrJSONEncoded(l, []any{"SECRET", "SECRET2"},
 						r.News.Fields["listSecretString1"].AsInterface(), "listSecretString1")
 
-					assertEqualOrJSONEncoded(l, map[string]any{"key1": "SECRET", "key2": "SECRET2"},
+					tests.AssertEqualOrJSONEncoded(l, map[string]any{"key1": "SECRET", "key2": "SECRET2"},
 						r.News.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
 
 					// Now verify the Configure request.
 					c := g.ConfigureReq("config")
 
 					// All the fields are coming in as secret-wrapped fields into Configure.
-					assert.Equal(l, secret("SECRET"),
+					assert.Equal(l, tests.Secret("SECRET"),
 						c.Args.Fields["secretString1"].AsInterface(), "secretString1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(float64(16)), float64(16),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(float64(16)), float64(16),
 						c.Args.Fields["secretInt1"].AsInterface(), "secretInt1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(float64(123456.7890)), float64(123456.7890),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(float64(123456.7890)), float64(123456.7890),
 						c.Args.Fields["secretNum1"].AsInterface(), "secretNum1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(true), true,
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(true), true,
 						c.Args.Fields["secretBool1"].AsInterface(), "secretBool1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret([]any{"SECRET", "SECRET2"}),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret([]any{"SECRET", "SECRET2"}),
 						[]any{"SECRET", "SECRET2"},
 						c.Args.Fields["listSecretString1"].AsInterface(), "listSecretString1")
 
-					assertEqualOrJSONEncodedSecret(l,
-						secret(map[string]any{"key1": "SECRET", "key2": "SECRET2"}),
+					tests.AssertEqualOrJSONEncodedSecret(l,
+						tests.Secret(map[string]any{"key1": "SECRET", "key2": "SECRET2"}),
 						map[string]any{"key1": "SECRET", "key2": "SECRET2"},
 						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
 
@@ -1081,15 +1067,15 @@ var languageTests = map[string]languageTest{
 					// casing sent to CheckConfig, Node and Go send "secretX", Python sends
 					// "secret_x" though.
 					//
-					// assertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
+					// tests.AssertEqualOrJSONEncoded(l, map[string]any{"secretX": "SECRET"},
 					// 	r.News.Fields["objSecretString1"].AsInterface(), "objSecretString1")
-					// assertEqualOrJSONEncodedSecret(l,
-					//      map[string]any{"secretX": secret("SECRET")}, map[string]any{"secretX": "SECRET"},
+					// tests.AssertEqualOrJSONEncodedSecret(l,
+					//      map[string]any{"secretX": tests.Secret("SECRET")}, map[string]any{"secretX": "SECRET"},
 					// 	r.Args.Fields["objSecretString1"].AsInterface(), "objSecretString1")
 					// assert.JSONEq(l, `{"secretX":"SECRET"}`,
 					// 	v["config-grpc:config:objectSecretString1"], "objSecretString1")
 
-					assertNoSecretLeaks(l, snap, assertNoSecretLeaksOpts{
+					tests.AssertNoSecretLeaks(l, snap, tests.AssertNoSecretLeaksOpts{
 						// ConfigFetcher is a test helper that retains secret material in its
 						// state by design, and should not be part of the check.
 						IgnoreResourceTypes: []tokens.Type{"config-grpc:index:ConfigFetcher"},
@@ -1100,14 +1086,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-invoke-simple": {
-		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
@@ -1129,21 +1115,21 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
-					assertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+					tests.AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					tests.AssertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
 				},
 			},
 		},
 	},
 	"l2-invoke-options": {
-		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
@@ -1161,20 +1147,20 @@ var languageTests = map[string]languageTest{
 
 					require.NotNil(l, stack, "expected a stack resource")
 					outputs := stack.Outputs
-					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					tests.AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
 				},
 			},
 		},
 	},
 	"l2-invoke-options-depends-on": {
-		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 5, "expected 5 resources")
 					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
@@ -1192,7 +1178,7 @@ var languageTests = map[string]languageTest{
 
 					require.NotNil(l, stack, "expected a stack resource")
 					outputs := stack.Outputs
-					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					tests.AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
 
 					var first *resource.State
 					var second *resource.State
@@ -1219,14 +1205,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-invoke-variants": {
-		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 3, "expected 3 resource")
 					// TODO https://github.com/pulumi/pulumi/issues/17816
@@ -1247,24 +1233,24 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
-					assertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
+					tests.AssertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
+					tests.AssertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
 				},
 			},
 		},
 	},
 	"l2-invoke-secrets": {
-		providers: []plugin.Provider{
+		Providers: []plugin.Provider{
 			&providers.SimpleInvokeProvider{},
 			&providers.SimpleProvider{},
 		},
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					var stack *resource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
@@ -1276,28 +1262,28 @@ var languageTests = map[string]languageTest{
 					require.NotNil(l, stack, "expected a stack resource")
 
 					outputs := stack.Outputs
-					assertPropertyMapMember(l, outputs, "nonSecret",
+					tests.AssertPropertyMapMember(l, outputs, "nonSecret",
 						resource.NewStringProperty("hello world"))
-					assertPropertyMapMember(l, outputs, "firstSecret",
+					tests.AssertPropertyMapMember(l, outputs, "firstSecret",
 						resource.MakeSecret(resource.NewStringProperty("hello world")))
-					assertPropertyMapMember(l, outputs, "secondSecret",
+					tests.AssertPropertyMapMember(l, outputs, "secondSecret",
 						resource.MakeSecret(resource.NewStringProperty("goodbye world")))
 				},
 			},
 		},
 	},
 	"l2-invoke-dependencies": {
-		providers: []plugin.Provider{
+		Providers: []plugin.Provider{
 			&providers.SimpleInvokeProvider{},
 			&providers.SimpleProvider{},
 		},
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					var first *resource.State
 					var second *resource.State
 					for _, r := range snap.Resources {
@@ -1323,14 +1309,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-primitive-ref": {
-		providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -1361,14 +1347,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-ref-ref": {
-		providers: []plugin.Provider{&providers.RefRefProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.RefRefProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -1410,14 +1396,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-plain": {
-		providers: []plugin.Provider{&providers.PlainProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.PlainProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -1459,14 +1445,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-parameterized-resource": {
-		providers: []plugin.Provider{&providers.ParameterizedProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 					require.Equal(l,
@@ -1478,28 +1464,28 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-map-keys": {
-		providers: []plugin.Provider{
+		Providers: []plugin.Provider{
 			&providers.PrimitiveProvider{}, &providers.PrimitiveRefProvider{},
 			&providers.RefRefProvider{}, &providers.PlainProvider{},
 		},
-		runs: []testRun{
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
 
-					requireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
-					primResource := requireSingleResource(l, snap.Resources, "primitive:index:Resource")
-					requireSingleResource(l, snap.Resources, "pulumi:providers:primitive-ref")
-					refResource := requireSingleResource(l, snap.Resources, "primitive-ref:index:Resource")
-					requireSingleResource(l, snap.Resources, "pulumi:providers:ref-ref")
-					rrefResource := requireSingleResource(l, snap.Resources, "ref-ref:index:Resource")
-					requireSingleResource(l, snap.Resources, "pulumi:providers:plain")
-					plainResource := requireSingleResource(l, snap.Resources, "plain:index:Resource")
+					tests.RequireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
+					primResource := tests.RequireSingleResource(l, snap.Resources, "primitive:index:Resource")
+					tests.RequireSingleResource(l, snap.Resources, "pulumi:providers:primitive-ref")
+					refResource := tests.RequireSingleResource(l, snap.Resources, "primitive-ref:index:Resource")
+					tests.RequireSingleResource(l, snap.Resources, "pulumi:providers:ref-ref")
+					rrefResource := tests.RequireSingleResource(l, snap.Resources, "ref-ref:index:Resource")
+					tests.RequireSingleResource(l, snap.Resources, "pulumi:providers:plain")
+					plainResource := tests.RequireSingleResource(l, snap.Resources, "plain:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     false,
@@ -1643,14 +1629,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-parent-inheritance": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// We expect the following resources:
 					//
@@ -1668,22 +1654,22 @@ var languageTests = map[string]languageTest{
 					// 8. An orphan without a parent or protect flag set.
 					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
 
-					defaultProvider := requireSingleNamedResource(l, snap.Resources, "default_2_0_0")
+					defaultProvider := tests.RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
 
 					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
 					require.NoError(l, err, "expected to create default provider reference")
 
-					explicitProvider := requireSingleNamedResource(l, snap.Resources, "provider")
+					explicitProvider := tests.RequireSingleNamedResource(l, snap.Resources, "provider")
 					require.Equal(l, "pulumi:providers:simple", explicitProvider.Type.String(), "expected explicit simple provider")
 
 					explicitProviderRef, err := deployProviders.NewReference(explicitProvider.URN, explicitProvider.ID)
 					require.NoError(l, err, "expected to create explicit provider reference")
 
 					// Children should inherit providers.
-					providerParent := requireSingleNamedResource(l, snap.Resources, "parent1")
-					providerChild := requireSingleNamedResource(l, snap.Resources, "child1")
-					providerOrphan := requireSingleNamedResource(l, snap.Resources, "orphan1")
+					providerParent := tests.RequireSingleNamedResource(l, snap.Resources, "parent1")
+					providerChild := tests.RequireSingleNamedResource(l, snap.Resources, "child1")
+					providerOrphan := tests.RequireSingleNamedResource(l, snap.Resources, "orphan1")
 
 					require.Equal(
 						l, explicitProviderRef.String(), providerParent.Provider,
@@ -1699,9 +1685,9 @@ var languageTests = map[string]languageTest{
 					)
 
 					// Children should inherit protect flags.
-					protectParent := requireSingleNamedResource(l, snap.Resources, "parent2")
-					protectChild := requireSingleNamedResource(l, snap.Resources, "child2")
-					protectOrphan := requireSingleNamedResource(l, snap.Resources, "orphan2")
+					protectParent := tests.RequireSingleNamedResource(l, snap.Resources, "parent2")
+					protectChild := tests.RequireSingleNamedResource(l, snap.Resources, "child2")
+					protectOrphan := tests.RequireSingleNamedResource(l, snap.Resources, "orphan2")
 
 					require.True(l, protectParent.Protect, "expected parent to be protected")
 					require.True(l, protectChild.Protect, "expected child to inherit protect flag")
@@ -1711,14 +1697,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-secret": {
-		providers: []plugin.Provider{&providers.SecretProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.SecretProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -1751,14 +1737,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-explicit-parameterized-provider": {
-		providers: []plugin.Provider{&providers.ParameterizedProvider{}},
-		runs: []testRun{
+		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Runs: []tests.TestRun{
 			{
-				assert: func(l *L,
+				Assert: func(l *tests.L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
-					requireStackResource(l, err, changes)
+					tests.RequireStackResource(l, err, changes)
 
 					// Check we have the one resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
@@ -1781,87 +1767,4 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
-}
-
-// Like assert.Equal but also permits the actual value to be the JSON-serialized string form of the expected value.
-func assertEqualOrJSONEncoded(l *L, expect any, actual any, msg string) {
-	if actualS, ok := actual.(string); ok {
-		var a any
-		err := json.Unmarshal([]byte(actualS), &a)
-		if err == nil {
-			if reflect.DeepEqual(expect, a) {
-				return
-			}
-		}
-	}
-	assert.Equal(l, expect, actual, msg)
-}
-
-// Like assert.Equal but also permits secreted JSON-encoded values. The assert succeeds if either:
-//
-//	actual == expect
-//	actual == secret(json(expect2))
-//
-// The second form expect2 usually has secrets stripped. If nil, the code assumes expect2=expect.
-func assertEqualOrJSONEncodedSecret(l *L, expect, expect2, actual any, msg string) {
-	if expect2 == nil {
-		expect2 = expect
-	}
-	if actualObj, ok := actual.(map[string]any); ok {
-		tagV, ok := actualObj["4dabf18193072939515e22adb298388d"]
-		if ok && tagV == "1b47061264138c4ac30d75fd1eb44270" {
-			actualS, ok := actualObj["value"].(string)
-			if ok {
-				var a any
-				err := json.Unmarshal([]byte(actualS), &a)
-				if err == nil && reflect.DeepEqual(expect2, a) {
-					return
-				}
-			}
-		}
-	}
-	assert.Equal(l, expect, actual, msg)
-}
-
-// Wraps a value in secret sentinel as seen on the RPC wire.
-func secret(x any) any {
-	return map[string]any{
-		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-		"value":                            x,
-	}
-}
-
-type assertNoSecretLeaksOpts struct {
-	IgnoreResourceTypes []tokens.Type
-	Secrets             []string
-}
-
-func (opts *assertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
-	for _, t := range opts.IgnoreResourceTypes {
-		if ty == t {
-			return true
-		}
-	}
-	return false
-}
-
-func assertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts assertNoSecretLeaksOpts) {
-	// Remove states for resources with types in opts.IgnoreResourceTypes from the snap to exclude these states from
-	// the secret leak checks.
-	var filteredResourceStates []*resource.State
-	for _, r := range snap.Resources {
-		if !opts.isIgnored(r.Type) {
-			filteredResourceStates = append(filteredResourceStates, r)
-		}
-	}
-	snap.Resources = filteredResourceStates
-
-	// Ensure that secrets do not leak to the state.
-	deployment, err := stack.SerializeDeployment(context.Background(), snap, false /*showSecrets*/)
-	require.NoError(l, err)
-	bytes, err := json.MarshalIndent(deployment, "", "  ")
-	require.NoError(l, err)
-	for _, s := range opts.Secrets {
-		require.NotContainsf(l, string(bytes), s, "Detected a secret leak in state: %s", s)
-	}
 }
