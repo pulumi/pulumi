@@ -100,6 +100,34 @@ func (p PluginSet) Deduplicate() PluginSet {
 	return newSet
 }
 
+// A PluginUpdate represents an update from one version of a plugin to another.
+type PluginUpdate struct {
+	// The old plugin version.
+	Old workspace.PluginSpec
+	// The new plugin version.
+	New workspace.PluginSpec
+}
+
+// UpdatesTo returns a list of PluginUpdates that represent the updates to the argument PluginSet present in this
+// PluginSet. For instance, if the argument contains a plugin P at version 3, and this PluginSet contains the same
+// plugin P (as identified by name and kind) at version 5, this method will return an update where the Old field
+// contains the version 3 instance from the argument and the New field contains the version 5 instance from this
+// PluginSet.
+func (p PluginSet) UpdatesTo(old PluginSet) []PluginUpdate {
+	var updates []PluginUpdate
+	for _, value := range p {
+		for _, otherValue := range old {
+			if value.Name == otherValue.Name && value.Kind == otherValue.Kind {
+				if value.Version != nil && otherValue.Version != nil && value.Version.GT(*otherValue.Version) {
+					updates = append(updates, PluginUpdate{Old: otherValue, New: value})
+				}
+			}
+		}
+	}
+
+	return updates
+}
+
 // Values returns a slice of all of the plugins contained within this set.
 func (p PluginSet) Values() []workspace.PluginSpec {
 	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
@@ -129,7 +157,7 @@ func GetRequiredPlugins(
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 	lang, err := host.LanguageRuntime(runtime, info)
-	if err != nil {
+	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 	// Query the language runtime plugin for its version.

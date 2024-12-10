@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -191,6 +192,210 @@ func TestPluginSetDeduplicate(t *testing.T) {
 		t.Run(fmt.Sprintf("%s", c.input), func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, c.expected, c.input.Deduplicate())
+		})
+	}
+}
+
+func TestPluginSetUpdatesTo(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	cases := []struct {
+		name     string
+		olds     PluginSet
+		news     PluginSet
+		expected []PluginUpdate
+	}{
+		{
+			name:     "Both empty",
+			olds:     NewPluginSet(),
+			news:     NewPluginSet(),
+			expected: nil,
+		},
+		{
+			name: "Olds empty",
+			olds: NewPluginSet(),
+			news: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Version: &semver.Version{Major: 1},
+			}),
+			expected: nil,
+		},
+		{
+			name: "News empty",
+			olds: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Version: &semver.Version{Major: 1},
+			}),
+			news:     NewPluginSet(),
+			expected: nil,
+		},
+		{
+			name: "No matches by name",
+			olds: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Version: &semver.Version{Major: 1},
+			}),
+			news: NewPluginSet(workspace.PluginSpec{
+				Name:    "bar",
+				Version: &semver.Version{Major: 1},
+			}),
+			expected: nil,
+		},
+		{
+			name: "No matches by kind",
+			olds: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.ResourcePlugin,
+				Version: &semver.Version{Major: 1},
+			}),
+			news: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.AnalyzerPlugin,
+				Version: &semver.Version{Major: 1},
+			}),
+			expected: nil,
+		},
+		{
+			name: "Matches with no updates (equal)",
+			olds: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.ResourcePlugin,
+				Version: &semver.Version{Major: 1},
+			}),
+			news: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.ResourcePlugin,
+				Version: &semver.Version{Major: 1},
+			}),
+			expected: nil,
+		},
+		{
+			name: "Matches with no updates (news has an older version)",
+			olds: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.ResourcePlugin,
+				Version: &semver.Version{Major: 2},
+			}),
+			news: NewPluginSet(workspace.PluginSpec{
+				Name:    "foo",
+				Kind:    apitype.ResourcePlugin,
+				Version: &semver.Version{Major: 1},
+			}),
+			expected: nil,
+		},
+		{
+			name: "Matches with one update",
+			olds: NewPluginSet(
+				workspace.PluginSpec{
+					Name:    "foo",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 1},
+				},
+				workspace.PluginSpec{
+					Name:    "bar",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 1},
+				},
+			),
+			news: NewPluginSet(
+				workspace.PluginSpec{
+					Name:    "foo",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 2},
+				},
+			),
+			expected: []PluginUpdate{
+				{
+					Old: workspace.PluginSpec{
+						Name:    "foo",
+						Kind:    apitype.ResourcePlugin,
+						Version: &semver.Version{Major: 1},
+					},
+					New: workspace.PluginSpec{
+						Name:    "foo",
+						Kind:    apitype.ResourcePlugin,
+						Version: &semver.Version{Major: 2},
+					},
+				},
+			},
+		},
+		{
+			name: "Matches with multiple updates",
+			olds: NewPluginSet(
+				workspace.PluginSpec{
+					Name:    "foo",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 1},
+				},
+				workspace.PluginSpec{
+					Name:    "bar",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 2},
+				},
+				workspace.PluginSpec{
+					Name:    "baz",
+					Kind:    apitype.AnalyzerPlugin,
+					Version: &semver.Version{Major: 3},
+				},
+			),
+			news: NewPluginSet(
+				workspace.PluginSpec{
+					Name:    "foo",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 2},
+				},
+				workspace.PluginSpec{
+					Name:    "bar",
+					Kind:    apitype.ResourcePlugin,
+					Version: &semver.Version{Major: 2},
+				},
+				workspace.PluginSpec{
+					Name:    "baz",
+					Kind:    apitype.AnalyzerPlugin,
+					Version: &semver.Version{Major: 4},
+				},
+			),
+			expected: []PluginUpdate{
+				{
+					Old: workspace.PluginSpec{
+						Name:    "foo",
+						Kind:    apitype.ResourcePlugin,
+						Version: &semver.Version{Major: 1},
+					},
+					New: workspace.PluginSpec{
+						Name:    "foo",
+						Kind:    apitype.ResourcePlugin,
+						Version: &semver.Version{Major: 2},
+					},
+				},
+				{
+					Old: workspace.PluginSpec{
+						Name:    "baz",
+						Kind:    apitype.AnalyzerPlugin,
+						Version: &semver.Version{Major: 3},
+					},
+					New: workspace.PluginSpec{
+						Name:    "baz",
+						Kind:    apitype.AnalyzerPlugin,
+						Version: &semver.Version{Major: 4},
+					},
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Act.
+			actual := c.news.UpdatesTo(c.olds)
+
+			// Assert.
+			require.ElementsMatch(t, c.expected, actual)
 		})
 	}
 }
