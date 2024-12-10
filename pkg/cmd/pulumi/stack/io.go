@@ -45,6 +45,60 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// ProjectStackManager is an interface for loading and saving stack configuration held in a ProjectStack.
+type ProjectStackManager interface {
+	// Load loads the ProjectStack for the given Project and Stack.
+	Load(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
+
+	// Save persists the supplied ProjectStack against the given Stack.
+	Save(stack backend.Stack, ps *workspace.ProjectStack) error
+}
+
+// NewProjectStackManager creates a new ProjectStackManager backed by the supplied configuration file. If no
+// configuration file is supplied (i.e., configFile is empty), a default implementation that searches for configuration
+// based on the project is returned.
+func NewProjectStackManager(configFile string) ProjectStackManager {
+	if configFile == "" {
+		return &DefaultProjectStackManager{}
+	}
+	return &SpecifiedProjectStackManager{ConfigFile: configFile}
+}
+
+// DefaultProjectStackManager is a ProjectStackManager that detects the location of configuration based on the project.
+type DefaultProjectStackManager struct{}
+
+// Implements ProjectStackManager.Load.
+func (*DefaultProjectStackManager) Load(
+	project *workspace.Project,
+	stack backend.Stack,
+) (*workspace.ProjectStack, error) {
+	return workspace.DetectProjectStack(stack.Ref().Name().Q())
+}
+
+// Implements ProjectStackManager.Save.
+func (*DefaultProjectStackManager) Save(stack backend.Stack, ps *workspace.ProjectStack) error {
+	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+}
+
+// SpecifiedProjectStackManager is a ProjectStackManager that loads from and saves to the specified configuration file.
+type SpecifiedProjectStackManager struct {
+	// ConfigFile is the path to the configuration file that backs this ProjectStackManager.
+	ConfigFile string
+}
+
+// Implements ProjectStackManager.Load.
+func (cm *SpecifiedProjectStackManager) Load(
+	project *workspace.Project,
+	stack backend.Stack,
+) (*workspace.ProjectStack, error) {
+	return workspace.LoadProjectStack(project, cm.ConfigFile)
+}
+
+// Implements ProjectStackManager.Save.
+func (cm *SpecifiedProjectStackManager) Save(stack backend.Stack, ps *workspace.ProjectStack) error {
+	return ps.Save(cm.ConfigFile)
+}
+
 var ConfigFile string
 
 func GetProjectStackPath(stack backend.Stack) (string, error) {

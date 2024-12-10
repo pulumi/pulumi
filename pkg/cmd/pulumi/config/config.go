@@ -128,7 +128,7 @@ func NewConfigCmd() *cobra.Command {
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
-	cmd.AddCommand(newConfigGetCmd(&stack))
+	cmd.AddCommand(newConfigGetCmd(&cmdStack.ConfigFile, &stack))
 	cmd.AddCommand(newConfigRmCmd(&stack))
 	cmd.AddCommand(newConfigRmAllCmd(&stack))
 	cmd.AddCommand(newConfigSetCmd(&stack))

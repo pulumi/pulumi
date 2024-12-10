@@ -18,27 +18,57 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newConfigGetCmd(stack *string) *cobra.Command {
-	var jsonOut bool
-	var open bool
-	var path bool
+type configGetCmd struct {
+	// Parsed arguments to the command.
+	Args *configGetArgs
+
+	// The command's standard output.
+	Stdout io.Writer
+
+	// The workspace to operate on.
+	Workspace pkgWorkspace.Context
+	// The login manager to use for authenticating with and loading backends.
+	LoginManager cmdBackend.LoginManager
+	// The project stack manager to use for loading and saving project stack configuration.
+	ProjectStackManager cmdStack.ProjectStackManager
+}
+
+// A set of arguments for the `config get` command.
+type configGetArgs struct {
+	Colorizer colors.Colorization
+	JSON      bool
+	Open      bool
+	Path      bool
+	Stack     string
+}
+
+func newConfigGetCmd(configFile *string, stack *string) *cobra.Command {
+	configGet := &configGetCmd{
+		Args: &configGetArgs{
+			Colorizer: cmdutil.GetGlobalColorization(),
+		},
+		Stdout:       os.Stdout,
+		Workspace:    pkgWorkspace.Instance,
+		LoginManager: cmdBackend.DefaultLoginManager,
+	}
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
@@ -50,71 +80,69 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
+		Run: cmd.RunCmdFunc(func(command *cobra.Command, args []string) error {
+			configGet.Args.Stack = *stack
+			configGet.ProjectStackManager = cmdStack.NewProjectStackManager(*configFile)
 
-			s, err := cmdStack.RequireStack(
-				ctx,
-				ws,
-				cmdBackend.DefaultLoginManager,
-				*stack,
-				cmdStack.OfferNew|cmdStack.SetCurrent,
-				opts,
-			)
-			if err != nil {
-				return err
-			}
+			ctx := command.Context()
+			err := configGet.run(ctx, args[0])
 
-			key, err := ParseConfigKey(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid configuration key: %w", err)
-			}
-
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open)
+			return err
 		}),
 	}
+
 	getCmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
+		&configGet.Args.JSON, "json", "j", false,
 		"Emit output as JSON")
 	getCmd.Flags().BoolVar(
-		&open, "open", true,
+		&configGet.Args.Open, "open", true,
 		"Open and resolve any environments listed in the stack configuration")
 	getCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
+		&configGet.Args.Path, "path", false,
 		"The key contains a path to a property in a map or list to get")
 
 	return getCmd
 }
 
-func getConfig(
-	ctx context.Context,
-	ssml cmdStack.SecretsManagerLoader,
-	ws pkgWorkspace.Context,
-	stack backend.Stack,
-	key config.Key,
-	path, jsonOut,
-	openEnvironment bool,
-) error {
-	project, _, err := ws.ReadProject()
+func (cmd *configGetCmd) run(ctx context.Context, keyArg string) error {
+	opts := display.Options{
+		Color: cmd.Args.Colorizer,
+	}
+
+	s, err := cmdStack.RequireStack(
+		ctx,
+		cmd.Workspace,
+		cmd.LoginManager,
+		cmd.Args.Stack,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		opts,
+	)
 	if err != nil {
 		return err
 	}
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+
+	key, err := ParseConfigKey(keyArg)
+	if err != nil {
+		return fmt.Errorf("invalid configuration key: %w", err)
+	}
+
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+
+	project, _, err := cmd.Workspace.ReadProject()
+	if err != nil {
+		return err
+	}
+	ps, err := cmd.ProjectStackManager.Load(project, s)
 	if err != nil {
 		return err
 	}
 
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
-	if openEnvironment {
-		env, diags, err = openStackEnv(ctx, stack, ps)
+	if cmd.Args.Open {
+		env, diags, err = openStackEnv(ctx, s, ps)
 	} else {
-		env, diags, err = checkStackEnv(ctx, stack, ps)
+		env, diags, err = checkStackEnv(ctx, s, ps)
 	}
 	if err != nil {
 		return err
@@ -125,20 +153,20 @@ func getConfig(
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
+		stackEncrypter, state, err := ssml.GetEncrypter(ctx, s, ps)
 		if err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = cmd.ProjectStackManager.Save(s, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
 		envCrypter = stackEncrypter
 	}
 
-	stackName := stack.Ref().Name().String()
+	stackName := s.Ref().Name().String()
 
 	cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
 	if err != nil {
@@ -151,7 +179,7 @@ func getConfig(
 		return err
 	}
 
-	v, ok, err := cfg.Get(key, path)
+	v, ok, err := cfg.Get(key, cmd.Args.Path)
 	if err != nil {
 		return err
 	}
@@ -160,12 +188,12 @@ func getConfig(
 		if v.Secure() {
 			var err error
 			var state cmdStack.SecretsManagerState
-			if d, state, err = ssml.GetDecrypter(ctx, stack, ps); err != nil {
+			if d, state, err = ssml.GetDecrypter(ctx, s, ps); err != nil {
 				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
 			if state != cmdStack.SecretsManagerUnchanged {
-				if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+				if err = cmd.ProjectStackManager.Save(s, ps); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}
@@ -177,7 +205,7 @@ func getConfig(
 			return fmt.Errorf("could not decrypt configuration value: %w", err)
 		}
 
-		if jsonOut {
+		if cmd.Args.JSON {
 			value := configValueJSON{
 				Value:  &raw,
 				Secret: v.Secure(),
@@ -195,21 +223,21 @@ func getConfig(
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(out))
+			fmt.Fprintln(cmd.Stdout, string(out))
 		} else {
-			fmt.Printf("%v\n", raw)
+			fmt.Fprintf(cmd.Stdout, "%v\n", raw)
 		}
 
 		if len(diags) != 0 {
-			fmt.Println()
-			fmt.Println("Environment diagnostics:")
-			printESCDiagnostics(os.Stdout, diags)
+			fmt.Fprintln(cmd.Stdout)
+			fmt.Fprintln(cmd.Stdout, "Environment diagnostics:")
+			printESCDiagnostics(cmd.Stdout, diags)
 		}
 
-		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
+		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, s, key.Name(), "")
 
 		return nil
 	}
 
-	return fmt.Errorf("configuration key '%s' not found for stack '%s'", PrettyKey(key), stack.Ref())
+	return fmt.Errorf("configuration key '%s' not found for stack '%s'", PrettyKey(key), s.Ref())
 }
