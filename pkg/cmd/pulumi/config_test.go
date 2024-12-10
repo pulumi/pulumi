@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -61,7 +62,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = getStackConfiguration(
 		context.Background(),
-		stackSecretsManagerLoader{},
+		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
@@ -90,7 +91,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	called := false
 	_, _, _ = getStackConfigurationOrLatest(
 		context.Background(),
-		stackSecretsManagerLoader{},
+		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
@@ -426,9 +427,9 @@ func TestCopyConfig(t *testing.T) {
 		err := yaml.Unmarshal([]byte("environment:\n  - test2"), &destinationProjectStack)
 		require.NoError(t, err)
 
-		requiresSaving, err := copyEntireConfigMap(
+		requiresSaving, err := stack.CopyEntireConfigMap(
 			context.Background(),
-			stackSecretsManagerLoader{},
+			stack.SecretsManagerLoader{},
 			sourceStack,
 			&sourceProjectStack,
 			destinationStack,

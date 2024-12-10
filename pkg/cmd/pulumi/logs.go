@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -35,12 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
-// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
-//
-// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
-const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 func newLogsCmd() *cobra.Command {
 	var stackName string
@@ -58,9 +53,9 @@ func newLogsCmd() *cobra.Command {
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			ssml := newStackSecretsManagerLoaderFromEnv()
+		Run: cmd.RunCmdFunc(func(cobraCmd *cobra.Command, args []string) error {
+			ctx := cobraCmd.Context()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -72,7 +67,14 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, ws, backend.DefaultLoginManager, stackName, stackLoadOnly, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				backend.DefaultLoginManager,
+				stackName,
+				cmdStack.LoadOnly,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -118,7 +120,7 @@ func newLogsCmd() *cobra.Command {
 				fmt.Printf(
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 					s.Ref().String(),
-					startTime.Format(timeFormat),
+					cmd.FormatTime(*startTime),
 				)
 			}
 
@@ -148,7 +150,7 @@ func newLogsCmd() *cobra.Command {
 
 							entries = append(entries, logEntryJSON{
 								ID:        logEntry.ID,
-								Timestamp: eventTime.UTC().Format(timeFormat),
+								Timestamp: cmd.FormatTime(eventTime.UTC()),
 								Message:   logEntry.Message,
 							})
 
@@ -166,14 +168,14 @@ func newLogsCmd() *cobra.Command {
 						if !jsonOut {
 							fmt.Printf(
 								"%30.30s[%30.30s] %v\n",
-								eventTime.Format(timeFormat),
+								cmd.FormatTime(eventTime),
 								logEntry.ID,
 								strings.TrimRight(logEntry.Message, "\n"),
 							)
 						} else {
 							err = ui.PrintJSON(logEntryJSON{
 								ID:        logEntry.ID,
-								Timestamp: eventTime.UTC().Format(timeFormat),
+								Timestamp: cmd.FormatTime(eventTime.UTC()),
 								Message:   logEntry.Message,
 							})
 							if err != nil {
@@ -198,7 +200,7 @@ func newLogsCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")

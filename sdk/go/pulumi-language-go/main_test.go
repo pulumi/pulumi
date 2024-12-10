@@ -111,13 +111,13 @@ func TestParseRunParams(t *testing.T) {
 	}
 }
 
-func TestGetPlugin(t *testing.T) {
+func TestGetPackage(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		Name          string
 		Mod           *modInfo
-		Expected      *pulumirpc.PluginDependency
+		Expected      *pulumirpc.PackageDependency
 		ExpectedError string
 		JSON          *plugin.PulumiPluginJSON
 		JSONPath      string
@@ -128,7 +128,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
 			},
@@ -139,7 +139,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
 			},
@@ -174,7 +174,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v2.0.0-beta.1",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v2.0.0-beta.1",
 			},
@@ -184,7 +184,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
 				Version: "v1.5.8",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "kubernetes",
 				Version: "v1.5.8",
 			},
@@ -195,7 +195,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/me/myself/i",
 				Version: "invalid-Version",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "thing1",
 				Version: "v1.2.3",
 				Server:  "myserver.com",
@@ -237,7 +237,7 @@ func TestGetPlugin(t *testing.T) {
 				Resource: true,
 			},
 			JSONPath: "go",
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "name",
 				Version: "v1.2.3",
 			},
@@ -253,7 +253,7 @@ func TestGetPlugin(t *testing.T) {
 				Resource: true,
 			},
 			JSONPath: filepath.Join("go", "name"),
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "name",
 				Version: "v1.2.3",
 			},
@@ -305,7 +305,7 @@ func TestGetPlugin(t *testing.T) {
 				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
 
-			actual, err := c.Mod.getPlugin(t.TempDir())
+			actual, err := c.Mod.getPackage(t.TempDir())
 			if c.ExpectedError != "" {
 				assert.EqualError(t, err, c.ExpectedError)
 			} else {
@@ -415,13 +415,11 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 	host := newLanguageHost("0.0.0.0:0", progDir, "")
 	ctx := context.Background()
 
-	t.Run("GetRequiredPlugins", func(t *testing.T) {
+	t.Run("GetRequiredPackages", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck // Deprecated API.
-			Project: "deprecated",
-			Pwd:     progDir,
+		res, err := host.GetRequiredPackages(ctx, &pulumirpc.GetRequiredPackagesRequest{
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    progDir,
 				ProgramDirectory: progDir,
@@ -430,8 +428,8 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		})
 		require.NoError(t, err)
 
-		require.Len(t, res.Plugins, 1)
-		plug := res.Plugins[0]
+		require.Len(t, res.Packages, 1)
+		plug := res.Packages[0]
 
 		assert.Equal(t, "example", plug.Name, "plugin name")
 		assert.Equal(t, "v1.2.3", plug.Version, "plugin version")

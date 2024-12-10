@@ -11,21 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -95,87 +86,4 @@ func TestGetRefreshOption(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestStackLoadOption(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		give       stackLoadOption
-		offerNew   bool
-		setCurrent bool
-	}{
-		{stackLoadOnly, false, false},
-		{stackOfferNew, true, false},
-		{stackSetCurrent, false, true},
-		{stackOfferNew | stackSetCurrent, true, true},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t,
-				tt.offerNew, tt.give.OfferNew(),
-				"OfferNew did not match")
-			assert.Equal(t,
-				tt.setCurrent, tt.give.SetCurrent(),
-				"SetCurrent did not match")
-		})
-	}
-}
-
-// Tests that createStack will send an appropriate initial state when it is asked to create a stack with a non-default
-// secrets manager.
-func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
-	t.Parallel()
-
-	// Arrange.
-	_, expectedSm, err := passphrase.NewPassphraseSecretsManager("test-passphrase")
-	assert.NoError(t, err)
-
-	var actualDeployment apitype.DeploymentV3
-
-	mockBackend := &backend.MockBackend{
-		NameF: func() string {
-			return "mock"
-		},
-		ValidateStackNameF: func(name string) error {
-			assert.Equal(t, "dev", name, "stack name mismatch")
-			return nil
-		},
-		CreateStackF: func(
-			ctx context.Context,
-			ref backend.StackReference,
-			projectRoot string,
-			initialState *apitype.UntypedDeployment,
-			opts *backend.CreateStackOptions,
-		) (backend.Stack, error) {
-			err := json.Unmarshal(initialState.Deployment, &actualDeployment)
-			assert.NoError(t, err)
-			return nil, nil
-		},
-		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
-			return expectedSm, nil
-		},
-	}
-
-	stackRef := &backend.MockStackReference{}
-
-	// Act.
-	//nolint:errcheck
-	createStack(
-		context.Background(),
-		pkgWorkspace.Instance,
-		mockBackend,
-		stackRef,
-		"",    /*root*/
-		nil,   /*opts*/
-		false, /*setCurrent*/
-		"",    /*secretsProvider*/
-	)
-
-	// Assert.
-	assert.Equal(t, expectedSm.State(), actualDeployment.SecretsProviders.State)
 }

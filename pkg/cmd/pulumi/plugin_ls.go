@@ -114,11 +114,11 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 		}
 
 		if !plugin.InstallTime.IsZero() {
-			jsonPluginInfo[idx].InstallTime = makeStringRef(plugin.InstallTime.UTC().Format(timeFormat))
+			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(plugin.InstallTime.UTC()))
 		}
 
 		if !plugin.LastUsedTime.IsZero() {
-			jsonPluginInfo[idx].LastUsedTime = makeStringRef(plugin.LastUsedTime.UTC().Format(timeFormat))
+			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(plugin.LastUsedTime.UTC()))
 		}
 	}
 

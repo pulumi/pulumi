@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -101,7 +102,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		IsInteractive: args.interactive,
 	}
 
-	ssml := newStackSecretsManagerLoaderFromEnv()
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	ws := pkgWorkspace.Instance
 
 	// Validate name (if specified) before further prompts/operations.
@@ -110,7 +111,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(args.secretsProvider); err != nil {
+	if err := cmdStack.ValidateSecretsProvider(args.secretsProvider); err != nil {
 		return err
 	}
 
@@ -523,7 +524,7 @@ func isInteractive() bool {
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:               promptForValue,
+		prompt:               ui.PromptForValue,
 		chooseTemplate:       chooseTemplate,
 		promptRuntimeOptions: promptRuntimeOptions,
 	}
@@ -734,7 +735,7 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 		response := ui.PromptUser(prompt, []string{accept, retry}, accept, opts.Color)
 
 		if response != accept {
-			return errRetry
+			return ui.ErrRetryPromptForValue
 		}
 		return nil
 	}
@@ -813,7 +814,7 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -835,7 +836,7 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -848,18 +849,6 @@ func promptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 	}
 }
 
-// stackInit creates the stack.
-func stackInit(
-	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string,
-) (backend.Stack, error) {
-	stackRef, err := b.ParseStackReference(stackName)
-	if err != nil {
-		return nil, err
-	}
-	return createStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
-}
-
 // saveConfig saves the config for the stack.
 func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
@@ -867,7 +856,7 @@ func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		return err
 	}
 
-	ps, err := loadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack)
 	if err != nil {
 		return err
 	}
@@ -876,7 +865,7 @@ func saveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		ps.Config[k] = v
 	}
 
-	return saveProjectStack(stack, ps)
+	return cmdStack.SaveProjectStack(stack, ps)
 }
 
 func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
@@ -1119,7 +1108,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -1149,17 +1138,17 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := loadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
-	sm, state, err := ssml.getSecretsManager(ctx, stack, ps)
+	sm, state, err := ssml.GetSecretsManager(ctx, stack, ps)
 	if err != nil {
 		return nil, err
 	}
-	if state != stackSecretsManagerUnchanged {
-		if err = saveProjectStack(stack, ps); err != nil {
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -1245,91 +1234,6 @@ func promptForConfig(
 	}
 
 	return c, nil
-}
-
-var errRetry = errors.New("Try again")
-
-// promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
-// default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
-// when specified, it will be run to validate that value entered. When this function returns a non nil error
-// validation is assumed to have failed and an error is printed. The error returned by isValidFn is also displayed
-// to provide information about why the validation failed. A period is appended to this message. `promptForValue` then
-// prompts again.
-func promptForValue(
-	yes bool, valueType string, defaultValue string, secret bool,
-	isValidFn func(value string) error, opts display.Options,
-) (string, error) {
-	var value string
-	for {
-		// If we are auto-accepting the default (--yes), just set it and move on to validating.
-		// Otherwise, prompt the user interactively for a value.
-		if yes {
-			value = defaultValue
-		} else {
-			var prompt string
-			if valueType == "" && defaultValue == "" {
-				// No need to print anything, this is a full line / blank prompt.
-			} else if defaultValue == "" {
-				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
-			} else {
-				defaultValuePrompt := defaultValue
-				if secret {
-					defaultValuePrompt = "[secret]"
-				}
-
-				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s%s (%s)", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
-			}
-
-			// Read the value.
-			var err error
-			if secret {
-				value, err = cmdutil.ReadConsoleNoEcho(prompt)
-				if err != nil {
-					return "", err
-				}
-			} else {
-				value, err = cmdutil.ReadConsole(prompt)
-				if err != nil {
-					return "", err
-				}
-			}
-			value = strings.TrimSpace(value)
-
-			// If the user simply hit ENTER, choose the default value.
-			if value == "" {
-				value = defaultValue
-			}
-		}
-
-		// Ensure the resulting value is valid; note that we even validate the default, since sometimes
-		// we will have invalid default values, like "" for the project name.
-		if isValidFn != nil {
-			validationError := isValidFn(value)
-			if validationError == errRetry {
-				continue
-			} else if validationError != nil {
-				// If validation failed, let the user know. If interactive, we will print the error and
-				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				var err error
-				if valueType == "" {
-					err = fmt.Errorf("Sorry, '%s' is not valid: %w", value, validationError)
-				} else {
-					err = fmt.Errorf("Sorry, '%s' is not a valid %s: %w", value, valueType, validationError)
-				}
-				if yes {
-					return "", err
-				}
-				fmt.Printf("%s\n", err)
-				continue
-			}
-		}
-
-		break
-	}
-
-	return value, nil
 }
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.

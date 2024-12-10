@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -159,7 +160,14 @@ func initializeDeploymentSettingsCmd(
 			be.Name())
 	}
 
-	s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, displayOpts)
+	s, err := cmdStack.RequireStack(
+		ctx,
+		ws,
+		cmdBackend.DefaultLoginManager,
+		stack,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		displayOpts,
+	)
 	if err != nil {
 		return nil, err
 	}

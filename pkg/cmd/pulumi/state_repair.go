@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -124,12 +125,12 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	displayOpts := display.Options{
 		Color: cmd.Args.Colorizer,
 	}
-	s, err := requireStack(
+	s, err := cmdStack.RequireStack(
 		ctx,
 		cmd.Workspace,
 		cmd.LoginManager,
 		cmd.Args.Stack,
-		stackOfferNew,
+		cmdStack.OfferNew,
 		displayOpts,
 	)
 	if err != nil {

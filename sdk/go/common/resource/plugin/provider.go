@@ -45,13 +45,13 @@ type ProviderHandshakeRequest struct {
 	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
 	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been asked
 	// to attach to an existing running provider instance via a host/port number), this field will be empty.
-	RootDirectory string
+	RootDirectory *string
 
 	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root directory,
 	// though this is not required. In the event that the provider is *not* being booted by the engine (e.g. in the case
 	// that the engine has been asked to attach to an existing running provider instance via a host/port number), this
 	// field will be empty.
-	ProgramDirectory string
+	ProgramDirectory *string
 }
 
 // The type of responses sent as part of a Handshake call.

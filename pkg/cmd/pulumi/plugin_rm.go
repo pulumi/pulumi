@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -113,7 +114,7 @@ func newPluginRmCmd() *cobra.Command {
 				for _, del := range deletes {
 					fmt.Printf("    %s %s\n", del.Kind, del.String())
 				}
-				if !confirmPrompt("", "yes", opts) {
+				if !ui.ConfirmPrompt("", "yes", opts) {
 					return nil
 				}
 			}

@@ -337,13 +337,6 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
-}
-
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest,
-) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	// To get the plugins required by a program, find all node_modules/ packages that contain {
 	// "pulumi": true } inside of their package.json files.  We begin this search in the same
 	// directory that contains the project. It's possible that a developer would do a
@@ -353,7 +346,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// Keep track of the versions of @pulumi/pulumi that are pulled in.  If they differ on
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
-	plugins, err := getPluginsFromDir(
+	packages, err := getPackagesFromDir(
 		req.Info.ProgramDirectory,
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
@@ -385,16 +378,23 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		logging.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
-	return &pulumirpc.GetRequiredPluginsResponse{
-		Plugins: plugins,
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: packages,
 	}, nil
 }
 
-// getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
-func getPluginsFromDir(
+// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
+}
+
+// getPackagesFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
+func getPackagesFromDir(
 	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
 	inNodeModules bool, visitedPaths map[string]struct{},
-) ([]*pulumirpc.PluginDependency, error) {
+) ([]*pulumirpc.PackageDependency, error) {
 	// try to absolute the input path so visitedPaths can track it correctly
 	dir, err := filepath.Abs(dir)
 	if err != nil {
@@ -411,7 +411,7 @@ func getPluginsFromDir(
 		return nil, fmt.Errorf("reading plugin dir %s: %w", dir, err)
 	}
 
-	var plugins []*pulumirpc.PluginDependency
+	var packages []*pulumirpc.PackageDependency
 	var allErrors *multierror.Error
 	for _, file := range files {
 		name := file.Name()
@@ -450,7 +450,7 @@ func getPluginsFromDir(
 				continue
 			}
 
-			more, err := getPluginsFromDir(
+			more, err := getPackagesFromDir(
 				curr,
 				pulumiPackagePathToVersionMap,
 				inNodeModules || filepath.Base(dir) == "node_modules",
@@ -459,7 +459,7 @@ func getPluginsFromDir(
 				allErrors = multierror.Append(allErrors, err)
 			}
 			// Even if there was an error, still append any plugins found in the dir.
-			plugins = append(plugins, more...)
+			packages = append(packages, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := os.ReadFile(curr)
@@ -485,20 +485,21 @@ func getPluginsFromDir(
 				pulumiPackagePathToVersionMap[curr] = version
 			}
 
-			ok, name, version, server, err := getPackageInfo(info)
+			ok, name, version, server, parameterization, err := getPackageInfo(info)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
-				plugins = append(plugins, &pulumirpc.PluginDependency{
-					Name:    name,
-					Kind:    "resource",
-					Version: version,
-					Server:  server,
+				packages = append(packages, &pulumirpc.PackageDependency{
+					Name:             name,
+					Kind:             "resource",
+					Version:          version,
+					Server:           server,
+					Parameterization: parameterization,
 				})
 			}
 		}
 	}
-	return plugins, allErrors.ErrorOrNil()
+	return packages, allErrors.ErrorOrNil()
 }
 
 // packageJSON is the minimal amount of package.json information we care about.
@@ -515,20 +516,29 @@ type packageJSON struct {
 // resource provider plugin.  If it does, three strings are returned, the plugin name, and its semantic version and
 // an optional server that can be used to download the plugin (this may be empty, in which case the "default" location
 // should be used).
-func getPackageInfo(info packageJSON) (bool, string, string, string, error) {
+func getPackageInfo(info packageJSON) (bool, string, string, string, *pulumirpc.PackageParameterization, error) {
 	if info.Pulumi.Resource {
 		name, err := getPluginName(info)
 		if err != nil {
-			return false, "", "", "", err
+			return false, "", "", "", nil, err
 		}
 		version, err := getPluginVersion(info)
 		if err != nil {
-			return false, "", "", "", err
+			return false, "", "", "", nil, err
 		}
-		return true, name, version, info.Pulumi.Server, nil
+		var parameterization *pulumirpc.PackageParameterization
+		if info.Pulumi.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    info.Pulumi.Parameterization.Name,
+				Version: info.Pulumi.Parameterization.Version,
+				Value:   info.Pulumi.Parameterization.Value,
+			}
+		}
+
+		return true, name, version, info.Pulumi.Server, parameterization, nil
 	}
 
-	return false, "", "", "", nil
+	return false, "", "", "", nil, nil
 }
 
 // getPluginName takes a parsed package.json file and returns the corresponding Pulumi plugin name.

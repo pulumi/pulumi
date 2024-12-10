@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -43,17 +42,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -318,7 +316,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newNewCmd(),
 				newConfigCmd(),
-				newStackCmd(),
+				cmdStack.NewStackCmd(),
 				newConsoleCmd(),
 				newImportCmd(),
 				newRefreshCmd(),
@@ -782,30 +780,4 @@ func isDevVersion(s semver.Version) bool {
 
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
-}
-
-func confirmPrompt(prompt string, name string, opts display.Options) bool {
-	out := opts.Stdout
-	if out == nil {
-		out = os.Stdout
-	}
-	in := opts.Stdin
-	if in == nil {
-		in = os.Stdin
-	}
-
-	if prompt != "" {
-		fmt.Fprint(out,
-			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
-	}
-
-	fmt.Fprint(out,
-		opts.Color.Colorize(
-			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
-				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
-
-	reader := bufio.NewReader(in)
-	line, _ := reader.ReadString('\n')
-	return strings.TrimSpace(line) == name
 }

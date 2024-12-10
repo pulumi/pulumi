@@ -4697,6 +4697,11 @@ func GeneratePackage(tool string,
 	}
 	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
 		pulumiPlugin.Version = pkg.Version.String()
+	} else if pkg.SupportPack {
+		if pkg.Version == nil {
+			return nil, errors.New("package version is required")
+		}
+		pulumiPlugin.Version = pkg.Version.String()
 	}
 
 	if pkg.Parameterization != nil {

@@ -275,13 +275,6 @@ func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Cl
 func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
-}
-
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest,
-) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
@@ -309,19 +302,26 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	plugins := []*pulumirpc.PluginDependency{}
+	packages := []*pulumirpc.PackageDependency{}
 	for _, pkg := range pulumiPackages {
-		plugin, err := determinePluginDependency(pkg)
+		pkg, err := determinePackageDependency(pkg)
 		if err != nil {
 			return nil, err
 		}
 
-		if plugin != nil {
-			plugins = append(plugins, plugin)
+		if pkg != nil {
+			packages = append(packages, pkg)
 		}
 	}
 
-	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
+	return &pulumirpc.GetRequiredPackagesResponse{Packages: packages}, nil
+}
+
+// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
@@ -532,13 +532,14 @@ func determinePulumiPackages(ctx context.Context, options toolchain.PythonOption
 	return pulumiPackages, nil
 }
 
-// determinePluginDependency attempts to determine a plugin associated with a package. It checks to see if the package
-// contains a pulumi-plugin.json file and uses the information in that file to determine the plugin. If `resource` in
-// pulumi-plugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these
-// values are derived from the package name and version. If the plugin version cannot be determined from the package
-// version, nil is returned.
-func determinePluginDependency(pkg toolchain.PythonPackage) (*pulumirpc.PluginDependency, error) {
+// determinePackageDependency attempts to determine a pulumi package associated with a python package. It
+// checks to see if the package contains a pulumi-plugin.json file and uses the information in that file to
+// determine the plugin. If `resource` in pulumi-plugin.json is set to false, nil is returned. If the name or
+// version aren't specified in the file, these values are derived from the package name and version. If the
+// plugin version cannot be determined from the package version, nil is returned.
+func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.PackageDependency, error) {
 	var name, version, server string
+	var parameterization *pulumirpc.PackageParameterization
 	plugin, err := readPulumiPluginJSON(pkg)
 	if plugin != nil && err == nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
@@ -546,6 +547,14 @@ func determinePluginDependency(pkg toolchain.PythonPackage) (*pulumirpc.PluginDe
 		if !plugin.Resource {
 			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", pkg.Name)
 			return nil, nil
+		}
+
+		if plugin.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    plugin.Parameterization.Name,
+				Version: plugin.Parameterization.Version,
+				Value:   plugin.Parameterization.Value,
+			}
 		}
 
 		name, version, server = plugin.Name, plugin.Version, plugin.Server
@@ -578,11 +587,12 @@ func determinePluginDependency(pkg toolchain.PythonPackage) (*pulumirpc.PluginDe
 		version = "v" + version
 	}
 
-	result := &pulumirpc.PluginDependency{
-		Name:    name,
-		Version: version,
-		Kind:    "resource",
-		Server:  server,
+	result := &pulumirpc.PackageDependency{
+		Name:             name,
+		Version:          version,
+		Kind:             "resource",
+		Server:           server,
+		Parameterization: parameterization,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)

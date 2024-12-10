@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -77,12 +78,19 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stack,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
 
-			ps, err := loadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -97,7 +105,7 @@ func newConfigCmd() *cobra.Command {
 				openEnvironment = showSecrets
 			}
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			return listConfig(
 				ctx,
@@ -127,7 +135,7 @@ func newConfigCmd() *cobra.Command {
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	cmd.AddCommand(newConfigGetCmd(&stack))
@@ -165,36 +173,43 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackSetCurrent, opts)
+			currentStack, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := loadProjectStack(project, currentStack)
+			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
 			if err != nil {
 				return err
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(
+			destinationStack, err := cmdStack.RequireStack(
 				ctx,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destinationStackName,
-				stackLoadOnly,
+				cmdStack.LoadOnly,
 				opts,
 			)
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := loadProjectStack(project, destinationStack)
+			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack)
 			if err != nil {
 				return err
 			}
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Do we need to copy a single value or the entire map
 			if len(args) > 0 {
@@ -211,7 +226,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				)
 			}
 
-			requiresSaving, err := copyEntireConfigMap(
+			requiresSaving, err := cmdStack.CopyEntireConfigMap(
 				ctx,
 				ssml,
 				currentStack,
@@ -226,7 +241,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// The use of `requiresSaving` here ensures that there was actually some config
 			// that needed saved, otherwise it's an unnecessary save call
 			if requiresSaving {
-				err := saveProjectStack(destinationStack, destinationProjectStack)
+				err := cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
 				if err != nil {
 					return err
 				}
@@ -248,7 +263,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 
 func copySingleConfigKey(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	configKey string,
 	path bool,
 	currentStack backend.Stack,
@@ -271,19 +286,19 @@ func copySingleConfigKey(
 
 	if v.Secure() {
 		var err error
-		var state stackSecretsManagerState
-		if decrypter, state, err = ssml.getDecrypter(ctx, currentStack, currentProjectStack); err != nil {
+		var state cmdStack.SecretsManagerState
+		if decrypter, state, err = ssml.GetDecrypter(ctx, currentStack, currentProjectStack); err != nil {
 			return fmt.Errorf("could not create a decrypter: %w", err)
 		}
 		contract.Assertf(
-			state == stackSecretsManagerUnchanged,
+			state == cmdStack.SecretsManagerUnchanged,
 			"We're reading a secure value so the encryption information must be present already",
 		)
 	} else {
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, _, cerr := ssml.getEncrypter(ctx, destinationStack, destinationProjectStack)
+	encrypter, _, cerr := ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
 	if cerr != nil {
 		return cerr
 	}
@@ -298,60 +313,7 @@ func copySingleConfigKey(
 		return err
 	}
 
-	return saveProjectStack(destinationStack, destinationProjectStack)
-}
-
-func copyEntireConfigMap(
-	ctx context.Context,
-	ssml stackSecretsManagerLoader,
-	currentStack backend.Stack,
-	currentProjectStack *workspace.ProjectStack,
-	destinationStack backend.Stack,
-	destinationProjectStack *workspace.ProjectStack,
-) (bool, error) {
-	var decrypter config.Decrypter
-	currentConfig := currentProjectStack.Config
-	currentEnvironments := currentProjectStack.Environment
-
-	if currentConfig.HasSecureValue() {
-		dec, state, decerr := ssml.getDecrypter(ctx, currentStack, currentProjectStack)
-		if decerr != nil {
-			return false, decerr
-		}
-		contract.Assertf(
-			state == stackSecretsManagerUnchanged,
-			"We're reading a secure value so the encryption information must be present already",
-		)
-		decrypter = dec
-	} else {
-		decrypter = config.NewPanicCrypter()
-	}
-
-	encrypter, _, cerr := ssml.getEncrypter(ctx, destinationStack, destinationProjectStack)
-	if cerr != nil {
-		return false, cerr
-	}
-
-	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
-	if err != nil {
-		return false, err
-	}
-
-	var requiresSaving bool
-	for key, val := range newProjectConfig {
-		err = destinationProjectStack.Config.Set(key, val, false)
-		if err != nil {
-			return false, err
-		}
-		requiresSaving = true
-	}
-
-	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
-		destinationProjectStack.Environment = currentEnvironments
-		requiresSaving = true
-	}
-
-	return requiresSaving, nil
+	return cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
@@ -376,7 +338,14 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -386,7 +355,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open)
 		}),
 	}
@@ -428,7 +397,14 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -438,7 +414,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := loadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -448,7 +424,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return saveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(stack, ps)
 		}),
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -483,12 +459,19 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackOfferNew, opts)
+			stack, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.OfferNew,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
 
-			ps, err := loadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -505,7 +488,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return saveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(stack, ps)
 		}),
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -534,7 +517,14 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stk, stackLoadOnly, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stk,
+				cmdStack.LoadOnly,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -544,7 +534,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
-			configPath, err := getProjectStackPath(s)
+			configPath, err := cmdStack.GetProjectStackPath(s)
 			if err != nil {
 				return err
 			}
@@ -654,7 +644,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.OfferNew|cmdStack.SetCurrent,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
@@ -689,19 +686,19 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			ps, err := loadProjectStack(project, s)
+			ps, err := cmdStack.LoadProjectStack(project, s)
 			if err != nil {
 				return err
 			}
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Encrypt the config value if needed.
 			var v config.Value
 			if secret {
 				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
 				// config data.
-				c, _, cerr := ssml.getEncrypter(ctx, s, ps)
+				c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -726,7 +723,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return saveProjectStack(s, ps)
+			return cmdStack.SaveProjectStack(s, ps)
 		}),
 	}
 
@@ -776,12 +773,19 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			stack, err := requireStack(ctx, ws, cmdBackend.DefaultLoginManager, *stack, stackOfferNew, opts)
+			stack, err := cmdStack.RequireStack(
+				ctx,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				*stack,
+				cmdStack.OfferNew,
+				opts,
+			)
 			if err != nil {
 				return err
 			}
 
-			ps, err := loadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -799,7 +803,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			ssml := newStackSecretsManagerLoaderFromEnv()
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			for _, sArg := range secretArgs {
 				key, value, err := parseKeyValuePair(sArg)
@@ -808,7 +812,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
 				// config data.
-				c, _, cerr := ssml.getEncrypter(ctx, stack, ps)
+				c, _, cerr := ssml.GetEncrypter(ctx, stack, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -824,7 +828,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return saveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(stack, ps)
 		}),
 	}
 
@@ -862,37 +866,6 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 
 	value := splitArg[1]
 	return key, value, nil
-}
-
-var stackConfigFile string
-
-func getProjectStackPath(stack backend.Stack) (string, error) {
-	if stackConfigFile == "" {
-		_, path, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
-		return path, err
-	}
-	return stackConfigFile, nil
-}
-
-func loadProjectStack(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
-	return loadProjectStackByReference(project, stack.Ref())
-}
-
-func loadProjectStackByReference(
-	project *workspace.Project,
-	stackRef backend.StackReference,
-) (*workspace.ProjectStack, error) {
-	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stackRef.Name().Q())
-	}
-	return workspace.LoadProjectStack(project, stackConfigFile)
-}
-
-func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
-	if stackConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
-	}
-	return ps.Save(stackConfigFile)
 }
 
 func parseConfigKey(key string) (config.Key, error) {
@@ -939,7 +912,7 @@ type configValueJSON struct {
 
 func listConfig(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	stdout io.Writer,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -965,13 +938,13 @@ func listConfig(
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.getEncrypter(ctx, stack, ps)
+		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
-		if state != stackSecretsManagerUnchanged {
-			if err = saveProjectStack(stack, ps); err != nil {
+		if state != cmdStack.SecretsManagerUnchanged {
+			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -995,13 +968,13 @@ func listConfig(
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		stackDecrypter, state, err := ssml.getDecrypter(ctx, stack, ps)
+		stackDecrypter, state, err := ssml.GetDecrypter(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
-		if state != stackSecretsManagerUnchanged {
-			if err = saveProjectStack(stack, ps); err != nil {
+		if state != cmdStack.SecretsManagerUnchanged {
+			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1101,7 +1074,7 @@ func listConfig(
 	}
 
 	if showSecrets {
-		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, "", "pulumi config")
+		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, "", "pulumi config")
 	}
 
 	return nil
@@ -1109,7 +1082,7 @@ func listConfig(
 
 func getConfig(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	stack backend.Stack,
 	key config.Key,
@@ -1120,7 +1093,7 @@ func getConfig(
 	if err != nil {
 		return err
 	}
-	ps, err := loadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack)
 	if err != nil {
 		return err
 	}
@@ -1141,13 +1114,13 @@ func getConfig(
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.getEncrypter(ctx, stack, ps)
+		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
-		if state != stackSecretsManagerUnchanged {
-			if err = saveProjectStack(stack, ps); err != nil {
+		if state != cmdStack.SecretsManagerUnchanged {
+			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1175,13 +1148,13 @@ func getConfig(
 		var d config.Decrypter
 		if v.Secure() {
 			var err error
-			var state stackSecretsManagerState
-			if d, state, err = ssml.getDecrypter(ctx, stack, ps); err != nil {
+			var state cmdStack.SecretsManagerState
+			if d, state, err = ssml.GetDecrypter(ctx, stack, ps); err != nil {
 				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
-			if state != stackSecretsManagerUnchanged {
-				if err = saveProjectStack(stack, ps); err != nil {
+			if state != cmdStack.SecretsManagerUnchanged {
+				if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}
@@ -1222,7 +1195,7 @@ func getConfig(
 			printESCDiagnostics(os.Stdout, diags)
 		}
 
-		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
+		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
 
 		return nil
 	}
@@ -1264,16 +1237,16 @@ func looksLikeSecret(k config.Key, v string) bool {
 
 func getAndSaveSecretsManager(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 ) (secrets.Manager, error) {
-	sm, state, err := ssml.getSecretsManager(ctx, stack, workspaceStack)
+	sm, state, err := ssml.GetSecretsManager(ctx, stack, workspaceStack)
 	if err != nil {
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
-	if state != stackSecretsManagerUnchanged {
-		if err = saveProjectStack(stack, workspaceStack); err != nil && state == stackSecretsManagerMustSave {
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(stack, workspaceStack); err != nil && state == cmdStack.SecretsManagerMustSave {
 			return nil, fmt.Errorf("save stack config: %w", err)
 		}
 	}
@@ -1283,7 +1256,7 @@ func getAndSaveSecretsManager(
 // Attempts to load configuration for the given stack.
 func getStackConfiguration(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
 ) (backend.StackConfiguration, secrets.Manager, error) {
@@ -1298,7 +1271,7 @@ func getStackConfiguration(
 // of that cleanup.
 func getStackConfigurationOrLatest(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
 ) (backend.StackConfiguration, secrets.Manager, error) {
@@ -1388,12 +1361,12 @@ func openStackEnv(
 
 func getStackConfigurationWithFallback(
 	ctx context.Context,
-	ssml stackSecretsManagerLoader,
+	ssml cmdStack.SecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := loadProjectStack(project, s)
+	workspaceStack, err := cmdStack.LoadProjectStack(project, s)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err

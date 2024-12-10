@@ -140,7 +140,7 @@ func TestCompatibleVersions(t *testing.T) {
 	}
 }
 
-func TestGetRequiredPlugins(t *testing.T) {
+func TestGetRequiredPackages(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -174,8 +174,7 @@ func TestGetRequiredPlugins(t *testing.T) {
 	}
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
-		Program: dir,
+	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -185,7 +184,7 @@ func TestGetRequiredPlugins(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := make(map[string]string)
-	for _, plugin := range resp.GetPlugins() {
+	for _, plugin := range resp.Packages {
 		actual[plugin.Name] = plugin.Version
 	}
 	assert.Equal(t, map[string]string{
@@ -194,7 +193,7 @@ func TestGetRequiredPlugins(t *testing.T) {
 	}, actual)
 }
 
-func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
+func TestGetRequiredPackagesSymlinkCycles(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -232,8 +231,7 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
-		Program: dir,
+	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -243,7 +241,7 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := make(map[string]string)
-	for _, plugin := range resp.GetPlugins() {
+	for _, plugin := range resp.Packages {
 		actual[plugin.Name] = plugin.Version
 	}
 	assert.Equal(t, map[string]string{
@@ -252,7 +250,7 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	}, actual)
 }
 
-func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
+func TestGetRequiredPackagesSymlinkCycles2(t *testing.T) {
 	t.Parallel()
 
 	dir := filepath.Join(t.TempDir(), "testdir")
@@ -292,8 +290,7 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
-		Program: dir,
+	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -303,7 +300,7 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := make(map[string]string)
-	for _, plugin := range resp.GetPlugins() {
+	for _, plugin := range resp.Packages {
 		actual[plugin.Name] = plugin.Version
 	}
 	assert.Equal(t, map[string]string{
@@ -312,7 +309,7 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	}, actual)
 }
 
-func TestGetRequiredPluginsNestedPolicyPack(t *testing.T) {
+func TestGetRequiredPackagesNestedPolicyPack(t *testing.T) {
 	t.Parallel()
 
 	dir := filepath.Join(t.TempDir(), "testdir")
@@ -348,8 +345,7 @@ func TestGetRequiredPluginsNestedPolicyPack(t *testing.T) {
 	}
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
-		Program: dir,
+	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -359,7 +355,7 @@ func TestGetRequiredPluginsNestedPolicyPack(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := make(map[string]string)
-	for _, plugin := range resp.GetPlugins() {
+	for _, plugin := range resp.Packages {
 		actual[plugin.Name] = plugin.Version
 	}
 	assert.Equal(t, map[string]string{
