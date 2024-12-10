@@ -1481,7 +1481,7 @@ func TestInvokeDependsOnNotAllowed(t *testing.T) {
 
 		err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
 
-		require.Error(t, err, "DependsOnInputs is not supported for direct form invoke, use the output form invoke instead")
+		require.ErrorContains(t, err, "DependsOnInputs is not supported for direct form invoke")
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
