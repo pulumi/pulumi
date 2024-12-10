@@ -128,19 +128,6 @@ func TestStackInitValidation(t *testing.T) {
 func TestConfigPaths(t *testing.T) {
 	t.Parallel()
 
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	// Initialize an empty stack.
-	path := filepath.Join(e.RootPath, "Pulumi.yaml")
-	err := (&workspace.Project{
-		Name:    "testing-config",
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-	}).Save(path)
-	assert.NoError(t, err)
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "testing")
-
 	namespaces := []string{"", "my:"}
 
 	tests := []struct {
@@ -441,42 +428,6 @@ func TestConfigPaths(t *testing.T) {
 		},
 	}
 
-	validateConfigGet := func(key string, value string, path bool) {
-		args := []string{"config", "get", key}
-		if path {
-			args = append(args, "--path")
-		}
-		stdout, stderr := e.RunCommand("pulumi", args...)
-		assert.Equal(t, value+"\n", stdout)
-		assert.Equal(t, "", stderr)
-	}
-
-	for _, ns := range namespaces {
-		for _, test := range tests {
-			key := fmt.Sprintf("%s%s", ns, test.Key)
-			topLevelKey := fmt.Sprintf("%s%s", ns, test.TopLevelKey)
-
-			// Set the value.
-			args := []string{"config", "set"}
-			if test.Secret {
-				args = append(args, "--secret")
-			}
-			if test.Path {
-				args = append(args, "--path")
-			}
-			args = append(args, key, test.Value)
-			stdout, stderr := e.RunCommand("pulumi", args...)
-			assert.Equal(t, "", stdout)
-			assert.Equal(t, "", stderr)
-
-			// Get the value and validate it.
-			validateConfigGet(key, test.Value, test.Path)
-
-			// Get the top-level value and validate it.
-			validateConfigGet(topLevelKey, test.TopLevelExpectedValue, false /*path*/)
-		}
-	}
-
 	badKeys := []string{
 		// Syntax errors.
 		"root[",
@@ -504,16 +455,155 @@ func TestConfigPaths(t *testing.T) {
 		"outer.inner[0]",
 	}
 
-	for _, ns := range namespaces {
-		for _, badKey := range badKeys {
-			key := fmt.Sprintf("%s%s", ns, badKey)
-			stdout, stderr := e.RunCommandExpectError("pulumi", "config", "set", "--path", key, "value")
-			assert.Equal(t, "", stdout)
-			assert.NotEqual(t, "", stderr)
-		}
-	}
+	t.Run("default", func(t *testing.T) {
+		t.Parallel()
 
-	e.RunCommand("pulumi", "stack", "rm", "--yes")
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		// Initialize an empty stack.
+		path := filepath.Join(e.RootPath, "Pulumi.yaml")
+		err := (&workspace.Project{
+			Name:    "testing-config",
+			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		}).Save(path)
+		assert.NoError(t, err)
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "testing")
+
+		validateConfigGet := func(key string, value string, path bool) {
+			args := []string{"config", "get", key}
+			if path {
+				args = append(args, "--path")
+			}
+			stdout, stderr := e.RunCommand("pulumi", args...)
+			assert.Equal(t, value+"\n", stdout)
+			assert.Equal(t, "", stderr)
+		}
+
+		for _, ns := range namespaces {
+			for _, test := range tests {
+				key := fmt.Sprintf("%s%s", ns, test.Key)
+				topLevelKey := fmt.Sprintf("%s%s", ns, test.TopLevelKey)
+
+				// Set the value.
+				args := []string{"config", "set"}
+				if test.Secret {
+					args = append(args, "--secret")
+				}
+				if test.Path {
+					args = append(args, "--path")
+				}
+				args = append(args, key, test.Value)
+				stdout, stderr := e.RunCommand("pulumi", args...)
+				assert.Equal(t, "", stdout)
+				assert.Equal(t, "", stderr)
+
+				// Get the value and validate it.
+				validateConfigGet(key, test.Value, test.Path)
+
+				// Get the top-level value and validate it.
+				validateConfigGet(topLevelKey, test.TopLevelExpectedValue, false /*path*/)
+			}
+		}
+
+		for _, ns := range namespaces {
+			for _, badKey := range badKeys {
+				key := fmt.Sprintf("%s%s", ns, badKey)
+				stdout, stderr := e.RunCommandExpectError("pulumi", "config", "set", "--path", key, "value")
+				assert.Equal(t, "", stdout)
+				assert.NotEqual(t, "", stderr)
+			}
+		}
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	})
+
+	t.Run("explicit --config-file", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		configFile := filepath.Join(e.RootPath, "Pulumi.explicit-config-file.yaml")
+
+		// Initialize an empty stack.
+		path := filepath.Join(e.RootPath, "Pulumi.yaml")
+		err := (&workspace.Project{
+			Name:    "testing-config",
+			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		}).Save(path)
+		assert.NoError(t, err)
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "testing")
+
+		validateConfigGet := func(key string, value string, path bool) {
+			args := []string{
+				"config",
+				"--config-file",
+				configFile,
+				"get",
+				key,
+			}
+			if path {
+				args = append(args, "--path")
+			}
+			stdout, stderr := e.RunCommand("pulumi", args...)
+			assert.Equal(t, value+"\n", stdout)
+			assert.Equal(t, "", stderr)
+		}
+
+		for _, ns := range namespaces {
+			for _, test := range tests {
+				key := fmt.Sprintf("%s%s", ns, test.Key)
+				topLevelKey := fmt.Sprintf("%s%s", ns, test.TopLevelKey)
+
+				// Set the value.
+				args := []string{
+					"config",
+					"--config-file",
+					configFile,
+					"set",
+				}
+				if test.Secret {
+					args = append(args, "--secret")
+				}
+				if test.Path {
+					args = append(args, "--path")
+				}
+				args = append(args, key, test.Value)
+				stdout, stderr := e.RunCommand("pulumi", args...)
+				assert.Equal(t, "", stdout)
+				assert.Equal(t, "", stderr)
+
+				// Get the value and validate it.
+				validateConfigGet(key, test.Value, test.Path)
+
+				// Get the top-level value and validate it.
+				validateConfigGet(topLevelKey, test.TopLevelExpectedValue, false /*path*/)
+			}
+		}
+
+		for _, ns := range namespaces {
+			for _, badKey := range badKeys {
+				key := fmt.Sprintf("%s%s", ns, badKey)
+				stdout, stderr := e.RunCommandExpectError(
+					"pulumi",
+					"config",
+					"--config-file",
+					configFile,
+					"set",
+					"--path",
+					key,
+					"value",
+				)
+				assert.Equal(t, "", stdout)
+				assert.NotEqual(t, "", stderr)
+			}
+		}
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	})
 }
 
 func testDestroyStackRef(e *ptesting.Environment, organization string) {
