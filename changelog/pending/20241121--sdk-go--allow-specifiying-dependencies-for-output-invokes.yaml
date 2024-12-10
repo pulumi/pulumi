@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/go
-  description: Allow specifying dependencies for output invokes
+  description: Allow specifying dependencies for output invokes. Go code generation for Output form invokes will use the new `Context.InvokeOutput` method.
