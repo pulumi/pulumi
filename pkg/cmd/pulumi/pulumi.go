@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
@@ -347,7 +348,7 @@ func NewPulumiCmd() *cobra.Command {
 				newLoginCmd(),
 				newLogoutCmd(),
 				newWhoAmICmd(),
-				newOrgCmd(),
+				org.NewOrgCmd(),
 				newDeploymentCmd(),
 			},
 		},
