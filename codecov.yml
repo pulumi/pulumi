@@ -31,7 +31,12 @@ coverage:
     # Patch tracks the coverage of the changes in a single patch.
     patch:
       default:
-        informational: true
+        # coverage for new/modified code
+        target: 80%
+        # only allow coverage to drop by 5% in new/modified code
+        threshold: 5%
+        # make codecov block PR if coverage goals aren't met
+        informational: false
 
 ignore:
   # Integration tests, lifecycle tests and codegen test data
