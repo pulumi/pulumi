@@ -558,12 +558,12 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},
@@ -726,12 +726,12 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},
@@ -904,12 +904,12 @@ func TestCanceledRefresh(t *testing.T) {
 	urnB := p.NewURN(resType, "resB", "")
 	urnC := p.NewURN(resType, "resC", "")
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
-			Delete:       delete,
+			Delete:       del,
 			ID:           id,
 			Inputs:       resource.PropertyMap{},
 			Outputs:      resource.PropertyMap{},

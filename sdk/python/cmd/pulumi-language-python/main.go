@@ -794,7 +794,8 @@ func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 
 func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
 	// wait for the debugger to be ready
-	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	defer cancel()
 	err := dbg.WaitForReady(ctx, cmd.Process.Pid)
 	if err != nil {
 		return err

@@ -90,7 +90,7 @@ type pluginInfoJSON struct {
 	Name         string  `json:"name"`
 	Kind         string  `json:"kind"`
 	Version      string  `json:"version"`
-	Size         int     `json:"size"`
+	Size         uint64  `json:"size"`
 	InstallTime  *string `json:"installTime,omitempty"`
 	LastUsedTime *string `json:"lastUsedTime,omitempty"`
 }
@@ -110,7 +110,7 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			Name:    plugin.Name,
 			Kind:    string(plugin.Kind),
 			Version: version,
-			Size:    int(plugin.Size),
+			Size:    plugin.Size,
 		}
 
 		if !plugin.InstallTime.IsZero() {
@@ -139,7 +139,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		if plugin.Size == 0 {
 			bytes = naString
 		} else {
-			bytes = humanize.Bytes(uint64(plugin.Size))
+			bytes = humanize.Bytes(plugin.Size)
 		}
 		var installTime string
 		if plugin.InstallTime.IsZero() {
@@ -158,7 +158,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
 		})
 
-		totalSize += uint64(plugin.Size)
+		totalSize += plugin.Size
 	}
 
 	ui.PrintTable(cmdutil.Table{
