@@ -812,10 +812,10 @@ func (ctx *Context) InvokePackage(
 		return optsErr
 	}
 	if len(invokeOpts.DependsOn) > 0 {
-		return errors.New("DependsOn is not supported for direct form invoke, use the output form invoke instead")
+		return fmt.Errorf("DependsOn is not supported for direct form invoke of %q, use the output form instead", tok)
 	}
 	if len(invokeOpts.DependsOnInputs) > 0 {
-		return errors.New("DependsOnInputs is not supported for direct form invoke, use the output form invoke instead")
+		return fmt.Errorf("DependsOnInputs is not supported for direct form invoke of %q, use the output form instead", tok)
 	}
 
 	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
