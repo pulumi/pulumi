@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -174,6 +175,9 @@ type UpdateOptions struct {
 
 	// AttachDebugger to launch the language host in debug mode.
 	AttachDebugger bool
+
+	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
+	Autonamer autonaming.Autonamer
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

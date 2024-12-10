@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -33,6 +34,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -172,6 +174,15 @@ func newUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+
+		var autonamer autonaming.Autonamer
+		if env.Experimental.Value() {
+			autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
+			if err != nil {
+				return fmt.Errorf("getting autonaming config: %w", err)
+			}
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -191,6 +202,7 @@ func newUpCmd() *cobra.Command {
 			Experimental:    env.Experimental.Value(),
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
+			Autonamer:       autonamer,
 		}
 
 		if planFilePath != "" {
@@ -886,4 +898,18 @@ func isPreconfiguredEmptyStack(
 	}
 
 	return true
+}
+
+func autonamingStackContext(proj *workspace.Project, s backend.Stack) autonaming.StackContext {
+	organization := "organization"
+	if cs, ok := s.(httpstate.Stack); ok {
+		organization = cs.OrgName()
+	}
+	project := proj.Name.String()
+	stack := s.Ref().Name().String()
+	return autonaming.StackContext{
+		Organization: organization,
+		Project:      project,
+		Stack:        stack,
+	}
 }
