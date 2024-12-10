@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package config
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfigEnvRmCmd(t *testing.T) {
+func TestConfigEnvAddCmd(t *testing.T) {
 	t.Parallel()
 
 	projectYAML := `name: test
@@ -34,23 +34,34 @@ runtime: yaml`
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 
+		env := &esc.Environment{
+			Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{
+					"aws:region": esc.NewValue("us-west-2"),
+				}),
+			},
+		}
+
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", nil, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent}
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		add := &configEnvAddCmd{parent: parent}
 		ctx := context.Background()
-		err := rm.run(ctx, []string{"env"})
+		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
-		const expectedOut = `KEY  VALUE
+		const expectedOut = `KEY         VALUE
+aws:region  us-west-2
 
 Save? Yes
 `
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
-		const expectedYAML = "{}\n"
+		const expectedYAML = `environment:
+  - env
+`
 
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
@@ -58,65 +69,48 @@ Save? Yes
 	t.Run("no imports, yes", func(t *testing.T) {
 		t.Parallel()
 
-		var newStackYAML string
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", nil, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, yes: true}
-		ctx := context.Background()
-		err := rm.run(ctx, []string{"env"})
-		require.NoError(t, err)
-
-		const expectedOut = "KEY  VALUE\n"
-
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
-
-		const expectedYAML = "{}\n"
-
-		assert.Equal(t, expectedYAML, newStackYAML)
-	})
-
-	t.Run("one import", func(t *testing.T) {
-		t.Parallel()
-
-		const stackYAML = `environment:
-  - env
-`
+		env := &esc.Environment{
+			Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{
+					"aws:region": esc.NewValue("us-west-2"),
+				}),
+			},
+		}
 
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, nil, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, yes: true}
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		add := &configEnvAddCmd{parent: parent, yes: true}
 		ctx := context.Background()
-		err := rm.run(ctx, []string{"env"})
+		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
-		const expectedOut = "KEY  VALUE\n"
+		const expectedOut = `KEY         VALUE
+aws:region  us-west-2
+`
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
-		const expectedYAML = "{}\n"
+		const expectedYAML = `environment:
+  - env
+`
 
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
 
-	t.Run("effects -> no effects", func(t *testing.T) {
+	t.Run("no effects", func(t *testing.T) {
 		t.Parallel()
-
-		const stackYAML = `environment:
-  - env
-  - env2
-`
 
 		env := &esc.Environment{}
 
 		var newStackYAML string
 		stdin := strings.NewReader("n")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent}
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		add := &configEnvAddCmd{parent: parent}
 		ctx := context.Background()
-		err := rm.run(ctx, []string{"env2"})
+		err := add.run(ctx, []string{"env"})
 		require.Error(t, err)
 
 		const expectedOut = "KEY  VALUE\n" +
@@ -125,9 +119,37 @@ Save? Yes
 			"Save? No\n"
 
 		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+
+		assert.Equal(t, "", newStackYAML)
 	})
 
-	t.Run("two imports, secrets", func(t *testing.T) {
+	t.Run("no effects, yes", func(t *testing.T) {
+		t.Parallel()
+
+		env := &esc.Environment{}
+
+		var newStackYAML string
+		var stdout bytes.Buffer
+		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		add := &configEnvAddCmd{parent: parent, yes: true}
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env"})
+		require.NoError(t, err)
+
+		const expectedOut = "KEY  VALUE\n" +
+			"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties.\n" +
+			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n"
+
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+
+		const expectedYAML = `environment:
+  - env
+`
+
+		assert.Equal(t, expectedYAML, newStackYAML)
+	})
+
+	t.Run("one import, secrets", func(t *testing.T) {
 		t.Parallel()
 
 		env := &esc.Environment{
@@ -140,17 +162,16 @@ Save? Yes
 		}
 
 		const stackYAML = `environment:
- - env
- - env2
+  - env
 `
 
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent}
+		add := &configEnvAddCmd{parent: parent}
 		ctx := context.Background()
-		err := rm.run(ctx, []string{"env2"})
+		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE
@@ -164,12 +185,13 @@ Save? Yes
 
 		const expectedYAML = `environment:
   - env
+  - env2
 `
 
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
 
-	t.Run("two imports, secrets", func(t *testing.T) {
+	t.Run("one import, secrets", func(t *testing.T) {
 		t.Parallel()
 
 		env := &esc.Environment{
@@ -182,17 +204,16 @@ Save? Yes
 		}
 
 		const stackYAML = `environment:
- - env
- - env2
+  - env
 `
 
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, showSecrets: true}
+		add := &configEnvAddCmd{parent: parent, showSecrets: true}
 		ctx := context.Background()
-		err := rm.run(ctx, []string{"env2"})
+		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE
@@ -206,6 +227,7 @@ Save? Yes
 
 		const expectedYAML = `environment:
   - env
+  - env2
 `
 
 		assert.Equal(t, expectedYAML, newStackYAML)

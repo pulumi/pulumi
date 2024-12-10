@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -315,7 +316,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newNewCmd(),
-				newConfigCmd(),
+				config.NewConfigCmd(),
 				cmdStack.NewStackCmd(),
 				newConsoleCmd(),
 				newImportCmd(),
