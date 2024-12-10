@@ -14,37 +14,25 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
-__all__ = ['ProviderArgs', 'Provider']
+__all__ = ['GoodbyeArgs', 'Goodbye']
 
 @pulumi.input_type
-class ProviderArgs:
-    def __init__(__self__, *,
-                 text: Optional[pulumi.Input[str]] = None):
+class GoodbyeArgs:
+    def __init__(__self__):
         """
-        The set of arguments for constructing a Provider resource.
+        The set of arguments for constructing a Goodbye resource.
         """
-        if text is not None:
-            pulumi.set(__self__, "text", text)
-
-    @property
-    @pulumi.getter
-    def text(self) -> Optional[pulumi.Input[str]]:
-        return pulumi.get(self, "text")
-
-    @text.setter
-    def text(self, value: Optional[pulumi.Input[str]]):
-        pulumi.set(self, "text", value)
+        pass
 
 
-class Provider(pulumi.ProviderResource):
+class Goodbye(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 text: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
-        Create a Subpackage resource with the given unique name, props, and options.
+        Create a Goodbye resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -52,17 +40,17 @@ class Provider(pulumi.ProviderResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ProviderArgs] = None,
+                 args: Optional[GoodbyeArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Subpackage resource with the given unique name, props, and options.
+        Create a Goodbye resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ProviderArgs args: The arguments to use to populate this resource's properties.
+        :param GoodbyeArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ProviderArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(GoodbyeArgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -71,7 +59,6 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 text: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -79,13 +66,37 @@ class Provider(pulumi.ProviderResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ProviderArgs.__new__(ProviderArgs)
+            __props__ = GoodbyeArgs.__new__(GoodbyeArgs)
 
-            __props__.__dict__["text"] = text
-        super(Provider, __self__).__init__(
-            'subpackage',
+            __props__.__dict__["parameter_value"] = None
+        super(Goodbye, __self__).__init__(
+            'goodbye:index:Goodbye',
             resource_name,
             __props__,
             opts,
             package_ref=_utilities.get_package())
+
+    @staticmethod
+    def get(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> 'Goodbye':
+        """
+        Get an existing Goodbye resource's state with the given name, id, and optional extra
+        properties used to qualify the lookup.
+
+        :param str resource_name: The unique name of the resulting resource.
+        :param pulumi.Input[str] id: The unique provider ID of the resource to lookup.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
+
+        __props__ = GoodbyeArgs.__new__(GoodbyeArgs)
+
+        __props__.__dict__["parameter_value"] = None
+        return Goodbye(resource_name, opts=opts, __props__=__props__)
+
+    @property
+    @pulumi.getter(name="parameterValue")
+    def parameter_value(self) -> pulumi.Output[str]:
+        return pulumi.get(self, "parameter_value")
 
