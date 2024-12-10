@@ -668,31 +668,56 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) invokePackageRaw(
 	tok string, args interface{}, packageRef string, opts ...InvokeOption,
-) (resource.PropertyMap, error) {
+) (resource.PropertyMap, []Resource, error) {
 	if tok == "" {
-		return nil, errors.New("invoke token must not be empty")
+		return nil, []Resource{}, errors.New("invoke token must not be empty")
 	}
-
-	options, err := NewInvokeOptions(opts...)
-	if err != nil {
-		return nil, err
+	options := mergeInvokeOptions(opts...)
+	deps := []Resource{}
+	depSet := urnSet{} // Only used for `addURNs` below.
+	for _, d := range options.DependsOn {
+		// This will await the resources, ensuring that we don't call the invoke before the dependencies are ready.
+		if err := d.addURNs(ctx.ctx, depSet, nil); err != nil {
+			return nil, []Resource{}, err
+		}
+		switch d := d.(type) {
+		case resourceDependencySet:
+			deps = append(deps, d...)
+		case *resourceArrayInputDependencySet:
+			out := d.input.ToResourceArrayOutput()
+			value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
+			if err != nil || !known {
+				return nil, []Resource{}, err
+			}
+			resources, ok := value.([]Resource)
+			if !ok {
+				return nil, []Resource{},
+					fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+						reflect.TypeOf(value))
+			}
+			deps = append(deps, resources...)
+		default:
+			// Unreachable.
+			// We control all implementations of dependencySet.
+			contract.Failf("Unknown dependencySet %T", d)
+		}
 	}
-
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	var err error
 	if err = ctx.beginRPC(); err != nil {
-		return nil, err
+		return nil, []Resource{}, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return nil, err
+		return nil, []Resource{}, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return nil, err
+			return nil, []Resource{}, err
 		}
 		providerRef = pr
 	}
@@ -703,7 +728,7 @@ func (ctx *Context) invokePackageRaw(
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -720,7 +745,7 @@ func (ctx *Context) invokePackageRaw(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -736,7 +761,7 @@ func (ctx *Context) invokePackageRaw(
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, err
+		return nil, []Resource{}, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -747,17 +772,21 @@ func (ctx *Context) invokePackageRaw(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, []Resource{}, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	return plugin.UnmarshalProperties(
+	r, err := plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
 		})
+	if err != nil {
+		return nil, []Resource{}, err
+	}
+	return r, deps, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
@@ -778,7 +807,18 @@ func (ctx *Context) InvokePackage(
 		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	invokeOpts, optsErr := NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return fmt.Errorf("DependsOn is not supported for direct form invoke of %q, use the output form instead", tok)
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return fmt.Errorf("DependsOnInputs is not supported for direct form invoke of %q, use the output form instead", tok)
+	}
+
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return err
 	}
@@ -802,7 +842,7 @@ func (ctx *Context) InvokePackageRaw(
 		return false, errors.New("result must be a pointer to a struct or map value")
 	}
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return false, err
 	}
@@ -812,6 +852,41 @@ func (ctx *Context) InvokePackageRaw(
 	}
 	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return hasSecret, nil
+}
+
+// InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
+type InvokeOutputOptions struct {
+	// The package reference for parameterized providers.
+	PackageRef string
+	// The options provided by the user for the invoke call, such as `Provider`,
+	// `Version, `DependsOn`, etc.
+	InvokeOptions []InvokeOption
+}
+
+// InvokeOutput will invoke a provider's function, identified by its token tok. This function is
+// used by generated SDK code for Output form invokes.
+// `output` is used to determine the output type to return.
+func (ctx *Context) InvokeOutput(
+	tok string, args interface{}, output Output, options InvokeOutputOptions,
+) Output {
+	output = ctx.newOutput(reflect.TypeOf(output))
+
+	go func() {
+		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, options.InvokeOptions...)
+		if err != nil {
+			internal.RejectOutput(output, err)
+		}
+
+		dest := reflect.New(output.ElementType()).Elem()
+		known := !outProps.ContainsUnknowns()
+		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
+		if err != nil {
+			internal.RejectOutput(output, err)
+		}
+		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+	}()
+
+	return output
 }
 
 // Call will invoke a provider call function, identified by its token tok.

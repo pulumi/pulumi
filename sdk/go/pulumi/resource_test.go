@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1374,5 +1375,115 @@ func TestParentAndDependsOnAreTheSame12032(t *testing.T) {
 			Parent(&child)))
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
+
+type DoEchoResult struct {
+	Echo *string `pulumi:"echo"`
+}
+
+type DoEchoArgs struct {
+	Echo *string `pulumi:"echo"`
+}
+
+func TestInvokeDependsOn(t *testing.T) {
+	t.Parallel()
+
+	resolved := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewStringProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			time.Sleep(1 * time.Second)
+			resolved = true
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		opts := DependsOn([]Resource{dep})
+
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
+
+		require.NoError(t, err)
+		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
+		require.True(t, resolved)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].URN())
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+func TestInvokeDependsOnInputs(t *testing.T) {
+	t.Parallel()
+
+	resolved := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewStringProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			time.Sleep(1 * time.Second)
+			resolved = true
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		ro := NewResourceOutput(dep)
+		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
+
+		require.NoError(t, err)
+		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
+		require.True(t, resolved)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+func TestInvokeDependsOnNotAllowed(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewStringProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var rv DoEchoResult
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		ro := NewResourceOutput(dep)
+		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+
+		err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+
+		require.ErrorContains(t, err, "DependsOnInputs is not supported for direct form invoke")
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
 	require.NoError(t, err)
 }

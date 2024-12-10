@@ -44,21 +44,11 @@ type GetIntegrationRuntimeObjectMetadatumResult struct {
 }
 
 func GetIntegrationRuntimeObjectMetadatumOutput(ctx *pulumi.Context, args GetIntegrationRuntimeObjectMetadatumOutputArgs, opts ...pulumi.InvokeOption) GetIntegrationRuntimeObjectMetadatumResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetIntegrationRuntimeObjectMetadatumResultOutput, error) {
 			args := v.(GetIntegrationRuntimeObjectMetadatumArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv GetIntegrationRuntimeObjectMetadatumResult
-			secret, err := ctx.InvokePackageRaw("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, "", opts...)
-			if err != nil {
-				return GetIntegrationRuntimeObjectMetadatumResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(GetIntegrationRuntimeObjectMetadatumResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(GetIntegrationRuntimeObjectMetadatumResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::getIntegrationRuntimeObjectMetadatum", args, GetIntegrationRuntimeObjectMetadatumResultOutput{}, options).(GetIntegrationRuntimeObjectMetadatumResultOutput), nil
 		}).(GetIntegrationRuntimeObjectMetadatumResultOutput)
 }
 
