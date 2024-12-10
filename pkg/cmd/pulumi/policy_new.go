@@ -273,7 +273,7 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
-		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
+		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}

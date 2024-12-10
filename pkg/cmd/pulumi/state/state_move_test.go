@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package state
 
 import (
 	"bytes"
@@ -1354,4 +1354,16 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 		sourceSnapshot.Resources[2].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2"),
 		sourceSnapshot.Resources[3].URN)
+}
+
+func chdir(t *testing.T, dir string) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chdir(dir)) // Set directory
+	t.Cleanup(func() {
+		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		restoredDir, err := os.Getwd()
+		assert.NoError(t, err)
+		assert.Equal(t, cwd, restoredDir)
+	})
 }

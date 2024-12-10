@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package state
 
 import (
 	"context"
@@ -20,14 +20,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -44,25 +45,94 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func newStateCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "state",
-		Short: "Edit the current stack's state",
-		Long: `Edit the current stack's state
+// runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
+func runStateEdit(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
+	urn resource.URN, operation edit.OperationFunc,
+) error {
+	return runTotalStateEdit(ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+		res, err := locateStackResource(opts, snap, urn)
+		if err != nil {
+			return err
+		}
 
-Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
-troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
-		Args: cmdutil.NoArgs,
+		return operation(snap, res)
+	})
+}
+
+// runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
+// Before mutating, the user may be prompted to for confirmation if the current session is interactive.
+func runTotalStateEdit(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+	s, err := cmdStack.RequireStack(
+		ctx,
+		ws,
+		lm,
+		stackName,
+		cmdStack.OfferNew,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+	return TotalStateEdit(ctx, s, showPrompt, opts, operation)
+}
+
+func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+) error {
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	if err != nil {
+		return err
+	} else if snap == nil {
+		return nil
 	}
 
-	cmd.AddCommand(newStateEditCommand())
-	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
-	cmd.AddCommand(newStateUnprotectCommand())
-	cmd.AddCommand(newStateRenameCommand())
-	cmd.AddCommand(newStateUpgradeCommand())
-	cmd.AddCommand(newStateMoveCommand())
-	cmd.AddCommand(newStateRepairCommand())
-	return cmd
+	if showPrompt && cmdutil.Interactive() {
+		confirm := false
+		surveycore.DisableColor = true
+		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
+		prompt += "This command will edit your stack's state directly. Confirm?"
+		if err = survey.AskOne(&survey.Confirm{
+			Message: prompt,
+		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
+			return result.FprintBailf(os.Stdout, "confirmation declined")
+		}
+	}
+
+	// The `operation` callback will mutate `snap` in-place. In order to validate the correctness of the transformation
+	// that we are doing here, we verify the integrity of the snapshot before the mutation. If the snapshot was valid
+	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
+	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
+	if err = operation(opts, snap); err != nil {
+		return err
+	}
+
+	// If the stack is already broken, don't bother verifying the integrity here.
+	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
+		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
+	}
+
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	if err != nil {
+		return fmt.Errorf("serializing deployment: %w", err)
+	}
+
+	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
+	bytes, err := json.Marshal(sdep)
+	if err != nil {
+		return err
+	}
+	dep := apitype.UntypedDeployment{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Deployment: bytes,
+	}
+	return s.ImportDeployment(ctx, &dep)
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
@@ -113,102 +183,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
+		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no resource selected")
 	}
 
 	return optionMap[option], nil
-}
-
-// runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
-	urn resource.URN, operation edit.OperationFunc,
-) error {
-	return runTotalStateEdit(ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-		res, err := locateStackResource(opts, snap, urn)
-		if err != nil {
-			return err
-		}
-
-		return operation(snap, res)
-	})
-}
-
-// runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
-// Before mutating, the user may be prompted to for confirmation if the current session is interactive.
-func runTotalStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
-	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) error {
-	opts := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
-	}
-	s, err := cmdStack.RequireStack(
-		ctx,
-		ws,
-		lm,
-		stackName,
-		cmdStack.OfferNew,
-		opts,
-	)
-	if err != nil {
-		return err
-	}
-	return totalStateEdit(ctx, s, showPrompt, opts, operation)
-}
-
-func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
-	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) error {
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return err
-	} else if snap == nil {
-		return nil
-	}
-
-	if showPrompt && cmdutil.Interactive() {
-		confirm := false
-		surveycore.DisableColor = true
-		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
-		prompt += "This command will edit your stack's state directly. Confirm?"
-		if err = survey.AskOne(&survey.Confirm{
-			Message: prompt,
-		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
-		}
-	}
-
-	// The `operation` callback will mutate `snap` in-place. In order to validate the correctness of the transformation
-	// that we are doing here, we verify the integrity of the snapshot before the mutation. If the snapshot was valid
-	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
-	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
-	if err = operation(opts, snap); err != nil {
-		return err
-	}
-
-	// If the stack is already broken, don't bother verifying the integrity here.
-	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
-		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
-	}
-
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := json.Marshal(sdep)
-	if err != nil {
-		return err
-	}
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-	return s.ImportDeployment(ctx, &dep)
 }
 
 // Prompt the user to select a URN from the passed in state.
@@ -287,4 +267,21 @@ func getNewResourceName() (tokens.QName, error) {
 	contract.Assertf(tokens.IsQName(resourceName),
 		"Survey validated that resourceName %q is a QName", resourceName)
 	return tokens.QName(resourceName), nil
+}
+
+// Format a non-nil error that indicates some arguments are missing for a
+// non-interactive session.
+func missingNonInteractiveArg(args ...string) error {
+	switch len(args) {
+	case 0:
+		panic("cannot create an error message for missing zero args")
+	case 1:
+		return fmt.Errorf("Must supply <%s> unless pulumi is run interactively", args[0])
+	default:
+		for i, s := range args {
+			args[i] = "<" + s + ">"
+		}
+		return fmt.Errorf("Must supply %s and %s unless pulumi is run interactively",
+			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
+	}
 }

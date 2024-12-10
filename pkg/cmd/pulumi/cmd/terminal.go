@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Terminal detection utilities.
-package main
+package cmd
 
 import "golang.org/x/term"
 
-type optimalPageSizeOpts struct {
-	nopts          int
-	terminalHeight int
+type OptimalPageSizeOpts struct {
+	Nopts          int
+	TerminalHeight int
 }
 
 // Computes how many options to display in a Terminal UI multi-select.
 // Tries to auto-detect and take terminal height into account.
-func optimalPageSize(opts optimalPageSizeOpts) int {
+func OptimalPageSize(opts OptimalPageSizeOpts) int {
 	pageSize := 15
-	if opts.terminalHeight != 0 {
-		pageSize = opts.terminalHeight
+	if opts.TerminalHeight != 0 {
+		pageSize = opts.TerminalHeight
 	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
-	if pageSize > opts.nopts {
-		pageSize = opts.nopts
+	if pageSize > opts.Nopts {
+		pageSize = opts.Nopts
 	}
 	const buffer = 5
 	if pageSize > buffer {

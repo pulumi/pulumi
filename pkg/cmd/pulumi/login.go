@@ -231,7 +231,7 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 	sort.Strings(acts)
 
 	nopts := len(acts)
-	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
 	message := fmt.Sprintf("\rPlease choose an account (%d total):\n", nopts)
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
