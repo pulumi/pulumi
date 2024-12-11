@@ -85,9 +85,15 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 						return err
 					}
 				}
+				fmt.Fprintf(os.Stderr, "SDKs have been written to %s", out)
 				return nil
 			}
-			return genSDK(language, out, pkg, overlays, local)
+			err = genSDK(language, out, pkg, overlays, local)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "SDKs have been written to %s", filepath.Join(out, language))
+			return nil
 		}),
 	}
 	cmd.Flags().StringVarP(&language, "language", "", "all",
