@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -56,7 +57,7 @@ func newDestroyCmd() *cobra.Command {
 	var execAgent string
 
 	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+	remoteArgs := deployment.RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -79,7 +80,7 @@ func newDestroyCmd() *cobra.Command {
 	var continueOnError bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
-	if remoteSupported() {
+	if deployment.RemoteSupported() {
 		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
 	}
 
@@ -109,7 +110,7 @@ func newDestroyCmd() *cobra.Command {
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				skipPreview = true
 			}
 
@@ -152,8 +153,8 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
+			if remoteArgs.Remote {
+				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					targetDependents, "", cmdStack.ConfigFile)
@@ -166,11 +167,11 @@ func newDestroyCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+				if errResult := deployment.ValidateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
 					return errResult
 				}
 
-				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
@@ -412,7 +413,7 @@ func newDestroyCmd() *cobra.Command {
 		"Automatically approve and perform the destroy after previewing it")
 
 	// Remote flags
-	remoteArgs.applyFlags(cmd)
+	remoteArgs.ApplyFlags(cmd)
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

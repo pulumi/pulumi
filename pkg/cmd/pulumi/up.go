@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -68,7 +69,7 @@ func newUpCmd() *cobra.Command {
 	var client string
 
 	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+	remoteArgs := deployment.RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -497,7 +498,7 @@ func newUpCmd() *cobra.Command {
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				skipPreview = true
 			}
 
@@ -549,8 +550,8 @@ func newUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
+			if remoteArgs.Remote {
+				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
 					targetDependents, planFilePath, cmdStack.ConfigFile)
@@ -563,11 +564,11 @@ func newUpCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if err = validateRemoteDeploymentFlags(url, remoteArgs); err != nil {
+				if err = deployment.ValidateRemoteDeploymentFlags(url, remoteArgs); err != nil {
 					return err
 				}
 
-				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
+				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
@@ -730,7 +731,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// Remote flags
-	remoteArgs.applyFlags(cmd)
+	remoteArgs.ApplyFlags(cmd)
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package deployment
 
 import (
 	"context"
@@ -56,32 +56,6 @@ const (
 )
 
 var errAbortCmd = errors.New("abort")
-
-func newDeploymentCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		// This is temporarily hidden while we iterate over the new set of commands,
-		// we will remove before releasing these new set of features.
-		Hidden: true,
-		Use:    "deployment",
-		Short:  "Manage stack deployments on Pulumi Cloud",
-		Long: "Manage stack deployments on Pulumi Cloud.\n" +
-			"\n" +
-			"Use this command to trigger deployment jobs and manage deployment settings.",
-		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		}),
-	}
-
-	cmd.PersistentFlags().StringVar(
-		&stackDeploymentConfigFile, "config-file", "",
-		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
-
-	cmd.AddCommand(newDeploymentSettingsCmd())
-	cmd.AddCommand(newDeploymentRunCmd())
-
-	return cmd
-}
 
 func newDeploymentSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package deployment
 
 import (
 	"errors"
@@ -96,12 +96,12 @@ func newDeploymentRunCmd() *cobra.Command {
 				return errResult
 			}
 
-			return runDeployment(ctx, ws, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return RunDeployment(ctx, ws, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
 		}),
 	}
 
 	// Remote flags
-	remoteArgs.applyFlagsForDeploymentCommand(cmd)
+	remoteArgs.ApplyFlagsForDeploymentCommand(cmd)
 
 	cmd.PersistentFlags().BoolVar(
 		&suppressPermalink, "suppress-permalink", false,

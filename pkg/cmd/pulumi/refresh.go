@@ -30,6 +30,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -54,7 +55,7 @@ func newRefreshCmd() *cobra.Command {
 	var stackName string
 
 	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+	remoteArgs := deployment.RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -78,7 +79,7 @@ func newRefreshCmd() *cobra.Command {
 	var importPendingCreates *[]string
 
 	use, cmdArgs := "refresh", cmdutil.NoArgs
-	if remoteSupported() {
+	if deployment.RemoteSupported() {
 		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
 	}
 
@@ -101,7 +102,7 @@ func newRefreshCmd() *cobra.Command {
 			ws := pkgWorkspace.Instance
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				skipPreview = true
 			}
 
@@ -144,8 +145,8 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
+			if remoteArgs.Remote {
+				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					false, "", cmdStack.ConfigFile)
@@ -158,11 +159,11 @@ func newRefreshCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+				if errResult := deployment.ValidateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
 					return errResult
 				}
 
-				return runDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
+				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
@@ -382,7 +383,7 @@ func newRefreshCmd() *cobra.Command {
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
 	// Remote flags
-	remoteArgs.applyFlags(cmd)
+	remoteArgs.ApplyFlags(cmd)
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
