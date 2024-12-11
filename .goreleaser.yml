@@ -18,7 +18,7 @@ builds:
   flags:
     - -trimpath
   ldflags:
-    - -w -s -X github.com/pulumi/pulumi/pkg/v3/version.Version=v{{.Env.PULUMI_VERSION}}
+    - -w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version==v{{.Env.PULUMI_VERSION}}
   mod_timestamp: '{{ .CommitTimestamp }}'
   tags:
     # Enforce the pure Go implementation of os/user, even when cgo is available.
