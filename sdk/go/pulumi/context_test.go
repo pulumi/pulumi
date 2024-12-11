@@ -645,7 +645,7 @@ func TestInvokeOutput(t *testing.T) {
 
 	err := RunErr(func(ctx *Context) error {
 		outType := AnyOutput{}
-		output := ctx.InvokeOutput("test:invoke:success", &invokeArgs{"will fail"}, outType, InvokeOutputOptions{})
+		output := ctx.InvokeOutput("test:invoke:success", &invokeArgs{"will succeed"}, outType, InvokeOutputOptions{})
 		ctx.Export("output", output)
 		return nil
 	}, WithMocks("project", "stack", mocks))
@@ -653,7 +653,7 @@ func TestInvokeOutput(t *testing.T) {
 
 	err = RunErr(func(ctx *Context) error {
 		outType := AnyOutput{}
-		output := ctx.InvokeOutput("test:invoke:fail", &invokeArgs{"will succeed"}, outType, InvokeOutputOptions{})
+		output := ctx.InvokeOutput("test:invoke:fail", &invokeArgs{"will fail"}, outType, InvokeOutputOptions{})
 		ctx.Export("output", output)
 		return nil
 	}, WithMocks("project", "stack", mocks))
