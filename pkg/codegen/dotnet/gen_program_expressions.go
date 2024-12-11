@@ -610,7 +610,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		if len(expr.Args) == 3 {
 			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(w, ", new() {\n")
+				// For output form invokes, explicitly use the InvokeOutputOptions class for options
+				// to ensure we pick the correct overload that supports `DependsOn`.
+				if pcl.IsOutputVersionInvokeCall(expr) {
+					g.Fgen(w, ", new InvokeOutputOptions() {\n")
+				} else {
+					g.Fgen(w, ", new() {\n")
+				}
 				g.Indented(func() {
 					for _, item := range invokeOptions.Items {
 						key := pcl.LiteralValueString(item.Key)
