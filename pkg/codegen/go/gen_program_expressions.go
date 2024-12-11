@@ -306,6 +306,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
+	case "castDeferredOutput":
+		outputType := expr.Args[0].Type()
+		typeParameter := deferredOutputCastTypeParameter(outputType)
+		g.Fgenf(w, "pulumix.Cast[%s](%v)", typeParameter, expr.Args[0])
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",

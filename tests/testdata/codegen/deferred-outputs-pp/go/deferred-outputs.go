@@ -2,13 +2,14 @@ package main
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		secondPasswordLength, resolveSecondPasswordLength := pulumi.DeferredOutput(ctx)
+		secondPasswordLength, resolveSecondPasswordLength := pulumi.DeferredOutput[int](ctx)
 		first, err := NewFirst(ctx, "first", &FirstArgs{
-			PasswordLength: secondPasswordLength,
+			PasswordLength: pulumix.Cast[pulumi.IntOutput](secondPasswordLength),
 		})
 		if err != nil {
 			return err
@@ -20,9 +21,9 @@ func main() {
 			return err
 		}
 		resolveSecondPasswordLength(second.PasswordLength)
-		loopingOverMany, resolveLoopingOverMany := pulumi.DeferredOutput(ctx)
+		loopingOverMany, resolveLoopingOverMany := pulumi.DeferredOutput[[]int](ctx)
 		another, err := NewFirst(ctx, "another", &FirstArgs{
-			PasswordLength: float64(loopingOverMany.ApplyT(func(loopingOverMany []int) (pulumi.Int, error) {
+			PasswordLength: pulumix.Cast[pulumi.IntOutput](loopingOverMany.ApplyT(func(loopingOverMany []int) (pulumi.Int, error) {
 				return pulumi.Int(len(loopingOverMany)), nil
 			}).(pulumi.IntOutput)),
 		})

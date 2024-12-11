@@ -1219,3 +1219,18 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 		})
 	}, "int-string should not be allowed")
 }
+
+func TestBasicDeferredOutput(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[string](context.Background())
+	go func() {
+		resolve(String("hello").ToStringOutput())
+		v, known, secret, deps, err := await(deferred)
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Nil(t, deps)
+		assert.Equal(t, "hello", v)
+	}()
+}
