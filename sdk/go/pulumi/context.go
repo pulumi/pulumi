@@ -886,7 +886,6 @@ func (ctx *Context) InvokeOutput(
 			return
 		}
 		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
-		return
 	}()
 
 	return output

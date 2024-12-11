@@ -634,9 +634,8 @@ func TestInvokeOutput(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
-			} else {
-				return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
 			}
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
 		},
 	}
 
