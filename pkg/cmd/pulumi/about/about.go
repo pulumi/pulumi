@@ -599,6 +599,5 @@ func getProjectPluginsSilently(
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
 	runtimeName := proj.Runtime.Name()
-	projectName := string(proj.Name)
-	return plugin.GetRequiredPlugins(ctx.Host, runtimeName, projectName, programInfo, plugin.AllPlugins)
+	return engine.GetRequiredPlugins(ctx.Host, runtimeName, programInfo)
 }

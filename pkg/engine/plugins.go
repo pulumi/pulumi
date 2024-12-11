@@ -118,14 +118,59 @@ func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
 	return s
 }
 
+// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
+func GetRequiredPlugins(
+	host plugin.Host,
+	runtime string,
+	info plugin.ProgramInfo,
+) ([]workspace.PluginSpec, error) {
+	plugins := make([]workspace.PluginSpec, 0, 1)
+
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	lang, err := host.LanguageRuntime(runtime, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
+	}
+	// Query the language runtime plugin for its version.
+	langInfo, err := lang.GetPluginInfo()
+	if err != nil {
+		// Don't error if this fails, just warn and return the version as unknown.
+		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
+		plugins = append(plugins, workspace.PluginSpec{
+			Name: runtime,
+			Kind: apitype.LanguagePlugin,
+		})
+	} else {
+		plugins = append(plugins, workspace.PluginSpec{
+			Name:    langInfo.Name,
+			Kind:    langInfo.Kind,
+			Version: langInfo.Version,
+		})
+	}
+
+	// Use the language plugin to compute this project's set of plugin dependencies.
+	// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
+	//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
+	//     later than we do (right now, we do it up front, but at that point we don't know the version).
+	deps, err := lang.GetRequiredPackages(info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
+	}
+	for _, dep := range deps {
+		plugins = append(plugins, dep.PluginSpec)
+	}
+
+	return plugins, nil
+}
+
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := NewPluginSet()
 
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime,
-		prog.RootDirectory(), prog, plugin.AllPlugins)
+	langhostPlugins, err := GetRequiredPlugins(plugctx.Host, runtime, prog)
 	if err != nil {
 		return set, err
 	}
