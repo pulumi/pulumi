@@ -37,7 +37,7 @@ var _ tests.TestingT = (*testing.T)(nil)
 func TestTestNames(t *testing.T) {
 	t.Parallel()
 
-	for name := range languageTests {
+	for name := range tests.LanguageTests {
 		isInternal := strings.HasPrefix(name, "internal-")
 		isl1 := strings.HasPrefix(name, "l1-")
 		isl2 := strings.HasPrefix(name, "l2-")
@@ -50,7 +50,7 @@ func TestTestNames(t *testing.T) {
 func TestL1NoProviders(t *testing.T) {
 	t.Parallel()
 
-	for name, test := range languageTests {
+	for name, test := range tests.LanguageTests {
 		if strings.HasPrefix(name, "l1-") {
 			assert.Empty(t, test.Providers, "test name %s must not use providers", name)
 		}
@@ -80,7 +80,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 
 	versions := map[string]string{}
 
-	for _, test := range languageTests {
+	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
 			pkg := string(provider.Pkg())
 			version, err := getProviderVersion(provider)
@@ -100,7 +100,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 func TestProviderVersions(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range languageTests {
+	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
 			pkg := string(provider.Pkg())
 			if pkg == "parameterized" {
@@ -130,7 +130,7 @@ func TestProviderVersions(t *testing.T) {
 func TestProviderSchemas(t *testing.T) {
 	t.Parallel()
 
-	for name, test := range languageTests {
+	for name, test := range tests.LanguageTests {
 		// Internal tests are allowed to have invalid schemas.
 		if strings.HasPrefix(name, "internal-") {
 			continue
@@ -165,13 +165,13 @@ func TestProviderSchemas(t *testing.T) {
 func TestBindPrograms(t *testing.T) {
 	t.Parallel()
 
-	for name, test := range languageTests {
+	for name, test := range tests.LanguageTests {
 		// Internal tests are allowed to have invalid programs.
 		if strings.HasPrefix(name, "internal-") {
 			continue
 		}
 
-		src := filepath.Join("testdata", name)
+		src := filepath.Join("tests/testdata", name)
 		loader := &providerLoader{providers: test.Providers}
 		_, diags, err := pcl.BindDirectory(src, loader)
 		for _, diag := range diags {

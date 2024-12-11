@@ -193,7 +193,7 @@ func TestL1Empty(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -236,7 +236,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   tempDir,
-			SnapshotDirectory:    "./testdata/snapshots",
+			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
 		require.Error(t, err)
@@ -249,7 +249,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName: "mock",
 			TemporaryDirectory: tempDir,
-			SnapshotDirectory:  "./testdata/snapshots",
+			SnapshotDirectory:  "./tests/testdata/snapshots",
 			CoreSdkDirectory:   "sdk/dir",
 		})
 		require.Error(t, err)
@@ -262,7 +262,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName:   "mock",
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-			SnapshotDirectory:    "./testdata/snapshots",
+			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
 		require.Error(t, err)
@@ -289,7 +289,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			LanguagePluginName:   "mock",
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   tempDir,
-			SnapshotDirectory:    "./testdata/snapshots",
+			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
 		require.Error(t, err)
@@ -317,7 +317,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots_bad",
+		SnapshotDirectory:    "./tests/testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -360,7 +360,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -404,7 +404,7 @@ func TestL1Empty_NoCoreSDK(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

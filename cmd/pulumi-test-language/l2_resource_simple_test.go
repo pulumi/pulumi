@@ -281,7 +281,7 @@ func TestL2ResourceSimple(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -319,7 +319,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots_bad",
+		SnapshotDirectory:    "./tests/testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -362,7 +362,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -405,7 +405,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -445,7 +445,7 @@ func TestL2ResourceSnapshotEdit(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots_edit",
+		SnapshotDirectory:    "./tests/testdata/snapshots_edit",
 		CoreSdkDirectory:     "sdk/dir",
 		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 			{
@@ -492,7 +492,7 @@ func TestL2ResourceLanguageInfo(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		LanguageInfo:         "{\"name\":\"mock\"}",
 	})

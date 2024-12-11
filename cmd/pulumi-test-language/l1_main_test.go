@@ -207,7 +207,7 @@ func TestL1Main(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})

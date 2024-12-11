@@ -24,7 +24,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -38,22 +37,22 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type L2ResourceAssetArchiveLanguageHost struct {
+type L2LargeLanguageHost struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
 	tempDir string
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) Pack(
+func (h *L2LargeLanguageHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {
 	if req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "asset-archive-5.0.0") {
+	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "large-4.3.2") {
 		return &pulumirpc.PackResponse{
-			ArtifactPath: filepath.Join(req.DestinationDirectory, "asset-archive-5.0.0.sdk"),
+			ArtifactPath: filepath.Join(req.DestinationDirectory, "large-4.3.2.sdk"),
 		}, nil
 	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
 		return &pulumirpc.PackResponse{
@@ -64,56 +63,49 @@ func (h *L2ResourceAssetArchiveLanguageHost) Pack(
 	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) GenerateProject(
+func (h *L2LargeLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
 	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
-	if req.LocalDependencies["asset-archive"] != filepath.Join(h.tempDir, "artifacts", "asset-archive-5.0.0.sdk") {
-		return nil, fmt.Errorf("unexpected asset-archive sdk %s", req.LocalDependencies["asset-archive"])
+	if req.LocalDependencies["large"] != filepath.Join(h.tempDir, "artifacts", "large-4.3.2.sdk") {
+		return nil, fmt.Errorf("unexpected large sdk %s", req.LocalDependencies["large"])
 	}
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
 	}
-	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-asset-archive") {
+	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-large-string") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
 	}
 	var project workspace.Project
 	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
 		return nil, err
 	}
-	if project.Name != "l2-resource-asset-archive" {
+	if project.Name != "l2-large-string" {
 		return nil, fmt.Errorf("unexpected project name %s", project.Name)
-	}
-	if project.Main != "subdir" {
-		return nil, fmt.Errorf("unexpected project main %s", project.Main)
 	}
 	project.Runtime = workspace.NewProjectRuntimeInfo("mock", nil)
 	projectYaml, err := yaml.Marshal(project)
 	if err != nil {
-		return nil, fmt.Errorf("marshal project: %w", err)
+		return nil, fmt.Errorf("could not marshal project: %w", err)
 	}
 
 	// Write the minimal project file.
 	if err := os.WriteFile(filepath.Join(req.TargetDirectory, "Pulumi.yaml"), projectYaml, 0o600); err != nil {
-		return nil, fmt.Errorf("write project file: %w", err)
-	}
-	// And the main subdir, although nothing is in it
-	if err := os.MkdirAll(filepath.Join(req.TargetDirectory, "subdir"), 0o700); err != nil {
-		return nil, fmt.Errorf("make main directory: %w", err)
+		return nil, err
 	}
 
 	return &pulumirpc.GenerateProjectResponse{}, nil
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) GeneratePackage(
+func (h *L2LargeLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
 	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
-	if req.Directory != filepath.Join(h.tempDir, "sdks", "asset-archive-5.0.0") {
+	if req.Directory != filepath.Join(h.tempDir, "sdks", "large-4.3.2") {
 		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
 	}
 
@@ -125,28 +117,28 @@ func (h *L2ResourceAssetArchiveLanguageHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{}, nil
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) GetRequiredPlugins(
+func (h *L2LargeLanguageHost) GetRequiredPlugins(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-asset-archive", "subdir") {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-large-string") {
 		return nil, fmt.Errorf("unexpected directory to get required plugins %s", req.Info.ProgramDirectory)
 	}
 
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: []*pulumirpc.PluginDependency{
 			{
-				Name:    "asset-archive",
+				Name:    "large",
 				Kind:    string(apitype.ResourcePlugin),
-				Version: "5.0.0",
+				Version: "4.3.2",
 			},
 		},
 	}, nil
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) GetProgramDependencies(
+func (h *L2LargeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-asset-archive", "subdir") {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-large-string") {
 		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
 	}
 
@@ -157,20 +149,20 @@ func (h *L2ResourceAssetArchiveLanguageHost) GetProgramDependencies(
 				Version: "1.0.1",
 			},
 			{
-				Name:    "pulumi_asset_archive",
-				Version: "5.0.0",
+				Name:    "pulumi_large",
+				Version: "4.3.2",
 			},
 		},
 	}, nil
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) InstallDependencies(
+func (h *L2LargeLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-asset-archive") {
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-large-string") {
 		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
 	}
-	if req.Info.ProgramDirectory != filepath.Join(req.Info.RootDirectory, "subdir") {
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
 		return fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
 	}
 	if req.Info.EntryPoint != "." {
@@ -179,13 +171,13 @@ func (h *L2ResourceAssetArchiveLanguageHost) InstallDependencies(
 	return nil
 }
 
-func (h *L2ResourceAssetArchiveLanguageHost) Run(
+func (h *L2LargeLanguageHost) Run(
 	ctx context.Context, req *pulumirpc.RunRequest,
 ) (*pulumirpc.RunResponse, error) {
-	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-asset-archive") {
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-large-string") {
 		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
 	}
-	if req.Info.ProgramDirectory != filepath.Join(req.Info.RootDirectory, "subdir") {
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
 		return nil, fmt.Errorf("unexpected program directory to run %s", req.Info.ProgramDirectory)
 	}
 	if req.Info.EntryPoint != "." {
@@ -204,7 +196,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+	stackResource, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type: string(resource.RootStackType),
 		Name: req.Stack,
 	})
@@ -212,21 +204,13 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register stack: %w", err)
 	}
 
-	// Don't calculate hashes in the program, leave it to the engine
-	asset, err := plugin.MarshalAsset(&resource.Asset{
-		Path: "../test.txt",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal asset: %w", err)
-	}
-
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   "asset-archive:index:AssetResource",
+	stringResource, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "large:index:String",
 		Custom: true,
-		Name:   "ass",
+		Name:   "res",
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"value": asset,
+				"value": structpb.NewStringValue("hello world"),
 			},
 		},
 	})
@@ -234,120 +218,31 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
-	archive, err := plugin.MarshalArchive(&resource.Archive{
-		Path: "../archive.tar",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal archive: %w", err)
-	}
-
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   "asset-archive:index:ArchiveResource",
-		Custom: true,
-		Name:   "arc",
-		Object: &structpb.Struct{
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn: stackResource.Urn,
+		Outputs: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"value": archive,
+				"output": stringResource.Object.Fields["value"],
 			},
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not register resource: %w", err)
-	}
-
-	folder, err := plugin.MarshalArchive(&resource.Archive{
-		Path: "../folder",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal folder: %w", err)
-	}
-
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   "asset-archive:index:ArchiveResource",
-		Custom: true,
-		Name:   "dir",
-		Object: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"value": folder,
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not register resource: %w", err)
-	}
-
-	assarc, err := plugin.MarshalArchive(&resource.Archive{
-		Assets: map[string]interface{}{
-			"string": &resource.Asset{
-				Text: "file contents",
-			},
-			"file": &resource.Asset{
-				Path: "../test.txt",
-			},
-			"folder": &resource.Archive{
-				Path: "../folder",
-			},
-			"archive": &resource.Archive{
-				Path: "../archive.tar",
-			},
-		},
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal asset archive: %w", err)
-	}
-
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   "asset-archive:index:ArchiveResource",
-		Custom: true,
-		Name:   "assarc",
-		Object: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"value": assarc,
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not register resource: %w", err)
-	}
-
-	remoteass, err := resource.NewURIAsset(
-		"https://raw.githubusercontent.com/pulumi/pulumi/master" +
-			"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("could not create remote asset: %w", err)
-	}
-
-	mremoteass, err := plugin.MarshalAsset(remoteass, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal remote asset: %w", err)
-	}
-
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   "asset-archive:index:AssetResource",
-		Custom: true,
-		Name:   "remoteass",
-		Object: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"value": mremoteass,
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not register resource: %w", err)
+		return nil, fmt.Errorf("could not register stack outputs: %w", err)
 	}
 
 	return &pulumirpc.RunResponse{}, nil
 }
 
-// Run a simple successful test with a mocked runtime.
-func TestL2ResourceAssetArchive(t *testing.T) {
-	t.Parallel()
-
+// Run a successful test with a mocked runtime that returns large string.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
+func TestL2LargeString(t *testing.T) {
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
-	runtime := &L2ResourceAssetArchiveLanguageHost{tempDir: tempDir}
+	runtime := &L2LargeLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
@@ -360,7 +255,7 @@ func TestL2ResourceAssetArchive(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 		CoreSdkVersion:       "1.0.1",
 	})
@@ -369,7 +264,7 @@ func TestL2ResourceAssetArchive(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
-		Test:  "l2-resource-asset-archive",
+		Test:  "l2-large-string",
 	})
 	require.NoError(t, err)
 	t.Logf("stdout: %s", runResponse.Stdout)
