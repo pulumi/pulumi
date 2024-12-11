@@ -785,6 +785,51 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 
 	// Run a refresh and check that the warning is shown
 	stdout, _ := e.RunCommand("pulumi", "refresh", "--yes")
-	assert.Contains(t, stdout, "refresh operation is using an older version of plugin 'random' "+
+	assert.Contains(t, stdout, "refresh operation is using an older version of package 'random' "+
 		"than the specified program version: 4.13.0 < 4.16.7")
+}
+
+// Test that the warning for upgrading and then running a destroy is shown, also taking into account changes to
+// parameterized packages.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestDestroyUpgradeWarningParameterized(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// `new` wants to work in an empty directory but our use of local url means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// Change to use the parameterised version of the provider
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.3.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.6.0")
+	replaceStringInFile := func(file, pattern, replacement string) {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		newData := strings.ReplaceAll(string(data), pattern, replacement)
+		err = os.WriteFile(file, []byte(newData), 0o600)
+		require.NoError(t, err)
+	}
+	replaceStringInFile(filepath.Join(projectDir, "package.json"), "\"@pulumi/random\": \"^4.13.0\",", "")
+	replaceStringInFile(filepath.Join(projectDir, "index.ts"), "\"@pulumi/random\"", "\"random\"")
+	replaceStringInFile(filepath.Join(projectDir, "index.ts"), "RandomPet", "Pet")
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Update the provider to a new version
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.6.3")
+
+	// Run a destroy and check that the warning is shown
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--yes")
+	assert.Contains(t, stdout, "destroy operation is using an older version of package 'random' "+
+		"than the specified program version: 3.6.0 < 3.6.3")
 }

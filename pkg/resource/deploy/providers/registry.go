@@ -219,10 +219,10 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *ProviderPar
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.version.String())
+	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
 	// We don't write name here because we can reconstruct that from the providers type token
 	internalInputs[parameterizationKey] = resource.NewStringProperty(
-		base64.StdEncoding.EncodeToString(value.value))
+		base64.StdEncoding.EncodeToString(value.Value))
 }
 
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
@@ -259,9 +259,9 @@ func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMa
 	}
 
 	return &ProviderParameterization{
-		name:    name,
-		version: sv,
-		value:   bytes,
+		Name:    name,
+		Version: sv,
+		Value:   bytes,
 	}, nil
 }
 
@@ -355,16 +355,16 @@ func loadParameterizedProvider(
 	if parameter != nil {
 		resp, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    string(parameter.name),
-				Version: parameter.version,
-				Value:   parameter.value,
+				Name:    string(parameter.Name),
+				Version: parameter.Version,
+				Value:   parameter.Value,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
-		if resp.Name != string(parameter.name) {
-			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.name)
+		if resp.Name != string(parameter.Name) {
+			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.Name)
 		}
 	}
 	return provider, nil
