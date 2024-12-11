@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: build
+  description: Updates protobuf and grpc to v5
