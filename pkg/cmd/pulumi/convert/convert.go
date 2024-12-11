@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -78,7 +78,7 @@ func NewConvertCmd() *cobra.Command {
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: pcmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)
@@ -214,7 +214,7 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
-	pCtx, err := newPluginContext(cwd)
+	pCtx, err := pcmd.NewPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -552,12 +552,12 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, err := schemaFromSchemaSourceValueArgs(ctx, pkg.Name, parameterizationValue)
+		pkgSchema, err := pcmd.SchemaFromSchemaSourceValueArgs(ctx, pkg.Name, parameterizationValue)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = genSDK(
+		err = pcmd.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
@@ -569,7 +569,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = copyAll(sdkOut, filepath.Join(tempOut, language))
+		err = pcmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -595,7 +595,7 @@ func generateAndLinkSdksForPackages(
 		}()
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = doLocalSdkLinking(ws, language, "./", pkgSchema, sdkRelPath)
+		err = pcmd.DoLocalSdkLinking(ws, language, "./", pkgSchema, sdkRelPath)
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
@@ -604,17 +604,6 @@ func generateAndLinkSdksForPackages(
 	}
 
 	return nil
-}
-
-func newPluginContext(cwd string) (*plugin.Context, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-	if err != nil {
-		return nil, err
-	}
-	return pluginCtx, nil
 }
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {

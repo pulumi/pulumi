@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -35,7 +35,7 @@ func newPackagePackCmd() *cobra.Command {
 		Args:   cobra.ExactArgs(2),
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: pcmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return packCmd.Run(ctx, args)
 		}),
@@ -51,7 +51,7 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("get current working directory: %w", err)
 	}
 
-	pCtx, err := newPluginContext(cwd)
+	pCtx, err := pcmd.NewPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin context: %w", err)
 	}
