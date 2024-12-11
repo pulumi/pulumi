@@ -26,11 +26,11 @@ func main() {
 		}
 		exampleComponent, err := NewExampleComponent(ctx, "exampleComponent", &ExampleComponentArgs{
 			Input: "doggo",
-			IpAddress: []int{
-				127,
-				0,
-				0,
-				1,
+			IpAddress: pulumi.IntArray{
+				pulumi.Int(127),
+				pulumi.Int(0),
+				pulumi.Int(0),
+				pulumi.Int(1),
 			},
 			CidrBlocks: map[string]interface{}{
 				"one": "uno",
