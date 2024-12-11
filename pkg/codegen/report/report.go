@@ -27,8 +27,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2 "github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 var ExportTargetDir = env.String("CODEGEN_REPORT_DIR",

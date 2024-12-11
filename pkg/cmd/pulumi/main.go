@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 // panicHandler displays an emergency error message to the user and a stack trace to

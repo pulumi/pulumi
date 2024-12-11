@@ -8,7 +8,7 @@ BREW_VERSION=$(./scripts/get-version HEAD)
 
 # Rebuild and install pulumi CLI binaries into $GOPATH/bin
 (cd pkg && go install \
-              -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" \
+              -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" \
               ${PROJECT})
 
 # Fetch extra language binaries like YAML and Java from GitHub releases.

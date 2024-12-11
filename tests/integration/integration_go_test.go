@@ -27,6 +27,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -933,6 +934,8 @@ func TestAboutGo(t *testing.T) {
 
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/pulumi/pulumi/sdk/v3")
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+go\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesGo(t *testing.T) {
