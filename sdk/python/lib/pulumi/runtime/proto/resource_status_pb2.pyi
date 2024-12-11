@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import collections.abc
 import google.protobuf.descriptor
@@ -33,7 +34,7 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class PublishViewStepsRequest(google.protobuf.message.Message):
     """`PublishViewStepsRequest` is the type of requests sent as part of a
     [](pulumirpc.ResourceStatus.PublishViewSteps) call.
@@ -48,17 +49,18 @@ class PublishViewStepsRequest(google.protobuf.message.Message):
     @property
     def steps(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ViewStep]:
         """The steps to publish."""
+
     def __init__(
         self,
         *,
         token: builtins.str = ...,
         steps: collections.abc.Iterable[global___ViewStep] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["steps", b"steps", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["steps", b"steps", "token", b"token"]) -> None: ...
 
 global___PublishViewStepsRequest = PublishViewStepsRequest
 
-@typing_extensions.final
+@typing.final
 class PublishViewStepsResponse(google.protobuf.message.Message):
     """`PublishViewStepsResponse` is the type of responses sent as part of a
     [](pulumirpc.ResourceStatus.PublishViewSteps) call.
@@ -72,7 +74,7 @@ class PublishViewStepsResponse(google.protobuf.message.Message):
 
 global___PublishViewStepsResponse = PublishViewStepsResponse
 
-@typing_extensions.final
+@typing.final
 class ViewStep(google.protobuf.message.Message):
     """`ViewStep` represents a deployment operation step for a view resource."""
 
@@ -82,7 +84,7 @@ class ViewStep(google.protobuf.message.Message):
         ValueType = typing.NewType("ValueType", builtins.int)
         V: typing_extensions.TypeAlias = ValueType
 
-    class _OpEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[ViewStep._Op.ValueType], builtins.type):  # noqa: F821
+    class _OpEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[ViewStep._Op.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         UNSPECIFIED: ViewStep._Op.ValueType  # 0
         """An unspecified operation."""
@@ -157,7 +159,7 @@ class ViewStep(google.protobuf.message.Message):
         ValueType = typing.NewType("ValueType", builtins.int)
         V: typing_extensions.TypeAlias = ValueType
 
-    class _StatusEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[ViewStep._Status.ValueType], builtins.type):  # noqa: F821
+    class _StatusEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[ViewStep._Status.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         OK: ViewStep._Status.ValueType  # 0
         PARTIAL_FAILURE: ViewStep._Status.ValueType  # 1
@@ -173,7 +175,7 @@ class ViewStep(google.protobuf.message.Message):
     PARTIAL_FAILURE: ViewStep.Status.ValueType  # 1
     UNKNOWN: ViewStep.Status.ValueType  # 2
 
-    @typing_extensions.final
+    @typing.final
     class DetailedDiffEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -188,8 +190,8 @@ class ViewStep(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: pulumi.provider_pb2.PropertyDiff | None = ...,
         ) -> None: ...
-        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     STATUS_FIELD_NUMBER: builtins.int
     ERROR_FIELD_NUMBER: builtins.int
@@ -212,25 +214,30 @@ class ViewStep(google.protobuf.message.Message):
     """The type of the view resource."""
     name: builtins.str
     """The name of the view resource."""
+    has_detailed_diff: builtins.bool
+    """Whether the detailed diff is present."""
     @property
     def old(self) -> global___ViewStepState:
         """The state of the view resource before performing the step."""
+
     @property
     def new(self) -> global___ViewStepState:
         """The state of the view resource after performing the step."""
+
     @property
     def keys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """The keys causing a replacement (only applicable for "create" and "replace" ops)."""
+
     @property
     def diffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """The keys that changed with this step."""
+
     @property
     def detailed_diff(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, pulumi.provider_pb2.PropertyDiff]:
         """A detailed diff is a map from [property paths](property-paths) to [](pulumirpc.PropertyDiff)s,
         which describe the kind of change that occurred to the property located at that path.
         """
-    has_detailed_diff: builtins.bool
-    """Whether the detailed diff is present."""
+
     def __init__(
         self,
         *,
@@ -246,12 +253,12 @@ class ViewStep(google.protobuf.message.Message):
         detailed_diff: collections.abc.Mapping[builtins.str, pulumi.provider_pb2.PropertyDiff] | None = ...,
         has_detailed_diff: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["new", b"new", "old", b"old"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["detailed_diff", b"detailed_diff", "diffs", b"diffs", "error", b"error", "has_detailed_diff", b"has_detailed_diff", "keys", b"keys", "name", b"name", "new", b"new", "old", b"old", "op", b"op", "status", b"status", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["new", b"new", "old", b"old"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["detailed_diff", b"detailed_diff", "diffs", b"diffs", "error", b"error", "has_detailed_diff", b"has_detailed_diff", "keys", b"keys", "name", b"name", "new", b"new", "old", b"old", "op", b"op", "status", b"status", "type", b"type"]) -> None: ...
 
 global___ViewStep = ViewStep
 
-@typing_extensions.final
+@typing.final
 class ViewStepState(google.protobuf.message.Message):
     """`ViewStepState` represents the state of a view resource."""
 
@@ -282,9 +289,11 @@ class ViewStepState(google.protobuf.message.Message):
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
         """The view resource's inputs."""
+
     @property
     def outputs(self) -> google.protobuf.struct_pb2.Struct:
         """The view resource's outputs."""
+
     def __init__(
         self,
         *,
@@ -295,7 +304,7 @@ class ViewStepState(google.protobuf.message.Message):
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
         outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "name", b"name", "outputs", b"outputs", "parent_name", b"parent_name", "parent_type", b"parent_type", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["inputs", b"inputs", "name", b"name", "outputs", b"outputs", "parent_name", b"parent_name", "parent_type", b"parent_type", "type", b"type"]) -> None: ...
 
 global___ViewStepState = ViewStepState

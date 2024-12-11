@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 var pulumi_plugin_pb = require('./plugin_pb.js');
 goog.object.extend(proto, pulumi_plugin_pb);
@@ -1003,11 +1009,11 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.toObject = function(opt_inclu
  */
 proto.pulumirpc.ProviderHandshakeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    engineAddress: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    rootDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    programDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    supportsViews: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+engineAddress: jspb.Message.getFieldWithDefault(msg, 1, ""),
+rootDirectory: (f = jspb.Message.getField(msg, 2)) == null ? undefined : f,
+programDirectory: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f,
+configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+supportsViews: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -1289,10 +1295,10 @@ proto.pulumirpc.ProviderHandshakeResponse.prototype.toObject = function(opt_incl
  */
 proto.pulumirpc.ProviderHandshakeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    acceptSecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    acceptResources: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    acceptOutputs: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+acceptSecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
+acceptResources: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
+acceptOutputs: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1535,8 +1541,8 @@ proto.pulumirpc.ParameterizeRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ParameterizeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    args: (f = msg.getArgs()) && proto.pulumirpc.ParameterizeRequest.ParametersArgs.toObject(includeInstance, f),
-    value: (f = msg.getValue()) && proto.pulumirpc.ParameterizeRequest.ParametersValue.toObject(includeInstance, f)
+args: (f = msg.getArgs()) && proto.pulumirpc.ParameterizeRequest.ParametersArgs.toObject(includeInstance, f),
+value: (f = msg.getValue()) && proto.pulumirpc.ParameterizeRequest.ParametersValue.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1670,7 +1676,7 @@ proto.pulumirpc.ParameterizeRequest.ParametersArgs.prototype.toObject = function
  */
 proto.pulumirpc.ParameterizeRequest.ParametersArgs.toObject = function(includeInstance, msg) {
   var f, obj = {
-    argsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+argsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1819,9 +1825,9 @@ proto.pulumirpc.ParameterizeRequest.ParametersValue.prototype.toObject = functio
  */
 proto.pulumirpc.ParameterizeRequest.ParametersValue.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    value: msg.getValue_asB64()
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+value: msg.getValue_asB64()
   };
 
   if (includeInstance) {
@@ -2107,8 +2113,8 @@ proto.pulumirpc.ParameterizeResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ParameterizeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, "")
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -2267,9 +2273,9 @@ proto.pulumirpc.GetSchemaRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.GetSchemaRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    version: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    subpackageName: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    subpackageVersion: jspb.Message.getFieldWithDefault(msg, 3, "")
+version: jspb.Message.getFieldWithDefault(msg, 1, 0),
+subpackageName: jspb.Message.getFieldWithDefault(msg, 2, ""),
+subpackageVersion: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -2457,7 +2463,7 @@ proto.pulumirpc.GetSchemaResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.GetSchemaResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    schema: jspb.Message.getFieldWithDefault(msg, 1, "")
+schema: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -2587,16 +2593,16 @@ proto.pulumirpc.ConfigureRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : [],
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
-    id: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 10, "")
+variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : [],
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
+id: (f = jspb.Message.getField(msg, 7)) == null ? undefined : f,
+urn: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f,
+name: (f = jspb.Message.getField(msg, 9)) == null ? undefined : f,
+type: (f = jspb.Message.getField(msg, 10)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2795,7 +2801,8 @@ proto.pulumirpc.ConfigureRequest.prototype.getVariablesMap = function(opt_noLazy
  */
 proto.pulumirpc.ConfigureRequest.prototype.clearVariablesMap = function() {
   this.getVariablesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -3083,11 +3090,11 @@ proto.pulumirpc.ConfigureResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.ConfigureResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    supportspreview: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
+supportspreview: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
+acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -3340,7 +3347,7 @@ proto.pulumirpc.ConfigureErrorMissingKeys.prototype.toObject = function(opt_incl
  */
 proto.pulumirpc.ConfigureErrorMissingKeys.toObject = function(includeInstance, msg) {
   var f, obj = {
-    missingkeysList: jspb.Message.toObjectList(msg.getMissingkeysList(),
+missingkeysList: jspb.Message.toObjectList(msg.getMissingkeysList(),
     proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey.toObject, includeInstance)
   };
 
@@ -3455,8 +3462,8 @@ proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey.prototype.toObject = functi
  */
 proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    description: jspb.Message.getFieldWithDefault(msg, 2, "")
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+description: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -3653,8 +3660,8 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -3841,8 +3848,8 @@ proto.pulumirpc.InvokeResponse.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.InvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
+pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
     proto.pulumirpc.CheckFailure.toObject, includeInstance)
   };
 
@@ -4052,18 +4059,18 @@ proto.pulumirpc.CallRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
-    project: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
-    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
-    dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
-    monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
-    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false)
+tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
+project: jspb.Message.getFieldWithDefault(msg, 6, ""),
+stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
+configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
+configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
+dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
+parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
+monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
+organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
+acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false)
   };
 
   if (includeInstance) {
@@ -4303,7 +4310,7 @@ proto.pulumirpc.CallRequest.ArgumentDependencies.prototype.toObject = function(o
  */
 proto.pulumirpc.CallRequest.ArgumentDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4494,7 +4501,8 @@ proto.pulumirpc.CallRequest.prototype.getArgdependenciesMap = function(opt_noLaz
  */
 proto.pulumirpc.CallRequest.prototype.clearArgdependenciesMap = function() {
   this.getArgdependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -4552,7 +4560,8 @@ proto.pulumirpc.CallRequest.prototype.getConfigMap = function(opt_noLazyCreate) 
  */
 proto.pulumirpc.CallRequest.prototype.clearConfigMap = function() {
   this.getConfigMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -4721,10 +4730,10 @@ proto.pulumirpc.CallResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.CallResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
+pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
     proto.pulumirpc.CheckFailure.toObject, includeInstance),
-    returndependenciesMap: (f = msg.getReturndependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallResponse.ReturnDependencies.toObject) : []
+returndependenciesMap: (f = msg.getReturndependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallResponse.ReturnDependencies.toObject) : []
   };
 
   if (includeInstance) {
@@ -4868,7 +4877,7 @@ proto.pulumirpc.CallResponse.ReturnDependencies.prototype.toObject = function(op
  */
 proto.pulumirpc.CallResponse.ReturnDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -5079,7 +5088,8 @@ proto.pulumirpc.CallResponse.prototype.getReturndependenciesMap = function(opt_n
  */
 proto.pulumirpc.CallResponse.prototype.clearReturndependenciesMap = function() {
   this.getReturndependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 
@@ -5114,13 +5124,13 @@ proto.pulumirpc.CheckRequest.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    randomseed: msg.getRandomseed_asB64(),
-    name: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f)
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+randomseed: msg.getRandomseed_asB64(),
+name: jspb.Message.getFieldWithDefault(msg, 6, ""),
+type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5304,8 +5314,8 @@ proto.pulumirpc.CheckRequest.AutonamingOptions.prototype.toObject = function(opt
  */
 proto.pulumirpc.CheckRequest.AutonamingOptions.toObject = function(includeInstance, msg) {
   var f, obj = {
-    proposedName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    mode: jspb.Message.getFieldWithDefault(msg, 2, 0)
+proposedName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+mode: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -5687,8 +5697,8 @@ proto.pulumirpc.CheckResponse.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.CheckResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
     proto.pulumirpc.CheckFailure.toObject, includeInstance)
   };
 
@@ -5891,8 +5901,8 @@ proto.pulumirpc.CheckFailure.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.CheckFailure.toObject = function(includeInstance, msg) {
   var f, obj = {
-    property: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    reason: jspb.Message.getFieldWithDefault(msg, 2, "")
+property: jspb.Message.getFieldWithDefault(msg, 1, ""),
+reason: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -6058,14 +6068,14 @@ proto.pulumirpc.DiffRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.DiffRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    name: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 8, "")
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
+olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+name: jspb.Message.getFieldWithDefault(msg, 7, ""),
+type: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -6480,8 +6490,8 @@ proto.pulumirpc.PropertyDiff.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.PropertyDiff.toObject = function(includeInstance, msg) {
   var f, obj = {
-    kind: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    inputdiff: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+kind: jspb.Message.getFieldWithDefault(msg, 1, 0),
+inputdiff: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -6659,13 +6669,13 @@ proto.pulumirpc.DiffResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    replacesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
-    stablesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    diffsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    detaileddiffMap: (f = msg.getDetaileddiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
-    hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
+replacesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
+stablesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
+deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
+diffsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+detaileddiffMap: (f = msg.getDetaileddiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
+hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
   };
 
   if (includeInstance) {
@@ -6985,7 +6995,8 @@ proto.pulumirpc.DiffResponse.prototype.getDetaileddiffMap = function(opt_noLazyC
  */
 proto.pulumirpc.DiffResponse.prototype.clearDetaileddiffMap = function() {
   this.getDetaileddiffMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -7038,14 +7049,14 @@ proto.pulumirpc.CreateRequest.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 3, 0.0),
-    preview: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    name: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 8, "")
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 3, 0.0),
+preview: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+name: jspb.Message.getFieldWithDefault(msg, 5, ""),
+type: jspb.Message.getFieldWithDefault(msg, 6, ""),
+resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 7, ""),
+resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -7399,8 +7410,8 @@ proto.pulumirpc.CreateResponse.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7587,15 +7598,15 @@ proto.pulumirpc.ReadRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.ReadRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    name: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+name: jspb.Message.getFieldWithDefault(msg, 5, ""),
+type: jspb.Message.getFieldWithDefault(msg, 6, ""),
+resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 7, ""),
+resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 8, ""),
+oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
     proto.pulumirpc.View.toObject, includeInstance)
   };
 
@@ -8022,9 +8033,9 @@ proto.pulumirpc.ReadResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -8261,19 +8272,19 @@ proto.pulumirpc.UpdateRequest.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
-    preview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-    oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    name: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 10, ""),
-    resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 11, ""),
-    resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
+olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0),
+ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+preview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+name: jspb.Message.getFieldWithDefault(msg, 9, ""),
+type: jspb.Message.getFieldWithDefault(msg, 10, ""),
+resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 11, ""),
+resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 12, ""),
+oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
     proto.pulumirpc.View.toObject, includeInstance)
   };
 
@@ -8856,7 +8867,7 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -9014,16 +9025,16 @@ proto.pulumirpc.DeleteRequest.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
-    oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    name: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
+oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+name: jspb.Message.getFieldWithDefault(msg, 6, ""),
+type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 8, ""),
+resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 9, ""),
+oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
     proto.pulumirpc.View.toObject, includeInstance)
   };
 
@@ -9486,31 +9497,31 @@ proto.pulumirpc.ConstructRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    project: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    stack: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
-    dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    parallel: jspb.Message.getFieldWithDefault(msg, 5, 0),
-    monitorendpoint: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    parent: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    inputdependenciesMap: (f = msg.getInputdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructRequest.PropertyDependencies.toObject) : [],
-    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    dependenciesList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
-    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f,
-    organization: jspb.Message.getFieldWithDefault(msg, 17, ""),
-    protect: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    aliasesList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
-    additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
-    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.ConstructRequest.CustomTimeouts.toObject(includeInstance, f),
-    deletedwith: jspb.Message.getFieldWithDefault(msg, 20, ""),
-    deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
-    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
-    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
+project: jspb.Message.getFieldWithDefault(msg, 1, ""),
+stack: jspb.Message.getFieldWithDefault(msg, 2, ""),
+configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
+dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+parallel: jspb.Message.getFieldWithDefault(msg, 5, 0),
+monitorendpoint: jspb.Message.getFieldWithDefault(msg, 6, ""),
+type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+name: jspb.Message.getFieldWithDefault(msg, 8, ""),
+parent: jspb.Message.getFieldWithDefault(msg, 9, ""),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+inputdependenciesMap: (f = msg.getInputdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructRequest.PropertyDependencies.toObject) : [],
+providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
+dependenciesList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
+configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f,
+organization: jspb.Message.getFieldWithDefault(msg, 17, ""),
+protect: (f = jspb.Message.getBooleanField(msg, 12)) == null ? undefined : f,
+aliasesList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
+additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
+customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.ConstructRequest.CustomTimeouts.toObject(includeInstance, f),
+deletedwith: jspb.Message.getFieldWithDefault(msg, 20, ""),
+deletebeforereplace: (f = jspb.Message.getBooleanField(msg, 21)) == null ? undefined : f,
+ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
+replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
+retainondelete: (f = jspb.Message.getBooleanField(msg, 24)) == null ? undefined : f,
+acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
   if (includeInstance) {
@@ -9894,7 +9905,7 @@ proto.pulumirpc.ConstructRequest.PropertyDependencies.prototype.toObject = funct
  */
 proto.pulumirpc.ConstructRequest.PropertyDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -10043,9 +10054,9 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.toObject = function(op
  */
 proto.pulumirpc.ConstructRequest.CustomTimeouts.toObject = function(includeInstance, msg) {
   var f, obj = {
-    create: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    update: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
+create: jspb.Message.getFieldWithDefault(msg, 1, ""),
+update: jspb.Message.getFieldWithDefault(msg, 2, ""),
+pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -10256,7 +10267,8 @@ proto.pulumirpc.ConstructRequest.prototype.getConfigMap = function(opt_noLazyCre
  */
 proto.pulumirpc.ConstructRequest.prototype.clearConfigMap = function() {
   this.getConfigMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -10423,7 +10435,8 @@ proto.pulumirpc.ConstructRequest.prototype.getInputdependenciesMap = function(op
  */
 proto.pulumirpc.ConstructRequest.prototype.clearInputdependenciesMap = function() {
   this.getInputdependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -10445,7 +10458,8 @@ proto.pulumirpc.ConstructRequest.prototype.getProvidersMap = function(opt_noLazy
  */
 proto.pulumirpc.ConstructRequest.prototype.clearProvidersMap = function() {
   this.getProvidersMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -10901,9 +10915,9 @@ proto.pulumirpc.ConstructResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.ConstructResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    state: (f = msg.getState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    statedependenciesMap: (f = msg.getStatedependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructResponse.PropertyDependencies.toObject) : []
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+state: (f = msg.getState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+statedependenciesMap: (f = msg.getStatedependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructResponse.PropertyDependencies.toObject) : []
   };
 
   if (includeInstance) {
@@ -11045,7 +11059,7 @@ proto.pulumirpc.ConstructResponse.PropertyDependencies.prototype.toObject = func
  */
 proto.pulumirpc.ConstructResponse.PropertyDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -11236,7 +11250,8 @@ proto.pulumirpc.ConstructResponse.prototype.getStatedependenciesMap = function(o
  */
 proto.pulumirpc.ConstructResponse.prototype.clearStatedependenciesMap = function() {
   this.getStatedependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 
@@ -11278,10 +11293,10 @@ proto.pulumirpc.ErrorResourceInitFailed.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.ErrorResourceInitFailed.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    reasonsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+reasonsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -11559,8 +11574,8 @@ proto.pulumirpc.GetMappingRequest.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.GetMappingRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    key: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    provider: jspb.Message.getFieldWithDefault(msg, 2, "")
+key: jspb.Message.getFieldWithDefault(msg, 1, ""),
+provider: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -11719,8 +11734,8 @@ proto.pulumirpc.GetMappingResponse.prototype.toObject = function(opt_includeInst
  */
 proto.pulumirpc.GetMappingResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    data: msg.getData_asB64()
+provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
+data: msg.getData_asB64()
   };
 
   if (includeInstance) {
@@ -11903,7 +11918,7 @@ proto.pulumirpc.GetMappingsRequest.prototype.toObject = function(opt_includeInst
  */
 proto.pulumirpc.GetMappingsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    key: jspb.Message.getFieldWithDefault(msg, 1, "")
+key: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -12040,7 +12055,7 @@ proto.pulumirpc.GetMappingsResponse.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.GetMappingsResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    providersList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+providersList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -12189,12 +12204,12 @@ proto.pulumirpc.View.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.View.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    parentType: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    parentName: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+parentType: jspb.Message.getFieldWithDefault(msg, 3, ""),
+parentName: jspb.Message.getFieldWithDefault(msg, 4, ""),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {

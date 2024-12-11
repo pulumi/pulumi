@@ -15,19 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class SourcePosition(google.protobuf.message.Message):
     """A SourcePosition represents a position in a source file."""
 
@@ -49,6 +45,6 @@ class SourcePosition(google.protobuf.message.Message):
         line: builtins.int = ...,
         column: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["column", b"column", "line", b"line", "uri", b"uri"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["column", b"column", "line", b"line", "uri", b"uri"]) -> None: ...
 
 global___SourcePosition = SourcePosition

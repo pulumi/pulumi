@@ -13,17 +13,17 @@
 set -o errexit
 set -o pipefail
 
-PULUMI_BUILD_CONTAINER_VERSION=v0.3.0
+PULUMI_BUILD_CONTAINER_VERSION=v0.4.0
 
 
 # First build the image for the Pulumi Build Container
 echo "* Building Pulumi Build Container:"
-docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}" --platform linux/x86_64
+docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}" --platform linux/amd64
 
 # Run as the _current_ user, so that the generated files are owned by the current user, not root.
 USER=$(id -u):$(id -g)
 
-DOCKER_RUN="docker run --user $USER -it --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+DOCKER_RUN="docker run --platform linux/amd64 --user $USER -it --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 PROTOC_VERSION=$($DOCKER_RUN protoc --version | head -n1 | tr -d '\n\r')
 

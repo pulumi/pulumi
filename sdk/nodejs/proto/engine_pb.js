@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
@@ -184,11 +190,11 @@ proto.pulumirpc.LogRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.LogRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    message: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    streamid: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    ephemeral: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
+message: jspb.Message.getFieldWithDefault(msg, 2, ""),
+urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
+streamid: jspb.Message.getFieldWithDefault(msg, 4, 0),
+ephemeral: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -535,7 +541,7 @@ proto.pulumirpc.GetRootResourceResponse.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.GetRootResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, "")
+urn: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -665,7 +671,7 @@ proto.pulumirpc.SetRootResourceRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.SetRootResourceRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, "")
+urn: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -896,8 +902,8 @@ proto.pulumirpc.StartDebuggingRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.StartDebuggingRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    config: (f = msg.getConfig()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    message: jspb.Message.getFieldWithDefault(msg, 2, "")
+config: (f = msg.getConfig()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+message: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {

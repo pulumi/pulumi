@@ -774,4 +774,4 @@ getMappings: {
   },
 };
 
-exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService);
+exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService, 'ResourceProvider');

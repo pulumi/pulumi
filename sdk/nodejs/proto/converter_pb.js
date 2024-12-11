@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
@@ -166,8 +172,8 @@ proto.pulumirpc.ConvertStateRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ConvertStateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
+argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -345,14 +351,14 @@ proto.pulumirpc.ResourceImport.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.ResourceImport.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    id: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-    isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+id: jspb.Message.getFieldWithDefault(msg, 3, ""),
+version: jspb.Message.getFieldWithDefault(msg, 4, ""),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
+logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -692,9 +698,9 @@ proto.pulumirpc.ConvertStateResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ConvertStateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
+resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
     proto.pulumirpc.ResourceImport.toObject, includeInstance),
-    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
     pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
@@ -905,12 +911,12 @@ proto.pulumirpc.ConvertProgramRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    generatedProjectDirectory: jspb.Message.getFieldWithDefault(msg, 6, "")
+sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
+targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
+argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+generatedProjectDirectory: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -1211,7 +1217,7 @@ proto.pulumirpc.ConvertProgramResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.ConvertProgramResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
     pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 

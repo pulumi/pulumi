@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import collections.abc
 import google.protobuf.descriptor
@@ -34,7 +35,7 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class ProgramInfo(google.protobuf.message.Message):
     """A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
     file and the `runtime`, `main` and other properties within that file.
@@ -67,6 +68,7 @@ class ProgramInfo(google.protobuf.message.Message):
         """A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
         contain the `runtime.options` property from that file.
         """
+
     def __init__(
         self,
         *,
@@ -75,12 +77,12 @@ class ProgramInfo(google.protobuf.message.Message):
         entry_point: builtins.str = ...,
         options: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["options", b"options"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["entry_point", b"entry_point", "options", b"options", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["entry_point", b"entry_point", "options", b"options", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
 
 global___ProgramInfo = ProgramInfo
 
-@typing_extensions.final
+@typing.final
 class AboutRequest(google.protobuf.message.Message):
     """`AboutRequest` is the type of requests sent as part of an [](pulumirpc.LanguageRuntime.About) call."""
 
@@ -90,17 +92,18 @@ class AboutRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
+
     def __init__(
         self,
         *,
         info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info"]) -> None: ...
 
 global___AboutRequest = AboutRequest
 
-@typing_extensions.final
+@typing.final
 class AboutResponse(google.protobuf.message.Message):
     """`AboutResponse` is the type of responses sent by an [](pulumirpc.LanguageRuntime.About) call. It contains information
     about the language runtime being used.
@@ -108,7 +111,7 @@ class AboutResponse(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class MetadataEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -122,7 +125,7 @@ class AboutResponse(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     EXECUTABLE_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
@@ -138,6 +141,7 @@ class AboutResponse(google.protobuf.message.Message):
     @property
     def metadata(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """Other host-specific metadata about the runtime underpinning the language host."""
+
     def __init__(
         self,
         *,
@@ -145,11 +149,11 @@ class AboutResponse(google.protobuf.message.Message):
         version: builtins.str = ...,
         metadata: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["executable", b"executable", "metadata", b"metadata", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["executable", b"executable", "metadata", b"metadata", "version", b"version"]) -> None: ...
 
 global___AboutResponse = AboutResponse
 
-@typing_extensions.final
+@typing.final
 class GetProgramDependenciesRequest(google.protobuf.message.Message):
     """`GetProgramDependenciesRequest` is the type of requests sent as part of a
     [](pulumirpc.LanguageRuntime.GetProgramDependencies) call.
@@ -191,6 +195,7 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
+
     def __init__(
         self,
         *,
@@ -200,12 +205,12 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
         transitiveDependencies: builtins.bool = ...,
         info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd", "transitiveDependencies", b"transitiveDependencies"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd", "transitiveDependencies", b"transitiveDependencies"]) -> None: ...
 
 global___GetProgramDependenciesRequest = GetProgramDependenciesRequest
 
-@typing_extensions.final
+@typing.final
 class DependencyInfo(google.protobuf.message.Message):
     """`DependencyInfo` is a struct that captures information about a language-specific dependency required by a program
     (e.g. an NPM package for NodeJS, or a Maven library for Java). It is returned as part of a
@@ -226,11 +231,11 @@ class DependencyInfo(google.protobuf.message.Message):
         name: builtins.str = ...,
         version: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "version", b"version"]) -> None: ...
 
 global___DependencyInfo = DependencyInfo
 
-@typing_extensions.final
+@typing.final
 class GetProgramDependenciesResponse(google.protobuf.message.Message):
     """`GetProgramDependenciesResponse` is the type of responses sent by a
     [](pulumirpc.LanguageRuntime.GetProgramDependencies) call. It contains information about the dependencies of a
@@ -243,16 +248,17 @@ class GetProgramDependenciesResponse(google.protobuf.message.Message):
     @property
     def dependencies(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___DependencyInfo]:
         """The dependencies of the program specified by the request."""
+
     def __init__(
         self,
         *,
         dependencies: collections.abc.Iterable[global___DependencyInfo] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["dependencies", b"dependencies"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["dependencies", b"dependencies"]) -> None: ...
 
 global___GetProgramDependenciesResponse = GetProgramDependenciesResponse
 
-@typing_extensions.final
+@typing.final
 class GetRequiredPluginsRequest(google.protobuf.message.Message):
     """`GetRequiredPluginsRequest` is the type of requests sent as part of a
     [](pulumirpc.LanguageRuntime.GetRequiredPlugins) call.
@@ -291,6 +297,7 @@ class GetRequiredPluginsRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
+
     def __init__(
         self,
         *,
@@ -299,12 +306,12 @@ class GetRequiredPluginsRequest(google.protobuf.message.Message):
         program: builtins.str = ...,
         info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd"]) -> None: ...
 
 global___GetRequiredPluginsRequest = GetRequiredPluginsRequest
 
-@typing_extensions.final
+@typing.final
 class GetRequiredPluginsResponse(google.protobuf.message.Message):
     """`GetRequiredPluginsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPlugins)
     call. It contains information about the plugins required by a program.
@@ -316,16 +323,17 @@ class GetRequiredPluginsResponse(google.protobuf.message.Message):
     @property
     def plugins(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PluginDependency]:
         """The plugins required by the program specified by the request."""
+
     def __init__(
         self,
         *,
         plugins: collections.abc.Iterable[pulumi.plugin_pb2.PluginDependency] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["plugins", b"plugins"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["plugins", b"plugins"]) -> None: ...
 
 global___GetRequiredPluginsResponse = GetRequiredPluginsResponse
 
-@typing_extensions.final
+@typing.final
 class GetRequiredPackagesRequest(google.protobuf.message.Message):
     """`GetRequiredPackagesRequest` is the type of requests sent as part of a
     [](pulumirpc.LanguageRuntime.GetRequiredPackages) call.
@@ -337,17 +345,18 @@ class GetRequiredPackagesRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
+
     def __init__(
         self,
         *,
         info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info"]) -> None: ...
 
 global___GetRequiredPackagesRequest = GetRequiredPackagesRequest
 
-@typing_extensions.final
+@typing.final
 class GetRequiredPackagesResponse(google.protobuf.message.Message):
     """`GetRequiredPackagesResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPackages)
     call. It contains information about the packages required by a program.
@@ -359,22 +368,23 @@ class GetRequiredPackagesResponse(google.protobuf.message.Message):
     @property
     def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageDependency]:
         """The packages required by the program specified by the request."""
+
     def __init__(
         self,
         *,
         packages: collections.abc.Iterable[pulumi.plugin_pb2.PackageDependency] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["packages", b"packages"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["packages", b"packages"]) -> None: ...
 
 global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
 
-@typing_extensions.final
+@typing.final
 class RunRequest(google.protobuf.message.Message):
     """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class ConfigEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -388,7 +398,7 @@ class RunRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int
@@ -420,12 +430,6 @@ class RunRequest(google.protobuf.message.Message):
     the `entry_point` field set to this value.
     :::
     """
-    @property
-    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """Any arguments to pass to the program."""
-    @property
-    def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """Configuration variables to apply before running the program."""
     dryRun: builtins.bool
     """True if we are only doing a dry run (preview)."""
     parallel: builtins.int
@@ -438,21 +442,32 @@ class RunRequest(google.protobuf.message.Message):
     """
     queryMode: builtins.bool
     """This is deprecated, query mode is no longer a supported feature."""
-    @property
-    def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """A list of configuration keys whose values should be treated as secrets."""
     organization: builtins.str
     """The organization of the stack being deployed into."""
-    @property
-    def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
-        """Configuration variables to apply before running the program."""
-    @property
-    def info(self) -> global___ProgramInfo:
-        """The program to use."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     attach_debugger: builtins.bool
     """True if and only if the host should start the program under a debugger."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Any arguments to pass to the program."""
+
+    @property
+    def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """Configuration variables to apply before running the program."""
+
+    @property
+    def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """A list of configuration keys whose values should be treated as secrets."""
+
+    @property
+    def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
+        """Configuration variables to apply before running the program."""
+
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The program to use."""
+
     def __init__(
         self,
         *,
@@ -473,12 +488,12 @@ class RunRequest(google.protobuf.message.Message):
         loader_target: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 
-@typing_extensions.final
+@typing.final
 class RunResponse(google.protobuf.message.Message):
     """`RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call."""
 
@@ -499,11 +514,11 @@ class RunResponse(google.protobuf.message.Message):
         error: builtins.str = ...,
         bail: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["bail", b"bail", "error", b"error"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["bail", b"bail", "error", b"error"]) -> None: ...
 
 global___RunResponse = RunResponse
 
-@typing_extensions.final
+@typing.final
 class InstallDependenciesRequest(google.protobuf.message.Message):
     """`InstallDependenciesRequest` is the type of requests sent as part of an
     [](pulumirpc.LanguageRuntime.InstallDependencies) call.
@@ -527,13 +542,14 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     """True if we are running in a terminal and may use [ANSI escape
     codes](https://en.wikipedia.org/wiki/ANSI_escape_code) in our output.
     """
-    @property
-    def info(self) -> global___ProgramInfo:
-        """The program to use."""
     use_language_version_tools: builtins.bool
     """True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
     of the language toolchain used.
     """
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The program to use."""
+
     def __init__(
         self,
         *,
@@ -542,12 +558,12 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
         info: global___ProgramInfo | None = ...,
         use_language_version_tools: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 
-@typing_extensions.final
+@typing.final
 class InstallDependenciesResponse(google.protobuf.message.Message):
     """`InstallDependenciesResponse` is the type of responses streamed by an
     [](pulumirpc.LanguageRuntime.InstallDependencies) call.
@@ -567,11 +583,11 @@ class InstallDependenciesResponse(google.protobuf.message.Message):
         stdout: builtins.bytes = ...,
         stderr: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
 
 global___InstallDependenciesResponse = InstallDependenciesResponse
 
-@typing_extensions.final
+@typing.final
 class RuntimeOptionsRequest(google.protobuf.message.Message):
     """`RuntimeOptionsRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts)
     call.
@@ -583,17 +599,18 @@ class RuntimeOptionsRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
+
     def __init__(
         self,
         *,
         info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info"]) -> None: ...
 
 global___RuntimeOptionsRequest = RuntimeOptionsRequest
 
-@typing_extensions.final
+@typing.final
 class RuntimeOptionPrompt(google.protobuf.message.Message):
     """`RuntimeOptionPrompt` is a struct that captures information about a runtime option that should be prompted for during
     `pulumi new`.
@@ -605,7 +622,7 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
         ValueType = typing.NewType("ValueType", builtins.int)
         V: typing_extensions.TypeAlias = ValueType
 
-    class _RuntimeOptionTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[RuntimeOptionPrompt._RuntimeOptionType.ValueType], builtins.type):  # noqa: F821
+    class _RuntimeOptionTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[RuntimeOptionPrompt._RuntimeOptionType.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         STRING: RuntimeOptionPrompt._RuntimeOptionType.ValueType  # 0
         """A string value."""
@@ -620,7 +637,7 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
     INT32: RuntimeOptionPrompt.RuntimeOptionType.ValueType  # 1
     """A 32-bit integer value."""
 
-    @typing_extensions.final
+    @typing.final
     class RuntimeOptionValue(google.protobuf.message.Message):
         """`RuntimeOptionValue` is a struct that captures the value of a runtime option."""
 
@@ -646,7 +663,7 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
             int32Value: builtins.int = ...,
             displayName: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["displayName", b"displayName", "int32Value", b"int32Value", "promptType", b"promptType", "stringValue", b"stringValue"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["displayName", b"displayName", "int32Value", b"int32Value", "promptType", b"promptType", "stringValue", b"stringValue"]) -> None: ...
 
     KEY_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int
@@ -662,9 +679,11 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
     @property
     def choices(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RuntimeOptionPrompt.RuntimeOptionValue]:
         """A set of choices for the runtime option that may be displayed as part of the prompting process."""
+
     @property
     def default(self) -> global___RuntimeOptionPrompt.RuntimeOptionValue:
         """The default value of the runtime option."""
+
     def __init__(
         self,
         *,
@@ -674,12 +693,12 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
         choices: collections.abc.Iterable[global___RuntimeOptionPrompt.RuntimeOptionValue] | None = ...,
         default: global___RuntimeOptionPrompt.RuntimeOptionValue | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["default", b"default"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["choices", b"choices", "default", b"default", "description", b"description", "key", b"key", "promptType", b"promptType"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["default", b"default"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["choices", b"choices", "default", b"default", "description", b"description", "key", b"key", "promptType", b"promptType"]) -> None: ...
 
 global___RuntimeOptionPrompt = RuntimeOptionPrompt
 
-@typing_extensions.final
+@typing.final
 class RuntimeOptionsResponse(google.protobuf.message.Message):
     """`RuntimeOptionsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts) call.
     It contains information about additional prompts to ask during `pulumi new`.
@@ -691,16 +710,17 @@ class RuntimeOptionsResponse(google.protobuf.message.Message):
     @property
     def prompts(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RuntimeOptionPrompt]:
         """Prompts to ask the user."""
+
     def __init__(
         self,
         *,
         prompts: collections.abc.Iterable[global___RuntimeOptionPrompt] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["prompts", b"prompts"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["prompts", b"prompts"]) -> None: ...
 
 global___RuntimeOptionsResponse = RuntimeOptionsResponse
 
-@typing_extensions.final
+@typing.final
 class RunPluginRequest(google.protobuf.message.Message):
     """`RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call."""
 
@@ -724,21 +744,24 @@ class RunPluginRequest(google.protobuf.message.Message):
     the `entry_point` field set to this value.
     :::
     """
-    @property
-    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """Any arguments to pass to the plugin program."""
-    @property
-    def env(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """Any environment variables to set prior to executing the plugin program."""
-    @property
-    def info(self) -> global___ProgramInfo:
-        """The [plugin program](pulumirpc.ProgramInfo) to use."""
     kind: builtins.str
     """The kind of plugin to run (resource/analyzer/etc)."""
     name: builtins.str
     """The name of the plugin (for display purposes)"""
     attach_debugger: builtins.bool
     """True if a plugin should be started under a debugger."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Any arguments to pass to the plugin program."""
+
+    @property
+    def env(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Any environment variables to set prior to executing the plugin program."""
+
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The [plugin program](pulumirpc.ProgramInfo) to use."""
+
     def __init__(
         self,
         *,
@@ -751,12 +774,12 @@ class RunPluginRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 
-@typing_extensions.final
+@typing.final
 class RunPluginResponse(google.protobuf.message.Message):
     """`RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call."""
 
@@ -778,13 +801,13 @@ class RunPluginResponse(google.protobuf.message.Message):
         stderr: builtins.bytes = ...,
         exitcode: builtins.int = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["output", b"output"]) -> typing_extensions.Literal["stdout", "stderr", "exitcode"] | None: ...
+    def HasField(self, field_name: typing.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["output", b"output"]) -> typing.Literal["stdout", "stderr", "exitcode"] | None: ...
 
 global___RunPluginResponse = RunPluginResponse
 
-@typing_extensions.final
+@typing.final
 class GenerateProgramRequest(google.protobuf.message.Message):
     """`GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
     call.
@@ -792,7 +815,7 @@ class GenerateProgramRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class SourceEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -806,18 +829,19 @@ class GenerateProgramRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     SOURCE_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     STRICT_FIELD_NUMBER: builtins.int
-    @property
-    def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """The source of the project, represented as a map of file names to [PCL](pcl) source code."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     strict: builtins.bool
     """True if [PCL binding](pcl-binding) should be strict."""
+    @property
+    def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """The source of the project, represented as a map of file names to [PCL](pcl) source code."""
+
     def __init__(
         self,
         *,
@@ -825,17 +849,17 @@ class GenerateProgramRequest(google.protobuf.message.Message):
         loader_target: builtins.str = ...,
         strict: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "source", b"source", "strict", b"strict"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "source", b"source", "strict", b"strict"]) -> None: ...
 
 global___GenerateProgramRequest = GenerateProgramRequest
 
-@typing_extensions.final
+@typing.final
 class GenerateProgramResponse(google.protobuf.message.Message):
     """`GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class SourceEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -849,33 +873,35 @@ class GenerateProgramResponse(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.bytes = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
     SOURCE_FIELD_NUMBER: builtins.int
     @property
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
         """Any diagnostics raised by code generation."""
+
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
         """The generated program source code, represented as a map of file names to byte contents."""
+
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
         source: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "source", b"source"]) -> None: ...
 
 global___GenerateProgramResponse = GenerateProgramResponse
 
-@typing_extensions.final
+@typing.final
 class GenerateProjectRequest(google.protobuf.message.Message):
     """`GenerateProjectRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProject) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class LocalDependenciesEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -889,7 +915,7 @@ class GenerateProjectRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
     TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
@@ -917,6 +943,7 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
         published `@pulumi/aws` package.
         """
+
     def __init__(
         self,
         *,
@@ -927,11 +954,11 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         loader_target: builtins.str = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 
-@typing_extensions.final
+@typing.final
 class GenerateProjectResponse(google.protobuf.message.Message):
     """`GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call."""
 
@@ -941,22 +968,23 @@ class GenerateProjectResponse(google.protobuf.message.Message):
     @property
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
         """Any diagnostics raised by code generation."""
+
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___GenerateProjectResponse = GenerateProjectResponse
 
-@typing_extensions.final
+@typing.final
 class GeneratePackageRequest(google.protobuf.message.Message):
     """`GeneratePackageRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GeneratePackage) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class ExtraFilesEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -970,9 +998,9 @@ class GeneratePackageRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.bytes = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
-    @typing_extensions.final
+    @typing.final
     class LocalDependenciesEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -986,7 +1014,7 @@ class GeneratePackageRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     DIRECTORY_FIELD_NUMBER: builtins.int
     SCHEMA_FIELD_NUMBER: builtins.int
@@ -1000,11 +1028,17 @@ class GeneratePackageRequest(google.protobuf.message.Message):
     """
     schema: builtins.str
     """A JSON-encoded string containing the schema from which the SDK package should be generated."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
+    local: builtins.bool
+    """If true, generates an SDK appropriate for local usage. This may differ from a standard publishable SDK depending
+    on the language (e.g. for a NodeJS package that is intended to be imported locally, the language host may choose
+    not to generate a `package.json`).
+    """
     @property
     def extra_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
         """Extra files that should be copied as-is to the generated output."""
-    loader_target: builtins.str
-    """The target of a codegen.LoaderServer to use for loading schemas."""
+
     @property
     def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """Local dependencies that the generated package should reference explicitly, instead of e.g. using the language's
@@ -1013,11 +1047,7 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
         published `@pulumi/aws` package.
         """
-    local: builtins.bool
-    """If true, generates an SDK appropriate for local usage. This may differ from a standard publishable SDK depending
-    on the language (e.g. for a NodeJS package that is intended to be imported locally, the language host may choose
-    not to generate a `package.json`).
-    """
+
     def __init__(
         self,
         *,
@@ -1028,11 +1058,11 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         local: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local", b"local", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local", b"local", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 
-@typing_extensions.final
+@typing.final
 class GeneratePackageResponse(google.protobuf.message.Message):
     """`GeneratePackageResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GeneratePackage) call."""
 
@@ -1042,16 +1072,17 @@ class GeneratePackageResponse(google.protobuf.message.Message):
     @property
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
         """Any diagnostics raised by code generation."""
+
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___GeneratePackageResponse = GeneratePackageResponse
 
-@typing_extensions.final
+@typing.final
 class PackRequest(google.protobuf.message.Message):
     """`PackRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Pack) call."""
 
@@ -1073,11 +1104,11 @@ class PackRequest(google.protobuf.message.Message):
         package_directory: builtins.str = ...,
         destination_directory: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory"]) -> None: ...
 
 global___PackRequest = PackRequest
 
-@typing_extensions.final
+@typing.final
 class PackResponse(google.protobuf.message.Message):
     """`PackResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Pack) call."""
 
@@ -1093,11 +1124,11 @@ class PackResponse(google.protobuf.message.Message):
         *,
         artifact_path: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["artifact_path", b"artifact_path"]) -> None: ...
 
 global___PackResponse = PackResponse
 
-@typing_extensions.final
+@typing.final
 class LanguageHandshakeRequest(google.protobuf.message.Message):
     """`LanguageHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Handshake) call."""
 
@@ -1124,16 +1155,16 @@ class LanguageHandshakeRequest(google.protobuf.message.Message):
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
     @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
     @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_root_directory", b"_root_directory"]) -> typing_extensions.Literal["root_directory"] | None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["_root_directory", b"_root_directory"]) -> typing.Literal["root_directory"] | None: ...
 
 global___LanguageHandshakeRequest = LanguageHandshakeRequest
 
-@typing_extensions.final
+@typing.final
 class LanguageHandshakeResponse(google.protobuf.message.Message):
     """`LanguageHandshakeResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Handshake) call."""
 

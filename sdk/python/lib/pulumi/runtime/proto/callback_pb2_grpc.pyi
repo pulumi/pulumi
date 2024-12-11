@@ -15,17 +15,37 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import grpc
 import grpc.aio
 import typing
+import grpc.aio
 import pulumi.callback_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class CallbacksStub:
     """Callbacks is a service for invoking functions in one runtime from other processes."""
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     Invoke: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.CallbackInvokeRequest,
+        pulumi.callback_pb2.CallbackInvokeResponse,
+    ]
+    """Invoke invokes a given callback, identified by its token."""
+
+class CallbacksAsyncStub:
+    """Callbacks is a service for invoking functions in one runtime from other processes."""
+
+    Invoke: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.CallbackInvokeRequest,
         pulumi.callback_pb2.CallbackInvokeResponse,
     ]
@@ -38,8 +58,8 @@ class CallbacksServicer(metaclass=abc.ABCMeta):
     def Invoke(
         self,
         request: pulumi.callback_pb2.CallbackInvokeRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.callback_pb2.CallbackInvokeResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.callback_pb2.CallbackInvokeResponse, collections.abc.Awaitable[pulumi.callback_pb2.CallbackInvokeResponse]]:
         """Invoke invokes a given callback, identified by its token."""
 
 def add_CallbacksServicer_to_server(servicer: CallbacksServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

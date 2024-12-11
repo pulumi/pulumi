@@ -65,4 +65,4 @@ publishViewSteps: {
   },
 };
 
-exports.ResourceStatusClient = grpc.makeGenericClientConstructor(ResourceStatusService);
+exports.ResourceStatusClient = grpc.makeGenericClientConstructor(ResourceStatusService, 'ResourceStatus');

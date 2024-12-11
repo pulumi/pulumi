@@ -15,19 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class GetMappingRequest(google.protobuf.message.Message):
     """`GetMappingRequest` is the type of requests sent as part of a [](codegen.Mapper.GetMapping) call."""
 
@@ -47,6 +43,7 @@ class GetMappingRequest(google.protobuf.message.Message):
     @property
     def parameterization_hint(self) -> global___MapperParameterizationHint:
         """An optional parameterization that should be used on the named plugin before asking it for mappings."""
+
     def __init__(
         self,
         *,
@@ -54,12 +51,12 @@ class GetMappingRequest(google.protobuf.message.Message):
         pulumi_provider: builtins.str = ...,
         parameterization_hint: global___MapperParameterizationHint | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["parameterization_hint", b"parameterization_hint"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["parameterization_hint", b"parameterization_hint", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["parameterization_hint", b"parameterization_hint"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["parameterization_hint", b"parameterization_hint", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
 
 global___GetMappingRequest = GetMappingRequest
 
-@typing_extensions.final
+@typing.final
 class MapperParameterizationHint(google.protobuf.message.Message):
     """`MapperPackageParameterizationHint` is the type of hints that may be passed to [](codegen.Mapper.GetMapping) when it
     is expected that a parameterized provider plugin is the most likely source of a mapping. E.g. in the case of a
@@ -85,11 +82,11 @@ class MapperParameterizationHint(google.protobuf.message.Message):
         version: builtins.str = ...,
         value: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
 global___MapperParameterizationHint = MapperParameterizationHint
 
-@typing_extensions.final
+@typing.final
 class GetMappingResponse(google.protobuf.message.Message):
     """`GetMappingResponse` is the type of responses sent by [](codegen.Mapper.GetMapping) calls."""
 
@@ -106,6 +103,6 @@ class GetMappingResponse(google.protobuf.message.Message):
         *,
         data: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["data", b"data"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["data", b"data"]) -> None: ...
 
 global___GetMappingResponse = GetMappingResponse

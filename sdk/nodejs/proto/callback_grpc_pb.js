@@ -58,4 +58,4 @@ invoke: {
   },
 };
 
-exports.CallbacksClient = grpc.makeGenericClientConstructor(CallbacksService);
+exports.CallbacksClient = grpc.makeGenericClientConstructor(CallbacksService, 'Callbacks');

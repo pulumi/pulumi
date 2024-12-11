@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 goog.exportSymbol('proto.pulumirpc.SourcePosition', null, global);
 /**
@@ -69,9 +75,9 @@ proto.pulumirpc.SourcePosition.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.SourcePosition.toObject = function(includeInstance, msg) {
   var f, obj = {
-    uri: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    line: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    column: jspb.Message.getFieldWithDefault(msg, 3, 0)
+uri: jspb.Message.getFieldWithDefault(msg, 1, ""),
+line: jspb.Message.getFieldWithDefault(msg, 2, 0),
+column: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {

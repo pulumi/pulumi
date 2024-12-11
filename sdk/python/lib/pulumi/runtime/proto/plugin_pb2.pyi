@@ -15,21 +15,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class PluginInfo(google.protobuf.message.Message):
     """PluginInfo is meta-information about a plugin that is used by the system."""
 
@@ -43,17 +39,17 @@ class PluginInfo(google.protobuf.message.Message):
         *,
         version: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["version", b"version"]) -> None: ...
 
 global___PluginInfo = PluginInfo
 
-@typing_extensions.final
+@typing.final
 class PluginDependency(google.protobuf.message.Message):
     """PluginDependency is information about a plugin that a program may depend upon."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class ChecksumsEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -67,7 +63,7 @@ class PluginDependency(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.bytes = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     NAME_FIELD_NUMBER: builtins.int
     KIND_FIELD_NUMBER: builtins.int
@@ -87,6 +83,7 @@ class PluginDependency(google.protobuf.message.Message):
         """a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
         the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
         """
+
     def __init__(
         self,
         *,
@@ -96,11 +93,11 @@ class PluginDependency(google.protobuf.message.Message):
         server: builtins.str = ...,
         checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "server", b"server", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "server", b"server", "version", b"version"]) -> None: ...
 
 global___PluginDependency = PluginDependency
 
-@typing_extensions.final
+@typing.final
 class PluginAttach(google.protobuf.message.Message):
     """PluginAttach is used to attach an already running plugin to the engine.
 
@@ -119,11 +116,11 @@ class PluginAttach(google.protobuf.message.Message):
         *,
         address: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["address", b"address"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["address", b"address"]) -> None: ...
 
 global___PluginAttach = PluginAttach
 
-@typing_extensions.final
+@typing.final
 class PackageParameterization(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -143,17 +140,17 @@ class PackageParameterization(google.protobuf.message.Message):
         version: builtins.str = ...,
         value: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
 global___PackageParameterization = PackageParameterization
 
-@typing_extensions.final
+@typing.final
 class PackageDependency(google.protobuf.message.Message):
     """PackageDependency is information about a package that a program may depend upon."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class ChecksumsEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -167,7 +164,7 @@ class PackageDependency(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: builtins.bytes = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     NAME_FIELD_NUMBER: builtins.int
     KIND_FIELD_NUMBER: builtins.int
@@ -188,9 +185,11 @@ class PackageDependency(google.protobuf.message.Message):
         """a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
         the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
         """
+
     @property
     def parameterization(self) -> global___PackageParameterization:
         """The optional parameterization for this package."""
+
     def __init__(
         self,
         *,
@@ -201,7 +200,7 @@ class PackageDependency(google.protobuf.message.Message):
         checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         parameterization: global___PackageParameterization | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "parameterization", b"parameterization", "server", b"server", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "parameterization", b"parameterization", "server", b"server", "version", b"version"]) -> None: ...
 
 global___PackageDependency = PackageDependency

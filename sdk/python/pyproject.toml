@@ -19,8 +19,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    'protobuf~=4.21',
-    'grpcio~=1.66.2',
+    'protobuf~=6.31',
+    'grpcio~=1.71',
     'dill~=0.3',
     'semver~=3.0',
     'pyyaml~=6.0',

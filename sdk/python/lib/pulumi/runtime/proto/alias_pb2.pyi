@@ -15,23 +15,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class Alias(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class Spec(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -63,9 +59,9 @@ class Alias(google.protobuf.message.Message):
             parentUrn: builtins.str = ...,
             noParent: builtins.bool = ...,
         ) -> None: ...
-        def HasField(self, field_name: typing_extensions.Literal["noParent", b"noParent", "parent", b"parent", "parentUrn", b"parentUrn"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "noParent", b"noParent", "parent", b"parent", "parentUrn", b"parentUrn", "project", b"project", "stack", b"stack", "type", b"type"]) -> None: ...
-        def WhichOneof(self, oneof_group: typing_extensions.Literal["parent", b"parent"]) -> typing_extensions.Literal["parentUrn", "noParent"] | None: ...
+        def HasField(self, field_name: typing.Literal["noParent", b"noParent", "parent", b"parent", "parentUrn", b"parentUrn"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["name", b"name", "noParent", b"noParent", "parent", b"parent", "parentUrn", b"parentUrn", "project", b"project", "stack", b"stack", "type", b"type"]) -> None: ...
+        def WhichOneof(self, oneof_group: typing.Literal["parent", b"parent"]) -> typing.Literal["parentUrn", "noParent"] | None: ...
 
     URN_FIELD_NUMBER: builtins.int
     SPEC_FIELD_NUMBER: builtins.int
@@ -74,14 +70,15 @@ class Alias(google.protobuf.message.Message):
     @property
     def spec(self) -> global___Alias.Spec:
         """An alias specification."""
+
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         spec: global___Alias.Spec | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["alias", b"alias", "spec", b"spec", "urn", b"urn"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["alias", b"alias", "spec", b"spec", "urn", b"urn"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["alias", b"alias"]) -> typing_extensions.Literal["urn", "spec"] | None: ...
+    def HasField(self, field_name: typing.Literal["alias", b"alias", "spec", b"spec", "urn", b"urn"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["alias", b"alias", "spec", b"spec", "urn", b"urn"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["alias", b"alias"]) -> typing.Literal["urn", "spec"] | None: ...
 
 global___Alias = Alias

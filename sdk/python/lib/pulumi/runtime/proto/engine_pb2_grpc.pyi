@@ -15,12 +15,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
+import grpc.aio
 import pulumi.engine_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class EngineStub:
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
@@ -28,12 +39,13 @@ class EngineStub:
     that can't store their own global state.
     """
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     Log: grpc.UnaryUnaryMultiCallable[
         pulumi.engine_pb2.LogRequest,
         google.protobuf.empty_pb2.Empty,
     ]
     """Log logs a global message in the engine, including errors and warnings."""
+
     GetRootResource: grpc.UnaryUnaryMultiCallable[
         pulumi.engine_pb2.GetRootResourceRequest,
         pulumi.engine_pb2.GetRootResourceResponse,
@@ -41,12 +53,48 @@ class EngineStub:
     """GetRootResource gets the URN of the root resource, the resource that should be the root of all
     otherwise-unparented resources.
     """
+
     SetRootResource: grpc.UnaryUnaryMultiCallable[
         pulumi.engine_pb2.SetRootResourceRequest,
         pulumi.engine_pb2.SetRootResourceResponse,
     ]
     """SetRootResource sets the URN of the root resource."""
+
     StartDebugging: grpc.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.StartDebuggingRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+    should notify the user of how to connect to the debugger.
+    """
+
+class EngineAsyncStub:
+    """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+    to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+    that can't store their own global state.
+    """
+
+    Log: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.LogRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Log logs a global message in the engine, including errors and warnings."""
+
+    GetRootResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.GetRootResourceRequest,
+        pulumi.engine_pb2.GetRootResourceResponse,
+    ]
+    """GetRootResource gets the URN of the root resource, the resource that should be the root of all
+    otherwise-unparented resources.
+    """
+
+    SetRootResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.SetRootResourceRequest,
+        pulumi.engine_pb2.SetRootResourceResponse,
+    ]
+    """SetRootResource sets the URN of the root resource."""
+
+    StartDebugging: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.engine_pb2.StartDebuggingRequest,
         google.protobuf.empty_pb2.Empty,
     ]
@@ -64,31 +112,34 @@ class EngineServicer(metaclass=abc.ABCMeta):
     def Log(
         self,
         request: pulumi.engine_pb2.LogRequest,
-        context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty:
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Log logs a global message in the engine, including errors and warnings."""
+
     
     def GetRootResource(
         self,
         request: pulumi.engine_pb2.GetRootResourceRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.engine_pb2.GetRootResourceResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.engine_pb2.GetRootResourceResponse, collections.abc.Awaitable[pulumi.engine_pb2.GetRootResourceResponse]]:
         """GetRootResource gets the URN of the root resource, the resource that should be the root of all
         otherwise-unparented resources.
         """
+
     
     def SetRootResource(
         self,
         request: pulumi.engine_pb2.SetRootResourceRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.engine_pb2.SetRootResourceResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.engine_pb2.SetRootResourceResponse, collections.abc.Awaitable[pulumi.engine_pb2.SetRootResourceResponse]]:
         """SetRootResource sets the URN of the root resource."""
+
     
     def StartDebugging(
         self,
         request: pulumi.engine_pb2.StartDebuggingRequest,
-        context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty:
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """StartDebugging indicates to the engine that the program has started under a debugger, and the engine
         should notify the user of how to connect to the debugger.
         """

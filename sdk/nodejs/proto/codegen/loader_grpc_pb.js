@@ -59,4 +59,4 @@ getSchema: {
   },
 };
 
-exports.LoaderClient = grpc.makeGenericClientConstructor(LoaderService);
+exports.LoaderClient = grpc.makeGenericClientConstructor(LoaderService, 'Loader');

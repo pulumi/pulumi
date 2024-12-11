@@ -15,21 +15,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class GetLanguageTestsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -39,7 +35,7 @@ class GetLanguageTestsRequest(google.protobuf.message.Message):
 
 global___GetLanguageTestsRequest = GetLanguageTestsRequest
 
-@typing_extensions.final
+@typing.final
 class GetLanguageTestsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -51,15 +47,15 @@ class GetLanguageTestsResponse(google.protobuf.message.Message):
         *,
         tests: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["tests", b"tests"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["tests", b"tests"]) -> None: ...
 
 global___GetLanguageTestsResponse = GetLanguageTestsResponse
 
-@typing_extensions.final
+@typing.final
 class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
+    @typing.final
     class Replacement(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -76,9 +72,9 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
             pattern: builtins.str = ...,
             replacement: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["path", b"path", "pattern", b"pattern", "replacement", b"replacement"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["path", b"path", "pattern", b"pattern", "replacement", b"replacement"]) -> None: ...
 
-    @typing_extensions.final
+    @typing.final
     class ProgramOverride(google.protobuf.message.Message):
         """ProgramOverrides represent overrides whereby a test may specify a set of hardcoded or pre-generated programs to
         be used, in place of running GenerateProject on source PCL. This is useful for testing SDK functionality when the
@@ -95,14 +91,15 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
             correspond to the number of `Runs` in the test, with each entry being used for the corresponding run (e.g.
             entry 0 for run 0, entry 1 for run 1, etc.).
             """
+
         def __init__(
             self,
             *,
             paths: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["paths", b"paths"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["paths", b"paths"]) -> None: ...
 
-    @typing_extensions.final
+    @typing.final
     class ProgramOverridesEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -117,8 +114,8 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
             key: builtins.str = ...,
             value: global___PrepareLanguageTestsRequest.ProgramOverride | None = ...,
         ) -> None: ...
-        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     LANGUAGE_PLUGIN_NAME_FIELD_NUMBER: builtins.int
     LANGUAGE_PLUGIN_TARGET_FIELD_NUMBER: builtins.int
@@ -135,13 +132,13 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     temporary_directory: builtins.str
     core_sdk_directory: builtins.str
     core_sdk_version: builtins.str
-    @property
-    def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
     language_info: builtins.str
     """a JSON string that will be inserted into every schema loaded (for both GeneratePackage and GenerateProject) in
     the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
     inputTypes in python.
     """
+    @property
+    def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
     @property
     def program_overrides(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PrepareLanguageTestsRequest.ProgramOverride]:
         """A map of test names to program overrides. This may be used to specify tests for which program generation should
@@ -150,6 +147,7 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         desirable to test that feature set) but where program code generation is not yet complete enough to support
         generating programs which exercise that functionality.
         """
+
     def __init__(
         self,
         *,
@@ -163,11 +161,11 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         language_info: builtins.str = ...,
         program_overrides: collections.abc.Mapping[builtins.str, global___PrepareLanguageTestsRequest.ProgramOverride] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "program_overrides", b"program_overrides", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "program_overrides", b"program_overrides", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 
-@typing_extensions.final
+@typing.final
 class PrepareLanguageTestsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -178,11 +176,11 @@ class PrepareLanguageTestsResponse(google.protobuf.message.Message):
         *,
         token: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
 
 global___PrepareLanguageTestsResponse = PrepareLanguageTestsResponse
 
-@typing_extensions.final
+@typing.final
 class RunLanguageTestRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -196,11 +194,11 @@ class RunLanguageTestRequest(google.protobuf.message.Message):
         token: builtins.str = ...,
         test: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["test", b"test", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["test", b"test", "token", b"token"]) -> None: ...
 
 global___RunLanguageTestRequest = RunLanguageTestRequest
 
-@typing_extensions.final
+@typing.final
 class RunLanguageTestResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -209,10 +207,10 @@ class RunLanguageTestResponse(google.protobuf.message.Message):
     STDOUT_FIELD_NUMBER: builtins.int
     STDERR_FIELD_NUMBER: builtins.int
     success: builtins.bool
-    @property
-    def messages(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     stdout: builtins.str
     stderr: builtins.str
+    @property
+    def messages(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     def __init__(
         self,
         *,
@@ -221,6 +219,6 @@ class RunLanguageTestResponse(google.protobuf.message.Message):
         stdout: builtins.str = ...,
         stderr: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["messages", b"messages", "stderr", b"stderr", "stdout", b"stdout", "success", b"success"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["messages", b"messages", "stderr", b"stderr", "stdout", b"stdout", "success", b"success"]) -> None: ...
 
 global___RunLanguageTestResponse = RunLanguageTestResponse
