@@ -23,4 +23,5 @@ echo "deb-src https://deb.nodesource.com/${NODE_REPO} ${NODE_DISTRO} main" >> /e
 apt-get update
 apt-get install -y nodejs
 
-curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version "${YARN_VERSION}"
+corepack enable
+yarn set version "${YARN_VERSION}"

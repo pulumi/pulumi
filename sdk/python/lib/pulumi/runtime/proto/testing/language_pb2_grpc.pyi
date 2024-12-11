@@ -15,21 +15,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import grpc
+import grpc.aio
 import pulumi.testing.language_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class LanguageTestStub:
     """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
     currently subject to breaking changes without warning.
     """
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     GetLanguageTests: grpc.UnaryUnaryMultiCallable[
         pulumi.testing.language_pb2.GetLanguageTestsRequest,
         pulumi.testing.language_pb2.GetLanguageTestsResponse,
     ]
     """GetLanguageTests returns a list of all the language tests."""
+
     PrepareLanguageTests: grpc.UnaryUnaryMultiCallable[
         pulumi.testing.language_pb2.PrepareLanguageTestsRequest,
         pulumi.testing.language_pb2.PrepareLanguageTestsResponse,
@@ -37,7 +49,33 @@ class LanguageTestStub:
     """PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
     (which should be .gitignore'd) and fills it with the core SDK artifact.
     """
+
     RunLanguageTest: grpc.UnaryUnaryMultiCallable[
+        pulumi.testing.language_pb2.RunLanguageTestRequest,
+        pulumi.testing.language_pb2.RunLanguageTestResponse,
+    ]
+    """RunLanguageTest runs a single test of the language plugin."""
+
+class LanguageTestAsyncStub:
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
+    """
+
+    GetLanguageTests: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.testing.language_pb2.GetLanguageTestsRequest,
+        pulumi.testing.language_pb2.GetLanguageTestsResponse,
+    ]
+    """GetLanguageTests returns a list of all the language tests."""
+
+    PrepareLanguageTests: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.testing.language_pb2.PrepareLanguageTestsRequest,
+        pulumi.testing.language_pb2.PrepareLanguageTestsResponse,
+    ]
+    """PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
+    (which should be .gitignore'd) and fills it with the core SDK artifact.
+    """
+
+    RunLanguageTest: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.testing.language_pb2.RunLanguageTestRequest,
         pulumi.testing.language_pb2.RunLanguageTestResponse,
     ]
@@ -52,24 +90,26 @@ class LanguageTestServicer(metaclass=abc.ABCMeta):
     def GetLanguageTests(
         self,
         request: pulumi.testing.language_pb2.GetLanguageTestsRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.testing.language_pb2.GetLanguageTestsResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.testing.language_pb2.GetLanguageTestsResponse, collections.abc.Awaitable[pulumi.testing.language_pb2.GetLanguageTestsResponse]]:
         """GetLanguageTests returns a list of all the language tests."""
+
     @abc.abstractmethod
     def PrepareLanguageTests(
         self,
         request: pulumi.testing.language_pb2.PrepareLanguageTestsRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.testing.language_pb2.PrepareLanguageTestsResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.testing.language_pb2.PrepareLanguageTestsResponse, collections.abc.Awaitable[pulumi.testing.language_pb2.PrepareLanguageTestsResponse]]:
         """PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
         (which should be .gitignore'd) and fills it with the core SDK artifact.
         """
+
     @abc.abstractmethod
     def RunLanguageTest(
         self,
         request: pulumi.testing.language_pb2.RunLanguageTestRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.testing.language_pb2.RunLanguageTestResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.testing.language_pb2.RunLanguageTestResponse, collections.abc.Awaitable[pulumi.testing.language_pb2.RunLanguageTestResponse]]:
         """RunLanguageTest runs a single test of the language plugin."""
 
-def add_LanguageTestServicer_to_server(servicer: LanguageTestServicer, server: grpc.Server) -> None: ...
+def add_LanguageTestServicer_to_server(servicer: LanguageTestServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
@@ -632,7 +638,7 @@ proto.pulumirpc.SupportsFeatureRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.SupportsFeatureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, "")
+id: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -762,7 +768,7 @@ proto.pulumirpc.SupportsFeatureResponse.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.SupportsFeatureResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    hassupport: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+hassupport: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
   };
 
   if (includeInstance) {
@@ -899,21 +905,21 @@ proto.pulumirpc.ReadResourceRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    dependenciesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
-    provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
-    additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
-    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    packageref: jspb.Message.getFieldWithDefault(msg, 16, "")
+id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+name: jspb.Message.getFieldWithDefault(msg, 3, ""),
+parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+dependenciesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
+version: jspb.Message.getFieldWithDefault(msg, 8, ""),
+acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
+additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
+acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+packageref: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
   if (includeInstance) {
@@ -1442,7 +1448,8 @@ proto.pulumirpc.ReadResourceRequest.prototype.getPluginchecksumsMap = function(o
  */
 proto.pulumirpc.ReadResourceRequest.prototype.clearPluginchecksumsMap = function() {
   this.getPluginchecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -1532,8 +1539,8 @@ proto.pulumirpc.ReadResourceResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ReadResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1720,42 +1727,42 @@ proto.pulumirpc.RegisterResourceRequest.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    parent: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    custom: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    protect: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
-    dependenciesList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f,
-    provider: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : [],
-    deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    version: jspb.Message.getFieldWithDefault(msg, 11, ""),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
-    acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 13, false),
-    additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
-    aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
-    importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
-    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
-    deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 18, false),
-    supportspartialvalues: jspb.Message.getBooleanFieldWithDefault(msg, 19, false),
-    remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
-    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
-    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
-    aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+parent: jspb.Message.getFieldWithDefault(msg, 3, ""),
+custom: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+protect: (f = jspb.Message.getBooleanField(msg, 6)) == null ? undefined : f,
+dependenciesList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f,
+provider: jspb.Message.getFieldWithDefault(msg, 8, ""),
+propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : [],
+deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
+version: jspb.Message.getFieldWithDefault(msg, 11, ""),
+ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
+acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 13, false),
+additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
+aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
+importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
+customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
+deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 18, false),
+supportspartialvalues: jspb.Message.getBooleanFieldWithDefault(msg, 19, false),
+remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
+acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
+providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
+replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
+pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+retainondelete: (f = jspb.Message.getBooleanField(msg, 25)) == null ? undefined : f,
+aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
-    deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
-    aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
+deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
+sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
     pulumi_callback_pb.Callback.toObject, includeInstance),
-    supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
-    packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
-    hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
+supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
+packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
+hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2246,7 +2253,7 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.toObject 
  */
 proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2395,9 +2402,9 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.toObject = func
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject = function(includeInstance, msg) {
   var f, obj = {
-    create: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    update: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
+create: jspb.Message.getFieldWithDefault(msg, 1, ""),
+update: jspb.Message.getFieldWithDefault(msg, 2, ""),
+pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -2592,12 +2599,12 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.toObject 
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject = function(includeInstance, msg) {
   var f, obj = {
-    beforeCreateList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
-    afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
-    beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
+beforeCreateList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
+afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
+beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
+beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -3173,7 +3180,8 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getPropertydependenciesMap = f
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearPropertydependenciesMap = function() {
   this.getPropertydependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -3487,7 +3495,8 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getProvidersMap = function(opt
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearProvidersMap = function() {
   this.getProvidersMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -3564,7 +3573,8 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getPluginchecksumsMap = functi
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearPluginchecksumsMap = function() {
   this.getPluginchecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -3864,13 +3874,13 @@ proto.pulumirpc.RegisterResourceResponse.prototype.toObject = function(opt_inclu
  */
 proto.pulumirpc.RegisterResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    id: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    stable: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    stablesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : [],
-    result: jspb.Message.getFieldWithDefault(msg, 7, 0)
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+id: jspb.Message.getFieldWithDefault(msg, 2, ""),
+object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+stable: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+stablesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : [],
+result: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -4056,7 +4066,7 @@ proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.prototype.toObject
  */
 proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4320,7 +4330,8 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getPropertydependenciesMap = 
  */
 proto.pulumirpc.RegisterResourceResponse.prototype.clearPropertydependenciesMap = function() {
   this.getPropertydependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -4373,8 +4384,8 @@ proto.pulumirpc.RegisterResourceOutputsRequest.prototype.toObject = function(opt
  */
 proto.pulumirpc.RegisterResourceOutputsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4554,15 +4565,15 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.ResourceInvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
+tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
+version: jspb.Message.getFieldWithDefault(msg, 4, ""),
+acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
+pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
 
   if (includeInstance) {
@@ -4879,7 +4890,8 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.getPluginchecksumsMap = function
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.clearPluginchecksumsMap = function() {
   this.getPluginchecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -4969,15 +4981,15 @@ proto.pulumirpc.ResourceCallRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ResourceCallRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ResourceCallRequest.ArgumentDependencies.toObject) : [],
-    provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
-    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    packageref: jspb.Message.getFieldWithDefault(msg, 17, "")
+tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ResourceCallRequest.ArgumentDependencies.toObject) : [],
+provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
+version: jspb.Message.getFieldWithDefault(msg, 5, ""),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+packageref: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -5186,7 +5198,7 @@ proto.pulumirpc.ResourceCallRequest.ArgumentDependencies.prototype.toObject = fu
  */
 proto.pulumirpc.ResourceCallRequest.ArgumentDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+urnsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -5377,7 +5389,8 @@ proto.pulumirpc.ResourceCallRequest.prototype.getArgdependenciesMap = function(o
  */
 proto.pulumirpc.ResourceCallRequest.prototype.clearArgdependenciesMap = function() {
   this.getArgdependenciesMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -5453,7 +5466,8 @@ proto.pulumirpc.ResourceCallRequest.prototype.getPluginchecksumsMap = function(o
  */
 proto.pulumirpc.ResourceCallRequest.prototype.clearPluginchecksumsMap = function() {
   this.getPluginchecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -5550,23 +5564,23 @@ proto.pulumirpc.TransformResourceOptions.prototype.toObject = function(opt_inclu
  */
 proto.pulumirpc.TransformResourceOptions.toObject = function(includeInstance, msg) {
   var f, obj = {
-    dependsOnList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
-    protect: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    ignoreChangesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    replaceOnChangesList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
-    version: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
+dependsOnList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
+protect: (f = jspb.Message.getBooleanField(msg, 2)) == null ? undefined : f,
+ignoreChangesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+replaceOnChangesList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
+version: jspb.Message.getFieldWithDefault(msg, 5, ""),
+aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
-    provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    customTimeouts: (f = msg.getCustomTimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
-    pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    retainOnDelete: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    deletedWith: jspb.Message.getFieldWithDefault(msg, 11, ""),
-    deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
-    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
+provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
+customTimeouts: (f = msg.getCustomTimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
+pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
+retainOnDelete: (f = jspb.Message.getBooleanField(msg, 10)) == null ? undefined : f,
+deletedWith: jspb.Message.getFieldWithDefault(msg, 11, ""),
+deleteBeforeReplace: (f = jspb.Message.getBooleanField(msg, 12)) == null ? undefined : f,
+additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
+providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
+pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6237,7 +6251,8 @@ proto.pulumirpc.TransformResourceOptions.prototype.getProvidersMap = function(op
  */
 proto.pulumirpc.TransformResourceOptions.prototype.clearProvidersMap = function() {
   this.getProvidersMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -6259,7 +6274,8 @@ proto.pulumirpc.TransformResourceOptions.prototype.getPluginChecksumsMap = funct
  */
 proto.pulumirpc.TransformResourceOptions.prototype.clearPluginChecksumsMap = function() {
   this.getPluginChecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -6331,12 +6347,12 @@ proto.pulumirpc.TransformRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.TransformRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    custom: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    options: (f = msg.getOptions()) && proto.pulumirpc.TransformResourceOptions.toObject(includeInstance, f)
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+custom: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+options: (f = msg.getOptions()) && proto.pulumirpc.TransformResourceOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6653,8 +6669,8 @@ proto.pulumirpc.TransformResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.TransformResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    options: (f = msg.getOptions()) && proto.pulumirpc.TransformResourceOptions.toObject(includeInstance, f)
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+options: (f = msg.getOptions()) && proto.pulumirpc.TransformResourceOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6855,9 +6871,9 @@ proto.pulumirpc.TransformInvokeRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.TransformInvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    options: (f = msg.getOptions()) && proto.pulumirpc.TransformInvokeOptions.toObject(includeInstance, f)
+token: jspb.Message.getFieldWithDefault(msg, 1, ""),
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+options: (f = msg.getOptions()) && proto.pulumirpc.TransformInvokeOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7087,8 +7103,8 @@ proto.pulumirpc.TransformInvokeResponse.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.TransformInvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    options: (f = msg.getOptions()) && proto.pulumirpc.TransformInvokeOptions.toObject(includeInstance, f)
+args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+options: (f = msg.getOptions()) && proto.pulumirpc.TransformInvokeOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7289,10 +7305,10 @@ proto.pulumirpc.TransformInvokeOptions.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.TransformInvokeOptions.toObject = function(includeInstance, msg) {
   var f, obj = {
-    provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
+provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
+pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 2, ""),
+version: jspb.Message.getFieldWithDefault(msg, 3, ""),
+pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -7477,7 +7493,8 @@ proto.pulumirpc.TransformInvokeOptions.prototype.getPluginChecksumsMap = functio
  */
 proto.pulumirpc.TransformInvokeOptions.prototype.clearPluginChecksumsMap = function() {
   this.getPluginChecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 
@@ -7512,14 +7529,14 @@ proto.pulumirpc.ResourceHookRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ResourceHookRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    id: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
+id: jspb.Message.getFieldWithDefault(msg, 2, ""),
+name: jspb.Message.getFieldWithDefault(msg, 3, ""),
+type: jspb.Message.getFieldWithDefault(msg, 4, ""),
+newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7936,7 +7953,7 @@ proto.pulumirpc.ResourceHookResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ResourceHookResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    error: jspb.Message.getFieldWithDefault(msg, 1, "")
+error: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -8066,11 +8083,11 @@ proto.pulumirpc.RegisterPackageRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.RegisterPackageRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    parameterization: (f = msg.getParameterization()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f)
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
+checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+parameterization: (f = msg.getParameterization()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -8268,7 +8285,8 @@ proto.pulumirpc.RegisterPackageRequest.prototype.getChecksumsMap = function(opt_
  */
 proto.pulumirpc.RegisterPackageRequest.prototype.clearChecksumsMap = function() {
   this.getChecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
@@ -8340,7 +8358,7 @@ proto.pulumirpc.RegisterPackageResponse.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.RegisterPackageResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    ref: jspb.Message.getFieldWithDefault(msg, 1, "")
+ref: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -8470,9 +8488,9 @@ proto.pulumirpc.Parameterization.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.Parameterization.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    value: msg.getValue_asB64()
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+value: msg.getValue_asB64()
   };
 
   if (includeInstance) {
@@ -8684,9 +8702,9 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.toObject = function(opt_in
  */
 proto.pulumirpc.RegisterResourceHookRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f),
-    onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f),
+onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {

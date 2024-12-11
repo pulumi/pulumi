@@ -15,24 +15,53 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import grpc
 import grpc.aio
 import typing
+import grpc.aio
 import pulumi.converter_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class ConverterStub:
     """Converter is a service for converting between other ecosystems and Pulumi.
     This is currently unstable and experimental.
     """
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     ConvertState: grpc.UnaryUnaryMultiCallable[
         pulumi.converter_pb2.ConvertStateRequest,
         pulumi.converter_pb2.ConvertStateResponse,
     ]
     """ConvertState converts state from the target ecosystem into a form that can be imported into Pulumi."""
+
     ConvertProgram: grpc.UnaryUnaryMultiCallable[
+        pulumi.converter_pb2.ConvertProgramRequest,
+        pulumi.converter_pb2.ConvertProgramResponse,
+    ]
+    """ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi."""
+
+class ConverterAsyncStub:
+    """Converter is a service for converting between other ecosystems and Pulumi.
+    This is currently unstable and experimental.
+    """
+
+    ConvertState: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.converter_pb2.ConvertStateRequest,
+        pulumi.converter_pb2.ConvertStateResponse,
+    ]
+    """ConvertState converts state from the target ecosystem into a form that can be imported into Pulumi."""
+
+    ConvertProgram: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.converter_pb2.ConvertProgramRequest,
         pulumi.converter_pb2.ConvertProgramResponse,
     ]
@@ -47,15 +76,16 @@ class ConverterServicer(metaclass=abc.ABCMeta):
     def ConvertState(
         self,
         request: pulumi.converter_pb2.ConvertStateRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.converter_pb2.ConvertStateResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.converter_pb2.ConvertStateResponse, collections.abc.Awaitable[pulumi.converter_pb2.ConvertStateResponse]]:
         """ConvertState converts state from the target ecosystem into a form that can be imported into Pulumi."""
+
     
     def ConvertProgram(
         self,
         request: pulumi.converter_pb2.ConvertProgramRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.converter_pb2.ConvertProgramResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.converter_pb2.ConvertProgramResponse, collections.abc.Awaitable[pulumi.converter_pb2.ConvertProgramResponse]]:
         """ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi."""
 
 def add_ConverterServicer_to_server(servicer: ConverterServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
