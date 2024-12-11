@@ -18,6 +18,22 @@ import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
 
+/* internal */
+export class OutputToStringError extends Error {
+    constructor() {
+        super(`Calling [toString] on an [Output<T>] is not supported.
+
+To get the value of an Output<T> as an Output<string> consider either:
+1: o.apply(v => \`prefix\${v}suffix\`)
+2: pulumi.interpolate \`prefix\${v}suffix\`
+
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
+
+Or use ESLint with https://github.com/pulumi/eslint-plugin-pulumi to warn or
+error lint on using Output<T> in template literals.`);
+    }
+}
+
 /**
  * {@link Output} helps encode the relationship between {@link Resource}s in a
  * Pulumi application. Specifically, an {@link Output} holds onto a piece of
@@ -229,19 +245,11 @@ class OutputImpl<T> implements OutputInstance<T> {
             );
 
         this.toString = () => {
-            let message = `Calling [toString] on an [Output<T>] is not supported.
-
-To get the value of an Output<T> as an Output<string> consider either:
-1: o.apply(v => \`prefix\${v}suffix\`)
-2: pulumi.interpolate \`prefix\${v}suffix\`
-
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-
-Or use ESLint with https://github.com/pulumi/eslint-plugin-pulumi to warn or
-error lint on using Output<T> in template literals.`;
+            const error = new OutputToStringError();
             if (utils.errorOutputString) {
-                throw new Error(message);
+                throw error;
             }
+            let message = error.message;
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
