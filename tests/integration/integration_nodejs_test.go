@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -1681,6 +1682,8 @@ func TestAboutNodeJS(t *testing.T) {
 	// Assert we parsed the dependencies
 	assert.Containsf(t, stdout, "@types/node",
 		"Did not contain expected output. stderr: \n%q", stderr)
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesNode(t *testing.T) {

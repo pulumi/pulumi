@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -1324,9 +1325,11 @@ func TestAboutPython(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	stdout, _ := e.RunCommand("pulumi", "about", "--json")
+	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "pulumi-kubernetes")
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesPython(t *testing.T) {
