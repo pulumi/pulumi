@@ -54,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -403,8 +404,8 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Developer Commands",
 			Commands: []*cobra.Command{
-				newViewTraceCmd(),
-				newConvertTraceCmd(),
+				trace.NewViewTraceCmd(),
+				trace.NewConvertTraceCmd(),
 				newReplayEventsCmd(),
 			},
 		},
