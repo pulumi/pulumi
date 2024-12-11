@@ -26,7 +26,6 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -146,10 +145,6 @@ func genSDK(language, out string, pkg *schema.Package, overlays string, local bo
 	case "dotnet":
 		generatePackage = writeWrapper(func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
 			return dotnet.GeneratePackage(t, p, e, nil)
-		})
-	case "java":
-		generatePackage = writeWrapper(func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
-			return javagen.GeneratePackage(t, p, e, local)
 		})
 	default:
 		generatePackage = func(directory string, pkg *schema.Package, extraFiles map[string][]byte) error {
