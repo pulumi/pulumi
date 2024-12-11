@@ -16,9 +16,11 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -70,23 +72,55 @@ func newDestroySource(
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
-	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.
-	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
-	// in the snapshot.
-	plugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	// Like update, we need to gather the set of plugins necessary to delete everything in the snapshot. While we don't
+	// run the program like update does, we still grab the plugins from the program in order to inform the user if their
+	// program has updates to plugins that will not be used as part of the destroy operation. In the event that there is
+	// no root directory/Pulumi.yaml (perhaps as the result of a command to which an explicit stack name has been passed),
+	// we'll populate an empty set of program plugins.
+
+	var programPlugins PluginSet
+	if plugctx.Root != "" {
+		runtime := proj.Runtime.Name()
+		programInfo := plugin.NewProgramInfo(
+			/* rootDirectory */ plugctx.Root,
+			/* programDirectory */ pwd,
+			/* entryPoint */ main,
+			/* options */ proj.Runtime.Options(),
+		)
+
+		var err error
+		programPlugins, err = gatherPluginsFromProgram(plugctx, runtime, programInfo)
+		if err != nil {
+			programPlugins = NewPluginSet()
+		}
+	} else {
+		programPlugins = NewPluginSet()
+	}
+
+	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, err
 	}
 
+	pluginUpdates := programPlugins.UpdatesTo(snapshotPlugins)
+	if len(pluginUpdates) > 0 {
+		for _, update := range pluginUpdates {
+			plugctx.Diag.Warningf(diag.Message("", fmt.Sprintf(
+				"destroy operation is using an older version of plugin '%s' than the specified program version: %s < %s",
+				update.New.Name, update.Old.Version, update.New.Version,
+			)))
+		}
+	}
+
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, plugins.Deduplicate(),
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPlugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 
 	// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
-	if err := ensurePluginsAreLoaded(plugctx, plugins, plugin.AnalyzerPlugins); err != nil {
+	if err := ensurePluginsAreLoaded(plugctx, snapshotPlugins, plugin.AnalyzerPlugins); err != nil {
 		return nil, err
 	}
 

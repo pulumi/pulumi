@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Warn if `refresh` or `destroy` use older plugins
