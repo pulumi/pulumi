@@ -875,6 +875,7 @@ func (ctx *Context) InvokeOutput(
 		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, options.InvokeOptions...)
 		if err != nil {
 			internal.RejectOutput(output, err)
+			return
 		}
 
 		dest := reflect.New(output.ElementType()).Elem()
@@ -882,8 +883,10 @@ func (ctx *Context) InvokeOutput(
 		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
+			return
 		}
 		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+		return
 	}()
 
 	return output
