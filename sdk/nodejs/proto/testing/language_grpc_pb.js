@@ -128,4 +128,4 @@ runLanguageTest: {
   },
 };
 
-exports.LanguageTestClient = grpc.makeGenericClientConstructor(LanguageTestService);
+exports.LanguageTestClient = grpc.makeGenericClientConstructor(LanguageTestService, 'LanguageTest');
