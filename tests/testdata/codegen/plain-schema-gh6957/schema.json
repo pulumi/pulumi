@@ -41,7 +41,7 @@
   "language": {
     "csharp": {
       "packageReferences": {
-        "Pulumi": "3.26.1",
+        "Pulumi": "3.71.0",
         "Pulumi.Aws": "4.*"
       }
     },

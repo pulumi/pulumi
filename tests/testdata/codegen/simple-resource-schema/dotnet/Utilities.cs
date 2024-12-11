@@ -57,6 +57,14 @@ namespace Pulumi.Example
             return dst;
         }
 
+        public static global::Pulumi.InvokeOutputOptions WithDefaults(this global::Pulumi.InvokeOutputOptions? src)
+        {
+            var dst = src ?? new global::Pulumi.InvokeOutputOptions{};
+            dst.Version = src?.Version ?? Version;
+            dst.PluginDownloadURL = src?.PluginDownloadURL ?? "example.com/download";
+            return dst;
+        }
+
         private readonly static string version;
         public static string Version => version;
 

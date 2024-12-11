@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.33.2" />
+    <PackageReference Include="Pulumi" Version="3.71.0" />
     <PackageReference Include="Pulumi.GoogleNative" Version="0.20.0" ExcludeAssets="contentFiles" />
   </ItemGroup>
 

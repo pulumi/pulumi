@@ -23,6 +23,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<GetAmiIdsResult> Invoke(GetAmiIdsInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Taken from pulumi-AWS to regress an issue
+        /// </summary>
+        public static Output<GetAmiIdsResult> Invoke(GetAmiIdsInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsInvokeArgs(), options.WithDefaults());
     }
 
 

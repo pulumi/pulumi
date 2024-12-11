@@ -22,6 +22,12 @@ namespace Pulumi.Urnid
         /// </summary>
         public static Output<TestResult> Invoke(TestInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<TestResult>("urnid:index:Test", args ?? new TestInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// It's fine for invokes to use urn and id
+        /// </summary>
+        public static Output<TestResult> Invoke(TestInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<TestResult>("urnid:index:Test", args ?? new TestInvokeArgs(), options.WithDefaults());
     }
 
 

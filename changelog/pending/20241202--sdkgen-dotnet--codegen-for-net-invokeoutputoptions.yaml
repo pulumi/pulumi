@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/dotnet
+  description: Codegen for .NET InvokeOutputOptions

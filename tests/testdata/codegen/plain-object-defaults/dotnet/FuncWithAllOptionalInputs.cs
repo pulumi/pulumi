@@ -22,6 +22,12 @@ namespace Pulumi.Example
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Check codegen of functions with all optional inputs.
+        /// </summary>
+        public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
     }
 
 

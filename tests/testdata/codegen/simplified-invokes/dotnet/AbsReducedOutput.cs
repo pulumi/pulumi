@@ -24,6 +24,13 @@ namespace Pulumi.Std
         /// </summary>
         public static Output<double> Invoke(AbsReducedOutputInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.InvokeSingle<double>("std:index:AbsReducedOutput", args ?? new AbsReducedOutputInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Returns the absolute value of a given float. 
+        /// Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
+        /// </summary>
+        public static Output<double> Invoke(AbsReducedOutputInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.InvokeSingle<double>("std:index:AbsReducedOutput", args ?? new AbsReducedOutputInvokeArgs(), options.WithDefaults());
     }
 
 

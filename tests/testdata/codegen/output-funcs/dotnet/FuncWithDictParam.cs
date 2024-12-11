@@ -22,6 +22,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamInvokeArgs? args = null, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Check codegen of functions with a Dict&lt;str,str&gt; parameter.
+        /// </summary>
+        public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithDefaults());
     }
 
 

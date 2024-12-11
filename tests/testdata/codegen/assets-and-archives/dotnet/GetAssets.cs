@@ -16,6 +16,9 @@ namespace Pulumi.Example
 
         public static Output<GetAssetsResult> Invoke(GetAssetsInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<GetAssetsResult>("example::GetAssets", args ?? new GetAssetsInvokeArgs(), options.WithDefaults());
+
+        public static Output<GetAssetsResult> Invoke(GetAssetsInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<GetAssetsResult>("example::GetAssets", args ?? new GetAssetsInvokeArgs(), options.WithDefaults());
     }
 
 

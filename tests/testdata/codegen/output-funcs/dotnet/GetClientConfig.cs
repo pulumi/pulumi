@@ -22,6 +22,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<GetClientConfigResult> Invoke(InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<GetClientConfigResult>("mypkg::getClientConfig", InvokeArgs.Empty, options.WithDefaults());
+
+        /// <summary>
+        /// Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
+        /// </summary>
+        public static Output<GetClientConfigResult> Invoke(InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<GetClientConfigResult>("mypkg::getClientConfig", InvokeArgs.Empty, options.WithDefaults());
     }
 
 
