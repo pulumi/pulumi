@@ -15,19 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import google.protobuf.descriptor
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class Callback(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -43,11 +39,11 @@ class Callback(google.protobuf.message.Message):
         target: builtins.str = ...,
         token: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["target", b"target", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["target", b"target", "token", b"token"]) -> None: ...
 
 global___Callback = Callback
 
-@typing_extensions.final
+@typing.final
 class CallbackInvokeRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -63,11 +59,11 @@ class CallbackInvokeRequest(google.protobuf.message.Message):
         token: builtins.str = ...,
         request: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["request", b"request", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["request", b"request", "token", b"token"]) -> None: ...
 
 global___CallbackInvokeRequest = CallbackInvokeRequest
 
-@typing_extensions.final
+@typing.final
 class CallbackInvokeResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -79,6 +75,6 @@ class CallbackInvokeResponse(google.protobuf.message.Message):
         *,
         response: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["response", b"response"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["response", b"response"]) -> None: ...
 
 global___CallbackInvokeResponse = CallbackInvokeResponse

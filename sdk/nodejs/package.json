@@ -24,7 +24,7 @@
         "@types/tmp": "^0.2.6",
         "execa": "^5.1.0",
         "fdir": "^6.1.1",
-        "google-protobuf": "^3.5.0",
+        "google-protobuf": "^3.21.4",
         "got": "^11.8.6",
         "ini": "^2.0.0",
         "js-yaml": "^3.14.0",

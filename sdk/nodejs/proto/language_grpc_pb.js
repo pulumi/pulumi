@@ -582,4 +582,4 @@ link: {
   },
 };
 
-exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService);
+exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService, 'LanguageRuntime');

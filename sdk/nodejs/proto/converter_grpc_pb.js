@@ -94,4 +94,4 @@ convertProgram: {
   },
 };
 
-exports.ConverterClient = grpc.makeGenericClientConstructor(ConverterService);
+exports.ConverterClient = grpc.makeGenericClientConstructor(ConverterService, 'Converter');
