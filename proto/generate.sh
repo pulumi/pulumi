@@ -13,7 +13,7 @@
 set -o errexit
 set -o pipefail
 
-PULUMI_BUILD_CONTAINER_VERSION=v0.3.0
+PULUMI_BUILD_CONTAINER_VERSION=v0.4.0
 
 
 # First build the image for the Pulumi Build Container

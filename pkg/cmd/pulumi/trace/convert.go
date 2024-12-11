@@ -429,7 +429,7 @@ func (s *otelSpan) Status() sdktrace.Status {
 
 // InstrumentationLibrary returns information about the instrumentation
 // library that created the span.
-func (s *otelSpan) InstrumentationLibrary() instrumentation.Library {
+func (s *otelSpan) InstrumentationLibrary() instrumentation.Scope {
 	return s.InstrumentationScope()
 }
 

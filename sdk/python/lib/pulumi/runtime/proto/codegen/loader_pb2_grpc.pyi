@@ -15,17 +15,39 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import grpc
+import grpc.aio
 import pulumi.codegen.loader_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class LoaderStub:
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
     This is currently unstable and experimental.
     """
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     GetSchema: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.loader_pb2.GetSchemaRequest,
+        pulumi.codegen.loader_pb2.GetSchemaResponse,
+    ]
+    """GetSchema tries to find a schema for the given package and version."""
+
+class LoaderAsyncStub:
+    """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
+    This is currently unstable and experimental.
+    """
+
+    GetSchema: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.codegen.loader_pb2.GetSchemaRequest,
         pulumi.codegen.loader_pb2.GetSchemaResponse,
     ]
@@ -40,8 +62,8 @@ class LoaderServicer(metaclass=abc.ABCMeta):
     def GetSchema(
         self,
         request: pulumi.codegen.loader_pb2.GetSchemaRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.codegen.loader_pb2.GetSchemaResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.codegen.loader_pb2.GetSchemaResponse, collections.abc.Awaitable[pulumi.codegen.loader_pb2.GetSchemaResponse]]:
         """GetSchema tries to find a schema for the given package and version."""
 
-def add_LoaderServicer_to_server(servicer: LoaderServicer, server: grpc.Server) -> None: ...
+def add_LoaderServicer_to_server(servicer: LoaderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
