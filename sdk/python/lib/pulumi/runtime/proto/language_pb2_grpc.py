@@ -18,6 +18,11 @@ class LanguageRuntimeStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Handshake',
+                request_serializer=pulumi_dot_language__pb2.LanguageHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.LanguageHandshakeResponse.FromString,
+                )
         self.GetRequiredPlugins = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
                 request_serializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
@@ -89,6 +94,15 @@ class LanguageRuntimeServicer(object):
     """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
     for confguring and creating resource objects.
     """
+
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to a language host. It is used to pass the 
+        engine's address to the language host so that it may establish its own connections back,
+        and to establish protocol configuration that will be used to communicate between the two parties. 
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetRequiredPlugins(self, request, context):
         """GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
@@ -184,6 +198,11 @@ class LanguageRuntimeServicer(object):
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_language__pb2.LanguageHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.LanguageHandshakeResponse.SerializeToString,
+            ),
             'GetRequiredPlugins': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRequiredPlugins,
                     request_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.FromString,
@@ -260,6 +279,23 @@ class LanguageRuntime(object):
     """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
     for confguring and creating resource objects.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Handshake',
+            pulumi_dot_language__pb2.LanguageHandshakeRequest.SerializeToString,
+            pulumi_dot_language__pb2.LanguageHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetRequiredPlugins(request,

@@ -30,6 +30,14 @@ class LanguageRuntimeStub:
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
+    Handshake: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.LanguageHandshakeRequest,
+        pulumi.language_pb2.LanguageHandshakeResponse,
+    ]
+    """`Handshake` is the first call made by the engine to a language host. It is used to pass the 
+    engine's address to the language host so that it may establish its own connections back,
+    and to establish protocol configuration that will be used to communicate between the two parties.
+    """
     GetRequiredPlugins: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.GetRequiredPluginsRequest,
         pulumi.language_pb2.GetRequiredPluginsResponse,
@@ -101,6 +109,16 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     for confguring and creating resource objects.
     """
 
+    
+    def Handshake(
+        self,
+        request: pulumi.language_pb2.LanguageHandshakeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.LanguageHandshakeResponse:
+        """`Handshake` is the first call made by the engine to a language host. It is used to pass the 
+        engine's address to the language host so that it may establish its own connections back,
+        and to establish protocol configuration that will be used to communicate between the two parties.
+        """
     
     def GetRequiredPlugins(
         self,

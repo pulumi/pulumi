@@ -855,3 +855,52 @@ export namespace PackResponse {
         artifactPath: string,
     }
 }
+
+export class LanguageHandshakeRequest extends jspb.Message { 
+    getEngineAddress(): string;
+    setEngineAddress(value: string): LanguageHandshakeRequest;
+
+    hasRootDirectory(): boolean;
+    clearRootDirectory(): void;
+    getRootDirectory(): string | undefined;
+    setRootDirectory(value: string): LanguageHandshakeRequest;
+
+    hasProgramDirectory(): boolean;
+    clearProgramDirectory(): void;
+    getProgramDirectory(): string | undefined;
+    setProgramDirectory(value: string): LanguageHandshakeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LanguageHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: LanguageHandshakeRequest): LanguageHandshakeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LanguageHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LanguageHandshakeRequest;
+    static deserializeBinaryFromReader(message: LanguageHandshakeRequest, reader: jspb.BinaryReader): LanguageHandshakeRequest;
+}
+
+export namespace LanguageHandshakeRequest {
+    export type AsObject = {
+        engineAddress: string,
+        rootDirectory?: string,
+        programDirectory?: string,
+    }
+}
+
+export class LanguageHandshakeResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LanguageHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: LanguageHandshakeResponse): LanguageHandshakeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LanguageHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LanguageHandshakeResponse;
+    static deserializeBinaryFromReader(message: LanguageHandshakeResponse, reader: jspb.BinaryReader): LanguageHandshakeResponse;
+}
+
+export namespace LanguageHandshakeResponse {
+    export type AsObject = {
+    }
+}

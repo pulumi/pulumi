@@ -41,8 +41,7 @@ func TestParseRunParams(t *testing.T) {
 		wantErr string // non-empty if we expect an error
 	}{
 		{
-			desc:    "no arguments",
-			wantErr: "missing required engine RPC address argument",
+			desc: "no arguments",
 		},
 		{
 			desc: "no options",

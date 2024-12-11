@@ -158,9 +158,12 @@ func main() {
 		cancel() // deregister signal handler
 		close(cancelChannel)
 	}()
-	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
-	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+
+	if engineAddress != "" {
+		err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+		if err != nil {
+			cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		}
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
@@ -259,6 +262,10 @@ func newLanguageHost(exec, engineAddress, tracing, typechecker string,
 }
 
 func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	if host.engineAddress == "" {
+		return nil, nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
+	}
+
 	conn, err := grpc.NewClient(
 		host.engineAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -1481,6 +1488,27 @@ func (host *pythonLanguageHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+func (host *pythonLanguageHost) Handshake(ctx context.Context,
+	req *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	host.engineAddress = req.EngineAddress
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		cancel() // deregister the interrupt handler
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+	}
+
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
 
 // removeReleaseCandidateSuffix removes any "rc" suffix from a semantic version string.

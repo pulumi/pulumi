@@ -26,6 +26,11 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 service LanguageRuntime {
+    // `Handshake` is the first call made by the engine to a language host. It is used to pass the 
+    // engine's address to the language host so that it may establish its own connections back,
+    // and to establish protocol configuration that will be used to communicate between the two parties. 
+    rpc Handshake(LanguageHandshakeRequest) returns (LanguageHandshakeResponse) {}
+
     // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
     rpc GetRequiredPlugins(GetRequiredPluginsRequest) returns (GetRequiredPluginsResponse) {
         option deprecated = true;
@@ -288,4 +293,20 @@ message PackRequest {
 message PackResponse {
     // the full path of the packed artifact.
     string artifact_path = 1;
+}
+
+message LanguageHandshakeRequest {
+    // The grpc address for the engine.
+    string engine_address = 1;
+
+    // The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located.
+    // This can't be sent when the engine is attaching to a language via a port number.
+    optional string root_directory = 2;
+    // The optional absolute path to the directory of the language program to execute. Generally, but not
+    // required to be, underneath the root directory. This can't be sent when the engine is attaching to a
+    // language via a port number.
+    optional string program_directory = 3;
+}
+
+message LanguageHandshakeResponse {
 }

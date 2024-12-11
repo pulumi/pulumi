@@ -210,6 +210,28 @@ function deserialize_pulumirpc_InstallDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.InstallDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_LanguageHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.LanguageHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.LanguageHandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LanguageHandshakeRequest(buffer_arg) {
+  return pulumi_language_pb.LanguageHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LanguageHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.LanguageHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.LanguageHandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LanguageHandshakeResponse(buffer_arg) {
+  return pulumi_language_pb.LanguageHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PackRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.PackRequest)) {
     throw new Error('Expected argument of type pulumirpc.PackRequest');
@@ -313,6 +335,20 @@ function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
+  // `Handshake` is the first call made by the engine to a language host. It is used to pass the 
+// engine's address to the language host so that it may establish its own connections back,
+// and to establish protocol configuration that will be used to communicate between the two parties. 
+handshake: {
+    path: '/pulumirpc.LanguageRuntime/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.LanguageHandshakeRequest,
+    responseType: pulumi_language_pb.LanguageHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_LanguageHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_LanguageHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_LanguageHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_LanguageHandshakeResponse,
+  },
   // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 getRequiredPlugins: {
     path: '/pulumirpc.LanguageRuntime/GetRequiredPlugins',

@@ -8,7 +8,8 @@ complete documentation for maintainers of and contributors to Pulumi.
 :titlesonly:
 
 Home <self>
-/docs/documentation
+/docs/documentation/README
+/docs/debugging/README
 /docs/architecture/README
 /docs/references/README
 :::
