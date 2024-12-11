@@ -92,7 +92,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stderr, "SDKs have been written to %s", filepath.Join(out, language))
+			fmt.Fprintf(os.Stderr, "SDK has been written to %s", filepath.Join(out, language))
 			return nil
 		}),
 	}
