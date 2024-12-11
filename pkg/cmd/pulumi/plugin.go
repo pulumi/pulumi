@@ -72,11 +72,10 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	programInfo := plugin.NewProgramInfo(root, pwd, main, runtimeOptions)
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
-	plugins, err := plugin.GetRequiredPlugins(
+	plugins, err := engine.GetRequiredPlugins(
 		ctx.Host,
 		proj.Runtime.Name(),
-		string(proj.Name),
-		programInfo, plugin.AllPlugins)
+		programInfo)
 	if err != nil {
 		return nil, err
 	}
