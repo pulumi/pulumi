@@ -124,9 +124,7 @@ func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plu
 func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
-	expected := mapset.NewSet(
-		fmt.Sprintf("language-%s@<nil>", h.runtimeName),
-	)
+	expected := mapset.NewSet[string]()
 	for _, provider := range h.providers {
 		pkg := provider.Pkg()
 		version, err := getProviderVersion(provider)
