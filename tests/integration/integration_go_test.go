@@ -1272,7 +1272,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	assert.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random", packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
 	assert.NoError(t, err)

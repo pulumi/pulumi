@@ -2211,7 +2211,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 			assert.True(t, ok)
-			cf, ok := dependencies["random"]
+			cf, ok := dependencies["@pulumi/random"]
 			assert.True(t, ok)
 			cf, ok = cf.(string)
 			assert.True(t, ok)
