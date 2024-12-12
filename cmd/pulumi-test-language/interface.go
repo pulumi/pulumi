@@ -1010,7 +1010,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			if !found {
-				return makeTestResponse(fmt.Sprintf("unepxected extra package %v", actual)), nil
+				return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
 			}
 		}
 
