@@ -560,7 +560,7 @@ func (pc *client) UpdateEnvironmentWithRevision(
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
 			return diags.Diagnostics, 0, nil
 		}
 		return nil, 0, err

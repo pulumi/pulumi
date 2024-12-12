@@ -339,6 +339,39 @@ func TestUpdateEnvironment(t *testing.T) {
 		assert.Equal(t, expected, diags)
 	})
 
+	t.Run("Diags only", func(t *testing.T) {
+		expected := []EnvironmentDiagnostic{
+			{
+				Range: &esc.Range{
+					Environment: "test-env",
+					Begin:       esc.Pos{Line: 42, Column: 1},
+					End:         esc.Pos{Line: 42, Column: 42},
+				},
+				Summary: "diag 1",
+			},
+			{
+				Range: &esc.Range{
+					Environment: "import-env",
+					Begin:       esc.Pos{Line: 1, Column: 2},
+					End:         esc.Pos{Line: 3, Column: 4},
+				},
+				Summary: "diag 2",
+			},
+		}
+
+		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{Diagnostics: expected})
+			require.NoError(t, err)
+		})
+
+		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-project", "test-env", nil, "")
+		require.Equal(t, 0, revision)
+		require.NoError(t, err)
+		assert.Equal(t, expected, diags)
+	})
+
 	t.Run("Conflict", func(t *testing.T) {
 		client := newTestClient(t, http.MethodPatch, "/api/esc/environments/test-org/test-project/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
