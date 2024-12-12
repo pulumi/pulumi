@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs,python
-  description: Bump the minimum SDK version to 3.142.0

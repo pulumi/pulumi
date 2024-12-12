@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/install
-  description: Don't recreate virtualenvs when using venv
