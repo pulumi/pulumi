@@ -28,27 +28,29 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type SimpleProvider struct {
+// SimpleOverlappingNameProvider is a simple provider that has a same named
+// package the SimpleProvider.
+type SimpleOverlappingNameProvider struct {
 	plugin.UnimplementedProvider
 }
 
-var _ plugin.Provider = (*SimpleProvider)(nil)
+var _ plugin.Provider = (*SimpleOverlappingNameProvider)(nil)
 
-func (p *SimpleProvider) Close() error {
+func (p *SimpleOverlappingNameProvider) Close() error {
 	return nil
 }
 
-func (p *SimpleProvider) Configure(
+func (p *SimpleOverlappingNameProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *SimpleProvider) Pkg() tokens.Package {
-	return "simple"
+func (p *SimpleOverlappingNameProvider) Pkg() tokens.Package {
+	return "simpleoverlap"
 }
 
-func (p *SimpleProvider) GetSchema(
+func (p *SimpleOverlappingNameProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	resourceProperties := map[string]schema.PropertySpec{
@@ -61,27 +63,17 @@ func (p *SimpleProvider) GetSchema(
 	resourceRequired := []string{"value"}
 
 	pkg := schema.PackageSpec{
-		Name:    "simple",
+		Name:    "simpleoverlap",
 		Version: "2.0.0",
 		Resources: map[string]schema.ResourceSpec{
-			"simple:index:Resource": {
+			"simpleoverlap:overlapping_pkg:OverlapResource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
+					Type:       "simple:index:Resource",
 					Properties: resourceProperties,
 					Required:   resourceRequired,
 				},
 				InputProperties: resourceProperties,
 				RequiredInputs:  resourceRequired,
-			},
-			// A small resource that is used to test overlapping names.
-			// See simple_overlapping_name_provider.go
-			"simple:overlapping_pkg:Resource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
-					Properties: resourceProperties,
-					Required:   resourceRequired,
-				},
-				InputProperties: resourceProperties,
 			},
 		},
 	}
@@ -90,14 +82,7 @@ func (p *SimpleProvider) GetSchema(
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
 
-func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.CheckFailure {
-	return []plugin.CheckFailure{{
-		Property: property,
-		Reason:   reason,
-	}}
-}
-
-func (p *SimpleProvider) CheckConfig(
+func (p *SimpleOverlappingNameProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
@@ -127,11 +112,11 @@ func (p *SimpleProvider) CheckConfig(
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *SimpleProvider) Check(
+func (p *SimpleOverlappingNameProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	// URN should be of the form "simple:index:Resource"
-	if req.URN.Type() != "simple:index:Resource" {
+	// URN should be of the form "simpleoverlap:index:Resource"
+	if req.URN.Type() != "simpleoverlap:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -158,11 +143,11 @@ func (p *SimpleProvider) Check(
 	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
-func (p *SimpleProvider) Create(
+func (p *SimpleOverlappingNameProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	// URN should be of the form "simple:index:Resource"
-	if req.URN.Type() != "simple:index:Resource" {
+	// URN should be of the form "simpleoverlap:index:Resource"
+	if req.URN.Type() != "simpleoverlap:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -180,42 +165,42 @@ func (p *SimpleProvider) Create(
 	}, nil
 }
 
-func (p *SimpleProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *SimpleOverlappingNameProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("2.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *SimpleProvider) SignalCancellation(context.Context) error {
+func (p *SimpleOverlappingNameProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *SimpleProvider) GetMapping(
+func (p *SimpleOverlappingNameProvider) GetMapping(
 	context.Context, plugin.GetMappingRequest,
 ) (plugin.GetMappingResponse, error) {
 	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *SimpleProvider) GetMappings(
+func (p *SimpleOverlappingNameProvider) GetMappings(
 	context.Context, plugin.GetMappingsRequest,
 ) (plugin.GetMappingsResponse, error) {
 	return plugin.GetMappingsResponse{}, nil
 }
 
-func (p *SimpleProvider) DiffConfig(
+func (p *SimpleOverlappingNameProvider) DiffConfig(
 	context.Context, plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *SimpleProvider) Diff(
+func (p *SimpleOverlappingNameProvider) Diff(
 	context.Context, plugin.DiffRequest,
 ) (plugin.DiffResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *SimpleProvider) Delete(
+func (p *SimpleOverlappingNameProvider) Delete(
 	context.Context, plugin.DeleteRequest,
 ) (plugin.DeleteResponse, error) {
 	return plugin.DeleteResponse{}, nil
