@@ -23,40 +23,43 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer, error) {
+func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (Autonamer, bool, error) {
 	hasMode := c.Mode != nil
 	hasPattern := c.Pattern != nil
 	hasEnforce := c.Enforce != nil
 
 	if hasMode && (hasPattern || hasEnforce) {
-		return nil, errors.New("cannot specify both mode and pattern/enforce")
+		return nil, false, errors.New("cannot specify both mode and pattern/enforce")
 	}
 
 	if hasPattern {
 		pattern, err := eval.resolveStackExpressions(*c.Pattern)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		return &patternAutonaming{
 			Pattern: pattern,
 			Enforce: hasEnforce && *c.Enforce,
-		}, nil
+		}, true, nil
+	} else if hasEnforce {
+		return nil, false, errors.New("pattern must be specified when enforce is true")
 	}
 
 	if !hasMode {
-		return &defaultAutonamingConfig, nil
+		// Return false as the second return value to indicate that no config was specified explicitly.
+		return &defaultAutonamingConfig, false, nil
 	}
 
 	switch *c.Mode {
 	case "default":
-		return &defaultAutonamingConfig, nil
+		return &defaultAutonamingConfig, true, nil
 	case "verbatim":
-		return &verbatimAutonaming{}, nil
+		return &verbatimAutonaming{}, true, nil
 	case "disabled":
-		return &disabledAutonaming{}, nil
+		return &disabledAutonaming{}, true, nil
 	default:
-		return nil, fmt.Errorf("invalid naming mode: %s", *c.Mode)
+		return nil, false, fmt.Errorf("invalid naming mode: %s", *c.Mode)
 	}
 }
 
@@ -101,7 +104,7 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 	eval := newStackPatternEval(s, cfg, decrypter)
 
 	// Resolve the root naming config.
-	rootNaming, err := resolveNamingConfig(&autonamingConfig.namingConfigJSON, eval)
+	rootNaming, _, err := resolveNamingConfig(&autonamingConfig.namingConfigJSON, eval)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve root naming config: %w", err)
 	}
@@ -115,9 +118,13 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 	// Resolve the provider-level naming configs.
 	for providerName, providerCfg := range autonamingConfig.Providers {
 		providerCfg := providerCfg
-		naming, err := resolveNamingConfig(&providerCfg.namingConfigJSON, eval)
+		naming, has, err := resolveNamingConfig(&providerCfg.namingConfigJSON, eval)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve naming config for provider %q: %w", providerName, err)
+		}
+		if !has {
+			// If no provider config was specified explicitly, use the global default.
+			naming = rootNaming
 		}
 
 		provider := providerAutonaming{
@@ -128,9 +135,14 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 		// Resolve the resource-level naming configs.
 		for resourceName, resourceCfg := range providerCfg.Resources {
 			resourceCfg := resourceCfg
-			resourceNaming, err := resolveNamingConfig(&resourceCfg, eval)
+			resourceNaming, has, err := resolveNamingConfig(&resourceCfg, eval)
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve naming config for resource %q: %w", resourceName, err)
+			}
+			if !has {
+				// If no config was specified explicitly, that's probably a mistake by the user
+				// why would they define the resource entry otherwise.
+				return nil, fmt.Errorf("mode or pattern must be specified for resource %q", resourceName)
 			}
 
 			provider.Resources[resourceName] = resourceNaming
