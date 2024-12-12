@@ -9,6 +9,7 @@
 [![NuGet version](https://badge.fury.io/nu/pulumi.svg)](https://badge.fury.io/nu/pulumi)
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/github/license/pulumi/pulumi)](LICENSE)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Pulumi%20Guru-006BFF)](https://gurubase.io/g/pulumi)
 
 <a href="https://www.pulumi.com/docs/get-started/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=get-started-button" title="Get Started">
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
