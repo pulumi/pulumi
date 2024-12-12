@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet
+  description: Emit local dependencies in restore sources deterministically

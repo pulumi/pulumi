@@ -28,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -2325,10 +2326,8 @@ func genProjectFile(pkg *schema.Package,
 	for _, dep := range localDependencies {
 		folders.Add(path.Dir(dep))
 	}
-	restoreSources := ""
-	if len(folders.ToSlice()) > 0 {
-		restoreSources = strings.Join(folders.ToSlice(), ";")
-	}
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
 
 	// Add local package references
 	pkgs := codegen.SortedKeys(localDependencies)
@@ -2366,7 +2365,7 @@ func genProjectFile(pkg *schema.Package,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
 		Version:           version,
-		RestoreSources:    restoreSources,
+		RestoreSources:    strings.Join(restoreSources, ";"),
 	})
 	if err != nil {
 		return nil, err
