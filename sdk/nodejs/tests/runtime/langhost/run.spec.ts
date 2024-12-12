@@ -1632,10 +1632,14 @@ describe("rpc", () => {
                 assert.strictEqual(name, "testResource1");
                 assert.deepStrictEqual(res, {
                     prop: [1, 2],
-                })
-                return { urn: makeUrn(t, name), id: undefined, props: {
-                    prop: [1, 2]
-                } };
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    id: undefined,
+                    props: {
+                        prop: [1, 2],
+                    },
+                };
             },
         },
     };
@@ -2051,7 +2055,10 @@ async function createMockEngineAsync(
     return { server: server, addr: `127.0.0.1:${port}` };
 }
 
-function serveLanguageHostProcess(engineAddr: string, env?: NodeJS.ProcessEnv ): { proc: childProcess.ChildProcess; addr: Promise<string> } {
+function serveLanguageHostProcess(
+    engineAddr: string,
+    env?: NodeJS.ProcessEnv,
+): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is
@@ -2067,7 +2074,7 @@ function serveLanguageHostProcess(engineAddr: string, env?: NodeJS.ProcessEnv ):
     // directory which is changed by by the pwd option.
     let childenv = {
         ...process.env,
-        PULUMI_LANGUAGE_NODEJS_RUN_PATH : path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run"))
+        PULUMI_LANGUAGE_NODEJS_RUN_PATH: path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run")),
     };
     // The test may also want to set environment variables, such as PULUMI_ERROR_OUTPUT_STRING
     if (env) {

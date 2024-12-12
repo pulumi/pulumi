@@ -7,10 +7,7 @@ let pulumi = require("../../../../../");
 class MyResource extends pulumi.CustomResource {
     constructor(name) {
         super("test:index:MyResource", name, {
-            prop: [
-                pulumi.output(1),
-                2,
-            ]
+            prop: [pulumi.output(1), 2],
         });
     }
 }
