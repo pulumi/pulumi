@@ -155,8 +155,8 @@ service ResourceProvider {
     //
     // The provider's response must satisfy the following invariants:
     //
-    // * All keys in Diff appear in DetailedDiff.
-    // * All keys in DetailedDiff appear in Diff.
+    // * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
+    // * For each entry in DetailedDiff, its top-level property is in Diff.
     // * Diff does not contain duplicates.
     // * DetailedDiff does not contain duplicate keys.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
