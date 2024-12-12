@@ -1485,6 +1485,7 @@ func TestRunPlugin(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")
 	e.RunCommand("pulumi", "preview")
