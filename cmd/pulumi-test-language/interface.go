@@ -549,9 +549,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
-	localDependencies := map[string]string{}
+	programLocalDependencies := map[string]string{}
 	if token.CoreArtifact != "" {
-		localDependencies["pulumi"] = token.CoreArtifact
+		programLocalDependencies["pulumi"] = token.CoreArtifact
 	}
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
@@ -573,7 +573,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 				}
-				localDependencies[pkg.Name] = sdkArtifact
+				programLocalDependencies[pkg.Name] = sdkArtifact
 				return nil, nil
 			}
 
@@ -587,8 +587,14 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
 			}
 
+			// The local SDKs should only rely on the core Pulumi SDK, not other sdks.
+			sdkLocalDependencies := map[string]string{}
+			if token.CoreArtifact != "" {
+				sdkLocalDependencies["pulumi"] = token.CoreArtifact
+			}
+
 			diags, err := languageClient.GeneratePackage(
-				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), sdkLocalDependencies, false)
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 			}
@@ -625,7 +631,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			if err != nil {
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 			}
-			localDependencies[pkg.Name] = sdkArtifact
+			programLocalDependencies[pkg.Name] = sdkArtifact
 
 			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
 			// Again we need to make a snapshot edit for this.
@@ -776,7 +782,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 		diagnostics, err := languageClient.GenerateProject(
-			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), programLocalDependencies)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 		}
