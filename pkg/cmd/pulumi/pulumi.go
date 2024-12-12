@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
@@ -397,7 +398,7 @@ func NewPulumiCmd() *cobra.Command {
 				newQueryCmd(),
 				newConvertCmd(),
 				newWatchCmd(),
-				newLogsCmd(),
+				logs.NewLogsCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
