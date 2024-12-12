@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -457,7 +458,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// And now replace the context host with our own test host
 	providers := make(map[string]plugin.Provider)
-	for _, provider := range test.providers {
+	for _, provider := range test.Providers {
 		version, err := getProviderVersion(provider)
 		if err != nil {
 			return nil, err
@@ -476,7 +477,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Generate SDKs for all the packages we need
 	loader := &providerLoader{
-		providers:    test.providers,
+		providers:    test.Providers,
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
 	}
@@ -491,10 +492,10 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
-	for i, run := range test.runs {
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -504,15 +505,15 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
 		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
-		if run.main != "" {
-			sourceDir = filepath.Join(sourceDir, run.main)
+		if run.Main != "" {
+			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
@@ -673,7 +674,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Create any stack references needed for the test
-	for name, outputs := range test.stackReferences {
+	for name, outputs := range test.StackReferences {
 		ref, err := testBackend.ParseStackReference(name)
 		if err != nil {
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
@@ -721,11 +722,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	var result LResult
-	for i, run := range test.runs {
+	var result tests.LResult
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -735,7 +736,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
 		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
@@ -745,7 +746,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(projectDir, 0o755)
@@ -756,11 +757,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		// Generate the project and read in the Pulumi.yaml
 		rootDirectory := sourceDir
 		projectJSON := func() string {
-			if run.main == "" {
+			if run.Main == "" {
 				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
 			}
-			sourceDir = filepath.Join(sourceDir, run.main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+			sourceDir = filepath.Join(sourceDir, run.Main)
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
@@ -791,7 +792,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
 		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
@@ -1033,7 +1034,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		updateOptions := run.updateOptions
+		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
 
 		// Set up the stack and engine configuration
@@ -1049,7 +1050,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		cfg := backend.StackConfiguration{
-			Config:    run.config,
+			Config:    run.Config,
 			Decrypter: dec,
 		}
 
@@ -1085,8 +1086,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		result = WithL(func(l *L) {
-			run.assert(l, projectDir, res, snap, changes)
+		result = tests.WithL(func(l *tests.L) {
+			run.Assert(l, projectDir, res, snap, changes)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

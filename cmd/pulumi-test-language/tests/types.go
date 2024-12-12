@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package tests
 
 import (
 	"fmt"
@@ -22,12 +22,12 @@ import (
 	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
-
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/stretchr/testify/assert"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -218,73 +218,23 @@ var (
 	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
 )
 
-func assertStackResource(t TestingT, err error, changes display.ResourceChanges) (ok bool) {
-	t.Helper()
+type LanguageTest struct {
+	// TODO: This should be a function so we don't have to load all providers in memory all the time.
+	Providers []plugin.Provider
 
-	ok = true
-	ok = ok && assert.Nil(t, err, "expected no error, got %v", err)
-	ok = ok && assert.NotEmpty(t, changes, "expected at least 1 StepOp")
-	ok = ok && assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
-	return ok
+	// stackReferences specifies other stack data that this test depends on.
+	StackReferences map[string]resource.PropertyMap
+
+	// runs is a list of test runs to execute.
+	Runs []TestRun
 }
 
-func requireStackResource(t TestingT, err error, changes display.ResourceChanges) {
-	t.Helper()
-
-	if !assertStackResource(t, err, changes) {
-		t.FailNow()
-	}
-}
-
-func requireSingleResource(t TestingT, resources []*resource.State, typ tokens.Type) *resource.State {
-	t.Helper()
-
-	var result *resource.State
-	for _, res := range resources {
-		if res.Type == typ {
-			require.Nil(t, result, "expected exactly 1 resource of type %q, got multiple", typ)
-			result = res
-		}
-	}
-
-	require.NotNil(t, result, "expected exactly 1 resource of type %q, got none", typ)
-	return result
-}
-
-// requireSingleNamedResource returns the single resource with the given name from the given list of resources. If more
-// than one resource has the given name, the test fails. If no resources have the given name, the test fails.
-func requireSingleNamedResource(
-	t TestingT,
-	resources []*resource.State,
-	name string,
-) *resource.State {
-	t.Helper()
-
-	var result *resource.State
-	for _, res := range resources {
-		if res.URN.Name() == name {
-			require.Nil(t, result, "expected exactly 1 resource named %q, got multiple", name)
-			result = res
-		}
-	}
-
-	require.NotNil(t, result, "expected exactly 1 resource named %q, got none", name)
-	return result
-}
-
-// assertPropertyMapMember asserts that the given property map has a member with the given key and value.
-func assertPropertyMapMember(
-	t TestingT,
-	props resource.PropertyMap,
-	key string,
-	want resource.PropertyValue,
-) (ok bool) {
-	t.Helper()
-
-	got, ok := props[resource.PropertyKey(key)]
-	if !assert.True(t, ok, "expected property %q", key) {
-		return false
-	}
-
-	return assert.Equal(t, want, got, "expected property %q to be %v", key, want)
+type TestRun struct {
+	Config config.Map
+	// This can be used to set a main value for the test.
+	Main string
+	// TODO: This should just return "string", if == "" then ok, else fail
+	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges)
+	// updateOptions can be used to set the update options for the engine.
+	UpdateOptions engine.UpdateOptions
 }

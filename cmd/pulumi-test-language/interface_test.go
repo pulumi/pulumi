@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -30,7 +31,7 @@ import (
 )
 
 // Make sure that TestingT never diverges from testing.T.
-var _ TestingT = (*testing.T)(nil)
+var _ tests.TestingT = (*testing.T)(nil)
 
 // Ensure that every language test starts with a standard prefix.
 func TestTestNames(t *testing.T) {
@@ -51,7 +52,7 @@ func TestL1NoProviders(t *testing.T) {
 
 	for name, test := range languageTests {
 		if strings.HasPrefix(name, "l1-") {
-			assert.Empty(t, test.providers, "test name %s must not use providers", name)
+			assert.Empty(t, test.Providers, "test name %s must not use providers", name)
 		}
 	}
 }
@@ -80,7 +81,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 	versions := map[string]string{}
 
 	for _, test := range languageTests {
-		for _, provider := range test.providers {
+		for _, provider := range test.Providers {
 			pkg := string(provider.Pkg())
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
@@ -100,7 +101,7 @@ func TestProviderVersions(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range languageTests {
-		for _, provider := range test.providers {
+		for _, provider := range test.Providers {
 			pkg := string(provider.Pkg())
 			if pkg == "parameterized" {
 				// for parameterized provider, the version is set in the parameterization
@@ -135,9 +136,9 @@ func TestProviderSchemas(t *testing.T) {
 			continue
 		}
 
-		loader := &providerLoader{providers: test.providers}
+		loader := &providerLoader{providers: test.Providers}
 
-		for _, provider := range test.providers {
+		for _, provider := range test.Providers {
 			if provider.Pkg() == "parameterized" {
 				// We don't currently support testing the schemas of parameterized providers.
 				continue
@@ -171,7 +172,7 @@ func TestBindPrograms(t *testing.T) {
 		}
 
 		src := filepath.Join("testdata", name)
-		loader := &providerLoader{providers: test.providers}
+		loader := &providerLoader{providers: test.Providers}
 		_, diags, err := pcl.BindDirectory(src, loader)
 		for _, diag := range diags {
 			t.Logf("%s: %v", name, diag)
