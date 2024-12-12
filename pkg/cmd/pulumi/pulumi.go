@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -350,8 +351,8 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				newLoginCmd(),
-				newLogoutCmd(),
+				auth.NewLoginCmd(),
+				auth.NewLogoutCmd(),
 				whoami.NewWhoAmICmd(),
 				org.NewOrgCmd(),
 				deployment.NewDeploymentCmd(),
