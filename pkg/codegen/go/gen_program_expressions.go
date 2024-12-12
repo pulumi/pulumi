@@ -66,7 +66,8 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 		default:
 			return 20
 		}
-	case *model.ForExpression, *model.IndexExpression, *model.RelativeTraversalExpression, *model.SplatExpression,
+	case *model.ForExpression, *model.IndexExpression,
+		*model.RelativeTraversalExpression, *model.SplatExpression,
 		*model.TemplateJoinExpression:
 		return 20
 	case *model.AnonymousFunctionExpression, *model.LiteralValueExpression, *model.ObjectConsExpression,
@@ -93,7 +94,8 @@ func (g *generator) genAnonymousFunctionExpression(
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name), g.argumentTypeName(param.Type, isInput))
+		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name),
+			g.argumentTypeName(param.Type, isInput))
 		leadingSep = ", "
 	}
 
@@ -232,7 +234,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					from, enumTag, underlyingType)
 				return
 			}
-			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to, expr.Signature.ReturnType), func(from model.Expression) {
+			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to,
+				expr.Signature.ReturnType), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", enumTag, from)
 			})
 			if diag != nil {
@@ -319,7 +322,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
 		if isOut {
-			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache, g.importer.aliases)
 			if err != nil {
 				// We create a diag instead of panicking since panics are caught in go
 				// format expressions.
@@ -436,7 +439,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // Currently args type for output-versioned invokes are named
 // `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
 // this function to compensate.
-func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error) {
+func outputVersionFunctionArgTypeName(t model.Type, cache *Cache, aliases map[string]string) (string, error) {
 	schemaType, ok := pcl.GetSchemaForType(t)
 	if !ok {
 		return "", errors.New("No schema.Type type found for the given model.Type")
@@ -589,7 +592,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		if g.isPtrArg {
 			g.Fgenf(w, "&%s", typeName)
 		}
-	} else if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
+	} else if isMap || !strings.HasSuffix(typeName, "Args") ||
+		strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
@@ -741,7 +745,8 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 
 func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpression, destType model.Type) {
 	if len(expr.Parts) == 1 {
-		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
+		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
+			model.StringType.AssignableFrom(lit.Type()) {
 			g.genLiteralValueExpression(w, lit, destType)
 		}
 
@@ -842,10 +847,18 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		return ""
 	}
 
+	packages := make(map[string]*GoPackageInfo)
+	for name := range g.packages {
+		pi, _ := g.getGoPackageInfo(name)
+		packages[name] = &pi
+	}
+
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		return (&pkgContext{
-			pkg:              (&schema.Package{Name: "main"}).Reference(),
-			externalPackages: g.externalCache,
+			pkg:                 (&schema.Package{Name: "main"}).Reference(),
+			externalPackages:    g.externalCache,
+			pkgImportAliases:    g.importer.aliases,
+			externalPackageInfo: packages,
 		}).argsType(schemaType)
 	}
 
@@ -1095,7 +1108,16 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	applyArgs, then := pcl.ParseApplyCall(expr)
 	isInput := false
 	retType := g.argumentTypeName(then.Signature.ReturnType, isInput)
-	// TODO account for outputs in other namespaces like aws
+
+	// Add all argument/return types to imports.
+	for _, applyArg := range applyArgs {
+		if schemaType, ok := pcl.GetSchemaForType(applyArg.Type()); ok {
+			g.collectTypeImports(g.program, schemaType)
+		}
+	}
+	retSchemaTy, _ := pcl.GetSchemaForType(then.Type())
+	g.collectTypeImports(g.program, retSchemaTy)
+
 	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
 	var typeAssertion string
 	if retType == "[]string" {
@@ -1238,7 +1260,8 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 		return buf.String(), true
 	case *model.TemplateExpression:
 		if len(x.Parts) == 1 {
-			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok &&
+				model.StringType.AssignableFrom(lit.Type()) {
 				strKey = lit.Value.AsString()
 				break
 			}
