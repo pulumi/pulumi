@@ -103,6 +103,37 @@ jobs:
         run: |
           echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
           exit 1
+  windows-winget-install:
+    name: Install Pulumi with WinGet on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Remove Pre-installed Pulumi
+        shell: bash
+        run: |
+          if command -v "pulumi.exe"; then
+            PULUMI_INSTALL_DIR=$(dirname "$(command -v "pulumi.exe")")
+            echo "Deleting Pulumi"
+            rm -v "$PULUMI_INSTALL_DIR"/pulumi*
+          fi
+      - name: Install winget
+        uses: Cyberboss/install-winget@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Pulumi Using WinGet
+        run: winget install pulumi --disable-interactivity --accept-source-agreements --verbose
+      - run: echo "C:/Program Files (x86)/Pulumi" >> "${GITHUB_PATH}"
+        shell: bash
+      - name: Pulumi Version Details
+        id: vars
+        shell: bash
+        run: |
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
+      - name: Error if incorrect version found
+        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
+        run: |
+          echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
+          exit 1
   windows-direct-install:
     name: Install Pulumi via script on Windows
     runs-on: windows-latest
