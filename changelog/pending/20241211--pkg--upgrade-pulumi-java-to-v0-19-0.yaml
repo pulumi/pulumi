@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Upgrade pulumi-java to v0.19.0

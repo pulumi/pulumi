@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go,nodejs,python
-  description: Expose `whoami` token information in automation API types

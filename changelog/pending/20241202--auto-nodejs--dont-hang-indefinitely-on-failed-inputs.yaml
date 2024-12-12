@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Don't hang indefinitely on failed inputs

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Autonaming configuration in experimental mode
