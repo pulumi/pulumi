@@ -18,8 +18,26 @@ import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
 
-/* internal */
+/** @internal */
 export class OutputToStringError extends Error {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * This is internal instead of being truly private, to support mixins and our serialization model.
+     *
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __pulumiOutputToStringError: boolean = true;
+
+    /**
+     * Returns true if the given object is an {@link OutputToStringError}. This is designed to work even when multiple
+     * copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is OutputToStringError {
+        return utils.isInstance(obj, "__pulumiOutputToStringError");
+    }
+
     constructor() {
         super(`Calling [toString] on an [Output<T>] is not supported.
 

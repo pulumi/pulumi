@@ -37,7 +37,7 @@ function safeToString(v: any): string {
         return `${v}`;
     } catch (err) {
         // We only want to catch our toString errors here. Anything else we should still bubble up to the user.
-        if (err instanceof OutputToStringError) {
+        if (OutputToStringError.isInstance(err)) {
             return "Output<T>";
         }
         throw err;
