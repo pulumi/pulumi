@@ -465,14 +465,17 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 // These packages are known not to have any plugins.
 // TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumi-plugin.json`
 // file that indicates the package does not have an associated plugin, and enough time has passed.
+// TODO[pulumi/pulumi#18023]: Can only remove after this issue with `uv` is fixed
 var packagesWithoutPlugins = map[string]struct{}{
 	// We include both the hyphen and underscore variants of the package name
 	// to account for the fact that later versions of the package will come
 	// back from `python -m pip list` as the underscore variant due to a
 	// behavior change in setuptools where it keeps underscores rather than
 	// replacing them with hyphens.
-	"pulumi-policy": {},
-	"pulumi_policy": {},
+	"pulumi-policy":  {},
+	"pulumi_policy":  {},
+	"pulumi-esc-sdk": {},
+	"pulumi_esc_sdk": {},
 }
 
 // Returns if pkg is a pulumi package.
