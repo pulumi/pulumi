@@ -135,8 +135,14 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		Quick:         true,
 		SkipRefresh:   true,
 		NoParallel:    true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.Contains(t, stderr.String(), "panic: great sadness\n")
+		ExtraRuntimeValidation: func(t *testing.T, _ integration.RuntimeValidationStackInfo) {
+			const needle = "panic: great sadness\n"
+			haystack := stderr.String()
+			// 2 instances of needle:
+			// - One instance is the returned error.
+			// - Another instance is in the stderr output.
+			assert.Equal(t, 2, strings.Count(haystack, needle),
+				"Expected only two instance of %q in:\n%s", needle, haystack)
 		},
 	})
 }
