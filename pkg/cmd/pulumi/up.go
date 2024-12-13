@@ -31,6 +31,7 @@ import (
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -41,7 +42,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -275,7 +275,7 @@ func newUpCmd() *cobra.Command {
 		} else if len(templates) == 1 {
 			template = templates[0]
 		} else {
-			if template, err = chooseTemplate(templates, opts.Display); err != nil {
+			if template, err = newcmd.ChooseTemplate(templates, opts.Display); err != nil {
 				return err
 			}
 		}
@@ -310,7 +310,7 @@ func newUpCmd() *cobra.Command {
 		var description string
 		var s backend.Stack
 		if stackName != "" {
-			if s, name, description, err = getStack(ctx, b, stackName, opts.Display); err != nil {
+			if s, name, description, err = newcmd.GetStack(ctx, b, stackName, opts.Display); err != nil {
 				return err
 			}
 		}
@@ -355,7 +355,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
+			if s, err = newcmd.PromptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return err
 			}
@@ -363,7 +363,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(
+		if err = newcmd.HandleConfig(
 			ctx,
 			ssml,
 			ws,
@@ -390,7 +390,7 @@ func newUpCmd() *cobra.Command {
 
 		defer pctx.Close()
 
-		if err = installDependencies(pctx, &proj.Runtime, main); err != nil {
+		if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 
@@ -765,140 +765,6 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 		}
 	}
 	return nil
-}
-
-// handleConfig handles prompting for config values (as needed) and saving config.
-func handleConfig(
-	ctx context.Context,
-	ssml cmdStack.SecretsManagerLoader,
-	ws pkgWorkspace.Context,
-	prompt promptForValueFunc,
-	project *workspace.Project,
-	s backend.Stack,
-	templateNameOrURL string,
-	template workspace.Template,
-	configArray []string,
-	yes bool,
-	path bool,
-	opts display.Options,
-) error {
-	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
-	if err != nil && err != backend.ErrNoPreviousDeployment {
-		return err
-	}
-
-	// Get the existing snapshot.
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return err
-	}
-
-	// Handle config.
-	// If this is an initial preconfigured empty stack (i.e. configured in the Pulumi Console),
-	// use its config without prompting.
-	// Otherwise, use the values specified on the command line and prompt for new values.
-	// If the stack already existed and had previous config, those values will be used as the defaults.
-	var c config.Map
-	if isPreconfiguredEmptyStack(templateNameOrURL, template.Config, stackConfig, snap) {
-		c = stackConfig
-		// TODO[pulumi/pulumi#1894] consider warning if templateNameOrURL is different from
-		// the stack's `pulumi:template` config value.
-	} else {
-		// Get config values passed on the command line.
-		commandLineConfig, parseErr := parseConfig(configArray, path)
-		if parseErr != nil {
-			return parseErr
-		}
-
-		// Prompt for config as needed.
-		c, err = promptForConfig(
-			ctx,
-			ssml,
-			prompt,
-			project,
-			s,
-			template.Config,
-			commandLineConfig,
-			stackConfig,
-			yes,
-			opts,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Save the config.
-	if len(c) > 0 {
-		if err = saveConfig(ws, s, c); err != nil {
-			return fmt.Errorf("saving config: %w", err)
-		}
-
-		fmt.Println("Saved config")
-		fmt.Println()
-	}
-
-	return nil
-}
-
-var templateKey = config.MustMakeKey("pulumi", "template")
-
-// isPreconfiguredEmptyStack returns true if the url matches the value of `pulumi:template` in stackConfig,
-// the stackConfig values satisfy the config requirements of templateConfig, and the snapshot is empty.
-// This is the state of an initial preconfigured empty stack (i.e. a stack that's been created and configured
-// in the Pulumi Console).
-func isPreconfiguredEmptyStack(
-	url string,
-	templateConfig map[string]workspace.ProjectTemplateConfigValue,
-	stackConfig config.Map,
-	snap *deploy.Snapshot,
-) bool {
-	// Does stackConfig have a `pulumi:template` value and does it match url?
-	if stackConfig == nil {
-		return false
-	}
-	templateURLValue, hasTemplateKey := stackConfig[templateKey]
-	if !hasTemplateKey {
-		return false
-	}
-	templateURL, err := templateURLValue.Value(nil)
-	if err != nil {
-		contract.IgnoreError(err)
-		return false
-	}
-	if templateURL != url {
-		return false
-	}
-
-	// Does the snapshot only contain a single root resource?
-	if len(snap.Resources) != 1 {
-		return false
-	}
-	stackResource, err := stack.GetRootStackResource(snap)
-	if err != nil || stackResource == nil {
-		return false
-	}
-
-	// Can stackConfig satisfy the config requirements of templateConfig?
-	for templateKey, templateVal := range templateConfig {
-		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(templateKey)
-		if parseErr != nil {
-			contract.IgnoreError(parseErr)
-			return false
-		}
-
-		stackVal, ok := stackConfig[parsedTemplateKey]
-		if !ok {
-			return false
-		}
-
-		if templateVal.Secret != stackVal.Secure() {
-			return false
-		}
-	}
-
-	return true
 }
 
 func autonamingStackContext(proj *workspace.Project, s backend.Stack) autonaming.StackContext {

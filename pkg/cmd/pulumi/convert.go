@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -489,7 +490,7 @@ func runConvert(
 		}
 		defer ctx.Close()
 
-		if err := installDependencies(ctx, &proj.Runtime, main); err != nil {
+		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 	}

@@ -51,7 +51,6 @@ class PartitionPackage:
 
 
 INTEGRATION_TEST_PACKAGES = {
-    "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi",
     "github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils",
     "github.com/pulumi/pulumi/pkg/v3/graph/dotconv",
     "github.com/pulumi/pulumi/pkg/v3/testing/integration",
@@ -72,7 +71,8 @@ PERFORMANCE_TEST_PACKAGES = {
 def is_unit_test(pkg: str) -> bool:
     """Checks if the package is a unit test"""
     return not (
-        pkg.startswith("github.com/pulumi/pulumi/tests")
+        pkg.startswith("github.com/pulumi/pulumi/pkg/v3/cmd/pulumi")
+        or pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
         or pkg in PERFORMANCE_TEST_PACKAGES
     )
