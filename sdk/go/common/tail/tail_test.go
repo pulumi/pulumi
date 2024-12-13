@@ -96,7 +96,7 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
 
 	<-time.After(100 * time.Millisecond)
-	if err := ioutil.WriteFile("test.txt", []byte("hello\nworld\n"), 0600); err != nil {
+	if err := ioutil.WriteFile("test.txt", []byte("hello\nworld\n"), 0o600); err != nil {
 		tailTest.Fatal(err)
 	}
 	tailTest.Cleanup(tail, true)
@@ -313,7 +313,8 @@ func TestReSeekWithCursor(t *testing.T) {
 		Config{Follow: true, ReOpen: false, Poll: false})
 
 	go tailTest.VerifyTailOutputUsingCursor(tail, []string{
-		"a really long string goes here", "hello", "world", "but", "not", "me"}, false)
+		"a really long string goes here", "hello", "world", "but", "not", "me",
+	}, false)
 
 	// truncate now
 	<-time.After(100 * time.Millisecond)
@@ -336,7 +337,8 @@ func TestRateLimiting(t *testing.T) {
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nextra\n")
 	config := Config{
 		Follow:      true,
-		RateLimiter: ratelimiter.NewLeakyBucket(2, time.Second)}
+		RateLimiter: ratelimiter.NewLeakyBucket(2, time.Second),
+	}
 	leakybucketFull := "Too much log activity; waiting a second before resuming tailing"
 	tail := tailTest.StartTail("test.txt", config)
 
@@ -345,7 +347,8 @@ func TestRateLimiting(t *testing.T) {
 		"hello", "world", "again",
 		leakybucketFull,
 		"more", "data",
-		leakybucketFull}, false)
+		leakybucketFull,
+	}, false)
 
 	// Add more data only after reasonable delay.
 	<-time.After(1200 * time.Millisecond)
@@ -365,7 +368,8 @@ func TestTell(t *testing.T) {
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
 	config := Config{
 		Follow:   false,
-		Location: &SeekInfo{0, io.SeekStart}}
+		Location: &SeekInfo{0, io.SeekStart},
+	}
 	tail := tailTest.StartTail("test.txt", config)
 	// read one line
 	line := <-tail.Lines
@@ -380,7 +384,8 @@ func TestTell(t *testing.T) {
 
 	config = Config{
 		Follow:   false,
-		Location: &SeekInfo{offset, io.SeekStart}}
+		Location: &SeekInfo{offset, io.SeekStart},
+	}
 	tail = tailTest.StartTail("test.txt", config)
 	for l := range tail.Lines {
 		// it may readed one line in the chan(tail.Lines),
@@ -418,6 +423,26 @@ func TestBlockUntilExists(t *testing.T) {
 		break
 	}
 	tailTest.RemoveFile("test.txt")
+	tail.Stop()
+	tail.Cleanup()
+}
+
+func TestFollowUntilEof(t *testing.T) {
+	tailTest, cleanup := NewTailTest("incomplete-lines-no-follow", t)
+	defer cleanup()
+	filename := "test.txt"
+	config := Config{
+		Follow: false,
+	}
+	tailTest.CreateFile(filename, "hello\nworld\n")
+	tail := tailTest.StartTail(filename, config)
+
+	// StopAtEOF blocks until the read is done and in order to do so
+	// we have to drain the lines channel first which ReadLinesWithError does.
+	go tail.StopAtEOF()
+	tailTest.ReadLinesWithError(tail, []string{"hello", "world"}, false, errStopAtEOF)
+
+	tailTest.RemoveFile(filename)
 	tail.Stop()
 	tail.Cleanup()
 }
@@ -637,7 +662,8 @@ func reSeek(t *testing.T, poll bool) {
 		Config{Follow: true, ReOpen: false, Poll: poll})
 
 	go tailTest.VerifyTailOutput(tail, []string{
-		"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld"}, false)
+		"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld",
+	}, false)
 
 	// truncate now
 	<-time.After(100 * time.Millisecond)
@@ -677,14 +703,14 @@ func NewTailTest(name string, t *testing.T) (TailTest, func()) {
 }
 
 func (t TailTest) CreateFile(name string, contents string) {
-	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0600)
+	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (t TailTest) AppendToFile(name string, contents string) {
-	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0600|os.ModeAppend)
+	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0o600|os.ModeAppend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -707,7 +733,7 @@ func (t TailTest) RenameFile(oldname string, newname string) {
 }
 
 func (t TailTest) AppendFile(name string, contents string) {
-	f, err := os.OpenFile(t.path+"/"+name, os.O_APPEND|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(t.path+"/"+name, os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -719,7 +745,7 @@ func (t TailTest) AppendFile(name string, contents string) {
 }
 
 func (t TailTest) TruncateFile(name string, contents string) {
-	f, err := os.OpenFile(t.path+"/"+name, os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(t.path+"/"+name, os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -765,6 +791,14 @@ func (t TailTest) VerifyTailOutputUsingCursor(tail *Tail, lines []string, expect
 }
 
 func (t TailTest) ReadLines(tail *Tail, lines []string, useCursor bool) {
+	t.readLines(tail, lines, useCursor, nil)
+}
+
+func (t TailTest) ReadLinesWithError(tail *Tail, lines []string, useCursor bool, err error) {
+	t.readLines(tail, lines, useCursor, err)
+}
+
+func (t TailTest) readLines(tail *Tail, lines []string, useCursor bool, expectedErr error) {
 	cursor := 1
 
 	for _, line := range lines {
@@ -773,8 +807,8 @@ func (t TailTest) ReadLines(tail *Tail, lines []string, useCursor bool) {
 			if !ok {
 				// tail.Lines is closed and empty.
 				err := tail.Err()
-				if err != nil {
-					t.Fatalf("tail ended with error: %v", err)
+				if err != expectedErr {
+					t.Fatalf("tail ended with unexpected error: %v", err)
 				}
 				t.Fatalf("tail ended early; expecting more: %v", lines[cursor:])
 			}

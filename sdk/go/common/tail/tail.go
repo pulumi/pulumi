@@ -291,6 +291,7 @@ func (tail *Tail) tailFileSync() {
 
 	tail.openReader()
 
+	stopOnNextEOF := false
 	// Read line by line.
 	for {
 		// do not seek in named pipes
@@ -339,11 +340,24 @@ func (tail *Tail) tailFileSync() {
 				}
 			}
 
+			if stopOnNextEOF {
+				return
+			}
+
 			// When EOF is reached, wait for more data to become
 			// available. Wait strategy is based on the `tail.watcher`
 			// implementation (inotify or polling).
 			err := tail.waitForChanges()
 			if err != nil {
+				// When StopAtEOF() is called, we
+				// might have more data to read, that
+				// the filewatcher might not have
+				// notified us about.  Continue
+				// reading until we found an EOF
+				// again, and then exit.
+				if err == ErrStop && tail.Err() == errStopAtEOF {
+					stopOnNextEOF = true
+				}
 				if err != ErrStop {
 					tail.Kill(err)
 				}
@@ -448,12 +462,24 @@ func (tail *Tail) sendLine(line string) bool {
 		lines = util.PartitionString(line, tail.MaxLineSize)
 	}
 
+	// This is a bit weird here, when a users requests stopAtEof we
+	// must keep sending all lines however <-tail.Dying() will return
+	// immediately at this point so the select below may not have
+	// chance to send the line if the reader side has is not yet ready.
+	// But if StopAtEOF was not set and it is a "normal" Kill then we
+	// should exit right away still thus the special logic here.
+	earlyExitChan := tail.Dying()
+	if tail.Err() == errStopAtEOF {
+		// Note that receive from a nil channel blocks forever so
+		// below we know it can only take the tail.Lines case.
+		earlyExitChan = nil
+	}
 	for _, line := range lines {
 		tail.lineNum++
 		offset, _ := tail.Tell()
 		select {
 		case tail.Lines <- &Line{line, tail.lineNum, SeekInfo{Offset: offset}, now, nil}:
-		case <-tail.Dying():
+		case <-earlyExitChan:
 			return true
 		}
 	}
