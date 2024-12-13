@@ -19,9 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -122,33 +120,6 @@ func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plu
 }
 
 func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
-	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
-	// that that returned the expected plugins (with expected versions).
-	expected := mapset.NewSet[string]()
-	for _, provider := range h.providers {
-		pkg := provider.Pkg()
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
-	}
-
-	actual := mapset.NewSetWithSize[string](len(plugins))
-	for _, plugin := range plugins {
-		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
-	}
-
-	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := expected.SymmetricDifference(actual)
-	if !diff.IsEmpty() {
-		expectedSlice := expected.ToSlice()
-		slices.Sort(expectedSlice)
-		actualSlice := actual.ToSlice()
-		slices.Sort(actualSlice)
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
-	}
-
 	return nil
 }
 

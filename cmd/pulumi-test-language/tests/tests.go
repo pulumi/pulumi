@@ -1140,4 +1140,88 @@ var LanguageTests = map[string]LanguageTest{
 			},
 		},
 	},
+	"l2-resource-simple-component": {
+		Providers: []plugin.Provider{&providers.SimpleComponentProvider{}, &providers.SimpleProvider{}},
+		Runs: []TestRun{
+			{
+				Assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					RequireStackResource(l, err, changes)
+
+					// Check we have the simpleComponent resource, it's provider, the inner simple resource,
+					// it's provider and the stack.
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
+
+					simpleComponentProvider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple-component",
+						simpleComponentProvider.Type.String(), "expected simpleComponent provider")
+
+					simpleComponent := snap.Resources[2]
+					assert.Equal(l, "simple-component:index:Resource",
+						simpleComponent.Type.String(), "expected simpleComponent resource")
+
+					// N.B. We may want to change this as part of
+					// https://github.com/pulumi/pulumi/issues/10533
+					assert.Empty(l, simpleComponent.Inputs, "expected inputs to be empty")
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simpleComponent.Outputs, "expected outputs to be {value: true}")
+
+					simpleProvider := snap.Resources[3]
+					assert.Equal(l, "pulumi:providers:simple", simpleProvider.Type.String(), "expected simple provider")
+
+					simple := snap.Resources[4]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+
+					// Should be parent/child relationship between simpleComponent and simple.
+					assert.Equal(l, simpleComponent.URN, simple.Parent, "expected simple to be child of simpleComponent")
+				},
+			},
+		},
+	},
+	"l2-resource-ref-component": {
+		Providers: []plugin.Provider{&providers.RefRefProvider{}, &providers.RefComponentProvider{}},
+		Runs: []TestRun{
+			{
+				Assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					RequireStackResource(l, err, changes)
+
+					// Check we have the simpleComponent resource, it's provider, the inner simple resource,
+					// it's provider and the stack.
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
+
+					simpleComponentProvider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple-component",
+						simpleComponentProvider.Type.String(), "expected simpleComponent provider")
+
+					simpleComponent := snap.Resources[2]
+					assert.Equal(l, "simple-component:index:Resource",
+						simpleComponent.Type.String(), "expected simpleComponent resource")
+
+					// N.B. We may want to change this as part of
+					// https://github.com/pulumi/pulumi/issues/10533
+					assert.Empty(l, simpleComponent.Inputs, "expected inputs to be empty")
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simpleComponent.Outputs, "expected outputs to be {value: true}")
+
+					simpleProvider := snap.Resources[3]
+					assert.Equal(l, "pulumi:providers:simple", simpleProvider.Type.String(), "expected simple provider")
+
+					simple := snap.Resources[4]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+
+					// Should be parent/child relationship between simpleComponent and simple.
+					assert.Equal(l, simpleComponent.URN, simple.Parent, "expected simple to be child of simpleComponent")
+				},
+			},
+		},
+	},
 }
