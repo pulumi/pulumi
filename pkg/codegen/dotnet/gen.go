@@ -2283,7 +2283,7 @@ func genPackageMetadata(pkg *schema.Package,
 		// if a local dependency is package refenced in the schema,
 		// we add it to the local packages
 		for _, referencedPackage := range referencedPackages {
-			if pkg == referencedPackage {
+			if pkg == referencedPackage.Name() {
 				localPackages[pkg] = path
 			}
 		}

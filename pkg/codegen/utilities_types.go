@@ -16,6 +16,7 @@ package codegen
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
@@ -231,28 +232,28 @@ func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bo
 	return false
 }
 
-// PackageReferences returns a list of package names that are referenced by the given package.
-func PackageReferences(pkg *schema.Package) []string {
-	referencedPackages := NewStringSet()
+// PackageReferences returns a list of packages that are referenced by the given package.
+func PackageReferences(pkg *schema.Package) []schema.PackageReference {
+	referencedPackages := map[string]schema.PackageReference{}
 	visitor := func(t schema.Type) {
 		if rt, ok := t.(*schema.ResourceType); ok && rt.Resource != nil {
 			referencedPackageName := rt.Resource.PackageReference.Name()
 			if referencedPackageName != pkg.Name {
-				referencedPackages.Add(referencedPackageName)
+				referencedPackages[referencedPackageName] = rt.Resource.PackageReference
 			}
 		}
 
 		if objectType, ok := t.(*schema.ObjectType); ok {
 			referencedPackageName := objectType.PackageReference.Name()
 			if referencedPackageName != pkg.Name {
-				referencedPackages.Add(referencedPackageName)
+				referencedPackages[referencedPackageName] = objectType.PackageReference
 			}
 		}
 
 		if et, ok := t.(*schema.EnumType); ok {
 			referencedPackageName := et.PackageReference.Name()
 			if referencedPackageName != pkg.Name {
-				referencedPackages.Add(referencedPackageName)
+				referencedPackages[referencedPackageName] = et.PackageReference
 			}
 		}
 	}
@@ -275,5 +276,9 @@ func PackageReferences(pkg *schema.Package) []string {
 		VisitType(t, visitor)
 	}
 
-	return referencedPackages.SortedValues()
+	output := slice.Prealloc[schema.PackageReference](len(referencedPackages))
+	for _, ref := range referencedPackages {
+		output = append(output, ref)
+	}
+	return output
 }

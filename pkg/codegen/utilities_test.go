@@ -63,7 +63,7 @@ func TestResolvingPackageReferences(t *testing.T) {
 	// ensure that package references return aws because awsx depends on aws
 	references := PackageReferences(pkg)
 	require.Equal(t, 1, len(references))
-	assert.Equal(t, "aws", references[0])
+	assert.Equal(t, "aws", references[0].Name())
 }
 
 func TestStringSetContains(t *testing.T) {
