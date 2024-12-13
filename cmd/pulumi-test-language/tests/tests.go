@@ -16,7 +16,6 @@ package tests
 
 import (
 	"embed"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -24,12 +23,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,91 +46,6 @@ var LanguageTests = map[string]LanguageTest{
 	// ==========
 	// L2 (Tests using providers)
 	// ==========
-	"l2-resource-simple": {
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
-		Runs: []TestRun{
-			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
-
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
-
-					simple := snap.Resources[2]
-					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
-
-					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
-				},
-			},
-		},
-	},
-	"l2-resource-primitives": {
-		Providers: []plugin.Provider{&providers.PrimitiveProvider{}},
-		Runs: []TestRun{
-			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
-
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:primitive", provider.Type.String(), "expected primitive provider")
-
-					simple := snap.Resources[2]
-					assert.Equal(l, "primitive:index:Resource", simple.Type.String(), "expected primitive resource")
-
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       3.14,
-						"integer":     42,
-						"string":      "hello",
-						"numberArray": []interface{}{-1.0, 0.0, 1.0},
-						"booleanMap":  map[string]interface{}{"t": true, "f": false},
-					})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
-				},
-			},
-		},
-	},
-	"l2-resource-alpha": {
-		Providers: []plugin.Provider{&providers.AlphaProvider{}},
-		Runs: []TestRun{
-			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
-
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:alpha", provider.Type.String(), "expected alpha provider")
-
-					simple := snap.Resources[2]
-					assert.Equal(l, "alpha:index:Resource", simple.Type.String(), "expected alpha resource")
-
-					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
-				},
-			},
-		},
-	},
 	"l2-explicit-provider": {
 		Providers: []plugin.Provider{&providers.SimpleProvider{}},
 		Runs: []TestRun{
@@ -159,122 +70,6 @@ var LanguageTests = map[string]LanguageTest{
 					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
 					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
-				},
-			},
-		},
-	},
-	"l2-resource-asset-archive": {
-		Providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
-		Runs: []TestRun{
-			{
-				Main: "subdir",
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
-
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
-
-					// We don't know what order the resources will be in so we map by name
-					resources := map[string]*resource.State{}
-					for _, r := range snap.Resources[2:] {
-						resources[r.URN.Name()] = r
-					}
-
-					asset, ok := resources["ass"]
-					require.True(l, ok, "expected asset resource")
-					assert.Equal(l, "asset-archive:index:AssetResource", asset.Type.String(), "expected asset resource")
-
-					archive, ok := resources["arc"]
-					require.True(l, ok, "expected archive resource")
-					assert.Equal(l, "asset-archive:index:ArchiveResource", archive.Type.String(), "expected archive resource")
-
-					folder, ok := resources["dir"]
-					require.True(l, ok, "expected folder resource")
-					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
-
-					assarc, ok := resources["assarc"]
-					require.True(l, ok, "expected asset archive resource")
-					assert.Equal(l, "asset-archive:index:ArchiveResource", assarc.Type.String(), "expected archive resource")
-
-					remoteass, ok := resources["remoteass"]
-					require.True(l, ok, "expected remote asset resource")
-					assert.Equal(l, "asset-archive:index:AssetResource", remoteass.Type.String(), "expected asset resource")
-
-					main := filepath.Join(projectDirectory, "subdir")
-
-					assetValue, err := resource.NewPathAssetWithWD("../test.txt", main)
-					require.NoError(l, err)
-					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", assetValue.Hash)
-
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"value": assetValue,
-					})
-
-					assert.Equal(l, want, asset.Inputs, "expected inputs to be {value: %v}", assetValue)
-					assert.Equal(l, asset.Inputs, asset.Outputs, "expected inputs and outputs to match")
-
-					archiveValue, err := resource.NewPathArchiveWithWD("../archive.tar", main)
-					require.NoError(l, err)
-					assert.Equal(l, "2eee410fe85d360552a8c21238d67d43f4b64e60288914f893b67165e8ebfbcf", archiveValue.Hash)
-
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": archiveValue,
-					})
-
-					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
-					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
-
-					folderValue, err := resource.NewPathArchiveWithWD("../folder", main)
-					require.NoError(l, err)
-					assert.Equal(l, "25df47ed6b3c8e07479e5d9c908eff93d624ec693b6aa7559a9bcb084db70774", folderValue.Hash)
-
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": folderValue,
-					})
-
-					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
-					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
-
-					stringAsset, err := resource.NewTextAsset("file contents")
-					require.NoError(l, err)
-
-					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]interface{}{
-						"string":  stringAsset,
-						"file":    assetValue,
-						"folder":  folderValue,
-						"archive": archiveValue,
-					}, main)
-					require.NoError(l, err)
-
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": assarcValue,
-					})
-
-					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
-					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
-
-					remoteassValue, err := resource.NewURIAsset(
-						"https://raw.githubusercontent.com/pulumi/pulumi/master" +
-							"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
-					)
-					require.NoError(l, err)
-
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": remoteassValue,
-					})
-
-					assert.Equal(l, want, remoteass.Inputs, "expected inputs to be {value: %v}", remoteassValue)
-					assert.Equal(l, remoteass.Inputs, remoteass.Outputs, "expected inputs and outputs to match")
-					bs, err := remoteassValue.Bytes()
-					require.NoError(l, err)
-					assert.Equal(l, "text", string(bs))
-					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", remoteassValue.Hash)
 				},
 			},
 		},
@@ -464,55 +259,6 @@ var LanguageTests = map[string]LanguageTest{
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
-				},
-			},
-		},
-	},
-	"l2-resource-config": {
-		Providers: []plugin.Provider{&providers.ConfigProvider{}},
-		Runs: []TestRun{
-			{
-				Config: config.Map{
-					config.MustParseKey("config:name"): config.NewValue("hello"),
-				},
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
-
-					explicitProvider := snap.Resources[1]
-					require.Equal(l, "pulumi:providers:config", explicitProvider.Type.String(), "expected explicit provider resource")
-					expectedOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-						"name":              "my config",
-						"pluginDownloadURL": "not the same as the pulumi resource option",
-						"version":           "9.0.0",
-					})
-					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
-					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
-						resource.NewPropertyMapFromMap(map[string]interface{}{
-							"pluginDownloadURL": "http://example.com",
-						}))
-					require.Equal(l, expectedInputs, explicitProvider.Inputs)
-					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
-
-					defaultProvider := snap.Resources[2]
-					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
-					require.Equal(l, "default_9_0_0_http_/example.com", defaultProvider.URN.Name())
-					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
-						"version": "9.0.0",
-						"name":    "hello",
-					})
-					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
-					// inputs should also have the __internal key
-					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
-						resource.NewPropertyMapFromMap(map[string]interface{}{
-							"pluginDownloadURL": "http://example.com",
-						}))
-					require.Equal(l, expectedInputs, defaultProvider.Inputs)
-					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
 				},
 			},
 		},
@@ -1359,114 +1105,6 @@ var LanguageTests = map[string]LanguageTest{
 					})
 					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
-				},
-			},
-		},
-	},
-	"l2-resource-parent-inheritance": {
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
-		Runs: []TestRun{
-			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// We expect the following resources:
-					//
-					// 0. The stack
-					//
-					// 1. The default simple provider.
-					// 2. The explicit simple provider, used to test provider inheritance.
-					//
-					// 3. A parent using the explicit provider.
-					// 4. A child of the parent using the explicit provider.
-					// 5. An orphan without a parent or explicit provider.
-					//
-					// 6. A parent with its protect flag set.
-					// 7. A child of the parent with its protect flag set.
-					// 8. An orphan without a parent or protect flag set.
-					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
-
-					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
-					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
-
-					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
-					require.NoError(l, err, "expected to create default provider reference")
-
-					explicitProvider := RequireSingleNamedResource(l, snap.Resources, "provider")
-					require.Equal(l, "pulumi:providers:simple", explicitProvider.Type.String(), "expected explicit simple provider")
-
-					explicitProviderRef, err := deployProviders.NewReference(explicitProvider.URN, explicitProvider.ID)
-					require.NoError(l, err, "expected to create explicit provider reference")
-
-					// Children should inherit providers.
-					providerParent := RequireSingleNamedResource(l, snap.Resources, "parent1")
-					providerChild := RequireSingleNamedResource(l, snap.Resources, "child1")
-					providerOrphan := RequireSingleNamedResource(l, snap.Resources, "orphan1")
-
-					require.Equal(
-						l, explicitProviderRef.String(), providerParent.Provider,
-						"expected parent to set explicit provider",
-					)
-					require.Equal(
-						l, explicitProviderRef.String(), providerChild.Provider,
-						"expected child to inherit explicit provider",
-					)
-					require.Equal(
-						l, defaultProviderRef.String(), providerOrphan.Provider,
-						"expected orphan to use default provider",
-					)
-
-					// Children should inherit protect flags.
-					protectParent := RequireSingleNamedResource(l, snap.Resources, "parent2")
-					protectChild := RequireSingleNamedResource(l, snap.Resources, "child2")
-					protectOrphan := RequireSingleNamedResource(l, snap.Resources, "orphan2")
-
-					require.True(l, protectParent.Protect, "expected parent to be protected")
-					require.True(l, protectChild.Protect, "expected child to inherit protect flag")
-					require.False(l, protectOrphan.Protect, "expected orphan to not be protected")
-				},
-			},
-		},
-	},
-	"l2-resource-secret": {
-		Providers: []plugin.Provider{&providers.SecretProvider{}},
-		Runs: []TestRun{
-			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-				) {
-					RequireStackResource(l, err, changes)
-
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
-
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:secret", provider.Type.String(), "expected secret provider")
-
-					simple := snap.Resources[2]
-					assert.Equal(l, "secret:index:Resource", simple.Type.String(), "expected secret resource")
-
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"public":  "open",
-						"private": resource.MakeSecret(resource.NewStringProperty("closed")),
-						"publicData": map[string]interface{}{
-							"public": "open",
-							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
-							// but currently _all_ the SDKs send it as a plain value and the engine doesn't
-							// fix it. We should fix the engine to ensure this ends up as secret as well.
-							"private": "closed",
-						},
-						"privateData": resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
-							"public":  "open",
-							"private": "closed",
-						}))),
-					})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},
