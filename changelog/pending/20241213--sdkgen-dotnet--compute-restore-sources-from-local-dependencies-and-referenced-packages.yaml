@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/dotnet
+  description: Compute restore sources from local dependencies and referenced packages

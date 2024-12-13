@@ -2271,7 +2271,25 @@ func genPackageMetadata(pkg *schema.Package,
 		files.Add("version.txt", []byte(version))
 	}
 
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
+	localPackages := map[string]string{}
+	if pulumi, ok := localDependencies["pulumi"]; ok {
+		localPackages["pulumi"] = pulumi
+	}
+
+	// compute referenced packages in the schema
+	referencedPackages := codegen.PackageReferences(pkg)
+
+	for pkg, path := range localDependencies {
+		// if a local dependency is package refenced in the schema,
+		// we add it to the local packages
+		for _, referencedPackage := range referencedPackages {
+			if pkg == referencedPackage.Name() {
+				localPackages[pkg] = path
+			}
+		}
+	}
+
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localPackages)
 	if err != nil {
 		return err
 	}
