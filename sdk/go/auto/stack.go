@@ -108,7 +108,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 
@@ -1694,25 +1693,6 @@ func (fw *fileWatcher) Close() {
 	}
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
-
-	// The tail library we're using is racy when shutting down.
-	// If it gets the shutdown signal before reading the data, it
-	// will just shut down before finding the EoF.  This problem
-	// is exacerbated on Windows, where we use the poller, which
-	// polls for changes every 250ms.  Sleep a little bit longer
-	// than that to ensure the tail library had a chance to read
-	// the whole file.  On OSs that don't use the poller we still
-	// want to try to avoid the problem so we sleep for a short
-	// amount of time.
-	//
-	// TODO: remove this once https://github.com/nxadm/tail/issues/67
-	// is fixed and we can upgrade nxadm/tail.
-	if runtime.GOOS == "windows" {
-		time.Sleep(300 * time.Millisecond)
-	} else {
-		time.Sleep(150 * time.Millisecond)
-	}
-
 	//nolint:errcheck
 	fw.tail.StopAtEOF()
 	<-fw.done
