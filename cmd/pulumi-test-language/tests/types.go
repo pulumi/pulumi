@@ -221,6 +221,10 @@ var (
 type LanguageTest struct {
 	Providers []func() plugin.Provider
 
+	// Providers are sometimes needed for components, but might not be reported by GetRequiredPackages. This
+	// lists the package names that are _optional_ for that.
+	OptionalPackages []string
+
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]resource.PropertyMap
 

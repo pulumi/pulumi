@@ -676,13 +676,14 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	host := &testHost{
-		engine:      eng,
-		ctx:         pctx,
-		host:        pctx.Host,
-		runtime:     languageClient,
-		runtimeName: token.LanguagePluginName,
-		providers:   providers,
-		connections: make(map[plugin.Provider]io.Closer),
+		engine:           eng,
+		ctx:              pctx,
+		host:             pctx.Host,
+		runtime:          languageClient,
+		runtimeName:      token.LanguagePluginName,
+		providers:        providers,
+		optionalPackages: test.OptionalPackages,
+		connections:      make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx.Host = host

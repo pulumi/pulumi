@@ -40,12 +40,13 @@ import (
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() plugin.Provider
+	engine           *languageTestServer
+	ctx              *plugin.Context
+	host             plugin.Host
+	runtime          plugin.LanguageRuntime
+	runtimeName      string
+	providers        map[string]func() plugin.Provider
+	optionalPackages []string
 
 	connections map[plugin.Provider]io.Closer
 
@@ -190,9 +191,26 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
 	}
 
-	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := expected.SymmetricDifference(actual)
-	if !diff.IsEmpty() {
+	// Check if any unexpected providers were reported, i.e. things in actual but not in expected
+	unexpected := actual.Difference(expected)
+
+	// Check if any expected providers weren't reported, i.e. things in expected but not in actual, but filter
+	// out any optional packages.
+	missing := expected.Difference(actual)
+	for _, miss := range missing.ToSlice() {
+		isOptional := false
+		for _, optional := range h.optionalPackages {
+			if strings.HasPrefix(miss, "resource-"+optional+"@") {
+				isOptional = true
+				break
+			}
+		}
+		if isOptional {
+			missing.Remove(miss)
+		}
+	}
+
+	if !unexpected.IsEmpty() || !missing.IsEmpty() {
 		expectedSlice := expected.ToSlice()
 		slices.Sort(expectedSlice)
 		actualSlice := actual.ToSlice()
