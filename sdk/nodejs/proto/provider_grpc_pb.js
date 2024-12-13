@@ -595,6 +595,13 @@ check: {
   // `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 // by a [](pulumirpc.ResourceProvider.Check) call.
+//
+// The provider's response must satisfy the following invariants:
+//
+// * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
+// * For each entry in DetailedDiff, its top-level property is in Diff.
+// * Diff does not contain duplicates.
+// * DetailedDiff does not contain duplicate keys.
 diff: {
     path: '/pulumirpc.ResourceProvider/Diff',
     requestStream: false,

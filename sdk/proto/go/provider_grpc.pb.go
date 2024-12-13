@@ -138,6 +138,13 @@ type ResourceProviderClient interface {
 	// `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
+	//
+	// The provider's response must satisfy the following invariants:
+	//
+	// * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
+	// * For each entry in DetailedDiff, its top-level property is in Diff.
+	// * Diff does not contain duplicates.
+	// * DetailedDiff does not contain duplicate keys.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
@@ -531,6 +538,13 @@ type ResourceProviderServer interface {
 	// `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
+	//
+	// The provider's response must satisfy the following invariants:
+	//
+	// * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
+	// * For each entry in DetailedDiff, its top-level property is in Diff.
+	// * Diff does not contain duplicates.
+	// * DetailedDiff does not contain duplicate keys.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
