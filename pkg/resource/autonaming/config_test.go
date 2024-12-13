@@ -168,6 +168,36 @@ pulumi:autonaming:
 			wantErr: "invalid naming mode: invalid",
 		},
 		{
+			name: "enforce without pattern returns error",
+			configYAML: `
+pulumi:autonaming:
+  enforce: true`,
+			wantErr: "pattern must be specified",
+		},
+		{
+			name: "enforce on provider without pattern returns error",
+			configYAML: `
+pulumi:autonaming:
+  pattern: ${name}
+  providers:
+    aws:
+      enforce: true`,
+			wantErr: "pattern must be specified",
+		},
+		{
+			name: "enforce on resource without pattern returns error",
+			configYAML: `
+pulumi:autonaming:
+  pattern: ${name}
+  providers:
+    aws:
+      mode: disabled
+      resources:
+        aws:s3/bucket:Bucket:
+          enforce: true`,
+			wantErr: "pattern must be specified",
+		},
+		{
 			name: "invalid provider mode returns error",
 			configYAML: `
 pulumi:autonaming:
@@ -262,6 +292,83 @@ myproj:foo: bar`,
 						Default: &verbatimAutonaming{},
 						Resources: map[string]Autonamer{
 							"azure:storage/account:Account": &disabledAutonaming{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "provider uses global when it has no config on its own and solely resources are configured",
+			configYAML: `
+pulumi:autonaming:
+  mode: verbatim
+  providers:
+    aws:
+      resources:
+        aws:ec2/instance:Instance:
+          pattern: instance-${name}`,
+			wantConfig: &globalAutonaming{
+				Default: &verbatimAutonaming{},
+				Providers: map[string]providerAutonaming{
+					"aws": {
+						Default: &verbatimAutonaming{},
+						Resources: map[string]Autonamer{
+							"aws:ec2/instance:Instance": &patternAutonaming{
+								Pattern: "instance-${name}",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "resource definition without mode or pattern produces an error",
+			configYAML: `
+pulumi:autonaming:
+  mode: verbatim
+  providers:
+    aws:
+      mode: disabled
+      resources:
+        aws:s3/bucket:Bucket: {}`,
+			wantErr: "mode or pattern must be specified",
+		},
+		{
+			name: "provider can opt back into default autonaming",
+			configYAML: `
+pulumi:autonaming:
+  mode: verbatim
+  providers:
+    aws:
+      mode: default`,
+			wantConfig: &globalAutonaming{
+				Default: &verbatimAutonaming{},
+				Providers: map[string]providerAutonaming{
+					"aws": {
+						Default:   &defaultAutonamingConfig,
+						Resources: map[string]Autonamer{},
+					},
+				},
+			},
+		},
+		{
+			name: "resource can opt back into default autonaming",
+			configYAML: `
+pulumi:autonaming:
+  mode: verbatim
+  providers:
+    aws:
+      mode: disabled
+      resources:
+        aws:s3/bucket:Bucket:
+          mode: default`,
+			wantConfig: &globalAutonaming{
+				Default: &verbatimAutonaming{},
+				Providers: map[string]providerAutonaming{
+					"aws": {
+						Default: &disabledAutonaming{},
+						Resources: map[string]Autonamer{
+							"aws:s3/bucket:Bucket": &defaultAutonamingConfig,
 						},
 					},
 				},
