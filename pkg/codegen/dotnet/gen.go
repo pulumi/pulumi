@@ -2277,48 +2277,7 @@ func genPackageMetadata(pkg *schema.Package,
 	}
 
 	// compute referenced packages in the schema
-	var referencedPackages []string
-
-	visitor := func(t schema.Type) {
-		if rt, ok := t.(*schema.ResourceType); ok && rt.Resource != nil {
-			referencedPackageName := rt.Resource.PackageReference.Name()
-			if referencedPackageName != pkg.Name {
-				referencedPackages = append(referencedPackages, referencedPackageName)
-			}
-		}
-
-		if objectType, ok := t.(*schema.ObjectType); ok {
-			referencedPackageName := objectType.PackageReference.Name()
-			if referencedPackageName != pkg.Name {
-				referencedPackages = append(referencedPackages, referencedPackageName)
-			}
-		}
-
-		if et, ok := t.(*schema.EnumType); ok {
-			referencedPackageName := et.PackageReference.Name()
-			if referencedPackageName != pkg.Name {
-				referencedPackages = append(referencedPackages, referencedPackageName)
-			}
-		}
-	}
-
-	for _, resource := range pkg.Resources {
-		codegen.VisitTypeClosure(resource.InputProperties, visitor)
-		codegen.VisitTypeClosure(resource.Properties, visitor)
-	}
-
-	for _, function := range pkg.Functions {
-		if function.Inputs != nil {
-			codegen.VisitTypeClosure(function.Inputs.Properties, visitor)
-		}
-		if function.Outputs != nil {
-			codegen.VisitTypeClosure(function.Outputs.Properties, visitor)
-		}
-	}
-
-	for _, t := range pkg.Types {
-		codegen.VisitType(t, visitor)
-	}
+	referencedPackages := codegen.PackageReferences(pkg)
 
 	for pkg, path := range localDependencies {
 		// if a local dependency is package refenced in the schema,

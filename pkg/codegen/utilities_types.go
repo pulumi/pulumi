@@ -230,3 +230,50 @@ func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bo
 	}
 	return false
 }
+
+// PackageReferences returns a list of package names that are referenced by the given package.
+func PackageReferences(pkg *schema.Package) []string {
+	referencedPackages := NewStringSet()
+	visitor := func(t schema.Type) {
+		if rt, ok := t.(*schema.ResourceType); ok && rt.Resource != nil {
+			referencedPackageName := rt.Resource.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages.Add(referencedPackageName)
+			}
+		}
+
+		if objectType, ok := t.(*schema.ObjectType); ok {
+			referencedPackageName := objectType.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages.Add(referencedPackageName)
+			}
+		}
+
+		if et, ok := t.(*schema.EnumType); ok {
+			referencedPackageName := et.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages.Add(referencedPackageName)
+			}
+		}
+	}
+
+	for _, resource := range pkg.Resources {
+		VisitTypeClosure(resource.InputProperties, visitor)
+		VisitTypeClosure(resource.Properties, visitor)
+	}
+
+	for _, function := range pkg.Functions {
+		if function.Inputs != nil {
+			VisitTypeClosure(function.Inputs.Properties, visitor)
+		}
+		if function.Outputs != nil {
+			VisitTypeClosure(function.Outputs.Properties, visitor)
+		}
+	}
+
+	for _, t := range pkg.Types {
+		VisitType(t, visitor)
+	}
+
+	return referencedPackages.SortedValues()
+}
