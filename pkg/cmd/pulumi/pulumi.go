@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
@@ -363,7 +364,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Policy Management Commands",
 			Commands: []*cobra.Command{
-				newPolicyCmd(),
+				policy.NewPolicyCmd(),
 			},
 		},
 		{

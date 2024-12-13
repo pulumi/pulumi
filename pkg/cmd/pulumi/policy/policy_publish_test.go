@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package policy
 
 import (
 	"context"
@@ -64,7 +64,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 			if err != nil {
 				return "", err
 			}
-			return filepath.Join(cwd, "testdata/policy"), nil
+			return filepath.Join(cwd, "testdata"), nil
 		},
 		defaultOrg: func(*workspace.Project) (string, error) {
 			return "org1", nil
@@ -109,7 +109,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 			if err != nil {
 				return "", err
 			}
-			return filepath.Join(cwd, "testdata/policy"), nil
+			return filepath.Join(cwd, "testdata"), nil
 		},
 	}
 
