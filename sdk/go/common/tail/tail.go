@@ -1,12 +1,16 @@
+// Copyright (c) 2024, Pulumi Corporation.
 // Copyright (c) 2019 FOSS contributors of https://github.com/nxadm/tail
 // Copyright (c) 2015 HPE Software Inc. All rights reserved.
 // Copyright (c) 2013 ActiveState Software Inc. All rights reserved.
 
-// nxadm/tail provides a Go library that emulates the features of the BSD `tail`
+// tail provides a Go library that emulates the features of the BSD `tail`
 // program. The library comes with full support for truncation/move detection as
 // it is designed to work with log rotation tools. The library works on all
 // operating systems supported by Go, including POSIX systems like Linux and
-// *BSD, and MS Windows. Go 1.9 is the oldest compiler release supported.
+// *BSD, and MS Windows.
+//
+// This is a trimmed down vendored copy of github.com/nxadm/tail with fixes
+// from nxadm/tail#70 and nxadm/tail#71 applied.
 package tail
 
 import (
@@ -35,15 +39,6 @@ type Line struct {
 	SeekInfo SeekInfo  // SeekInfo
 	Time     time.Time // Present time
 	Err      error     // Error from tail
-}
-
-// Deprecated: this function is no longer used internally and it has little of no
-// use in the API. As such, it will be removed from the API in a future major
-// release.
-//
-// NewLine returns a * pointer to a Line struct.
-func NewLine(text string, lineNum int) *Line {
-	return &Line{text, lineNum, SeekInfo{}, time.Now(), nil}
 }
 
 // SeekInfo represents arguments to io.Seek. See: https://golang.org/pkg/io/#SectionReader.Seek
@@ -142,7 +137,7 @@ func TailFile(filename string, config Config) (*Tail, error) {
 
 	if t.MustExist {
 		var err error
-		t.file, err = OpenFile(t.Filename)
+		t.file, err = openFile(t.Filename)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +205,7 @@ func (tail *Tail) reopen() error {
 	tail.lineNum = 0
 	for {
 		var err error
-		tail.file, err = OpenFile(tail.Filename)
+		tail.file, err = openFile(tail.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
 				tail.Logger.Printf("Waiting for %s to appear...", tail.Filename)
