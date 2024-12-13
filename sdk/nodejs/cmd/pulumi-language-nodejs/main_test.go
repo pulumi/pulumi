@@ -868,8 +868,6 @@ func TestNodeInstall(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
-	fmt.Println(os.Getenv("PATH"))
-
 	// There's no fnm executable in PATH, installNodeVersion is a no-op
 	stdout := &bytes.Buffer{}
 	err := installNodeVersion(tmpDir, stdout)
@@ -900,6 +898,6 @@ func TestNodeInstall(t *testing.T) {
 	b, err := os.ReadFile(outPath)
 	require.NoError(t, err)
 	commands := strings.Split(strings.TrimSpace(string(b)), "\n")
-	require.Equal(t, "install 20.1.2 --progress never", commands[0])
+	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }
