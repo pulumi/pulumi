@@ -1,3 +1,4 @@
+//nolint:goheader // This file is a vendored copy of the tail package from, so we keep the original license header.
 // Copyright (c) 2024, Pulumi Corporation.
 // Copyright (c) 2019 FOSS contributors of https://github.com/nxadm/tail
 // Copyright (c) 2015 HPE Software Inc. All rights reserved.
@@ -18,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -27,6 +27,7 @@ import (
 
 	"github.com/nxadm/tail/util"
 	"github.com/nxadm/tail/watch"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"gopkg.in/tomb.v1"
 )
 
@@ -101,15 +102,15 @@ var (
 	// DefaultLogger logs to os.Stderr and it is used when Config.Logger == nil
 	DefaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 	// DiscardingLogger can be used to disable logging output
-	DiscardingLogger = log.New(ioutil.Discard, "", 0)
+	DiscardingLogger = log.New(io.Discard, "", 0)
 )
 
-// TailFile begins tailing the file. And returns a pointer to a Tail struct
+// File begins tailing the file. And returns a pointer to a Tail struct
 // and an error. An output stream is made available via the Tail.Lines
 // channel (e.g. to be looped and printed). To handle errors during tailing,
 // after finishing reading from the Lines channel, invoke the `Wait` or `Err`
 // method on the returned *Tail.
-func TailFile(filename string, config Config) (*Tail, error) {
+func File(filename string, config Config) (*Tail, error) {
 	if config.ReOpen && !config.Follow {
 		util.Fatal("cannot set ReOpen without Follow.")
 	}
@@ -248,12 +249,11 @@ func (tail *Tail) readLine() (string, error) {
 		line = tail.lineBuf.String()
 		tail.lineBuf.Reset()
 		return line, nil
-	} else {
-		if tail.Config.Follow {
-			line = ""
-		}
-		return line, io.EOF
 	}
+	if tail.Config.Follow {
+		line = ""
+	}
+	return line, io.EOF
 }
 
 func (tail *Tail) tailFileSync() {
@@ -275,7 +275,7 @@ func (tail *Tail) tailFileSync() {
 	if tail.Location != nil {
 		_, err := tail.file.Seek(tail.Location.Offset, tail.Location.Whence)
 		if err != nil {
-			tail.Killf("Seek error on %s: %s", tail.Filename, err)
+			contract.IgnoreError(tail.Killf("Seek error on %s: %s", tail.Filename, err))
 			return
 		}
 	}
@@ -348,6 +348,7 @@ func (tail *Tail) tailFileSync() {
 				// again, and then exit.
 				if err == ErrStop && tail.Err() == errStopAtEOF {
 					stopOnNextEOF = true
+					continue
 				}
 				if err != ErrStop {
 					tail.Kill(err)
@@ -356,7 +357,7 @@ func (tail *Tail) tailFileSync() {
 			}
 		} else {
 			// non-EOF error
-			tail.Killf("Error reading %s: %s", tail.Filename, err)
+			contract.IgnoreError(tail.Killf("Error reading %s: %s", tail.Filename, err))
 			return
 		}
 
@@ -483,5 +484,5 @@ func (tail *Tail) sendLine(line string) bool {
 // automatically remove inotify watches after the process exits.
 // If you plan to re-read a file, don't call Cleanup in between.
 func (tail *Tail) Cleanup() {
-	watch.Cleanup(tail.Filename)
+	contract.IgnoreError(watch.Cleanup(tail.Filename))
 }

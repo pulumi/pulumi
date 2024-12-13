@@ -787,7 +787,7 @@ type debugger struct {
 // WaitForReady waits for Delve to be ready to accept connections.
 // Returns an error if the context is canceled or the log file is unable to be tailed.
 func (c *debugger) WaitForReady(ctx context.Context) error {
-	t, err := tail.TailFile(c.LogDest, tail.Config{
+	t, err := tail.File(c.LogDest, tail.Config{
 		Follow: true,
 		Logger: tail.DiscardingLogger,
 	})

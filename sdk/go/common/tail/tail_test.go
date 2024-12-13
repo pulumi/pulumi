@@ -1,3 +1,5 @@
+//nolint:goheader // This file is a vendored copy of the tail package from, so we keep the original license header.
+// Copyright (c) 2024, Pulumi Corporation.
 // Copyright (c) 2019 FOSS contributors of https://github.com/nxadm/tail
 // Copyright (c) 2015 HPE Software Inc. All rights reserved.
 // Copyright (c) 2013 ActiveState Software Inc. All rights reserved.
@@ -11,26 +13,22 @@ import (
 	"fmt"
 	_ "fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/nxadm/tail/ratelimiter"
 	"github.com/nxadm/tail/watch"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
 )
 
-func TestTailFile(t *testing.T) {
-	t.SkipNow()
-}
-
-func ExampleTailFile() {
+func ExampleFile() {
 	// Keep tracking a file even when recreated.
 	// /var/log/messages is typically continuously written and rotated daily.
 	testFileName := "/var/log/messages"
 	// ReOpen when truncated, Follow to wait for new input when EOL is reached
-	tailedFile, err := TailFile(testFileName, Config{ReOpen: true, Follow: true})
+	tailedFile, err := File(testFileName, Config{ReOpen: true, Follow: true})
 	if err != nil {
 		panic(err)
 	}
@@ -49,17 +47,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestMustExist(t *testing.T) {
-	tail, err := TailFile("/no/such/file", Config{Follow: true, MustExist: true})
+	t.Parallel()
+
+	tail, err := File("/no/such/file", Config{Follow: true, MustExist: true})
 	if err == nil {
 		t.Error("MustExist:true is violated")
-		tail.Stop()
+		require.NoError(t, tail.Stop())
 	}
-	tail, err = TailFile("/no/such/file", Config{Follow: true, MustExist: false})
+	tail, err = File("/no/such/file", Config{Follow: true, MustExist: false})
 	if err != nil {
 		t.Error("MustExist:false is violated")
 	}
-	tail.Stop()
-	_, err = TailFile("README.md", Config{Follow: true, MustExist: true})
+	require.NoError(t, tail.Stop())
+	_, err = File("README.md", Config{Follow: true, MustExist: true})
 	if err != nil {
 		t.Error("MustExist:true on an existing file is violated")
 	}
@@ -67,6 +67,8 @@ func TestMustExist(t *testing.T) {
 }
 
 func TestWaitsForFileToExist(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist", t)
 	defer cleanup()
 	tail := tailTest.StartTail("test.txt", Config{})
@@ -77,6 +79,7 @@ func TestWaitsForFileToExist(t *testing.T) {
 	tailTest.Cleanup(tail, true)
 }
 
+//nolint:paralleltest // this test is not parallel because it changes the working directory
 func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist-relative", t)
 	defer cleanup()
@@ -85,10 +88,10 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	if err != nil {
 		tailTest.Fatal(err)
 	}
-	os.Chdir(tailTest.path)
-	defer os.Chdir(oldWD)
+	require.NoError(t, os.Chdir(tailTest.path))
+	defer contract.IgnoreError(os.Chdir(oldWD))
 
-	tail, err := TailFile("test.txt", Config{})
+	tail, err := File("test.txt", Config{})
 	if err != nil {
 		tailTest.Fatal(err)
 	}
@@ -96,14 +99,16 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
 
 	<-time.After(100 * time.Millisecond)
-	if err := ioutil.WriteFile("test.txt", []byte("hello\nworld\n"), 0o600); err != nil {
+	if err := os.WriteFile("test.txt", []byte("hello\nworld\n"), 0o600); err != nil {
 		tailTest.Fatal(err)
 	}
 	tailTest.Cleanup(tail, true)
 }
 
 func TestStop(t *testing.T) {
-	tail, err := TailFile("_no_such_file", Config{Follow: true, MustExist: false})
+	t.Parallel()
+
+	tail, err := File("_no_such_file", Config{Follow: true, MustExist: false})
 	if err != nil {
 		t.Error("MustExist:false is violated")
 	}
@@ -114,16 +119,20 @@ func TestStop(t *testing.T) {
 }
 
 func TestStopNonEmptyFile(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("maxlinesize", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
 	tail := tailTest.StartTail("test.txt", Config{})
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 	// success here is if it doesn't panic.
 }
 
 func TestStopAtEOF(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("maxlinesize", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
@@ -140,20 +149,26 @@ func TestStopAtEOF(t *testing.T) {
 	}
 
 	tailTest.VerifyTailOutput(tail, []string{"there", "world"}, false)
-	tail.StopAtEOF()
+	require.NoError(t, tail.StopAtEOF())
 	tailTest.Cleanup(tail, true)
 }
 
 func TestMaxLineSizeFollow(t *testing.T) {
+	t.Parallel()
+
 	// As last file line does not end with newline, it will not be present in tail's output
 	maxLineSize(t, true, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin", "he"})
 }
 
 func TestMaxLineSizeNoFollow(t *testing.T) {
+	t.Parallel()
+
 	maxLineSize(t, false, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin", "he"})
 }
 
 func TestOver4096ByteLine(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("Over4096ByteLine", t)
 	defer cleanup()
 	testString := strings.Repeat("a", 4097)
@@ -169,6 +184,8 @@ func TestOver4096ByteLine(t *testing.T) {
 }
 
 func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("Over4096ByteLineMaxLineSize", t)
 	defer cleanup()
 	testString := strings.Repeat("a", 4097)
@@ -184,6 +201,8 @@ func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
 }
 
 func TestReOpenWithCursor(t *testing.T) {
+	t.Parallel()
+
 	delay := 300 * time.Millisecond // account for POLL_DURATION
 	tailTest, cleanup := NewTailTest("reopen-cursor", t)
 	defer cleanup()
@@ -219,6 +238,8 @@ func TestReOpenWithCursor(t *testing.T) {
 }
 
 func TestLocationFull(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("location-full", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
@@ -233,6 +254,8 @@ func TestLocationFull(t *testing.T) {
 }
 
 func TestLocationFullDontFollow(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("location-full-dontfollow", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
@@ -248,6 +271,8 @@ func TestLocationFullDontFollow(t *testing.T) {
 }
 
 func TestLocationEnd(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("location-end", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
@@ -265,6 +290,8 @@ func TestLocationEnd(t *testing.T) {
 }
 
 func TestLocationMiddle(t *testing.T) {
+	t.Parallel()
+
 	// Test reading from middle.
 	tailTest, cleanup := NewTailTest("location-middle", t)
 	defer cleanup()
@@ -286,10 +313,14 @@ func TestLocationMiddle(t *testing.T) {
 // (detected via renames), so test these explicitly.
 
 func TestReOpenInotify(t *testing.T) {
+	t.Parallel()
+
 	reOpen(t, false)
 }
 
 func TestReOpenPolling(t *testing.T) {
+	t.Parallel()
+
 	reOpen(t, true)
 }
 
@@ -297,14 +328,20 @@ func TestReOpenPolling(t *testing.T) {
 // (detected via renames), so test these explicitly.
 
 func TestReSeekInotify(t *testing.T) {
+	t.Parallel()
+
 	reSeek(t, false)
 }
 
 func TestReSeekPolling(t *testing.T) {
+	t.Parallel()
+
 	reSeek(t, true)
 }
 
 func TestReSeekWithCursor(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("reseek-cursor", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
@@ -331,38 +368,9 @@ func TestReSeekWithCursor(t *testing.T) {
 	tailTest.Cleanup(tail, false)
 }
 
-func TestRateLimiting(t *testing.T) {
-	tailTest, cleanup := NewTailTest("rate-limiting", t)
-	defer cleanup()
-	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nextra\n")
-	config := Config{
-		Follow:      true,
-		RateLimiter: ratelimiter.NewLeakyBucket(2, time.Second),
-	}
-	leakybucketFull := "Too much log activity; waiting a second before resuming tailing"
-	tail := tailTest.StartTail("test.txt", config)
-
-	// TODO: also verify that tail resumes after the cooloff period.
-	go tailTest.VerifyTailOutput(tail, []string{
-		"hello", "world", "again",
-		leakybucketFull,
-		"more", "data",
-		leakybucketFull,
-	}, false)
-
-	// Add more data only after reasonable delay.
-	<-time.After(1200 * time.Millisecond)
-	tailTest.AppendFile("test.txt", "more\ndata\n")
-
-	// Delete after a reasonable delay, to give tail sufficient time
-	// to read all lines.
-	<-time.After(100 * time.Millisecond)
-	tailTest.RemoveFile("test.txt")
-
-	tailTest.Cleanup(tail, true)
-}
-
 func TestTell(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("tell-position", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
@@ -380,7 +388,7 @@ func TestTell(t *testing.T) {
 	if err != nil {
 		tailTest.Errorf("Tell return error: %s", err.Error())
 	}
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 
 	config = Config{
 		Follow:   false,
@@ -397,14 +405,17 @@ func TestTell(t *testing.T) {
 				tailTest.Errorf("expected line number to be between 1 and 2 but got %d", l.Num)
 			}
 		}
+		//nolint:staticcheck
 		break
 	}
 	tailTest.RemoveFile("test.txt")
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
 func TestBlockUntilExists(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("block-until-file-exists", t)
 	defer cleanup()
 	config := Config{
@@ -420,14 +431,17 @@ func TestBlockUntilExists(t *testing.T) {
 			tailTest.Fatalf("mismatch; expected hello world, but got %s",
 				l.Text)
 		}
+		//nolint:staticcheck
 		break
 	}
 	tailTest.RemoveFile("test.txt")
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
 func TestFollowUntilEof(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-no-follow", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -439,11 +453,11 @@ func TestFollowUntilEof(t *testing.T) {
 
 	// StopAtEOF blocks until the read is done and in order to do so
 	// we have to drain the lines channel first which ReadLinesWithError does.
-	go tail.StopAtEOF()
+	go contract.IgnoreError(tail.StopAtEOF())
 	tailTest.ReadLinesWithError(tail, []string{"hello", "world"}, false, errStopAtEOF)
 
 	tailTest.RemoveFile(filename)
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
@@ -513,6 +527,8 @@ func reOpen(t *testing.T, poll bool) {
 }
 
 func TestInotify_WaitForCreateThenMove(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("wait-for-create-then-reopen", t)
 	defer cleanup()
 	os.Remove(tailTest.path + "/test.txt") // Make sure the file does NOT exist.
@@ -541,6 +557,8 @@ func TestInotify_WaitForCreateThenMove(t *testing.T) {
 }
 
 func TestIncompleteLines(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("incomplete-lines", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -565,11 +583,13 @@ func TestIncompleteLines(t *testing.T) {
 	tailTest.ReadLines(tail, lines, false)
 
 	tailTest.RemoveFile(filename)
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
 func TestIncompleteLongLines(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-long", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -593,11 +613,13 @@ func TestIncompleteLongLines(t *testing.T) {
 	tailTest.ReadLines(tail, lines, false)
 
 	tailTest.RemoveFile(filename)
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
 func TestIncompleteLinesWithReopens(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-reopens", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -619,11 +641,13 @@ func TestIncompleteLinesWithReopens(t *testing.T) {
 	tailTest.ReadLines(tail, lines, false)
 
 	tailTest.RemoveFile(filename)
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
 func TestIncompleteLinesWithoutFollow(t *testing.T) {
+	t.Parallel()
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-no-follow", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -643,7 +667,7 @@ func TestIncompleteLinesWithoutFollow(t *testing.T) {
 	tailTest.VerifyTailOutput(tail, lines, true)
 
 	tailTest.RemoveFile(filename)
-	tail.Stop()
+	require.NoError(t, tail.Stop())
 	tail.Cleanup()
 }
 
@@ -690,10 +714,7 @@ type TailTest struct {
 }
 
 func NewTailTest(name string, t *testing.T) (TailTest, func()) {
-	testdir, err := ioutil.TempDir("", "tail-test-"+name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testdir := os.TempDir()
 
 	return TailTest{name, testdir, make(chan struct{}), t}, func() {
 		if err := os.RemoveAll(testdir); err != nil {
@@ -703,14 +724,14 @@ func NewTailTest(name string, t *testing.T) (TailTest, func()) {
 }
 
 func (t TailTest) CreateFile(name string, contents string) {
-	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0o600)
+	err := os.WriteFile(t.path+"/"+name, []byte(contents), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (t TailTest) AppendToFile(name string, contents string) {
-	err := ioutil.WriteFile(t.path+"/"+name, []byte(contents), 0o600|os.ModeAppend)
+	err := os.WriteFile(t.path+"/"+name, []byte(contents), 0o600|os.ModeAppend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -757,7 +778,7 @@ func (t TailTest) TruncateFile(name string, contents string) {
 }
 
 func (t TailTest) StartTail(name string, config Config) *Tail {
-	tail, err := TailFile(t.path+"/"+name, config)
+	tail, err := File(t.path+"/"+name, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -772,7 +793,7 @@ func (t TailTest) VerifyTailOutput(tail *Tail, lines []string, expectEOF bool) {
 	if expectEOF {
 		line, ok := <-tail.Lines
 		if ok {
-			t.Fatalf("more content from tail: %+v", line)
+			t.Errorf("more content from tail: %+v", line)
 		}
 	}
 }
@@ -785,7 +806,7 @@ func (t TailTest) VerifyTailOutputUsingCursor(tail *Tail, lines []string, expect
 	if expectEOF {
 		line, ok := <-tail.Lines
 		if ok {
-			t.Fatalf("more content from tail: %+v", line)
+			t.Errorf("more content from tail: %+v", line)
 		}
 	}
 }
@@ -839,7 +860,7 @@ func (t TailTest) readLines(tail *Tail, lines []string, useCursor bool, expected
 func (t TailTest) Cleanup(tail *Tail, stop bool) {
 	<-t.done
 	if stop {
-		tail.Stop()
+		require.NoError(t, tail.Stop())
 	}
 	tail.Cleanup()
 }
