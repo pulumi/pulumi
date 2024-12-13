@@ -21,7 +21,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nxadm/tail/ratelimiter"
 	"github.com/nxadm/tail/util"
 	"github.com/nxadm/tail/watch"
 	"gopkg.in/tomb.v1"
@@ -78,9 +77,6 @@ type Config struct {
 	Follow        bool // Continue looking for new lines (tail -f)
 	MaxLineSize   int  // If non-zero, split longer lines into multiple lines
 	CompleteLines bool // Only return complete lines (that end with "\n" or EOF when Follow is false)
-
-	// Optionally, use a ratelimiter (e.g. created by the ratelimiter/NewLeakyBucket function)
-	RateLimiter *ratelimiter.LeakyBucket
 
 	// Optionally use a Logger. When nil, the Logger is set to tail.DefaultLogger.
 	// To disable logging, set it to tail.DiscardingLogger
@@ -481,15 +477,6 @@ func (tail *Tail) sendLine(line string) bool {
 		case tail.Lines <- &Line{line, tail.lineNum, SeekInfo{Offset: offset}, now, nil}:
 		case <-earlyExitChan:
 			return true
-		}
-	}
-
-	if tail.Config.RateLimiter != nil {
-		ok := tail.Config.RateLimiter.Pour(uint16(len(lines)))
-		if !ok {
-			tail.Logger.Printf("Leaky bucket full (%v); entering 1s cooloff period.",
-				tail.Filename)
-			return false
 		}
 	}
 
