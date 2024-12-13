@@ -48,7 +48,7 @@ func TestInvalidSchema(t *testing.T) {
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
-		SnapshotDirectory:    "./testdata/snapshots",
+		SnapshotDirectory:    "./tests/testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
 	})
 	require.NoError(t, err)

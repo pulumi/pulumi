@@ -233,17 +233,17 @@ func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
 ) (*testingrpc.GetLanguageTestsResponse, error) {
-	tests := make([]string, 0, len(languageTests))
-	for testName := range languageTests {
+	filtered := make([]string, 0, len(tests.LanguageTests))
+	for testName := range tests.LanguageTests {
 		// Don't return internal tests
 		if strings.HasPrefix(testName, "internal-") {
 			continue
 		}
-		tests = append(tests, testName)
+		filtered = append(filtered, testName)
 	}
 
 	return &testingrpc.GetLanguageTestsResponse{
-		Tests: tests,
+		Tests: filtered,
 	}, nil
 }
 
@@ -396,7 +396,7 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	test, has := languageTests[req.Test]
+	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
@@ -508,7 +508,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -739,7 +739,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
