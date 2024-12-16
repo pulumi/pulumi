@@ -16,16 +16,18 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
+	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -136,7 +138,7 @@ func TestProviderSchemas(t *testing.T) {
 			continue
 		}
 
-		loader := &providerLoader{providers: test.Providers}
+		loader := &inMemoryProviderLoader{providers: test.Providers}
 
 		for _, provider := range test.Providers {
 			if provider.Pkg() == "parameterized" {
@@ -172,7 +174,7 @@ func TestBindPrograms(t *testing.T) {
 		}
 
 		src := filepath.Join("tests/testdata", name)
-		loader := &providerLoader{providers: test.Providers}
+		loader := &inMemoryProviderLoader{providers: test.Providers}
 		_, diags, err := pcl.BindDirectory(src, loader)
 		for _, diag := range diags {
 			t.Logf("%s: %v", name, diag)
@@ -180,4 +182,107 @@ func TestBindPrograms(t *testing.T) {
 		require.NoError(t, err, "bind program for test %s: %v", name, err)
 		require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 	}
+}
+
+// inMemoryProviderLoader is a schema.ReferenceLoader that loads schema from memory.
+type inMemoryProviderLoader struct {
+	providers []plugin.Provider
+}
+
+func (l *inMemoryProviderLoader) LoadPackageReference(
+	pkg string,
+	version *semver.Version,
+) (schema.PackageReference, error) {
+	return l.LoadPackageReferenceV2(context.TODO(), &schema.PackageDescriptor{
+		Name:    pkg,
+		Version: version,
+	})
+}
+
+func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
+	if descriptor.Name == "pulumi" {
+		return schema.DefaultPulumiPackage.Reference(), nil
+	}
+
+	// Find the provider with the given package name.
+	var provider plugin.Provider
+	for _, p := range l.providers {
+		if string(p.Pkg()) == descriptor.Name {
+			info, err := p.GetPluginInfo(context.TODO())
+			if err != nil {
+				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
+			}
+
+			if descriptor.Version == nil || (info.Version != nil && descriptor.Version.EQ(*info.Version)) {
+				provider = p
+				break
+			}
+		}
+	}
+
+	if provider == nil {
+		return nil, fmt.Errorf("could not load schema for %s, provider not known", descriptor.Name)
+	}
+
+	getSchemaRequest := plugin.GetSchemaRequest{}
+	if descriptor.Parameterization != nil {
+		parameter := &plugin.ParameterizeValue{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
+		}
+
+		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: parameter,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize package '%s' failed: %w", descriptor.Name, err)
+		}
+
+		getSchemaRequest.SubpackageName = descriptor.Parameterization.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Parameterization.Version
+	}
+
+	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)
+	if err != nil {
+		return nil, fmt.Errorf("get schema for %s: %w", descriptor.Name, err)
+	}
+
+	var spec schema.PartialPackageSpec
+	if _, err := json.Parse(jsonSchema.Schema, &spec, json.ZeroCopy); err != nil {
+		return nil, err
+	}
+
+	// Unconditionally set SupportPack
+	if spec.Meta == nil {
+		spec.Meta = &schema.MetadataSpec{}
+	}
+	spec.Meta.SupportPack = true
+
+	p, err := schema.ImportPartialSpec(spec, nil, l)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func (l *inMemoryProviderLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
+	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
+func (l *inMemoryProviderLoader) LoadPackageV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (*schema.Package, error) {
+	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
 }

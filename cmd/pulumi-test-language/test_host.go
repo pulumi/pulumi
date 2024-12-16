@@ -16,10 +16,10 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
@@ -83,14 +83,34 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 }
 
 func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
-	// Look in the providers map for this provider
+	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
+	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
+	var key string
+	var provider plugin.Provider
 	if descriptor.Version == nil {
-		return nil, errors.New("unexpected provider request with no version")
+		key = descriptor.Name
+
+		var version semver.Version
+		for k, p := range h.providers {
+			parts := strings.Split(k, "@")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("unexpected provider key %s", k)
+			}
+
+			if parts[0] == key {
+				v := semver.MustParse(parts[1])
+				if provider == nil || v.GT(version) {
+					provider = p
+					version = v
+				}
+			}
+		}
+	} else {
+		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
+		provider = h.providers[key]
 	}
 
-	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-	provider, has := h.providers[key]
-	if !has {
+	if provider == nil {
 		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 

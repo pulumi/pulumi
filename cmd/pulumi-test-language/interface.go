@@ -123,7 +123,7 @@ func (eng *languageTestServer) Done() error {
 type providerLoader struct {
 	language, languageInfo string
 
-	providers []plugin.Provider
+	host plugin.Host
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
@@ -140,20 +140,26 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
 
-	// Find the provider with the given package name
-	var provider plugin.Provider
-	for _, p := range l.providers {
-		if string(p.Pkg()) == descriptor.Name {
-			info, err := p.GetPluginInfo(context.TODO())
-			if err != nil {
-				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
-			}
-
-			if descriptor.Version == nil || (info.Version != nil && descriptor.Version.EQ(*info.Version)) {
-				provider = p
-				break
-			}
+	// Defer to the host to find the provider for the given package descriptor.
+	workspaceDescriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              descriptor.Name,
+			Version:           descriptor.Version,
+			PluginDownloadURL: descriptor.DownloadURL,
+		},
+	}
+	if descriptor.Parameterization != nil {
+		workspaceDescriptor.Parameterization = &workspace.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
 		}
+	}
+
+	provider, err := l.host.Provider(workspaceDescriptor)
+	if err != nil {
+		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
 
 	if provider == nil {
@@ -466,7 +472,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
 	}
 
-	pctx.Host = &testHost{
+	host := &testHost{
 		stderr:      stderr,
 		host:        pctx.Host,
 		runtime:     languageClient,
@@ -475,11 +481,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		connections: make(map[plugin.Provider]io.Closer),
 	}
 
+	pctx.Host = host
+
 	// Generate SDKs for all the packages we need
 	loader := &providerLoader{
-		providers:    test.Providers,
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
+		host:         host,
 	}
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
