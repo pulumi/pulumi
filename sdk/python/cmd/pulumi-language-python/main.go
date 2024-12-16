@@ -46,9 +46,9 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/nxadm/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -769,7 +769,7 @@ func (c *debugger) Cleanup() {
 // Returns an error if the context is canceled or the log file is unable to be tailed.
 func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	logFile := filepath.Join(c.LogDir, fmt.Sprintf("debugpy.server-%d.log", pid))
-	t, err := tail.TailFile(logFile, tail.Config{
+	t, err := tail.File(logFile, tail.Config{
 		Follow: true,
 		Logger: tail.DiscardingLogger,
 	})

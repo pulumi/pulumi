@@ -11,7 +11,6 @@ replace (
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/hashicorp/go-version v1.6.0
-	github.com/nxadm/tail v1.4.11
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
 	github.com/pulumi/pulumi/sdk/v3 v3.143.0
@@ -70,6 +69,7 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/pgavlin/fx v0.1.6 // indirect
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386 // indirect
