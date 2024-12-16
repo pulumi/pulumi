@@ -1624,6 +1624,13 @@ func (x *PropertyDiff) GetInputDiff() bool {
 //   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
 //   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
 //   change occurred (e.g. a field was added, deleted or updated).
+//
+// The response must satisfy the following invariants:
+//
+// * For each top-level key in `diff` there is at least one matching property path, starting at that key, in `detailedDiff`.
+// * For each entry in `detailedDiff`, its top-level property is in `diff`.
+// * `diff` does not contain duplicates.
+// * `detailedDiff` does not contain duplicate keys.
 type DiffResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

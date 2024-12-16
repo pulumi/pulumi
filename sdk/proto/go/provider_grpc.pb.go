@@ -88,6 +88,8 @@ type ResourceProviderClient interface {
 	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
@@ -139,12 +141,7 @@ type ResourceProviderClient interface {
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
 	//
-	// The provider's response must satisfy the following invariants:
-	//
-	// * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
-	// * For each entry in DetailedDiff, its top-level property is in Diff.
-	// * Diff does not contain duplicates.
-	// * DetailedDiff does not contain duplicate keys.
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
@@ -488,6 +485,8 @@ type ResourceProviderServer interface {
 	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
@@ -539,12 +538,7 @@ type ResourceProviderServer interface {
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
 	//
-	// The provider's response must satisfy the following invariants:
-	//
-	// * For each top-level key in Diff there is at least one matching property path, starting at that key, in DetailedDiff.
-	// * For each entry in DetailedDiff, its top-level property is in Diff.
-	// * Diff does not contain duplicates.
-	// * DetailedDiff does not contain duplicate keys.
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
