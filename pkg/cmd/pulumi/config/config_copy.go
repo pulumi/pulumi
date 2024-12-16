@@ -15,7 +15,10 @@
 package config
 
 import (
+	"context"
 	"errors"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -24,12 +27,42 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newConfigCopyCmd(stack *string) *cobra.Command {
-	var path bool
-	var destinationStackName string
+type configCopyCmd struct {
+	// Parsed arguments to the command.
+	Args *configCopyArgs
+
+	// The command's standard output.
+	Stdout io.Writer
+
+	// The workspace to operate on.
+	Workspace pkgWorkspace.Context
+	// The login manager to use for authenticating with and loading backends.
+	LoginManager cmdBackend.LoginManager
+	// The project stack manager to use for loading and saving project stack configuration.
+	ProjectStackManager cmdStack.ProjectStackManager
+}
+
+// A set of arguments for the `config cp` command.
+type configCopyArgs struct {
+	Colorizer        colors.Colorization
+	DestinationStack string
+	Path             bool
+	SourceStack      string
+}
+
+func newConfigCopyCmd(configFile *string, stack *string) *cobra.Command {
+	configCopy := &configCopyCmd{
+		Args: &configCopyArgs{
+			Colorizer: cmdutil.GetGlobalColorization(),
+		},
+		Stdout:       os.Stdout,
+		Workspace:    pkgWorkspace.Instance,
+		LoginManager: cmdBackend.DefaultLoginManager,
+	}
 
 	cpCommand := &cobra.Command{
 		Use:   "cp [key]",
@@ -37,103 +70,111 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
+		Run: cmd.RunCmdFunc(func(command *cobra.Command, args []string) error {
+			configCopy.Args.SourceStack = *stack
+			configCopy.ProjectStackManager = cmdStack.NewProjectStackManager(*configFile)
 
-			project, _, err := ws.ReadProject()
-			if err != nil {
-				return err
-			}
+			ctx := command.Context()
+			err := configCopy.run(ctx, args)
 
-			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := cmdStack.RequireStack(
-				ctx,
-				ws,
-				cmdBackend.DefaultLoginManager,
-				*stack,
-				cmdStack.SetCurrent,
-				opts,
-			)
-			if err != nil {
-				return err
-			}
-			if currentStack.Ref().Name().String() == destinationStackName {
-				return errors.New("current stack and destination stack are the same")
-			}
-			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
-			if err != nil {
-				return err
-			}
-
-			// Get the destination stack
-			destinationStack, err := cmdStack.RequireStack(
-				ctx,
-				ws,
-				cmdBackend.DefaultLoginManager,
-				destinationStackName,
-				cmdStack.LoadOnly,
-				opts,
-			)
-			if err != nil {
-				return err
-			}
-			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack)
-			if err != nil {
-				return err
-			}
-
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-
-			// Do we need to copy a single value or the entire map
-			if len(args) > 0 {
-				// A single key was specified so we only need to copy that specific value
-				return copySingleConfigKey(
-					ctx,
-					ssml,
-					args[0],
-					path,
-					currentStack,
-					currentProjectStack,
-					destinationStack,
-					destinationProjectStack,
-				)
-			}
-
-			requiresSaving, err := cmdStack.CopyEntireConfigMap(
-				ctx,
-				ssml,
-				currentStack,
-				currentProjectStack,
-				destinationStack,
-				destinationProjectStack,
-			)
-			if err != nil {
-				return err
-			}
-
-			// The use of `requiresSaving` here ensures that there was actually some config
-			// that needed saved, otherwise it's an unnecessary save call
-			if requiresSaving {
-				err := cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
+			return err
 		}),
 	}
 
 	cpCommand.PersistentFlags().BoolVar(
-		&path, "path", false,
+		&configCopy.Args.Path, "path", false,
 		"The key contains a path to a property in a map or list to set")
 	cpCommand.PersistentFlags().StringVarP(
-		&destinationStackName, "dest", "d", "",
+		&configCopy.Args.DestinationStack, "dest", "d", "",
 		"The name of the new stack to copy the config to")
 
 	return cpCommand
+}
+
+func (cmd *configCopyCmd) run(ctx context.Context, args []string) error {
+	opts := display.Options{
+		Color: cmd.Args.Colorizer,
+	}
+
+	project, _, err := cmd.Workspace.ReadProject()
+	if err != nil {
+		return err
+	}
+
+	// Get current stack and ensure that it is a different stack to the destination stack
+	currentStack, err := cmdStack.RequireStack(
+		ctx,
+		cmd.Workspace,
+		cmd.LoginManager,
+		cmd.Args.SourceStack,
+		cmdStack.SetCurrent,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+	if currentStack.Ref().Name().String() == cmd.Args.DestinationStack {
+		return errors.New("current stack and destination stack are the same")
+	}
+	currentProjectStack, err := cmd.ProjectStackManager.Load(project, currentStack)
+	if err != nil {
+		return err
+	}
+
+	// Get the destination stack
+	destinationStack, err := cmdStack.RequireStack(
+		ctx,
+		cmd.Workspace,
+		cmd.LoginManager,
+		cmd.Args.DestinationStack,
+		cmdStack.LoadOnly,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+	destinationProjectStack, err := cmd.ProjectStackManager.Load(project, destinationStack)
+	if err != nil {
+		return err
+	}
+
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+
+	// Do we need to copy a single value or the entire map
+	if len(args) > 0 {
+		// A single key was specified so we only need to copy that specific value
+		return copySingleConfigKey(
+			ctx,
+			ssml,
+			args[0],
+			cmd.Args.Path,
+			currentStack,
+			currentProjectStack,
+			destinationStack,
+			destinationProjectStack,
+		)
+	}
+
+	requiresSaving, err := cmdStack.CopyEntireConfigMap(
+		ctx,
+		ssml,
+		currentStack,
+		currentProjectStack,
+		destinationStack,
+		destinationProjectStack,
+	)
+	if err != nil {
+		return err
+	}
+
+	// The use of `requiresSaving` here ensures that there was actually some config
+	// that needed saved, otherwise it's an unnecessary save call
+	if requiresSaving {
+		err := cmd.ProjectStackManager.Save(destinationStack, destinationProjectStack)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
