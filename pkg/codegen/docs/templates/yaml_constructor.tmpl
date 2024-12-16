@@ -1,6 +1,0 @@
-{{ define "yaml_constructor" }}
-{{- range $params := . -}}
-<span class="p">{{- htmlSafe .Name -}}</span><span class="p">: </span><span class="c">#&nbsp;{{- .Comment -}}</span>
-<span class="p"></span>
-{{- end -}}
-{{ end }}

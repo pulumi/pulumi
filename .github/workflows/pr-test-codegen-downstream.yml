@@ -3,7 +3,6 @@ on:
   pull_request:
     paths:
     - 'pkg/codegen/**'
-    - '!pkg/codegen/docs/**'
     - '.github/workflows/pr-test-codegen-downstream.yml'
 
 permissions:
