@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/blang/semver"
@@ -214,11 +215,33 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
-	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "python"}, args...)...), nil
+	// Note that we do not use `uv run python` here because this results in a
+	// process tree of `python-language-runtime -> uv -> python`. This is
+	// problematic because on error we kill the plugin and its children, but not
+	// the children of the children. On macOS and Linux, when uv is killed, it
+	// kills its children, so we have no problem here. On Windows however, it
+	// does not, and we end up with an orphaned Python process that's
+	// busy-waiting in the eventloop and never exits.
+	var cmd *exec.Cmd
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	cmdPath := filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
+	if needsPythonShim(cmdPath) {
+		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
+		cmd = exec.CommandContext(ctx, shimCmd, args...)
+	} else {
+		cmd = exec.CommandContext(ctx, cmdPath, args...)
+	}
+	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	cmd.Dir = u.root
+	return cmd, nil
 }
 
 func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
-	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--module"}, args...)...), nil
+	moduleArgs := append([]string{"-m", module}, args...)
+	return u.Command(ctx, moduleArgs...)
 }
 
 func (u *uv) About(ctx context.Context) (Info, error) {
