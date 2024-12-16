@@ -149,6 +149,8 @@ message RegisterResourceRequest {
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
     string packageRef = 33; // a reference from RegisterProviderRequest.
+
+    bool importIfNew = 34; // if true, the engine will only evaluate ImportId if the resource doesn't exist in the state.
 }
 
 enum Result {

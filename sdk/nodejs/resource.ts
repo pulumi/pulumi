@@ -979,10 +979,16 @@ export interface CustomResourceOptions extends ResourceOptions {
      * When provided with a resource ID, indicates that this resource's provider
      * should import its state from the cloud resource with the given ID. The
      * inputs to the resource's constructor must align with the resource's
-     * current state. Once a resource has been imported, the import property
-     * must be removed from the resource's options.
+     * current state. 
      */
     import?: ID;
+
+    /**
+     * Only attempt to import this resource if is not yet tracked by Pulumi,
+     * instead of Pulumi's default behavior of checking for changes in the
+     * import option after the resource is tracked.
+     */
+    importIfNew?: boolean;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.

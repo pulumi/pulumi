@@ -447,7 +447,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.DefaultName(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			nil, nil, nil, "", nil, nil, false, "", "", false),
 		done: done,
 	}
 	return event, done, nil
@@ -1797,6 +1797,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
 	id := resource.ID(req.GetImportId())
+	importIfNew := req.GetImportIfNew()
 	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -2204,9 +2205,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, importIfNew=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, importIfNew)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2322,7 +2323,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, importIfNew,
 		)
 
 		if goal.Parent != "" {

@@ -44,6 +44,8 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
 	SourcePosition string // If set, the source location of the resource registration
+	// if true, the engine will only evaluate ImportId if the resource doesn't exist in the state.
+	ImportIfNew bool
 }
 
 // NewGoal allocates a new resource goal state.
@@ -51,7 +53,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool, deletedWith URN, sourcePosition string,
+	replaceOnChanges []string, retainOnDelete bool, deletedWith URN, sourcePosition string, importIfNew bool,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,
@@ -73,6 +75,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
 		SourcePosition:          sourcePosition,
+		ImportIfNew:             importIfNew,
 	}
 
 	if customTimeouts != nil {
