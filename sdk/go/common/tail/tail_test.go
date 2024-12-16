@@ -58,8 +58,8 @@ func TestMustExist(t *testing.T) {
 	if err != nil {
 		t.Error("MustExist:false is violated")
 	}
-	require.NoError(t, tail.Stop())
-	_, err = File("README.md", Config{Follow: true, MustExist: true})
+	require.ErrorContains(t, tail.Stop(), "Failed to detect creation of /no/such/file")
+	_, err = File("tail_test.go", Config{Follow: true, MustExist: true})
 	if err != nil {
 		t.Error("MustExist:true on an existing file is violated")
 	}
@@ -149,7 +149,7 @@ func TestStopAtEOF(t *testing.T) {
 	}
 
 	tailTest.VerifyTailOutput(tail, []string{"there", "world"}, false)
-	require.NoError(t, tail.StopAtEOF())
+	require.ErrorContains(t, tail.StopAtEOF(), "stop at eof")
 	tailTest.Cleanup(tail, true)
 }
 
@@ -435,7 +435,7 @@ func TestBlockUntilExists(t *testing.T) {
 		break
 	}
 	tailTest.RemoveFile("test.txt")
-	require.NoError(t, tail.Stop())
+	require.ErrorContains(t, tail.Stop(), "no such file or directory")
 	tail.Cleanup()
 }
 
@@ -453,11 +453,13 @@ func TestFollowUntilEof(t *testing.T) {
 
 	// StopAtEOF blocks until the read is done and in order to do so
 	// we have to drain the lines channel first which ReadLinesWithError does.
-	go contract.IgnoreError(tail.StopAtEOF())
+	go func() {
+		contract.IgnoreError(tail.StopAtEOF())
+	}()
 	tailTest.ReadLinesWithError(tail, []string{"hello", "world"}, false, errStopAtEOF)
 
 	tailTest.RemoveFile(filename)
-	require.NoError(t, tail.Stop())
+	require.ErrorContains(t, tail.Stop(), "stop at eof")
 	tail.Cleanup()
 }
 
@@ -714,7 +716,8 @@ type TailTest struct {
 }
 
 func NewTailTest(name string, t *testing.T) (TailTest, func()) {
-	testdir := os.TempDir()
+	testdir, err := os.MkdirTemp(os.TempDir(), "tail-test-"+name)
+	require.NoError(t, err)
 
 	return TailTest{name, testdir, make(chan struct{}), t}, func() {
 		if err := os.RemoveAll(testdir); err != nil {
@@ -860,7 +863,7 @@ func (t TailTest) readLines(tail *Tail, lines []string, useCursor bool, expected
 func (t TailTest) Cleanup(tail *Tail, stop bool) {
 	<-t.done
 	if stop {
-		require.NoError(t, tail.Stop())
+		_ = tail.Stop()
 	}
 	tail.Cleanup()
 }
