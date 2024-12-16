@@ -485,6 +485,8 @@ checkConfig: {
 // thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 // Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 // AWS access key, should almost certainly not.
+//
+// Implementations must satisfy the invariants documented on `DiffResponse`.
 diffConfig: {
     path: '/pulumirpc.ResourceProvider/DiffConfig',
     requestStream: false,
@@ -595,6 +597,8 @@ check: {
   // `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 // by a [](pulumirpc.ResourceProvider.Check) call.
+//
+// Implementations must satisfy the invariants documented on `DiffResponse`.
 diff: {
     path: '/pulumirpc.ResourceProvider/Diff',
     requestStream: false,
