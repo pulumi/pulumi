@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -346,7 +347,7 @@ func NewPulumiCmd() *cobra.Command {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				newCancelCmd(),
+				cancel.NewCancelCmd(),
 			},
 		},
 		{
