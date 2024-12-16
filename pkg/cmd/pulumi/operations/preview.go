@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"bytes"
@@ -243,7 +243,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 	})
 }
 
-func newPreviewCmd() *cobra.Command {
+func NewPreviewCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string

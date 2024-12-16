@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"context"
@@ -47,7 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newDestroyCmd() *cobra.Command {
+func NewDestroyCmd() *cobra.Command {
 	var debug bool
 	var remove bool
 	var stackName string

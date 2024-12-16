@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"context"
@@ -39,7 +39,7 @@ import (
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newWatchCmd() *cobra.Command {
+func NewWatchCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var execKind string

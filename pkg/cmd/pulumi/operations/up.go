@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package operations
 
 import (
 	"context"
@@ -57,7 +57,7 @@ var defaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newUpCmd() *cobra.Command {
+func NewUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
