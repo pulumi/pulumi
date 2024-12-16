@@ -1255,6 +1255,7 @@ func TestPackageAddGo(t *testing.T) {
 
 //nolint:paralleltest // mutates environment
 func TestPackageAddGoParameterized(t *testing.T) {
+	t.Skip("mod replace is wrong after pulumi-terraform-provider release https://github.com/pulumi/pulumi/issues/18048")
 	e := ptesting.NewEnvironment(t)
 
 	var err error
