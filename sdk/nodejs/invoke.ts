@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Inputs, Input } from "./output";
+import { Inputs, Input, Output } from "./output";
 import { ProviderResource, Resource } from "./resource";
 
 /**
@@ -63,7 +63,8 @@ export interface InvokeOutputOptions extends InvokeOptions {
     /**
      * An optional set of additional explicit dependencies on other resources.
      */
-    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+    // dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+    dependsOn?: Input<Array<Output<unknown> | Resource>> | Resource | Output<unknown>;
 }
 
 /**

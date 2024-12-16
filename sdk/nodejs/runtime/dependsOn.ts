@@ -21,7 +21,7 @@ import { Resource } from "../resource";
  * @internal
  */
 export async function gatherExplicitDependencies(
-    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined,
+    dependsOn: Input<Array<Output<unknown> | Resource>> | Output<unknown> | Resource | undefined,
 ): Promise<Resource[]> {
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {
@@ -34,17 +34,23 @@ export async function gatherExplicitDependencies(
             return gatherExplicitDependencies(await dependsOn);
         } else if (Output.isInstance(dependsOn)) {
             // Recursively gather dependencies, await the promise, and append the output's dependencies.
-            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply((v) =>
-                gatherExplicitDependencies(v),
+            const dos = (dependsOn as Output<Array<Output<unknown> | Resource> | unknown>).apply((v) => {
+                if (Array.isArray(v)) {
+                    return gatherExplicitDependencies(v);
+                } else if (Resource.isInstance(v)) {
+                    return gatherExplicitDependencies([v]);
+                }
+                return [] as Resource[];
+            }
             );
             const urns = await dos.promise();
             const dosResources = await getAllResources(dos);
             const implicits = await gatherExplicitDependencies([...dosResources]);
             return (urns ?? []).concat(implicits);
         } else {
-            if (!Resource.isInstance(dependsOn)) {
-                throw new Error("'dependsOn' was passed a value that was not a Resource.");
-            }
+            // if (!Resource.isInstance(dependsOn)) {
+            //     throw new Error("'dependsOn' was passed a value that was not a Resource.");
+            // }
 
             return [dependsOn];
         }

@@ -726,7 +726,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+    dependsOn?: Input<Array<Output<unknown> | Resource>> | Resource | Output<unknown>;
 
     /**
      * When set to true, protect ensures this resource cannot be deleted.

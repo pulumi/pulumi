@@ -284,16 +284,16 @@ export class CallbackServer implements ICallbackServer {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
                     }
                     if (result.opts.dependsOn !== undefined) {
-                        const resolvedDeps = await output(result.opts.dependsOn).promise();
-                        const deps = [];
-                        if (Resource.isInstance(resolvedDeps)) {
-                            deps.push(await resolvedDeps.urn.promise());
-                        } else {
-                            for (const dep of resolvedDeps) {
-                                deps.push(await dep.urn.promise());
-                            }
-                        }
-                        opts.setDependsOnList(deps);
+                        // const resolvedDeps = await output(result.opts.dependsOn).promise();
+                        // const deps = [];
+                        // if (Resource.isInstance(resolvedDeps)) {
+                        //     deps.push(await resolvedDeps.urn.promise());
+                        // } else {
+                        //     for (const dep of resolvedDeps) {
+                        //         deps.push(await dep.urn.promise());
+                        //     }
+                        // }
+                        // opts.setDependsOnList(deps);
                     }
                     if (result.opts.ignoreChanges !== undefined) {
                         opts.setIgnoreChangesList(result.opts.ignoreChanges);
