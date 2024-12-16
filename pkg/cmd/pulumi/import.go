@@ -35,6 +35,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -688,7 +689,7 @@ func newImportCmd() *cobra.Command {
 				log := func(sev diag.Severity, msg string) {
 					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 				}
-				converter, err := loadConverterPlugin(pCtx, from, log)
+				converter, err := cmdConvert.LoadConverterPlugin(pCtx, from, log)
 				if err != nil {
 					return fmt.Errorf("load converter plugin: %w", err)
 				}

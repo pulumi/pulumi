@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package convert
 
 import (
 	"errors"
@@ -36,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -54,47 +53,7 @@ import (
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
-func loadConverterPlugin(
-	ctx *plugin.Context,
-	name string,
-	log func(sev diag.Severity, msg string),
-) (plugin.Converter, error) {
-	// Default to the known version of the plugin, this ensures we use the version of the yaml-converter
-	// that aligns with the yaml codegen we've linked to for this CLI release.
-	pluginSpec := workspace.PluginSpec{
-		Kind: apitype.ConverterPlugin,
-		Name: name,
-	}
-	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
-		ctx.Diag.Infof(
-			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
-	}
-
-	// Try and load the converter plugin for this
-	converter, err := plugin.NewConverter(ctx, name, pluginSpec.Version)
-	if err != nil {
-		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
-		// unless auto plugin installs are turned off.
-		var me *workspace.MissingError
-		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
-			// Not a MissingError, return the original error.
-			return nil, fmt.Errorf("load %q: %w", name, err)
-		}
-
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log)
-		if err != nil {
-			return nil, fmt.Errorf("install %q: %w", name, err)
-		}
-
-		converter, err = plugin.NewConverter(ctx, name, pluginSpec.Version)
-		if err != nil {
-			return nil, fmt.Errorf("load %q: %w", name, err)
-		}
-	}
-	return converter, nil
-}
-
-func newConvertCmd() *cobra.Command {
+func NewConvertCmd() *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -380,7 +339,7 @@ func runConvert(
 		}
 		pclDirectory = cwd
 	} else {
-		converter, err := loadConverterPlugin(pCtx, from, log)
+		converter, err := LoadConverterPlugin(pCtx, from, log)
 		if err != nil {
 			return fmt.Errorf("load converter plugin: %w", err)
 		}

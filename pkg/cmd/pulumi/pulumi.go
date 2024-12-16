@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -398,7 +399,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
 				newQueryCmd(),
-				newConvertCmd(),
+				convert.NewConvertCmd(),
 				newWatchCmd(),
 				logs.NewLogsCmd(),
 			},
