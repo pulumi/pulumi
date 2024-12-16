@@ -1,4 +1,4 @@
-//nolint:goheader // This file is a vendored copy of the tail package from, so we keep the original license header.
+//nolint:goheader // This file is a vendored copy of the tail package from nxadm/tail, keep the original license header.
 // Copyright (c) 2024, Pulumi Corporation.
 // Copyright (c) 2019 FOSS contributors of https://github.com/nxadm/tail
 //go:build windows
