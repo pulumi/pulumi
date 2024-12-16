@@ -54,6 +54,15 @@ type ProjectStackManager interface {
 	Save(stack backend.Stack, ps *workspace.ProjectStack) error
 }
 
+// FileBackedProjectStackManager is an interface for a ProjectStackManager that is backed by a file.
+type FileBackedProjectStackManager interface {
+	ProjectStackManager
+
+	// GetPath returns the path at which project stack configuration is persisted (or should be persisted, if stack
+	// configuration doesn't yet exist), returning an error if a path cannot be computed or provided.
+	GetPath(stack backend.Stack) (string, error)
+}
+
 // NewProjectStackManager creates a new ProjectStackManager backed by the supplied configuration file. If no
 // configuration file is supplied (i.e., configFile is empty), a default implementation that searches for configuration
 // based on the project is returned.
@@ -80,6 +89,12 @@ func (*DefaultProjectStackManager) Save(stack backend.Stack, ps *workspace.Proje
 	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 }
 
+// Implements FileBackedProjectStackManager.GetPath.
+func (*DefaultProjectStackManager) GetPath(stack backend.Stack) (string, error) {
+	_, path, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+	return path, err
+}
+
 // SpecifiedProjectStackManager is a ProjectStackManager that loads from and saves to the specified configuration file.
 type SpecifiedProjectStackManager struct {
 	// ConfigFile is the path to the configuration file that backs this ProjectStackManager.
@@ -97,6 +112,11 @@ func (cm *SpecifiedProjectStackManager) Load(
 // Implements ProjectStackManager.Save.
 func (cm *SpecifiedProjectStackManager) Save(stack backend.Stack, ps *workspace.ProjectStack) error {
 	return ps.Save(cm.ConfigFile)
+}
+
+// Implements FileBackedProjectStackManager.GetPath.
+func (cm *SpecifiedProjectStackManager) GetPath(stack backend.Stack) (string, error) {
+	return cm.ConfigFile, nil
 }
 
 var ConfigFile string
