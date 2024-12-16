@@ -15,7 +15,10 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -24,11 +27,41 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newConfigRmAllCmd(stack *string) *cobra.Command {
-	var path bool
+type configRmAllCmd struct {
+	// Parsed arguments to the command.
+	Args *configRmAllArgs
+
+	// The command's standard output.
+	Stdout io.Writer
+
+	// The workspace to operate on.
+	Workspace pkgWorkspace.Context
+	// The login manager to use for authenticating with and loading backends.
+	LoginManager cmdBackend.LoginManager
+	// The project stack manager to use for loading and saving project stack configuration.
+	ProjectStackManager cmdStack.ProjectStackManager
+}
+
+// A set of arguments for the `config rm-all` command.
+type configRmAllArgs struct {
+	Colorizer colors.Colorization
+	Path      bool
+	Stack     string
+}
+
+func newConfigRmAllCmd(configFile *string, stack *string) *cobra.Command {
+	configRmAll := &configRmAllCmd{
+		Args: &configRmAllArgs{
+			Colorizer: cmdutil.GetGlobalColorization(),
+		},
+		Stdout:       os.Stdout,
+		Workspace:    pkgWorkspace.Instance,
+		LoginManager: cmdBackend.DefaultLoginManager,
+	}
 
 	rmAllCmd := &cobra.Command{
 		Use:   "rm-all <key1> <key2> <key3> ...",
@@ -40,53 +73,61 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
+		Run: cmd.RunCmdFunc(func(command *cobra.Command, args []string) error {
+			configRmAll.Args.Stack = *stack
+			configRmAll.ProjectStackManager = cmdStack.NewProjectStackManager(*configFile)
 
-			project, _, err := ws.ReadProject()
-			if err != nil {
-				return err
-			}
+			ctx := command.Context()
+			err := configRmAll.run(ctx, args)
 
-			stack, err := cmdStack.RequireStack(
-				ctx,
-				ws,
-				cmdBackend.DefaultLoginManager,
-				*stack,
-				cmdStack.OfferNew,
-				opts,
-			)
-			if err != nil {
-				return err
-			}
-
-			ps, err := cmdStack.LoadProjectStack(project, stack)
-			if err != nil {
-				return err
-			}
-
-			for _, arg := range args {
-				key, err := ParseConfigKey(arg)
-				if err != nil {
-					return fmt.Errorf("invalid configuration key: %w", err)
-				}
-
-				err = ps.Config.Remove(key, path)
-				if err != nil {
-					return err
-				}
-			}
-
-			return cmdStack.SaveProjectStack(stack, ps)
+			return err
 		}),
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
+		&configRmAll.Args.Path, "path", false,
 		"Parse the keys as paths in a map or list rather than raw strings")
 
 	return rmAllCmd
+}
+
+func (cmd *configRmAllCmd) run(ctx context.Context, args []string) error {
+	opts := display.Options{
+		Color: cmd.Args.Colorizer,
+	}
+
+	project, _, err := cmd.Workspace.ReadProject()
+	if err != nil {
+		return err
+	}
+
+	stack, err := cmdStack.RequireStack(
+		ctx,
+		cmd.Workspace,
+		cmd.LoginManager,
+		cmd.Args.Stack,
+		cmdStack.OfferNew,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+
+	ps, err := cmd.ProjectStackManager.Load(project, stack)
+	if err != nil {
+		return err
+	}
+
+	for _, arg := range args {
+		key, err := ParseConfigKey(arg)
+		if err != nil {
+			return fmt.Errorf("invalid configuration key: %w", err)
+		}
+
+		err = ps.Config.Remove(key, cmd.Args.Path)
+		if err != nil {
+			return err
+		}
+	}
+
+	return cmd.ProjectStackManager.Save(stack, ps)
 }
