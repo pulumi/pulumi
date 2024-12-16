@@ -313,13 +313,6 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
-	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
-	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
-	// used to communicate between the two parties. Providers that support Handshake implicitly support the set of
-	// feature flags previously handled by Configure prior to Handshake's introduction, such as secrets and resource
-	// references.
-	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
-
 	// Parameterize adds a sub-package to this provider instance.
 	Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
 
@@ -385,6 +378,15 @@ type Provider interface {
 	//
 	// If [NotForwardCompatibleProvider] is embedded, then the struct *will not* be forward compatible.
 	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatibleProvider)
+}
+
+type handshaker interface {
+	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
+	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+	// used to communicate between the two parties. Providers that support Handshake implicitly support the set of
+	// feature flags previously handled by Configure prior to Handshake's introduction, such as secrets and resource
+	// references.
+	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 }
 
 type GrpcProvider interface {

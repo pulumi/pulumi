@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"google.golang.org/grpc/codes"
@@ -135,7 +136,12 @@ func (p *providerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	_, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
+	h, ok := p.provider.(handshaker)
+	if !ok {
+		return nil, errors.New("Handshake not implemented")
+	}
+
+	_, err := h.Handshake(ctx, ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
