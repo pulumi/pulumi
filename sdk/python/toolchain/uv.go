@@ -234,7 +234,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	} else {
 		cmd = exec.CommandContext(ctx, cmdPath, args...)
 	}
-	cmd.Env = ActivateVirtualEnv(os.Environ(), u.virtualenvPath)
+	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
 	cmd.Dir = u.root
 	return cmd, nil
 }
