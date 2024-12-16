@@ -135,7 +135,7 @@ func NewConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigSetAllCmd(&cmdStack.ConfigFile, &stack))
 	cmd.AddCommand(newConfigRefreshCmd(&cmdStack.ConfigFile, &stack))
 	cmd.AddCommand(newConfigCopyCmd(&cmdStack.ConfigFile, &stack))
-	cmd.AddCommand(newConfigEnvCmd(&stack))
+	cmd.AddCommand(newConfigEnvCmd(&cmdStack.ConfigFile, &stack))
 
 	return cmd
 }

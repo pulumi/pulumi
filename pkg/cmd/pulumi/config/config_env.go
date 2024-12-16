@@ -34,15 +34,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+func newConfigEnvCmd(configFile *string, stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
-		stdin:            os.Stdin,
-		stdout:           os.Stdout,
-		ws:               pkgWorkspace.Instance,
-		requireStack:     cmdStack.RequireStack,
-		loadProjectStack: cmdStack.LoadProjectStack,
-		saveProjectStack: cmdStack.SaveProjectStack,
-		stackRef:         stackRef,
+		stdin:        os.Stdin,
+		stdout:       os.Stdout,
+		ws:           pkgWorkspace.Instance,
+		requireStack: cmdStack.RequireStack,
+		configFile:   configFile,
+		stackRef:     stackRef,
 	}
 
 	cmd := &cobra.Command{
@@ -80,8 +79,15 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
+	// A pointer to a string that will contain a path to the project stack configuration that should be used, or "" if a
+	// default should be detected. This will be used in initArgs to load appropriate implementations of loadProjectStack
+	// and saveProjectStack.
+	configFile *string
+
+	// A callback to be used for loading project stack configuration.
 	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
 
+	// A callback to be used for saving project stack configuration.
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
 
 	stackRef *string
@@ -92,6 +98,15 @@ func (cmd *configEnvCmd) initArgs() {
 	cmd.color = cmdutil.GetGlobalColorization()
 
 	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
+
+	if cmd.configFile == nil {
+		noConfigFile := ""
+		cmd.configFile = &noConfigFile
+	}
+	psm := cmdStack.NewProjectStackManager(*cmd.configFile)
+
+	cmd.loadProjectStack = psm.Load
+	cmd.saveProjectStack = psm.Save
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
