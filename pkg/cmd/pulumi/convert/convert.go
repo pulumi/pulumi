@@ -31,7 +31,6 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/util"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -59,47 +58,7 @@ import (
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
-func loadConverterPlugin(
-	ctx *plugin.Context,
-	name string,
-	log func(sev diag.Severity, msg string),
-) (plugin.Converter, error) {
-	// Default to the known version of the plugin, this ensures we use the version of the yaml-converter
-	// that aligns with the yaml codegen we've linked to for this CLI release.
-	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ConverterPlugin, nil, "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("create plugin spec: %w", err)
-	}
-	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
-		ctx.Diag.Infof(
-			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
-	}
-
-	// Try and load the converter plugin for this
-	converter, err := plugin.NewConverter(ctx, name, pluginSpec.Version)
-	if err != nil {
-		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
-		// unless auto plugin installs are turned off.
-		var me *workspace.MissingError
-		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
-			// Not a MissingError, return the original error.
-			return nil, fmt.Errorf("load %q: %w", name, err)
-		}
-
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log)
-		if err != nil {
-			return nil, fmt.Errorf("install %q: %w", name, err)
-		}
-
-		converter, err = plugin.NewConverter(ctx, name, pluginSpec.Version)
-		if err != nil {
-			return nil, fmt.Errorf("load %q: %w", name, err)
-		}
-	}
-	return converter, nil
-}
-
-func newConvertCmd() *cobra.Command {
+func NewConvertCmd() *cobra.Command {
 	var outDir string
 	var from string
 	var language string
