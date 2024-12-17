@@ -83,7 +83,6 @@ require (
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
-	github.com/hexops/autogold/v2 v2.2.1
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
 	github.com/jonboulle/clockwork v0.4.0
@@ -97,7 +96,6 @@ require (
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.10.0
 	github.com/pulumi/pulumi-java/pkg v0.19.0
-	github.com/pulumi/pulumi-yaml v1.12.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
@@ -169,7 +167,6 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/ettle/strcase v0.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
@@ -180,7 +177,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/wire v0.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
@@ -196,7 +192,6 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.12.0 // indirect
-	github.com/hexops/valast v1.4.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -220,7 +215,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/petar-dambovaliev/aho-corasick v0.0.0-20230725210150-fb29fc3c913e // indirect
@@ -240,7 +234,6 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
-	github.com/spf13/cast v1.4.1 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
@@ -265,5 +258,4 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	mvdan.cc/gofumpt v0.5.0 // indirect
 )
