@@ -337,7 +337,7 @@ func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.
 func backupTarget(ctx context.Context, bucket Bucket, file string, keepOriginal bool) string {
 	contract.Requiref(file != "", "file", "must not be empty")
-	if ok, err := bucket.Exists(ctx, file); !ok && err == nil {
+	if exists, err := bucket.Exists(ctx, file); !exists && err == nil {
 		logging.V(5).Infof("file %s does not exist, skipping backup", file)
 		return ""
 	}
