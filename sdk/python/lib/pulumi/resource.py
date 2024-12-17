@@ -30,6 +30,7 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
     cast,
+    overload,
 )
 from . import _types
 from .runtime import known_types
