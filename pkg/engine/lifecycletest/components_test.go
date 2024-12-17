@@ -91,106 +91,6 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
-// Tests that a remote component (that is, one implemented by a provider's Construct method) can be created and a
-// returned resource reference correctly rehydrated using the pulumi:pulumi:getResource invoke.
-func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
-	t.Parallel()
-
-	var urnB resource.URN
-	var idB resource.ID
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			construct := func(
-				_ context.Context,
-				req plugin.ConstructRequest,
-				monitor *deploytest.ResourceMonitor,
-			) (plugin.ConstructResponse, error) {
-				resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
-					Parent:       req.Parent,
-					Protect:      req.Options.Protect,
-					Aliases:      aliasesFromAliases(req.Options.Aliases),
-					Dependencies: req.Options.Dependencies,
-				})
-				assert.NoError(t, err)
-
-				respB, err := monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-					Parent: resp.URN,
-					Inputs: resource.PropertyMap{
-						"bar": resource.NewStringProperty("baz"),
-					},
-				})
-				assert.NoError(t, err)
-				urnB, idB = respB.URN, respB.ID
-
-				return plugin.ConstructResponse{
-					URN: resp.URN,
-					Outputs: resource.PropertyMap{
-						"foo": resource.NewStringProperty("bar"),
-						"res": resource.MakeCustomResourceReference(urnB, idB, ""),
-					},
-				}, nil
-			}
-
-			return &deploytest.Provider{
-				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
-					}, nil
-				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
-						},
-						Status: resource.StatusOK,
-					}, nil
-				},
-				ConstructF: construct,
-			}, nil
-		}),
-	}
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
-			Remote: true,
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
-			"res": resource.MakeCustomResourceReference(urnB, idB, ""),
-		}, resp.Outputs)
-
-		// pulumi:pulumi:getResource would normally be called by the relevant language's core SDK in the event that a
-		// resource constructor is passed an existing URN. Since we are mocking a language runtime here, we call it
-		// explicitly to test it.
-		result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(urnB)),
-		}, "", "", "")
-
-		assert.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(urnB)),
-			"id":  resource.NewStringProperty(string(idB)),
-			"state": resource.NewObjectProperty(resource.PropertyMap{
-				"bar": resource.NewStringProperty("baz"),
-			}),
-		}, result)
-		return nil
-	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
-	p := &lt.TestPlan{
-		// Skip display tests because different ordering makes the colouring different.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
-	}
-	p.Run(t, nil)
-}
-
 // Tests that two remote components implemented by provider Construct methods interact correctly when they have
 // interdependencies specified only in the user program (that is, the Construct implementations themselves do not have
 // explicit dependencies).
@@ -1244,4 +1144,234 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
+}
+
+// Tests that a remote component (that is, one implemented by a provider's Construct method) can be created and a
+// returned registered resource reference correctly rehydrated by the program using the pulumi:pulumi:getResource
+// invoke.
+func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.0.1"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// This Create implementation will be called as a result of the custom resource registration (of type
+				// pkgA:index:Custom) in the Component Construct implementation.
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.URN.Type() == "pkgA:index:Custom" {
+						return plugin.CreateResponse{
+							ID:         resource.ID(req.URN.Name() + "-id"),
+							Properties: req.Properties,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+				},
+
+				// Construct will be called as a result of the program registering a remote component of type
+				// pkgA:index:Component.
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					rm *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					if req.Type == "pkgA:index:Component" {
+						component, err := rm.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+							Parent: req.Parent,
+						})
+						require.NoError(t, err)
+
+						custom, err := rm.RegisterResource("pkgA:index:Custom", "custom", true, deploytest.ResourceOptions{
+							Parent: component.URN,
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewStringProperty("bar"),
+							},
+						})
+						require.NoError(t, err)
+
+						return plugin.ConstructResponse{
+							URN: component.URN,
+							Outputs: resource.PropertyMap{
+								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
+							},
+						}, nil
+					}
+
+					return plugin.ConstructResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		component, err := monitor.RegisterResource("pkgA:index:Component", "component", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		customResRef := component.Outputs["custom"].ResourceReferenceValue()
+
+		state, _, err := monitor.Invoke(
+			"pulumi:pulumi:getResource",
+			resource.PropertyMap{
+				"urn": resource.NewStringProperty(string(customResRef.URN)),
+			},
+			"", /*provider*/
+			"", /*version*/
+			"", /*packageRef*/
+		)
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			resource.PropertyMap{
+				"urn": resource.NewStringProperty(string(customResRef.URN)),
+				"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
+				"state": resource.NewObjectProperty(resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				}),
+			},
+			state,
+		)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p.Options = lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
+// Tests that a remote component (that is, one implemented by a provider's Construct method) can be created and a
+// returned registered resource reference correctly rehydrated by another component using the pulumi:pulumi:getResource
+// invoke.
+func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.0.1"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// This Create implementation will be called as a result of the custom resource registration (of type
+				// pkgA:index:Custom) in the Component Construct implementation.
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.URN.Type() == "pkgA:index:Custom" {
+						return plugin.CreateResponse{
+							ID:         resource.ID(req.URN.Name() + "-id"),
+							Properties: req.Properties,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+				},
+
+				// Construct will be called as a result of the program registering remote components of type
+				// pkgA:index:Component1 and pkgA:index:Component2.
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					rm *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					if req.Type == "pkgA:index:Component1" {
+						component, err := rm.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+							Parent: req.Parent,
+						})
+						require.NoError(t, err)
+
+						custom, err := rm.RegisterResource("pkgA:index:Custom", "custom", true, deploytest.ResourceOptions{
+							Parent: component.URN,
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewStringProperty("bar"),
+							},
+						})
+						require.NoError(t, err)
+
+						return plugin.ConstructResponse{
+							URN: component.URN,
+							Outputs: resource.PropertyMap{
+								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
+							},
+						}, nil
+					}
+
+					if req.Type == "pkgA:index:Component2" {
+						component, err := rm.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+							Parent: req.Parent,
+						})
+						require.NoError(t, err)
+
+						customResRef := req.Inputs["custom"].ResourceReferenceValue()
+
+						state, _, err := rm.Invoke(
+							"pulumi:pulumi:getResource",
+							resource.PropertyMap{
+								"urn": resource.NewStringProperty(string(customResRef.URN)),
+							},
+							"", /*provider*/
+							"", /*version*/
+							"", /*packageRef*/
+						)
+						require.NoError(t, err)
+						require.Equal(
+							t,
+							resource.PropertyMap{
+								"urn": resource.NewStringProperty(string(customResRef.URN)),
+								"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
+								"state": resource.NewObjectProperty(resource.PropertyMap{
+									"foo": resource.NewStringProperty("bar"),
+								}),
+							},
+							state,
+						)
+
+						return plugin.ConstructResponse{
+							URN:     component.URN,
+							Outputs: resource.PropertyMap{},
+						}, nil
+					}
+
+					return plugin.ConstructResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		component1, err := monitor.RegisterResource("pkgA:index:Component1", "component1", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:Component2", "component2", false, deploytest.ResourceOptions{
+			Remote: true,
+			Inputs: resource.PropertyMap{
+				"custom": component1.Outputs["custom"],
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p.Options = lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 }
