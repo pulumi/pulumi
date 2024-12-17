@@ -624,7 +624,20 @@ class ResourceOptions:
         out.merge = out._merge_instance  # type: ignore
         return out
 
+    @overload
     @staticmethod
+    def merge(
+        opts1: Optional["ResourceOptions"], opts2: Optional["ResourceOptions"]
+    ) -> "ResourceOptions":
+        ...
+
+    @overload
+    @classmethod
+    def merge(
+        cls, opts2: Optional["ResourceOptions"]
+    ) -> "ResourceOptions":
+        ...
+
     def merge(
         opts1: Optional["ResourceOptions"], opts2: Optional["ResourceOptions"]
     ) -> "ResourceOptions":
