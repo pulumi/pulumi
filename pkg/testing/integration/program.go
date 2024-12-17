@@ -1571,6 +1571,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 			if pt.opts.JSONOutput {
 				preview = append(preview, "--json")
 			}
+			if pt.opts.PreviewCommandlineFlags != nil {
+				preview = append(preview, pt.opts.PreviewCommandlineFlags...)
+			}
 			if err := pt.runPulumiCommand("pulumi-preview-after-refresh", preview, dir, false); err != nil {
 				return err
 			}
