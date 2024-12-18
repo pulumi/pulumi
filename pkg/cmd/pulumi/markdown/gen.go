@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package markdown
 
 import (
 	"bytes"
@@ -35,9 +35,9 @@ var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 // Used to promote the `###` headings to `##` in generated markdown files.
 var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
 
-// newGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
+// NewGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
-func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
+func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:    "gen-markdown <DIR>",
 		Args:   cmdutil.ExactArgs(1),

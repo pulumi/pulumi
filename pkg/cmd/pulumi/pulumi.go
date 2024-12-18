@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
@@ -57,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -390,7 +392,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(),
-				newGenCompletionCmd(cmd),
+				completion.NewGenCompletionCmd(cmd),
 			},
 		},
 
@@ -398,7 +400,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Hidden Commands",
 			Commands: []*cobra.Command{
-				newGenMarkdownCmd(cmd),
+				markdown.NewGenMarkdownCmd(cmd),
 			},
 		},
 
