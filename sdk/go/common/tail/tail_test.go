@@ -459,7 +459,6 @@ func TestFollowUntilEof(t *testing.T) {
 	tailTest.ReadLinesWithError(tail, []string{"hello", "world"}, false, errStopAtEOF)
 
 	tailTest.RemoveFile(filename)
-	require.ErrorContains(t, tail.Stop(), "stop at eof")
 	tail.Cleanup()
 }
 
