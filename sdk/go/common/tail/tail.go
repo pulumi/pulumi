@@ -461,7 +461,7 @@ func (tail *Tail) sendLine(line string) bool {
 		select {
 		case tail.Lines <- &Line{line, tail.lineNum, SeekInfo{Offset: offset}, now, nil}:
 		case <-earlyExitChan:
-			// This is a bit weird here, when a users requests stopAtEof we
+			// This is a bit weird here, when a user requests StopAtEof we
 			// must keep sending all lines. However <-tail.Dying() will return
 			// immediately at this point so depending on the scheduler we may
 			// not have a chance to send the line.  If StopAtEOF is sent, we
