@@ -94,7 +94,7 @@ func loadConverterPlugin(
 	return converter, nil
 }
 
-func newConvertCmd() *cobra.Command {
+func NewConvertCmd() *cobra.Command {
 	var outDir string
 	var from string
 	var language string

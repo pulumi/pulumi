@@ -399,6 +399,11 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
 
+		if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") {
+			url := strings.TrimPrefix(descriptor.PluginDownloadURL, "git://")
+			pkg = strings.ReplaceAll(url, "/", "_")
+		}
+
 		plug, err := NewProvider(
 			host, host.ctx, tokens.Package(pkg), version,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
@@ -614,3 +619,6 @@ const (
 	// ResourcePlugins is used to only load resource provider plugins.
 	ResourcePlugins
 )
+
+// AllPlugins uses flags to ensure that all plugin kinds are loaded.
+var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins

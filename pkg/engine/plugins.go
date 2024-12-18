@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -189,7 +190,18 @@ func GetRequiredPlugins(
 		plugins = append(plugins, dep.PluginSpec)
 	}
 
-	return plugins, nil
+	var newPlugins []workspace.PluginSpec
+
+	for _, plugin := range plugins {
+		if strings.HasPrefix(plugin.PluginDownloadURL, "git://") {
+			// This plugin is downloaded from a git source, so we need to rename it.
+			url := strings.TrimPrefix(plugin.PluginDownloadURL, "git://")
+			plugin.Name = strings.ReplaceAll(url, "/", "_")
+		}
+		newPlugins = append(newPlugins, plugin)
+	}
+
+	return newPlugins, nil
 }
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
