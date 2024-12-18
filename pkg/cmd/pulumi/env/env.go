@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package env
 
 import (
 	"github.com/spf13/cobra"
@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newEnvCmd() *cobra.Command {
+func NewEnvCmd() *cobra.Command {
 	escCLI := cli.New(&cli.Options{
 		ParentPath:      "pulumi",
 		Colors:          cmdutil.GetGlobalColorization(),
