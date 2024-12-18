@@ -31,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// The built-in provider provides resources and functions in the `pulumi` package, such as stack references and the
+// `getResource` invoke that powers resource reference hydration.
 type builtinProvider struct {
 	plugin.NotForwardCompatibleProvider
 
@@ -39,18 +41,26 @@ type builtinProvider struct {
 	diag    diag.Sink
 
 	backendClient BackendClient
-	resources     *gsync.Map[resource.URN, *resource.State]
+
+	// news is a map of URNs to new resource states that have been produced by the current deployment.
+	news *gsync.Map[resource.URN, *resource.State]
+	// reads is a map of URNs to resource states that have been read during the current deployment.
+	reads *gsync.Map[resource.URN, *resource.State]
 }
 
 func newBuiltinProvider(
-	backendClient BackendClient, resources *gsync.Map[resource.URN, *resource.State], d diag.Sink,
+	backendClient BackendClient,
+	news *gsync.Map[resource.URN, *resource.State],
+	reads *gsync.Map[resource.URN, *resource.State],
+	d diag.Sink,
 ) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
-		resources:     resources,
+		news:          news,
+		reads:         reads,
 		diag:          d,
 	}
 }
@@ -320,13 +330,19 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 }
 
 func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
-	urn, ok := inputs["urn"]
+	urnInput, ok := inputs["urn"]
 	contract.Assertf(ok, "missing required property 'urn'")
-	contract.Assertf(urn.IsString(), "expected 'urn' to be a string")
+	contract.Assertf(urnInput.IsString(), "expected 'urn' to be a string")
 
-	state, ok := p.resources.Load(resource.URN(urn.StringValue()))
+	// When looking up a resource to hydrate it, we'll first check for new states produced by resource registrations. If
+	// we fail to find a match there, we'll look for states that have been read.
+	urn := resource.URN(urnInput.StringValue())
+	state, ok := p.news.Load(urn)
 	if !ok {
-		return nil, fmt.Errorf("unknown resource %v", urn.StringValue())
+		state, ok = p.reads.Load(urn)
+		if !ok {
+			return nil, fmt.Errorf("unknown resource %v", urnInput.StringValue())
+		}
 	}
 
 	// Take the state lock so we can safely read the Outputs.
@@ -334,7 +350,7 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	defer state.Lock.Unlock()
 
 	return resource.PropertyMap{
-		"urn":   urn,
+		"urn":   urnInput,
 		"id":    resource.NewStringProperty(string(state.ID)),
 		"state": resource.NewObjectProperty(state.Outputs),
 	}, nil
