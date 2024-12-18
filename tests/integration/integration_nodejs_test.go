@@ -1575,6 +1575,37 @@ func TestInstallWithMain(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
+func TestTranspileOnly(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []string{"tsconfig-no-check", "swc"} {
+		t.Run(test, func(t *testing.T) {
+			test := test
+			t.Parallel()
+			dir := filepath.Join("nodejs", test)
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(dir)
+
+			stackName := ptesting.RandomStackName()
+
+			// For this test we need to properly install the core SDK instead of yarn
+			// linkining, because yarn link breaks the typescript version detection, and
+			// causes us to use the vendored typescript 3.8.3, which does not support
+			// the `noCheck` option.
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			require.NoError(t, err)
+			e.RunCommand("yarn", "install")
+			e.RunCommand("yarn", "add", coreSDK)
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--yes")
+			_, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+		})
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePaths(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
