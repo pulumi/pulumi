@@ -101,6 +101,8 @@ jobs:
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       - if: contains(inputs.platform, 'ubuntu')
+        uses: earthly/setup-ucacher@main
+      - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -360,6 +362,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
           AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
+          UCACHER_CI: ${{ contains(inputs.platform, 'ubuntu') && 'true' || 'false' }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |

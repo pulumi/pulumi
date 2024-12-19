@@ -94,6 +94,9 @@ if shutil.which('gotestsum') is not None:
 else:
     args = ['go', 'test'] + args
 
+if os.environ.get('UCACHER_CI', None) == 'true':
+    args = ['ucacher'] + args
+
 if not dryrun:
     try:
         print("Running: " + ' '.join(args))
