@@ -32,12 +32,13 @@ download_release() {
 }
 
 # shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml v1.12.0" "github.com/pulumi/pulumi-dotnet dotnet v3.71.0"; do
+for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml v1.13.0" "github.com/pulumi/pulumi-dotnet dotnet v3.71.0"; do
   set -- $i # treat strings in loop as args
   REPO="$1"
   PULUMI_LANG="$2"
-  TAG="$3" # only dotnet sets this because we don't currently have a go dependency on dotnet (and quite possibly never will)
+  TAG="$3"
   if [ -z "$TAG" ]; then
+    # We have a direct dependency on java in pkg/go.mod, we get the version from there.
     TAG=$(get_version "${REPO}")
   fi
 
