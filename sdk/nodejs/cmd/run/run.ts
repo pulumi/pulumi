@@ -29,6 +29,7 @@ import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
+import { defaultErrorMessage } from "./error";
 
 import * as mod from ".";
 
@@ -298,16 +299,6 @@ export async function run(
             return;
         }
 
-        // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, { colors: true });
-
-        // Default message should be to include the full stack (which includes the message), or
-        // fallback to just the message if we can't get the stack.
-        //
-        // If both the stack and message are empty, then just stringify the err object itself. This
-        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || "" + err;
-
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
@@ -329,12 +320,12 @@ ${errMsg}`,
             );
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
-            const message = err.hideStack ? err.message : defaultMessage;
+            const message = err.hideStack ? err.message : defaultErrorMessage(err);
             log.error(message, err.resource);
         } else {
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
-${defaultMessage}`,
+${defaultErrorMessage(err)}`,
             );
         }
 
