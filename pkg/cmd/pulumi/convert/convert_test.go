@@ -49,12 +49,12 @@ func TestYamlConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
-	cwd, err := filepath.Abs("convert_testdata")
+	cwd, err := filepath.Abs("testdata")
 	require.NoError(t, err)
 
 	result := runConvert(
 		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
-		"yaml", "go", "convert_testdata/go", true, true, "")
+		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
 

@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -487,16 +488,15 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	// TODO use the package block to get the packages and parameterize them and generate SDKs.
 	files, err := os.ReadDir(sourceDirectory)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read sourceDirectory: %w", err)
+		return nil, nil, fmt.Errorf("could not read source directory %s: %w", sourceDirectory, err)
 	}
 
 	parser := hclsyntax.NewParser()
 	_, err = pcl.ParseFiles(parser, sourceDirectory, files)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not parse pcl file: %w", err)
+		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
 
 	allPackageDescriptors := make(map[string]*schema.PackageDescriptor)
@@ -507,7 +507,14 @@ func getPackagesToGenerateSdks(
 		diagnostics = append(diagnostics, diags...)
 		for packageName, descriptor := range packageDescriptors {
 			if _, ok := allPackageDescriptors[packageName]; ok {
-				diagnostics = append(diagnostics, errorf(file.Body.Range(), "package %q was already defined", packageName))
+				message := fmt.Sprintf("package %q was already defined", packageName)
+				subjectRange := file.Body.Range()
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  message,
+					Detail:   message,
+					Subject:  &subjectRange,
+				})
 				continue
 			}
 			allPackageDescriptors[packageName] = descriptor
@@ -581,41 +588,26 @@ func generateAndLinkSdksForPackages(
 
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 
-		// Change working directory to the newly generated project output so
-		// workspace instance behaves.
-		startingDir, err := os.Getwd()
+		// If we don't change the working directory, the workspace instance (when
+		// reading project etc) will not be correct when doing the local sdk
+		// linking, causing errors.
+		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
 		if err != nil {
-			return fmt.Errorf("could not get working directory: %w", err)
+			return fmt.Errorf("could not change to output directory: %w", err)
 		}
 		defer returnToStartingDir()
 
-					err.Error(),
-				)
-			}
-		}()
+		_, _, err = ws.ReadProject()
+		if err != nil {
+			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
+		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = pcmd.DoLocalSdkLinking(ws, language, "./", pkgSchema, sdkRelPath)
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
-
-		return nil
 	}
 
 	return nil
-}
-
-func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
-	return diagf(hcl.DiagError, subject, f, args...)
-}
-
-func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
-	message := fmt.Sprintf(f, args...)
-	return &hcl.Diagnostic{
-		Severity: severity,
-		Summary:  message,
-		Detail:   message,
-		Subject:  &subject,
-	}
 }
