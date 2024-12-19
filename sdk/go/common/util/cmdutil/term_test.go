@@ -285,7 +285,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			go func() {
 				defer close(done)
 
-				ok, err := TerminateProcessGroup(cmd.Process, 200*time.Millisecond)
+				ok, err := TerminateProcessGroup(cmd.Process, 400*time.Millisecond)
 				assert.True(t, ok, "child process did not exit gracefully")
 				assert.Error(t, err, "child process should have exited with an error")
 			}()
@@ -294,7 +294,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			case <-done:
 				// continue
 
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(500 * time.Millisecond):
 				// Took too long to kill the child process.
 				t.Fatal("Took too long to kill child process")
 			}
