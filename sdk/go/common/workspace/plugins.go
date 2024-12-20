@@ -810,6 +810,37 @@ type PackageDescriptor struct {
 	Parameterization *Parameterization
 }
 
+// PackageName returns the name of the package.
+func (pd PackageDescriptor) PackageName() string {
+	if pd.Parameterization != nil {
+		return pd.Parameterization.Name
+	}
+	return pd.PluginSpec.Name
+}
+
+// PackageVersion returns the version of the package.
+func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Parameterization != nil {
+		return &pd.Parameterization.Version
+	}
+	return pd.PluginSpec.Version
+}
+
+func (pd PackageDescriptor) String() string {
+	name := pd.PluginSpec.Name
+	version := pd.PluginSpec.Version
+	if pd.Parameterization != nil {
+		name = pd.Parameterization.Name
+		version = &pd.Parameterization.Version
+	}
+
+	var v string
+	if version != nil {
+		v = fmt.Sprintf("-%s", version)
+	}
+	return name + v
+}
+
 // A Parameterization may be applied to a supporting plugin to yield a package.
 type Parameterization struct {
 	// The name of the package that will be produced by the parameterization.

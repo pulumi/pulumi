@@ -253,23 +253,23 @@ func installPlugins(
 		/* entryPoint */ main,
 		/* options */ proj.Runtime.Options(),
 	)
-	languagePlugins, err := gatherPluginsFromProgram(plugctx, runtime, programInfo)
+	languagePackages, err := gatherPackagesFromProgram(plugctx, runtime, programInfo)
 	if err != nil {
 		return nil, nil, err
 	}
-	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	allPlugins := languagePlugins.Union(snapshotPlugins)
+	allPlugins := languagePackages.Union(snapshotPackages).ToPluginSet().Deduplicate()
 
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins.Deduplicate(),
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
@@ -278,7 +278,7 @@ func installPlugins(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPlugins(languagePlugins, allPlugins)
+	defaultProviderVersions := computeDefaultProviderPlugins(languagePackages.ToPluginSet(), allPlugins)
 
 	return allPlugins, defaultProviderVersions, nil
 }

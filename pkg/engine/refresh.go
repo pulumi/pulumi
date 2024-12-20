@@ -81,7 +81,7 @@ func newRefreshSource(
 	// no root directory/Pulumi.yaml (perhaps as the result of a command to which an explicit stack name has been passed),
 	// we'll populate an empty set of program plugins.
 
-	var programPlugins PluginSet
+	var programPackages PackageSet
 	if plugctx.Root != "" {
 		runtime := proj.Runtime.Name()
 		programInfo := plugin.NewProgramInfo(
@@ -92,31 +92,31 @@ func newRefreshSource(
 		)
 
 		var err error
-		programPlugins, err = gatherPluginsFromProgram(plugctx, runtime, programInfo)
+		programPackages, err = gatherPackagesFromProgram(plugctx, runtime, programInfo)
 		if err != nil {
-			programPlugins = NewPluginSet()
+			programPackages = NewPackageSet()
 		}
 	} else {
-		programPlugins = NewPluginSet()
+		programPackages = NewPackageSet()
 	}
 
-	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, err
 	}
 
-	pluginUpdates := programPlugins.UpdatesTo(snapshotPlugins)
-	if len(pluginUpdates) > 0 {
-		for _, update := range pluginUpdates {
+	packageUpdates := programPackages.UpdatesTo(snapshotPackages)
+	if len(packageUpdates) > 0 {
+		for _, update := range packageUpdates {
 			plugctx.Diag.Warningf(diag.Message("", fmt.Sprintf(
-				"refresh operation is using an older version of plugin '%s' than the specified program version: %s < %s",
-				update.New.Name, update.Old.Version, update.New.Version,
+				"refresh operation is using an older version of package '%s' than the specified program version: %s < %s",
+				update.New.PackageName(), update.Old.PackageVersion(), update.New.PackageVersion(),
 			)))
 		}
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPlugins.Deduplicate(),
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPackages.ToPluginSet().Deduplicate(),
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
