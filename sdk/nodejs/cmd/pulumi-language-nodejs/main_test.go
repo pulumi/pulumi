@@ -171,7 +171,7 @@ func TestGetRequiredPackages(t *testing.T) {
 		},
 		{
 			filepath.Join(dir, "node_modules", "malformed", "tests", "invalid_main", "package.json"),
-			`{ "name": "invalid_main", "main": ["why is this a thing", "srsly omg wtf"]}`,
+			`{ "name": "invalid_main", "main": ["this is an", "invalid main"]}`,
 		},
 	}
 	for _, file := range files {
