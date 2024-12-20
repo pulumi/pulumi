@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/diy
-  description: Retry deletes of lock files if they fail
