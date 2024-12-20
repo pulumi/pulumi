@@ -185,6 +185,18 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 	}
 }
 
+func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte("Missing , or : between flow sequence items at line 30, column 20"))
+	}))
+
+	_, err := retrieveZIPTemplates(server.URL)
+
+	assert.ErrorContains(t, err, "failed to download template: 500 Internal Server Error\n"+
+		"Missing , or : between flow sequence items at line 30, column 20")
+}
+
 // Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to
 // paths, while values are slices whose values correspond to filenames that should be present in the ZIP file served at
 // that path.
