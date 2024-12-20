@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Add ConfigFile to GetConfig and SetConfig operations, add GetAllConfigWithOptions to extend GetAllConfig

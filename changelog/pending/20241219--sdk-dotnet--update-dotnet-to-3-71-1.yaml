@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/dotnet
-  description: Update dotnet to 3.71.1

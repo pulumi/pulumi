@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Ignore DependsOn for direct form invokes instead of raising an error
