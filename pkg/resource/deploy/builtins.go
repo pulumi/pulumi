@@ -32,8 +32,6 @@ import (
 )
 
 type builtinProvider struct {
-	plugin.NotForwardCompatibleProvider
-
 	context context.Context
 	cancel  context.CancelFunc
 	diag    diag.Sink
@@ -41,6 +39,9 @@ type builtinProvider struct {
 	backendClient BackendClient
 	resources     *gsync.Map[resource.URN, *resource.State]
 }
+
+// Must implement all methods.
+var _ plugin.UnsafeProvider = (*builtinProvider)(nil)
 
 func newBuiltinProvider(
 	backendClient BackendClient, resources *gsync.Map[resource.URN, *resource.State], d diag.Sink,

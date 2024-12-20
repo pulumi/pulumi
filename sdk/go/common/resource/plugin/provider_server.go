@@ -17,7 +17,6 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"google.golang.org/grpc/codes"
@@ -138,7 +137,7 @@ func (p *providerServer) Handshake(
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	h, ok := p.provider.(handshaker)
 	if !ok {
-		return nil, errors.New("Handshake not implemented")
+		return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
 	}
 
 	_, err := h.Handshake(ctx, ProviderHandshakeRequest{

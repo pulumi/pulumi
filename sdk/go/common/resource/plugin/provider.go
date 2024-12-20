@@ -297,15 +297,13 @@ type GetMappingsResponse struct {
 // range from benign to catastrophic (possibly leaving behind a corrupt resource).  It is up to the provider to make a
 // best effort to ensure catastrophes do not occur.  The errors returned from mutating operations indicate both the
 // underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.
+//
+// New Provider methods are introduced occasionally, but for backward-compatibility they are not added to this
+// interface. See UnsafeProvider for an enumeration of all possible Provider methods handled by the engine.
 type Provider interface {
-	// When adding new methods:
-	//
-	// To ensure maximum backwards compatibility, each method should be of the form:
-	//
-	//	MyMethod(ctx context.Context, request MyMethodRequest) (MyMethodResponse, error)
-	//
-	// This intentionally mimics the style of gRPC methods and is required to ensure that adding a new input or
-	// output field doesn't break existing call sites.
+	// DO NOT ADD NEW METHODS TO THIS INTERFACE. It is part of our public API and must not change
+	// for backward-compatibility.
+	// See UnsafeProvider below.
 
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
@@ -372,15 +370,44 @@ type Provider interface {
 	// If a provider implements this method GetMapping will be called using the results from this method.
 	GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
 
-	// mustEmbed *requires* that implementers make an explicit choice about forward compatibility.
+	// DO NOT ADD NEW METHODS TO THIS INTERFACE. It is part of our public API and must not change
+	// for backward-compatibility.
+	// See UnsafeProvider below.
+}
+
+// UnsafeProvider contains all Provider methods handled the engine. New methods
+// are occasionally added to this interface so it is not backward-compatible
+// and not intended to be implemented. It serves primarily as a reference.
+type UnsafeProvider interface {
+	// When adding new methods:
 	//
-	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
+	// To ensure maximum backwards compatibility, create a new private interface for the method. It should
+	// embed Provider. Embed the new interface here.
 	//
-	// If [NotForwardCompatibleProvider] is embedded, then the struct *will not* be forward compatible.
-	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatibleProvider)
+	// A method "Foo" gets a "foo-er" interface, even if it is not valid English.
+	//
+	// Perform an upcast where the method is handled, and fall back to Unimplemented if it's not available:
+	//
+	//   t, ok := p.provider.(thinger)
+	//   if !ok {
+	//     return nil, status.Error(codes.Unimplemented, "Thing is not yet implemented")
+	//   }
+	//   res, err := t.Thing(ctx, req)
+	//   ...
+	//
+	// Each method should be of the form:
+	//
+	//	MyMethod(ctx context.Context, request MyMethodRequest) (MyMethodResponse, error)
+	//
+	// This intentionally mimics the style of gRPC methods and is required to ensure that adding a new input or
+	// output field doesn't break existing call sites.
+
+	handshaker
 }
 
 type handshaker interface {
+	Provider
+
 	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
 	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
 	// used to communicate between the two parties. Providers that support Handshake implicitly support the set of

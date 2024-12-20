@@ -1,4 +1,5 @@
 // Copyright 2016-2024, Pulumi Corporation.
+
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -277,8 +278,6 @@ func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMa
 // In order to fit neatly in to the existing infrastructure for managing resources using Pulumi, a provider regidstry
 // itself implements the plugin.Provider interface.
 type Registry struct {
-	plugin.NotForwardCompatibleProvider
-
 	host      plugin.Host
 	isPreview bool
 	providers map[Reference]plugin.Provider
@@ -287,7 +286,8 @@ type Registry struct {
 	m         sync.RWMutex
 }
 
-var _ plugin.Provider = (*Registry)(nil)
+// Must implement all methods.
+var _ plugin.UnsafeProvider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
