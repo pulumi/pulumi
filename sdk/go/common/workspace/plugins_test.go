@@ -1702,6 +1702,7 @@ func TestNewPluginSpec(t *testing.T) {
 		source             string
 		version            *semver.Version
 		kind               apitype.PluginKind
+		pluginDownloadURL  string
 		ExpectedPluginSpec PluginSpec
 		Error              error
 	}{
@@ -1826,6 +1827,19 @@ func TestNewPluginSpec(t *testing.T) {
 				Checksums:         nil,
 			},
 		},
+		{
+			name:              "plugin download url and git url",
+			source:            "github.com/pulumi/pulumi-example@v1.0.0",
+			kind:              apitype.ResourcePlugin,
+			pluginDownloadURL: "https://example.com/pulumi-example",
+			Error:             errors.New("cannot specify a plugin download URL when the plugin name is a URL"),
+		},
+		{
+			name:   "invalid version with git plugin",
+			source: "github.com/pulumi/pulumi-example@v1.0.0.0",
+			kind:   apitype.ResourcePlugin,
+			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
+		},
 	}
 
 	for _, c := range cases {
@@ -1833,7 +1847,7 @@ func TestNewPluginSpec(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := NewPluginSpec(c.source, c.kind, c.version, "", nil)
+			spec, err := NewPluginSpec(c.source, c.kind, c.version, c.pluginDownloadURL, nil)
 			if c.Error != nil {
 				require.EqualError(t, err, c.Error.Error())
 				return
