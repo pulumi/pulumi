@@ -256,8 +256,27 @@ export async function run(
 
     span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
-        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+
+        // tanspileOnly controls wether ts-node should do type checking or not.
+        // Users might have a separate build step that runs tsc for type
+        // checking, and don't want to pay the performance cost of type checking
+        // twice. This also enables using swc, which doesn' support type
+        // checking, with ts-node.
+        //
+        // If the `PULUMI_NODEJS_TRANSPILE_ONLY `env variable is set, we use
+        // that to determine the value of `transpileOnly.` Otherwise we use the
+        // `noCheck `compiler option from the tsconfig. Otherwise we default to
+        // ts-node's default, which is to type check.
+        let transpileOnly = undefined;
+        const transpileOnlyEnv = process.env["PULUMI_NODEJS_TRANSPILE_ONLY"];
+        if (transpileOnlyEnv) {
+            transpileOnly = transpileOnlyEnv === "true";
+        } else {
+            // @ts-ignore
+            transpileOnly = compilerOptions.noCheck;
+        }
+
         const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
         const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
