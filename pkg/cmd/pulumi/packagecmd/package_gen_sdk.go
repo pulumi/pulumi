@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -49,7 +48,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			source := args[0]
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-			pkg, err := pcmd.SchemaFromSchemaSource(cmd.Context(), source, args[1:])
+			pkg, err := SchemaFromSchemaSource(cmd.Context(), source, args[1:])
 			if err != nil {
 				return err
 			}
@@ -73,7 +72,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := pcmd.GenSDK(lang, out, pkg, overlays, local)
+					err := GenSDK(lang, out, pkg, overlays, local)
 					if err != nil {
 						return err
 					}
@@ -81,7 +80,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s", out)
 				return nil
 			}
-			err = pcmd.GenSDK(language, out, pkg, overlays, local)
+			err = GenSDK(language, out, pkg, overlays, local)
 			if err != nil {
 				return err
 			}

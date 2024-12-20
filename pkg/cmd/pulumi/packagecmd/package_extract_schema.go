@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/spf13/cobra"
 )
 
@@ -33,10 +33,10 @@ func newExtractSchemaCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: pcmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			pkg, err := pcmd.SchemaFromSchemaSource(cmd.Context(), source, args[1:])
+			pkg, err := SchemaFromSchemaSource(cmd.Context(), source, args[1:])
 			if err != nil {
 				return err
 			}

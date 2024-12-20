@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package packagecmd
 
 import (
 	"context"
@@ -176,9 +176,9 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 	return nil
 }
 
-// Prints instructions for linking a locally generated SDK to an existing
-// project, in the absence of us attempting to perform this linking automatically.
-func DoLocalSdkLinking(
+// LinkPackage links a locally generated SDK to an existing project.
+// Currently Java is not supported and will print instructions for manual linking.
+func LinkPackage(
 	ws pkgWorkspace.Context, language string, root string, pkg *schema.Package, out string,
 ) error {
 	switch language {
@@ -198,8 +198,7 @@ func DoLocalSdkLinking(
 	return nil
 }
 
-// Prints instructions for linking a locally generated SDK to an existing NodeJS
-// project, in the absence of us attempting to perform this linking automatically.
+// linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
 	proj, _, err := ws.ReadProject()
@@ -226,8 +225,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 				return fmt.Errorf("unsupported package manager: %s", pm)
 			}
 		} else {
-			fmt.Println("packagemanager", packagemanager)
-			return fmt.Errorf("packagemanager option must be a string: %v", packagemanager)
+			return fmt.Errorf("package manager option must be a string: %v", packagemanager)
 		}
 	} else {
 		// Assume npm if no packagemanager is specified
@@ -260,8 +258,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	return nil
 }
 
-// Prints instructions for linking a locally generated SDK to an existing Python
-// project, in the absence of us attempting to perform this linking automatically.
+// linkPythonPackage links a locally generated SDK to an existing Python project.
 func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
@@ -275,22 +272,27 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	}
 
 	modifyRequirements := func() error {
-		f, err := os.OpenFile(
-			filepath.Join(root, "requirements.txt"),
-			os.O_CREATE|os.O_APPEND|os.O_RDWR,
-			0o600,
-		)
+		fPath := filepath.Join(root, "requirements.txt")
+		fBytes, err := os.ReadFile(fPath)
 		if err != nil {
 			return fmt.Errorf("error opening requirments.txt: %w", err)
 		}
-		defer f.Close()
 
-		_, err = f.WriteString(packageSpecifier + "\n")
+		fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
+		err = os.WriteFile(fPath, fBytes, 0o600)
 		if err != nil {
-			return fmt.Errorf("error appending to requirments: %w", err)
+			return fmt.Errorf("could not write requirments: %w", err)
 		}
 
-		cmd := exec.Command("pulumi", "install")
+		//nolint:gosec // This input is controlled by the program.
+		cmd := exec.Command(
+			"python3",
+			"-m",
+			"pip",
+			"install",
+			"-r",
+			filepath.Join(root, "requirements.txt"),
+		)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		err = cmd.Run()
@@ -351,8 +353,7 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	return nil
 }
 
-// Prints instructions for linking a locally generated SDK to an existing Go
-// project, in the absence of us attempting to perform this linking automatically.
+// linkGoPackage links a locally generated SDK to an existing Go project.
 func linkGoPackage(root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg.Name, out)
 
@@ -439,8 +440,8 @@ func csharpPackageName(pkgName string) string {
 	return strings.Join(parts, "")
 }
 
-// Prints instructions for linking a locally generated SDK to an existing .NET
-// project, in the absence of us attempting to perform this linking automatically.
+// linkDotnetPackage links a locally generated SDK to an existing .NET project.
+// Also prints instructions for modifying the csproj file for DefaultItemExcludes cleanup.
 func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()

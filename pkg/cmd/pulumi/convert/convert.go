@@ -32,7 +32,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -79,7 +80,7 @@ func NewConvertCmd() *cobra.Command {
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n",
-		Run: pcmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)
@@ -215,7 +216,7 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
-	pCtx, err := pcmd.NewPluginContext(cwd)
+	pCtx, err := packagecmd.NewPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -551,20 +552,21 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("failed to create temporary directory: %w", err)
 		}
 
-		var parameterizationValue []byte
-		if pkg.Parameterization != nil {
-			parameterizationValue = pkg.Parameterization.Value
-		} else {
+		if pkg.Parameterization == nil {
 			// Only generate SDKs for packages that have parameterization for now, others should be implicit.
 			continue
 		}
 
-		pkgSchema, err := pcmd.SchemaFromSchemaSourceValueArgs(ctx, pkg.Name, parameterizationValue)
+		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
+			ctx,
+			pkg.Name,
+			pkg.Parameterization.Value,
+		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = pcmd.GenSDK(
+		err = packagecmd.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
@@ -576,7 +578,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = pcmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -603,7 +605,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = pcmd.DoLocalSdkLinking(ws, language, "./", pkgSchema, sdkRelPath)
+		err = packagecmd.LinkPackage(ws, language, "./", pkgSchema, sdkRelPath)
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}

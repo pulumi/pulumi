@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
-	pcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -61,7 +61,7 @@ When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
 extension, Pulumi package schema is read from it directly:
 
   pulumi package add ./my/schema.json`,
-		Run: pcmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
@@ -75,7 +75,7 @@ extension, Pulumi package schema is read from it directly:
 			plugin := args[0]
 			parameters := args[1:]
 
-			pkg, err := pcmd.SchemaFromSchemaSource(ctx, plugin, parameters)
+			pkg, err := SchemaFromSchemaSource(ctx, plugin, parameters)
 			if err != nil {
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
@@ -87,7 +87,7 @@ extension, Pulumi package schema is read from it directly:
 
 			local := true
 
-			err = pcmd.GenSDK(
+			err = GenSDK(
 				language,
 				tempOut,
 				pkg,
@@ -105,7 +105,7 @@ extension, Pulumi package schema is read from it directly:
 			}
 
 			out = filepath.Join(out, pkg.Name)
-			err = pcmd.CopyAll(out, filepath.Join(tempOut, language))
+			err = CopyAll(out, filepath.Join(tempOut, language))
 			if err != nil {
 				return fmt.Errorf("failed to move SDK to project: %w", err)
 			}
@@ -115,7 +115,7 @@ extension, Pulumi package schema is read from it directly:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			return pcmd.DoLocalSdkLinking(ws, language, root, pkg, out)
+			return LinkPackage(ws, language, root, pkg, out)
 		}),
 	}
 
