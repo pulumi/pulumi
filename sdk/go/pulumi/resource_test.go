@@ -1407,9 +1407,10 @@ func TestInvokeDependsOn(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
 		var args DoEchoArgs
 		dep := newTestRes(t, ctx, "dep")
-		opts := DependsOn([]Resource{dep})
+		opt := DependsOn([]Resource{dep})
+		options := mergeInvokeOptions(opt)
 
-		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", *options)
 
 		require.NoError(t, err)
 		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
@@ -1443,9 +1444,10 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 		var args DoEchoArgs
 		dep := newTestRes(t, ctx, "dep")
 		ro := NewResourceOutput(dep)
-		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+		opt := DependsOnInputs(NewResourceArrayOutput(ro))
+		options := mergeInvokeOptions(opt)
 
-		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", opts)
+		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", *options)
 
 		require.NoError(t, err)
 		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
@@ -1458,8 +1460,10 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestInvokeDependsOnNotAllowed(t *testing.T) {
+func TestInvokeDependsOnIgnored(t *testing.T) {
 	t.Parallel()
+
+	done := make(chan struct{})
 
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
@@ -1468,22 +1472,39 @@ func TestInvokeDependsOnNotAllowed(t *testing.T) {
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			// Wait to resolve the resource until after the invoke has completed.
+			// This lets us test that the invoke did not wait for this resource.
+			<-done
 			return args.Name + "_id", nil, nil
 		},
 	}
 
-	err := RunErr(func(ctx *Context) error {
-		var rv DoEchoResult
-		var args DoEchoArgs
-		dep := newTestRes(t, ctx, "dep")
-		ro := NewResourceOutput(dep)
-		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+	// If we do not ignore DependsOn for direct form invokes, this test will hang.
+	// We'll run the test in a goroutine and timeout if it takes too long.
+	testDone := make(chan struct{})
+	go func() {
+		err := RunErr(func(ctx *Context) error {
+			var rv DoEchoResult
+			var args DoEchoArgs
+			dep := newTestRes(t, ctx, "dep")
+			ro := NewResourceOutput(dep)
+			opts := DependsOnInputs(NewResourceArrayOutput(ro))
 
-		err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+			err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+			require.NoError(t, err)
 
-		require.ErrorContains(t, err, "DependsOnInputs is not supported for direct form invoke")
+			done <- struct{}{}
 
-		return nil
-	}, WithMocks("project", "stack", monitor))
-	require.NoError(t, err)
+			return nil
+		}, WithMocks("project", "stack", monitor))
+		require.NoError(t, err)
+
+		testDone <- struct{}{}
+	}()
+
+	select {
+	case <-testDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("test timed out")
+	}
 }

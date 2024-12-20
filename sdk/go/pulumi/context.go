@@ -667,12 +667,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) invokePackageRaw(
-	tok string, args interface{}, packageRef string, opts ...InvokeOption,
+	tok string, args interface{}, packageRef string, options invokeOptions,
 ) (resource.PropertyMap, []Resource, error) {
 	if tok == "" {
 		return nil, []Resource{}, errors.New("invoke token must not be empty")
 	}
-	options := mergeInvokeOptions(opts...)
 	deps := []Resource{}
 	depSet := urnSet{} // Only used for `addURNs` below.
 	for _, d := range options.DependsOn {
@@ -807,18 +806,13 @@ func (ctx *Context) InvokePackage(
 		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	invokeOpts, optsErr := NewInvokeOptions(opts...)
-	if optsErr != nil {
-		return optsErr
-	}
+	invokeOpts := mergeInvokeOptions(opts...)
 	if len(invokeOpts.DependsOn) > 0 {
-		return fmt.Errorf("DependsOn is not supported for direct form invoke of %q, use the output form instead", tok)
-	}
-	if len(invokeOpts.DependsOnInputs) > 0 {
-		return fmt.Errorf("DependsOnInputs is not supported for direct form invoke of %q, use the output form instead", tok)
+		// Ignore the DependsOn option for direct invokes.
+		invokeOpts.DependsOn = nil
 	}
 
-	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, *invokeOpts)
 	if err != nil {
 		return err
 	}
@@ -842,7 +836,8 @@ func (ctx *Context) InvokePackageRaw(
 		return false, errors.New("result must be a pointer to a struct or map value")
 	}
 
-	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	options := mergeInvokeOptions(opts...)
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, *options)
 	if err != nil {
 		return false, err
 	}
@@ -872,7 +867,8 @@ func (ctx *Context) InvokeOutput(
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
-		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, options.InvokeOptions...)
+		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
+		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
