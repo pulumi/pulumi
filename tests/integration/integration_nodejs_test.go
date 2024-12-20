@@ -1579,8 +1579,8 @@ func TestTranspileOnly(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []string{"tsconfig-no-check", "swc"} {
+		test := test
 		t.Run(test, func(t *testing.T) {
-			test := test
 			t.Parallel()
 			dir := filepath.Join("nodejs", test)
 			e := ptesting.NewEnvironment(t)
