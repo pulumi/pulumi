@@ -49,7 +49,7 @@
     <PackageReference Include="Moq" Version="4.13.1" />
     <PackageReference Include="NUnit" Version="3.12.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
-    <PackageReference Include="Pulumi" Version="[3.71.0.0,4)" />
+    <PackageReference Include="Pulumi" Version="[3.71.1.0,4)" />
   </ItemGroup>
 
   <ItemGroup>
