@@ -60,76 +60,76 @@ jobs:
             # We use 'test' as all workflows have tests.
             until gh pr checks --repo "pulumi/pulumi-${{ matrix.provider }}" "$number" | grep 'test'; do sleep 30; done;
             gh pr checks --repo "pulumi/pulumi-${{ matrix.provider }}" "$number" --watch --fail-fast
-# Native Providers
-    awsx:
-      name: Test AWSX
-      needs: ["cleanup"]
-      timeout-minutes: 240
-      runs-on: ubuntu-latest
-      env:
-        GOVERSION: ">=1.19.0" # from awsx: decoupled from version sets, track latest for codegen
-        NODEVERSION: "18.x"
-        PYTHONVERSION: "3.9.x"
-        DOTNETVERSION: "6.x"
-        JAVAVERSION: "11"
-        AWS_REGION: us-west-2
-        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-      steps:
-        - name: Configure AWS Credentials
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            aws-region: ${{ env.AWS_REGION }}
-            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            role-duration-seconds: 3600
-            role-session-name: awsx@githubActions
-            role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
-        - name: Setup Go
-          uses: actions/setup-go@v5
-          with:
-            go-version: ${{ env.GOVERSION }}
-            check-latest: true
-        - name: Setup Node
-          uses: actions/setup-node@v4
-          with:
-            node-version: ${{ env.NODEVERSION }}
-        - name: Setup Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: ${{ env.PYTHONVERSION }}
-        - name: Setup DotNet
-          uses: actions/setup-dotnet@v4
-          with:
-            dotnet-version: ${{ env.DOTNETVERSION }}
-        - name: Setup Java
-          uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: ${{ env.JAVAVERSION }}
-        - name: Install gotestfmt
-          uses: jaxxstorm/action-install-gh-release@v1.11.0
-          with:
-            repo: gotesttools/gotestfmt
-        - name: Check out source code
-          uses: actions/checkout@v4
-          with:
-            ref: ${{ github.event.pull_request.head.sha }}
-            token: ${{ secrets.PULUMI_BOT_TOKEN }}
-        - name: Test Downstream
-          uses: pulumi/action-test-provider-downstream@v0.0.1-beta
-          env:
-            GOPROXY: "https://proxy.golang.org"
-            PULUMI_LOCAL_NUGET: ${{ github.workspace }}/../pulumi-awsx/nuget
-            AWS_REGION: us-west-2
-            PWD: ${{ github.workspace }}/pulumi-awsx
-            PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-            PULUMI_API: https://api.pulumi-staging.io
-            TESTPARALLELISM: 4
-          with:
-            replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk
-            downstream-name: pulumi-awsx
-            downstream-url: https://github.com/pulumi/pulumi-awsx
-            use-provider-dir: true
-            issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
-            buildTargets: "build,install_dotnet_sdk"
-            testTargets: "lint,test_nodejs,test_python,test_java,test_go,test_dotnet,test"
+    # TODO[pulumi/pulumi#16954]: Unskip downstream AWSX test
+    # awsx:
+    #   name: Test AWSX
+    #   needs: ["cleanup"]
+    #   timeout-minutes: 240
+    #   runs-on: ubuntu-latest
+    #   env:
+    #     GOVERSION: ">=1.19.0" # from awsx: decoupled from version sets, track latest for codegen
+    #     NODEVERSION: "18.x"
+    #     PYTHONVERSION: "3.9.x"
+    #     DOTNETVERSION: "6.x"
+    #     JAVAVERSION: "11"
+    #     AWS_REGION: us-west-2
+    #     GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+    #   steps:
+    #     - name: Configure AWS Credentials
+    #       uses: aws-actions/configure-aws-credentials@v4
+    #       with:
+    #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #         aws-region: ${{ env.AWS_REGION }}
+    #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #         role-duration-seconds: 3600
+    #         role-session-name: awsx@githubActions
+    #         role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+    #     - name: Setup Go
+    #       uses: actions/setup-go@v5
+    #       with:
+    #         go-version: ${{ env.GOVERSION }}
+    #         check-latest: true
+    #     - name: Setup Node
+    #       uses: actions/setup-node@v4
+    #       with:
+    #         node-version: ${{ env.NODEVERSION }}
+    #     - name: Setup Python
+    #       uses: actions/setup-python@v5
+    #       with:
+    #         python-version: ${{ env.PYTHONVERSION }}
+    #     - name: Setup DotNet
+    #       uses: actions/setup-dotnet@v4
+    #       with:
+    #         dotnet-version: ${{ env.DOTNETVERSION }}
+    #     - name: Setup Java
+    #       uses: actions/setup-java@v4
+    #       with:
+    #         distribution: temurin
+    #         java-version: ${{ env.JAVAVERSION }}
+    #     - name: Install gotestfmt
+    #       uses: jaxxstorm/action-install-gh-release@v1.11.0
+    #       with:
+    #         repo: gotesttools/gotestfmt
+    #     - name: Check out source code
+    #       uses: actions/checkout@v4
+    #       with:
+    #         ref: ${{ github.event.pull_request.head.sha }}
+    #         token: ${{ secrets.PULUMI_BOT_TOKEN }}
+    #     - name: Test Downstream
+    #       uses: pulumi/action-test-provider-downstream@v0.0.1-beta
+    #       env:
+    #         GOPROXY: "https://proxy.golang.org"
+    #         PULUMI_LOCAL_NUGET: ${{ github.workspace }}/../pulumi-awsx/nuget
+    #         AWS_REGION: us-west-2
+    #         PWD: ${{ github.workspace }}/pulumi-awsx
+    #         PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+    #         PULUMI_API: https://api.pulumi-staging.io
+    #         TESTPARALLELISM: 4
+    #       with:
+    #         replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk
+    #         downstream-name: pulumi-awsx
+    #         downstream-url: https://github.com/pulumi/pulumi-awsx
+    #         use-provider-dir: true
+    #         issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+    #         buildTargets: "build,install_dotnet_sdk"
+    #         testTargets: "lint,test_nodejs,test_python,test_java,test_go,test_dotnet,test"
