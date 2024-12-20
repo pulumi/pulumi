@@ -2,9 +2,9 @@
   "compilerOptions": {
     "strict": true,
     "outDir": "bin",
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "node16",
+    "moduleResolution": "node16",
     "declaration": true,
     "sourceMap": true,
     "stripInternal": true,
