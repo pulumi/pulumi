@@ -554,11 +554,13 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 }
 
 func (p *plugin) Close() error {
-	// Something has gone wrong with the plugin if it is not ready to handle requests
-	// and we have not yet shut it down.
-	pluginCrashed := p.Conn.GetState() != connectivity.Ready
+	pluginCrashed := true
 
 	if p.Conn != nil {
+		// Something has gone wrong with the plugin if it is not ready to handle requests and we have not yet
+		// shut it down.
+		pluginCrashed = p.Conn.GetState() != connectivity.Ready
+
 		contract.IgnoreClose(p.Conn)
 	}
 
