@@ -1479,19 +1479,32 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 		},
 	}
 
-	err := RunErr(func(ctx *Context) error {
-		var rv DoEchoResult
-		var args DoEchoArgs
-		dep := newTestRes(t, ctx, "dep")
-		ro := NewResourceOutput(dep)
-		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+	// If we do not ignore DependsOn for direct form invokes, this test will hang.
+	// We'll run the test in a goroutine and timeout if it takes too long.
+	testDone := make(chan struct{})
+	go func() {
+		err := RunErr(func(ctx *Context) error {
+			var rv DoEchoResult
+			var args DoEchoArgs
+			dep := newTestRes(t, ctx, "dep")
+			ro := NewResourceOutput(dep)
+			opts := DependsOnInputs(NewResourceArrayOutput(ro))
 
-		err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+			err := ctx.InvokePackage("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+			require.NoError(t, err)
+
+			done <- struct{}{}
+
+			return nil
+		}, WithMocks("project", "stack", monitor))
 		require.NoError(t, err)
 
-		done <- struct{}{}
+		testDone <- struct{}{}
+	}()
 
-		return nil
-	}, WithMocks("project", "stack", monitor))
-	require.NoError(t, err)
+	select {
+	case <-testDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("test timed out")
+	}
 }
