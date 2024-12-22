@@ -734,6 +734,9 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	if o.ExpectNoChanges {
 		args = append(args, "--expect-no-changes")
 	}
+	if o.ClearPendingCreates {
+		args = append(args, "--clear-pending-creates")
+	}
 	for _, tURN := range o.Target {
 		args = append(args, "--target="+tURN)
 	}
