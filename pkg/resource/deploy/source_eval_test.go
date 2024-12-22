@@ -1602,7 +1602,7 @@ func TestStreamInvoke(t *testing.T) {
 			nil, "", nil, false, nil)
 		assert.NoError(t, err)
 
-		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, nil, plugctx.Diag)
 		reg := providers.NewRegistry(plugctx.Host, false, builtins)
 		providerRegChan := make(chan *registerResourceEvent, 100)
 		mon, err := newResourceMonitor(&evalSource{
@@ -1685,7 +1685,7 @@ func TestStreamInvokeQuery(t *testing.T) {
 
 		cancel := context.Background()
 
-		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, nil, plugctx.Diag)
 
 		reg := providers.NewRegistry(plugctx.Host, false, builtins)
 
@@ -1749,7 +1749,7 @@ func TestStreamInvokeQuery(t *testing.T) {
 
 		cancel := context.Background()
 
-		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, nil, plugctx.Diag)
 
 		reg := providers.NewRegistry(plugctx.Host, false, builtins)
 		providerRegErrChan := make(chan error)
