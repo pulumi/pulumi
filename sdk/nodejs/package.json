@@ -36,7 +36,6 @@
         "pkg-dir": "^7.0.0",
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
-        "source-map-support": "^0.5.6",
         "tmp": "^0.2.1",
         "upath": "^1.1.0"
     },
@@ -82,7 +81,7 @@
         "node": ">=18"
     },
     "mocha": {
-        "require": ["ts-node/register", "source-map-support/register"]
+        "require": ["ts-node/register"]
     },
     "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
 }

@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Enable source map support so we get good stack traces.
-import "source-map-support/register";
-
 // Export top-level elements.
 export * from "./config";
 export * from "./errors";

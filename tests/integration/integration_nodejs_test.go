@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -2355,4 +2356,49 @@ func TestAutonaming(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestNodejsTestSourcemaps(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("nodejs/sourcemap-in-test")
+	e.RunCommand("yarn", "install")
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "add", coreSDK)
+
+	_, stderr := e.RunCommandExpectError("yarn", "test")
+
+	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
+
+    this is a test error
+
+      1 | export function willThrow() {
+      2 |     if (true) {
+    > 3 |         throw new Error("this is a test error");
+        |               ^
+      4 |     }
+      5 | }
+      6 |
+
+      at willThrow (index.ts:3:15)
+`
+	require.Contains(t, stripansi.Strip(stderr), expectedTrace)
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsProgramSourcemap(t *testing.T) {
+	stderr := &bytes.Buffer{}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("stdout: %s", stderr.String())
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:3:15", stderr.String())
+		},
+	})
 }
