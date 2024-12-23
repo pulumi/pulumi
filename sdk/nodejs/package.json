@@ -82,7 +82,7 @@
         "node": ">=18"
     },
     "mocha": {
-        "require": ["ts-node/register"]
+        "require": ["ts-node/register", "source-map-support/register"]
     },
     "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
 }
