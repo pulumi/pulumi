@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Enable source map support so we get good stack traces.
+import "source-map-support/register";
+
 import * as grpc from "@grpc/grpc-js";
 
 import { Provider } from "./provider";

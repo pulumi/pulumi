@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Enable source map support so we get good stack traces.
+import "source-map-support/register";
+
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
 // if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
