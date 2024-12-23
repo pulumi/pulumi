@@ -180,7 +180,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		if aiOrTemplate == "ai" {
 			checkedBackend, ok := b.(httpstate.Backend)
 			if !ok {
-				if args.aiLanguage != "" {
+				if args.aiLanguage != "" && args.aiPrompt == "" {
 					return errors.New(
 						"--language is used to generate a template with Pulumi AI. " +
 							"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
