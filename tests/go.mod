@@ -11,6 +11,7 @@ replace (
 
 require (
 	github.com/BurntSushi/toml v1.2.1
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/aws/aws-sdk-go-v2 v1.26.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.11
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
