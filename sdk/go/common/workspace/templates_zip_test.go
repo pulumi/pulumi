@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSanitizeArchivePath(t *testing.T) {
@@ -186,9 +187,12 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 }
 
 func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte("Missing , or : between flow sequence items at line 30, column 20"))
+		_, err := rw.Write([]byte("Missing , or : between flow sequence items at line 30, column 20"))
+		require.NoError(t, err)
 	}))
 
 	_, err := retrieveZIPTemplates(server.URL)
