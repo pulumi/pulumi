@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Provide a more meaningful message for the --language flag
