@@ -319,7 +319,7 @@ func NewRefreshCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVar(
 		&expectNop, "expect-no-changes", false,
-		"Return an error if any changes occur during this update")
+		"Return an error if any changes occur during this refresh. This check happens after the refresh is applied")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
