@@ -44,7 +44,7 @@ func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
@@ -58,7 +58,7 @@ func TestDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomVal = stack.Outputs["random_val"].(string)
@@ -150,7 +150,7 @@ func optsForConstructPython(
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: localProviders,
 		Secrets: map[string]string{
@@ -206,7 +206,7 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	runComponentSetup(t, testDir)
 	pulumiRoot, err := filepath.Abs("../..")
 	require.NoError(t, err)
-	pulumiPySDK := filepath.Join("..", "..", "sdk", "python", "env", "src")
+	pulumiPySDK := filepath.Join("..", "..", "sdk", "python")
 	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/python")
 	opts := testConstructComponentConfigureProviderCommonOptions()
 	opts = opts.With(integration.ProgramTestOptions{

@@ -651,7 +651,7 @@ func TestProviderDownloadURL(t *testing.T) {
 		name       string
 		dependency string
 	}{
-		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
+		{"python", filepath.Join("..", "..", "sdk", "python")},
 		{"nodejs", "@pulumi/pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
@@ -1308,7 +1308,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tc.InstallDependencies(context.Background(),
 		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false /*showOutput */, nil, nil))
-	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	gotSdk, err := test.PathExists(sdkDir)
 	require.NoError(t, err)

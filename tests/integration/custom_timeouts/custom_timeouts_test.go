@@ -29,7 +29,7 @@ func TestCustomTimeouts(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join(".", "python", "success"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		Quick:            true,
 		DestroyOnCleanup: true,
@@ -39,7 +39,7 @@ func TestCustomTimeouts(t *testing.T) {
 	opts = &integration.ProgramTestOptions{
 		Dir: filepath.Join(".", "python", "failure"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		Quick:            true,
 		DestroyOnCleanup: true,

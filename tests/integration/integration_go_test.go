@@ -1515,7 +1515,7 @@ func TestRunPlugin(t *testing.T) {
 
 	e.CWD = filepath.Join(e.RootPath, "provider-python")
 	e.RunCommand("python", "-m", "venv", "venv", "--clear")
-	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	e.RunCommand(filepath.Join("venv", "bin", "python"), "-m", "pip", "install", "-e", pythonSdkPath)
 	e.Env = append(e.Env, "PATH="+filepath.Join(e.CWD, "venv", "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))

@@ -218,7 +218,7 @@ func TestLanguage(t *testing.T) {
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   rootDir,
 			SnapshotDirectory:    snapshotDir,
-			CoreSdkDirectory:     "../../lib",
+			CoreSdkDirectory:     "../..",
 			CoreSdkVersion:       sdk.Version.String(),
 			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 				{

@@ -35,7 +35,7 @@ func TestPythonTypes(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: d,
 				Dependencies: []string{
-					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "..", "sdk", "python"),
 				},
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					for _, res := range []string{"", "2", "3", "4"} {

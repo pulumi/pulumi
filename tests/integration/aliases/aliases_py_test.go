@@ -46,7 +46,7 @@ func TestPythonAliases(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(d, "step1"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "..", "sdk", "python"),
 				},
 				Quick: true,
 				EditDirs: []integration.EditDir{
@@ -70,7 +70,7 @@ func TestPythonAliasAfterFailedUpdate(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join(d, "step1"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "..", "sdk", "python"),
 			},
 			LocalProviders: []integration.LocalDependency{
 				{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},

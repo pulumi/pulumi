@@ -1,5 +1,5 @@
 {
-  "venvPath": "venv",
+  "venvPath": ".venv",
   "include": [
     "lib/test_types"
   ],

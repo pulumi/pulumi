@@ -166,7 +166,7 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
-	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python"))
 	if err != nil {
 		return err
 	}

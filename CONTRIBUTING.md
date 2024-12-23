@@ -45,7 +45,7 @@ You'll want to install the following on your machine:
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.23 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
+brew install node python@3 typescript yarn go@1.23 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq uv
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
