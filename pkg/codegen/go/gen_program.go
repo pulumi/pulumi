@@ -1332,10 +1332,10 @@ func deferredOutputTypeParameter(outputType model.Type) string {
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
 			elementType := deferredOutputTypeParameter(exprType.ElementType)
-			return fmt.Sprintf("[]%s", elementType)
+			return "[]" + elementType
 		case *model.MapType:
 			valueType := deferredOutputTypeParameter(exprType.ElementType)
-			return fmt.Sprintf("map[string]%s", valueType)
+			return "map[string]" + valueType
 		case *model.OutputType:
 			return deferredOutputTypeParameter(exprType.ElementType)
 		}
@@ -1416,12 +1416,18 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				Name: "castDeferredOutput",
 				Args: []model.Expression{lowered},
 				Signature: model.StaticFunctionSignature{
-					Parameters: []model.Parameter{{"output", model.NewOutputType(expr.Type())}},
+					Parameters: []model.Parameter{
+						{
+							Name: "output",
+							Type: model.NewOutputType(expr.Type()),
+						},
+					},
 					ReturnType: model.NewOutputType(expr.Type()),
 				},
 			}
 
-			expr.Typecheck(true)
+			typecheckDiags := expr.Typecheck(true)
+			g.diagnostics = append(g.diagnostics, typecheckDiags...)
 		}
 
 		componentInputs = append(componentInputs, &model.Attribute{
