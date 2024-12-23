@@ -168,32 +168,38 @@ in-project = true
 	if toolchainName == "poetry" {
 		cmd := exec.Command("poetry", "init", "--no-interaction")
 		cmd.Dir = cwd
-		require.NoError(t, cmd.Run())
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
 	} else if toolchainName == "uv" {
 		cmd := exec.Command("uv", "init")
 		cmd.Dir = cwd
-		require.NoError(t, cmd.Run())
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
 	} else if toolchainName == "pip" {
 		cmd := exec.Command("python3", "-m", "venv", ".venv")
 		cmd.Dir = cwd
-		require.NoError(t, cmd.Run())
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
 	}
 
 	for _, req := range requirements {
 		if toolchainName == "poetry" {
 			cmd := exec.Command("poetry", "add", req)
 			cmd.Dir = cwd
-			require.NoError(t, cmd.Run())
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 		} else if toolchainName == "uv" {
 			cmd := exec.Command("uv", "add", req)
 			cmd.Dir = cwd
-			require.NoError(t, cmd.Run())
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 		} else if toolchainName == "pip" {
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", req)
 			require.NoError(t, err)
-			require.NoError(t, cmd.Run())
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 		}
 	}
 }
@@ -349,7 +355,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			assert.NotEmpty(t, old.Location)
 		})
 
-		t.Run("pulumi-policy", func(t *testing.T) {
+		t.Run(toolchainName+"/pulumi-policy", func(t *testing.T) {
 			t.Parallel()
 
 			cwd := t.TempDir()

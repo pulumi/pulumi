@@ -771,6 +771,7 @@ func TestUvWindowsError(t *testing.T) {
 	go func() {
 		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
 		e.RunCommand("pulumi", "install")
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 		stdout, _ = e.RunCommandExpectError("pulumi", "preview")
