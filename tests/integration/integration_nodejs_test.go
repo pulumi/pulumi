@@ -2358,7 +2358,7 @@ func TestAutonaming(t *testing.T) {
 	}
 }
 
-func TestNodejsTestSourcemaps(t *testing.T) {
+func TestNodejsSourcemapTest(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -2388,17 +2388,29 @@ func TestNodejsTestSourcemaps(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestNodejsProgramSourcemap(t *testing.T) {
+func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 	stderr := &bytes.Buffer{}
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
 		Stderr:        stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			t.Logf("stdout: %s", stderr.String())
-			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:3:15", stderr.String())
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsSourcemapProgramJavascript(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
 		},
 	})
 }
