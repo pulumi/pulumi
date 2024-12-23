@@ -489,38 +489,17 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	files, err := os.ReadDir(sourceDirectory)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not read source directory %s: %w", sourceDirectory, err)
-	}
+	var diagnostics hcl.Diagnostics
 
 	parser := hclsyntax.NewParser()
-	_, err = pcl.ParseFiles(parser, sourceDirectory, files)
+	parseDiagnostics, err := pcl.ParseDirectory(parser, sourceDirectory)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
+	diagnostics = append(diagnostics, parseDiagnostics...)
 
-	allPackageDescriptors := make(map[string]*schema.PackageDescriptor)
-
-	var diagnostics hcl.Diagnostics
-	for _, file := range parser.Files {
-		packageDescriptors, diags := pcl.ReadPackageDescriptors(file)
-		diagnostics = append(diagnostics, diags...)
-		for packageName, descriptor := range packageDescriptors {
-			if _, ok := allPackageDescriptors[packageName]; ok {
-				message := fmt.Sprintf("package %q was already defined", packageName)
-				subjectRange := file.Body.Range()
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  message,
-					Detail:   message,
-					Subject:  &subjectRange,
-				})
-				continue
-			}
-			allPackageDescriptors[packageName] = descriptor
-		}
-	}
+	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
+	diagnostics = append(diagnostics, packageDiagnostics...)
 
 	if len(diagnostics) != 0 {
 		var errorDiags hcl.Diagnostics

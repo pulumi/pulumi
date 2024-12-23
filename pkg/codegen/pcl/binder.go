@@ -211,16 +211,10 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	var diagnostics hcl.Diagnostics
 
 	// Load package descriptors from the files
-	for _, file := range files {
-		packageDescriptors, diags := ReadPackageDescriptors(file)
-		diagnostics = append(diagnostics, diags...)
-		for packageName, descriptor := range packageDescriptors {
-			if _, ok := b.packageDescriptors[packageName]; ok {
-				diagnostics = append(diagnostics, errorf(file.Body.Range(), "package %q was already defined", packageName))
-				continue
-			}
-			b.packageDescriptors[packageName] = descriptor
-		}
+	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
+	diagnostics = append(diagnostics, descriptorDiags...)
+	for packageName, descriptor := range descriptorMap {
+		b.packageDescriptors[packageName] = descriptor
 	}
 
 	// Sort files in source order, then declare all top-level nodes in each.
@@ -258,17 +252,10 @@ func BindDirectory(
 	extraOptions ...BindOption,
 ) (*Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
-	// Load all .pp files in the directory
-	files, err := os.ReadDir(directory)
+	parseDiagnostics, err := ParseDirectory(parser, directory)
 	if err != nil {
-		return nil, nil, err
+		return nil, parseDiagnostics, fmt.Errorf("parse directory: %w", err)
 	}
-
-	parseDiagnostics, err := ParseFiles(parser, directory, files)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	if parseDiagnostics.HasErrors() {
 		return nil, parseDiagnostics, nil
 	}
@@ -317,6 +304,46 @@ func ParseFiles(parser *syntax.Parser, directory string, files []fs.DirEntry) (h
 	}
 
 	return parseDiagnostics, nil
+}
+
+// / ParseDirectory parses all of the PCL files in the given directory into the state of the parser.
+func ParseDirectory(parser *syntax.Parser, directory string) (hcl.Diagnostics, error) {
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	parseDiagnostics, err := ParseFiles(parser, directory, files)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseDiagnostics, nil
+}
+
+func ReadAllPackageDescriptors(files []*syntax.File) (map[string]*schema.PackageDescriptor, hcl.Diagnostics) {
+	descriptorMap := map[string]*schema.PackageDescriptor{}
+	var diagnostics hcl.Diagnostics
+	for _, file := range files {
+		packageDescriptors, diags := ReadPackageDescriptors(file)
+		diagnostics = append(diagnostics, diags...)
+		for packageName, descriptor := range packageDescriptors {
+			if _, ok := descriptorMap[packageName]; ok {
+				message := fmt.Sprintf("package %q was already defined", packageName)
+				subjectRange := file.Body.Range()
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  message,
+					Detail:   message,
+					Subject:  &subjectRange,
+				})
+				continue
+			}
+			descriptorMap[packageName] = descriptor
+		}
+	}
+
+	return descriptorMap, diagnostics
 }
 
 func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {
