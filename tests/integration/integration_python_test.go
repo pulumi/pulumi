@@ -1519,6 +1519,25 @@ func TestPackageAddPython(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderPython(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
+
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "sdks/supabase")
+}
+
 func TestConfigGetterOverloads(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)

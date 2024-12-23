@@ -819,7 +819,6 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 		require.NoError(t, err)
 	}
 	replaceStringInFile(filepath.Join(projectDir, "package.json"), "\"@pulumi/random\": \"^4.13.0\",", "")
-	replaceStringInFile(filepath.Join(projectDir, "index.ts"), "\"@pulumi/random\"", "\"random\"")
 	replaceStringInFile(filepath.Join(projectDir, "index.ts"), "RandomPet", "Pet")
 	e.RunCommand("pulumi", "install")
 

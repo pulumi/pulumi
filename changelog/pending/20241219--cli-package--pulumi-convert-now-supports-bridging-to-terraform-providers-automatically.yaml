@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Support bridging to terraform providers automatically in pulumi convert
