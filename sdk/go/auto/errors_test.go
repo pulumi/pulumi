@@ -102,7 +102,6 @@ func TestConcurrentUpdateError(t *testing.T) {
 func TestInlineConcurrentUpdateError(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("disabled, see https://github.com/pulumi/pulumi/issues/5312")
 	ctx := context.Background()
 	pName := "inline_conflict_error"
 	sName := ptesting.RandomStackName()
@@ -110,7 +109,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
