@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/spf13/cobra"
@@ -44,7 +46,7 @@ func newInstallCmd() *cobra.Command {
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			installPolicyPackDeps, err := shouldInstallPolicyPackDependencies()
@@ -60,11 +62,11 @@ func newInstallCmd() *cobra.Command {
 				}
 				policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
 				if err == nil && policyPackPath != "" {
-					proj, _, root, err := readPolicyProject(policyPackPath)
+					proj, _, root, err := policy.ReadPolicyProject(policyPackPath)
 					if err != nil {
 						return err
 					}
-					return installPolicyPackDependencies(ctx, root, proj)
+					return policy.InstallPolicyPackDependencies(ctx, root, proj)
 				}
 			}
 
@@ -112,12 +114,15 @@ func newInstallCmd() *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				plugins, err := lang.GetRequiredPlugins(programInfo)
+				packages, err := lang.GetRequiredPackages(programInfo)
 				if err != nil {
 					return err
 				}
 
-				pluginSet := engine.NewPluginSet(plugins...)
+				pluginSet := engine.NewPluginSet()
+				for _, pkg := range packages {
+					pluginSet.Add(pkg.PluginSpec)
+				}
 
 				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
 					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {

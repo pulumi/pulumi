@@ -18,7 +18,7 @@ def readme():
 
 
 setup(name='pulumi_asset_archive',
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       version=VERSION,
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -31,7 +31,7 @@ setup(name='pulumi_asset_archive',
       },
       install_requires=[
           'parver>=0.2.1',
-          'pulumi>=3.136.0,<4.0.0',
+          'pulumi>=3.142.0,<4.0.0',
           'semver>=2.8.1',
           'typing-extensions>=4.11,<5; python_version < "3.11"'
       ],

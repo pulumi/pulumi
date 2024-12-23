@@ -31,7 +31,7 @@ import {
     PulumiCommand,
     Stack,
 } from "../../automation";
-import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -741,6 +741,34 @@ describe("LocalWorkspace", () => {
 
         // Assert.
         await assert.rejects(stack.workspace.selectStack(stackName));
+    });
+    // Regression test for https://github.com/pulumi/pulumi/issues/17613
+    it(`does not hang on a failed input`, async function () {
+        this.timeout(20 * 1000); // This test hangs indefinitely if it fails
+
+        const program = async () => {
+            class MyResource extends CustomResource {
+                constructor(name: string, props: any) {
+                    super("test:index:MyResource", name, props);
+                }
+            }
+
+            const failedInput = output(Promise.reject("input rejected"));
+
+            new MyResource("testResource1", {
+                failingInput: failedInput,
+            });
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `auto_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await assert.rejects(stack.up(), /input rejected/);
+
+        await stack.destroy();
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication

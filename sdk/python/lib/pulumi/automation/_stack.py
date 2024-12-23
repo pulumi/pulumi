@@ -317,8 +317,6 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
         :returns: UpResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["up", "--yes", "--skip-preview"]
@@ -336,9 +334,7 @@ class Stack:
         if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(
-                futures.ThreadPoolExecutor(
-                    max_workers=4
-                ),  # pylint: disable=consider-using-with
+                futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
@@ -443,8 +439,6 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :returns: PreviewResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
@@ -466,9 +460,7 @@ class Stack:
         if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(
-                futures.ThreadPoolExecutor(
-                    max_workers=4
-                ),  # pylint: disable=consider-using-with
+                futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
@@ -557,8 +549,6 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :returns: RefreshResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -638,8 +628,6 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :returns: DestroyResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -1105,9 +1093,7 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
 
 def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
-    log_dir = tempfile.TemporaryDirectory(  # pylint: disable=consider-using-with
-        prefix=f"automation-logs-{command}-"
-    )
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs

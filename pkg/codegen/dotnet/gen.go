@@ -28,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -1514,10 +1515,27 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		fmt.Fprint(w, "        }\n")
 	}
 
-	// Emit the Output method if needed.
-	err := mod.genFunctionOutputVersion(w, fun)
+	// Emit the Output method with InvokeOptions
+	err := mod.genFunctionOutputVersion(w, fun, false /* outputOptions */)
 	if err != nil {
 		return err
+	}
+
+	// Emit the Output method with InvokeOutputOptions
+	//
+	// We have to make the `InvokeOutputOptions options` required so that
+	// it can be differentiated from the overload that takes `InvokeOptions
+	// options`. This means that preceding arguments to the method must also be
+	// required.
+	//
+	// When using multi-argument inputs, this would make all the optional
+	// arguments required. For now we skip the InvokeOutputOptions variant for
+	// multi-argument inputs.
+	if !fun.MultiArgumentInputs {
+		err = mod.genFunctionOutputVersion(w, fun, true /* outputOptions */)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Close the class.
@@ -1570,10 +1588,14 @@ func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 
 // Generates `${fn}Output(..)` version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function, outputOptions bool) error {
 	if fun.ReturnType == nil {
 		// no need to generate an output version if the function doesn't return anything
 		return nil
+	}
+
+	if fun.MultiArgumentInputs && outputOptions {
+		return errors.New("outputOptions is not supported when using multi-argument inputs")
 	}
 
 	var argsDefault, sigil string
@@ -1598,8 +1620,18 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	printComment(w, fun.Comment, "        ")
 
 	if !fun.MultiArgumentInputs {
-		fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
-			typeParamOrEmpty(typeParameter), outputArgsParamDef)
+		if outputOptions {
+			// For the InvokeOutputOptions variant, arguments can not optional, otherwise we
+			// can't differentiate between the two options variants.
+			if outputArgsParamDef != "" && argsDefault != "" {
+				outputArgsParamDef = argsTypeName + " args, "
+			}
+			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOutputOptions options)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef)
+		} else {
+			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
+				typeParamOrEmpty(typeParameter), outputArgsParamDef)
+		}
 		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
 	} else {
@@ -2231,7 +2263,7 @@ func genPackageMetadata(pkg *schema.Package,
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
-	} else if pkg.SupportPack || pkg.Parameterization != nil {
+	} else if pkg.SupportPack {
 		if pkg.Version == nil {
 			return errors.New("package version is required")
 		}
@@ -2239,7 +2271,25 @@ func genPackageMetadata(pkg *schema.Package,
 		files.Add("version.txt", []byte(version))
 	}
 
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
+	localPackages := map[string]string{}
+	if pulumi, ok := localDependencies["pulumi"]; ok {
+		localPackages["pulumi"] = pulumi
+	}
+
+	// compute referenced packages in the schema
+	referencedPackages := codegen.PackageReferences(pkg)
+
+	for pkg, path := range localDependencies {
+		// if a local dependency is package refenced in the schema,
+		// we add it to the local packages
+		for _, referencedPackage := range referencedPackages {
+			if pkg == referencedPackage.Name() {
+				localPackages[pkg] = path
+			}
+		}
+	}
+
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localPackages)
 	if err != nil {
 		return err
 	}
@@ -2294,10 +2344,8 @@ func genProjectFile(pkg *schema.Package,
 	for _, dep := range localDependencies {
 		folders.Add(path.Dir(dep))
 	}
-	restoreSources := ""
-	if len(folders.ToSlice()) > 0 {
-		restoreSources = strings.Join(folders.ToSlice(), ";")
-	}
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
 
 	// Add local package references
 	pkgs := codegen.SortedKeys(localDependencies)
@@ -2321,16 +2369,10 @@ func genProjectFile(pkg *schema.Package,
 			}
 		}
 
-		// The minimum version we use needs to be higher if using parameterization.
-		minimumVersion := "3.66.1.0"
-		if pkg.Parameterization != nil {
-			minimumVersion = "3.68.0.0"
-		}
-
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = fmt.Sprintf("[%s,4)", minimumVersion)
+			packageReferences["Pulumi"] = "[3.71.0.0,4)"
 		}
 	}
 
@@ -2341,7 +2383,7 @@ func genProjectFile(pkg *schema.Package,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
 		Version:           version,
-		RestoreSources:    restoreSources,
+		RestoreSources:    strings.Join(restoreSources, ";"),
 	})
 	if err != nil {
 		return nil, err

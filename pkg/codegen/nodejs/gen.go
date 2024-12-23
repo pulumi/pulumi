@@ -47,11 +47,9 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion string = "^3.136.0"
-	// The minimum version of @pulumi/pulumi that supports parameterization.
-	MinimumValidParameterizationSDKVersion string = "^3.133.0"
-	MinimumTypescriptVersion               string = "^4.3.5"
-	MinimumNodeTypesVersion                string = "^14"
+	MinimumValidSDKVersion   string = "^3.142.0"
+	MinimumTypescriptVersion string = "^4.3.5"
+	MinimumNodeTypesVersion  string = "^14"
 )
 
 type typeDetails struct {
@@ -2413,14 +2411,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
 		pluginVersion = version
-	}
-	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack || pkg.Parameterization != nil {
+	} else if pkg.SupportPack {
+		// Parameterized schemas _always_ respect schema version
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
-		pluginVersion = pkg.Version.String()
-		version = pluginVersion
+		version = pkg.Version.String()
+		pluginVersion = version
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
@@ -2512,8 +2509,6 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
-		} else if pkg.Parameterization != nil {
-			npminfo.Dependencies[sdkPack] = MinimumValidParameterizationSDKVersion
 		} else {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
 		}

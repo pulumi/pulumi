@@ -100,6 +100,34 @@ func (p PluginSet) Deduplicate() PluginSet {
 	return newSet
 }
 
+// A PluginUpdate represents an update from one version of a plugin to another.
+type PluginUpdate struct {
+	// The old plugin version.
+	Old workspace.PluginSpec
+	// The new plugin version.
+	New workspace.PluginSpec
+}
+
+// UpdatesTo returns a list of PluginUpdates that represent the updates to the argument PluginSet present in this
+// PluginSet. For instance, if the argument contains a plugin P at version 3, and this PluginSet contains the same
+// plugin P (as identified by name and kind) at version 5, this method will return an update where the Old field
+// contains the version 3 instance from the argument and the New field contains the version 5 instance from this
+// PluginSet.
+func (p PluginSet) UpdatesTo(old PluginSet) []PluginUpdate {
+	var updates []PluginUpdate
+	for _, value := range p {
+		for _, otherValue := range old {
+			if value.Name == otherValue.Name && value.Kind == otherValue.Kind {
+				if value.Version != nil && otherValue.Version != nil && value.Version.GT(*otherValue.Version) {
+					updates = append(updates, PluginUpdate{Old: otherValue, New: value})
+				}
+			}
+		}
+	}
+
+	return updates
+}
+
 // Values returns a slice of all of the plugins contained within this set.
 func (p PluginSet) Values() []workspace.PluginSpec {
 	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
@@ -118,20 +146,65 @@ func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
 	return s
 }
 
+// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
+func GetRequiredPlugins(
+	host plugin.Host,
+	runtime string,
+	info plugin.ProgramInfo,
+) ([]workspace.PluginSpec, error) {
+	plugins := make([]workspace.PluginSpec, 0, 1)
+
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	lang, err := host.LanguageRuntime(runtime, info)
+	if lang == nil || err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
+	}
+	// Query the language runtime plugin for its version.
+	langInfo, err := lang.GetPluginInfo()
+	if err != nil {
+		// Don't error if this fails, just warn and return the version as unknown.
+		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
+		plugins = append(plugins, workspace.PluginSpec{
+			Name: runtime,
+			Kind: apitype.LanguagePlugin,
+		})
+	} else {
+		plugins = append(plugins, workspace.PluginSpec{
+			Name:    langInfo.Name,
+			Kind:    langInfo.Kind,
+			Version: langInfo.Version,
+		})
+	}
+
+	// Use the language plugin to compute this project's set of plugin dependencies.
+	// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
+	//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
+	//     later than we do (right now, we do it up front, but at that point we don't know the version).
+	deps, err := lang.GetRequiredPackages(info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
+	}
+	for _, dep := range deps {
+		plugins = append(plugins, dep.PluginSpec)
+	}
+
+	return plugins, nil
+}
+
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := NewPluginSet()
 
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime,
-		prog.RootDirectory(), prog, plugin.AllPlugins)
+	langhostPlugins, err := GetRequiredPlugins(plugctx.Host, runtime, prog)
 	if err != nil {
 		return set, err
 	}
 	for _, plug := range langhostPlugins {
-		// Ignore language plugins named "client".
-		if plug.Name == clientRuntimeName && plug.Kind == apitype.LanguagePlugin {
+		// Ignore language plugins
+		if plug.Kind == apitype.LanguagePlugin {
 			continue
 		}
 

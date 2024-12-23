@@ -114,12 +114,12 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 		return pulumiCommand{}, fmt.Errorf("failed to run `pulumi version`: %w", err)
 	}
 	currentVersion := strings.TrimSpace(string(out))
-	min := minimumVersion
-	if opts.Version.GT(min) {
-		min = opts.Version
+	minimum := minimumVersion
+	if opts.Version.GT(minimum) {
+		minimum = opts.Version
 	}
 	skipVersionCheck := opts.SkipVersionCheck || env.SkipVersionCheck.Value()
-	version, err := parseAndValidatePulumiVersion(min, currentVersion, skipVersionCheck)
+	version, err := parseAndValidatePulumiVersion(minimum, currentVersion, skipVersionCheck)
 	if err != nil {
 		return pulumiCommand{}, err
 	}

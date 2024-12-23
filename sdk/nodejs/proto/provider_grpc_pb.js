@@ -380,7 +380,12 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
 // as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
 var ResourceProviderService = exports.ResourceProviderService = {
-  handshake: {
+  // `Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+// used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+// feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+// references.
+handshake: {
     path: '/pulumirpc.ResourceProvider/Handshake',
     requestStream: false,
     responseStream: false,
@@ -480,6 +485,8 @@ checkConfig: {
 // thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 // Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 // AWS access key, should almost certainly not.
+//
+// Implementations must satisfy the invariants documented on `DiffResponse`.
 diffConfig: {
     path: '/pulumirpc.ResourceProvider/DiffConfig',
     requestStream: false,
@@ -491,7 +498,7 @@ diffConfig: {
     responseSerialize: serialize_pulumirpc_DiffResponse,
     responseDeserialize: deserialize_pulumirpc_DiffResponse,
   },
-  // `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+  // `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 //
 // * Provider-specific configuration, which is the set of inputs that have been validated by a previous
 //   [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -503,6 +510,19 @@ diffConfig: {
 // Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
 // the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
 // indicate which keys are missing.
+//
+// :::{important}
+// The use of `Configure` to configure protocol features is deprecated in favour of the
+// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+// compatibility between older engines and providers:
+//
+// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+//   [](pulumirpc.ConfigureResponse) for more information.
+// :::
 configure: {
     path: '/pulumirpc.ResourceProvider/Configure',
     requestStream: false,
@@ -577,6 +597,8 @@ check: {
   // `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 // by a [](pulumirpc.ResourceProvider.Check) call.
+//
+// Implementations must satisfy the invariants documented on `DiffResponse`.
 diff: {
     path: '/pulumirpc.ResourceProvider/Diff',
     requestStream: false,

@@ -28,7 +28,6 @@ import pulumi
 
 
 class MyMocks(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
         raise Exception("new_resource")
 

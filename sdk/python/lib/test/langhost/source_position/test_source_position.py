@@ -43,7 +43,6 @@ class SourcePositionTest(LanghostTest):
         _providers,
         source_position,
     ):
-
         assert source_position is not None
         assert source_position.uri.endswith("__main__.py")
 

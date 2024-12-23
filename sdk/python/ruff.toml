@@ -1,0 +1,33 @@
+target-version = "py39"
+
+include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
+extend-exclude = ["*_pb2.py", "*_pb2.pyi", "*_pb2_grpc.py", "*_pb2_grpc.pyi"]
+
+[lint]
+exclude = ["lib/test/**.py"]
+select = [
+    "E4",    # Defaults are E4", "E7", "E9", "F"
+    "E7",
+    "E9",
+    "F",
+    "A004",  # flake8-builtins - builtin-import-shadowing
+    "PL",    # pylint rules
+    "ICN",   # flake8-import-conventions
+    "ASYNC", # flake8-async
+    "BLE",   # flake8-blind-except
+    "S102",  # use of exec builtin
+]
+ignore = [
+    "PLR",  # pylint refactor rules
+    "S101", # use of assert, probably want to re-enable this
+    "E731", # lambda-assignment
+    "E741", # ambiguous-variable-name
+]
+
+[lint.per-file-ignores]
+"lib/pulumi/runtime/proto/*" = [
+    "F403", # undefined-local-with-import-star
+]
+
+[format]
+quote-style = "double"

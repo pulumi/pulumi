@@ -16,10 +16,12 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -55,33 +57,129 @@ type langhost struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
 ) (LanguageRuntime, error) {
-	path, err := workspace.GetPluginPath(ctx.Diag,
-		apitype.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
+	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
 		return nil, err
 	}
 
-	contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
+	var plug *plugin
+	var client pulumirpc.LanguageRuntimeClient
+	if attachPort != nil {
+		port := *attachPort
 
-	args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
-	if err != nil {
-		return nil, err
+		handshake := func(
+			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+		) (*pulumirpc.LanguageHandshakeResponse, error) {
+			req := &pulumirpc.LanguageHandshakeRequest{
+				EngineAddress: host.ServerAddr(),
+				// If we're attaching then we don't know the root or program directory.
+				RootDirectory:    nil,
+				ProgramDirectory: nil,
+			}
+			return languageHandshake(ctx, bin, prefix, conn, req)
+		}
+
+		conn, handshakeResponse, err := dialPlugin(
+			port,
+			"pulumi-language-"+runtime,
+			runtime+" (Language Plugin)",
+			handshake,
+			langRuntimePluginDialOptions(ctx, runtime),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if handshakeResponse == nil {
+			return nil, errors.New("language did not return handshake response, attaching via " +
+				"an attach port is not yet supported for this language",
+			)
+		}
+
+		plug = &plugin{
+			Conn: conn,
+			// Nothing to kill.
+			Kill: func() error {
+				return nil
+			},
+		}
+
+		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
+	} else {
+		path, err := workspace.GetPluginPath(
+			ctx.Diag,
+			apitype.LanguagePlugin,
+			strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
+			nil,
+			host.GetProjectPlugins(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
+
+		args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
+		if err != nil {
+			return nil, err
+		}
+
+		plug, _, err = newPlugin(
+			ctx,
+			workingDirectory,
+			path,
+			runtime,
+			apitype.LanguagePlugin,
+			args,
+			nil, /*env*/
+			testConnection,
+			langRuntimePluginDialOptions(ctx, runtime),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
 	}
 
-	plug, _, err := newPlugin(ctx, workingDirectory, path, runtime,
-		apitype.LanguagePlugin, args, nil, /*env*/
-		testConnection, langRuntimePluginDialOptions(ctx, runtime))
-	if err != nil {
-		return nil, err
-	}
 	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
 		ctx:     ctx,
 		runtime: runtime,
 		plug:    plug,
-		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
+		client:  client,
 	}, nil
+}
+
+// Checks PULUMI_DEBUG_LANGUAGES environment variable for any overrides for the
+// language identified by name. If the user has requested to attach to a live
+// language plugin, returns the port number from the env var.
+//
+// For example, `PULUMI_DEBUG_LANGUAGES=go:12345,dotnet:678` will result in 12345 for go and 678 for dotnet.
+func GetLanguageAttachPort(runtime string) (*int, error) {
+	var optAttach string
+
+	if languagesEnvVar, has := os.LookupEnv("PULUMI_DEBUG_LANGUAGES"); has {
+		for _, provider := range strings.Split(languagesEnvVar, ",") {
+			parts := strings.SplitN(provider, ":", 2)
+
+			if parts[0] == runtime {
+				optAttach = parts[1]
+				break
+			}
+		}
+	}
+
+	if optAttach == "" {
+		return nil, nil
+	}
+
+	port, err := strconv.Atoi(optAttach)
+	if err != nil {
+		return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_LANGUAGES: %w",
+			optAttach, err)
+	}
+	return &port, nil
 }
 
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
@@ -132,8 +230,91 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 	}
 }
 
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error) {
+// GetRequiredPackages computes the complete set of anticipated plugins required by a program.
+func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error) {
+	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) executing",
+		h.runtime, info)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := h.client.GetRequiredPackages(h.ctx.Request(), &pulumirpc.GetRequiredPackagesRequest{
+		Info: minfo,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) failed: err=%v",
+			h.runtime, info, rpcError)
+
+		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPackages
+		// method.  In such cases, fallback to using GetRequiredPlugins and don't report any parameterized packages.
+		if rpcError.Code() == codes.Unimplemented {
+			plugins, err := h.getRequiredPlugins(info)
+			if err != nil {
+				return nil, err
+			}
+			packages := make([]workspace.PackageDescriptor, len(plugins))
+			for i, plugin := range plugins {
+				packages[i] = workspace.PackageDescriptor{
+					PluginSpec: plugin,
+				}
+			}
+			return packages, nil
+		}
+
+		return nil, rpcError
+	}
+
+	results := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	for _, info := range resp.Packages {
+		var version *semver.Version
+		if v := info.GetVersion(); v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
+			}
+			version = &sv
+		}
+		if !apitype.IsPluginKind(info.Kind) {
+			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
+		}
+		var parameterization *workspace.Parameterization
+		if info.Parameterization != nil {
+			sv, err := semver.ParseTolerant(info.Parameterization.Version)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"illegal semver returned by language host: %s@%s: %w",
+					info.GetName(), info.Parameterization.Version, err)
+			}
+
+			parameterization = &workspace.Parameterization{
+				Name:    info.Parameterization.Name,
+				Version: sv,
+				Value:   info.Parameterization.Value,
+			}
+		}
+
+		results = append(results, workspace.PackageDescriptor{
+			PluginSpec: workspace.PluginSpec{
+				Name:              info.Name,
+				Kind:              apitype.PluginKind(info.Kind),
+				Version:           version,
+				PluginDownloadURL: info.Server,
+				Checksums:         info.Checksums,
+			},
+			Parameterization: parameterization,
+		})
+	}
+
+	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) success: #versions=%d",
+		h.runtime, info, len(results))
+	return results, nil
+}
+
+// getRequiredPlugins computes the complete set of anticipated plugins required by a program.
+func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) executing",
 		h.runtime, info)
 
@@ -142,7 +323,9 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		return nil, err
 	}
 
-	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
+	// this is deprecated and will be removed in a future release, but we use it for backcompat for now until
+	// all language hosts are update to GetRequiredPackages.
+	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
 		Project: "deprecated",
 		Pwd:     info.ProgramDirectory(),
 		Program: info.EntryPoint(),
@@ -604,4 +787,31 @@ func (h *langhost) Pack(
 
 	logging.V(7).Infof("%s success: artifactPath=%s", label, req.ArtifactPath)
 	return req.ArtifactPath, nil
+}
+
+func languageHandshake(
+	ctx context.Context,
+	bin string,
+	prefix string,
+	conn *grpc.ClientConn,
+	req *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	client := pulumirpc.NewLanguageRuntimeClient(conn)
+	_, err := client.Handshake(ctx, &pulumirpc.LanguageHandshakeRequest{
+		EngineAddress:    req.EngineAddress,
+		RootDirectory:    req.RootDirectory,
+		ProgramDirectory: req.ProgramDirectory,
+	})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			// If the language host doesn't implement Handshake, that's fine -- we'll
+			// fall back to existing behaviour.
+			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+			return nil, nil
+		}
+	}
+
+	logging.V(7).Infof("Handshake: success [%v]", bin)
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }

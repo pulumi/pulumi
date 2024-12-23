@@ -144,6 +144,28 @@ function deserialize_pulumirpc_GetProgramDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.GetProgramDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetRequiredPackagesRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetRequiredPackagesRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPackagesRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPackagesRequest(buffer_arg) {
+  return pulumi_language_pb.GetRequiredPackagesRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetRequiredPackagesResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetRequiredPackagesResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPackagesResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPackagesResponse(buffer_arg) {
+  return pulumi_language_pb.GetRequiredPackagesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetRequiredPluginsRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.GetRequiredPluginsRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsRequest');
@@ -186,6 +208,28 @@ function serialize_pulumirpc_InstallDependenciesResponse(arg) {
 
 function deserialize_pulumirpc_InstallDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.InstallDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LanguageHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.LanguageHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.LanguageHandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LanguageHandshakeRequest(buffer_arg) {
+  return pulumi_language_pb.LanguageHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LanguageHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.LanguageHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.LanguageHandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LanguageHandshakeResponse(buffer_arg) {
+  return pulumi_language_pb.LanguageHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_PackRequest(arg) {
@@ -291,6 +335,20 @@ function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
+  // `Handshake` is the first call made by the engine to a language host. It is used to pass the 
+// engine's address to the language host so that it may establish its own connections back,
+// and to establish protocol configuration that will be used to communicate between the two parties. 
+handshake: {
+    path: '/pulumirpc.LanguageRuntime/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.LanguageHandshakeRequest,
+    responseType: pulumi_language_pb.LanguageHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_LanguageHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_LanguageHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_LanguageHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_LanguageHandshakeResponse,
+  },
   // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 getRequiredPlugins: {
     path: '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
@@ -302,6 +360,18 @@ getRequiredPlugins: {
     requestDeserialize: deserialize_pulumirpc_GetRequiredPluginsRequest,
     responseSerialize: serialize_pulumirpc_GetRequiredPluginsResponse,
     responseDeserialize: deserialize_pulumirpc_GetRequiredPluginsResponse,
+  },
+  // GetRequiredPackages computes the complete set of anticipated packages required by a program.
+getRequiredPackages: {
+    path: '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.GetRequiredPackagesRequest,
+    responseType: pulumi_language_pb.GetRequiredPackagesResponse,
+    requestSerialize: serialize_pulumirpc_GetRequiredPackagesRequest,
+    requestDeserialize: deserialize_pulumirpc_GetRequiredPackagesRequest,
+    responseSerialize: serialize_pulumirpc_GetRequiredPackagesResponse,
+    responseDeserialize: deserialize_pulumirpc_GetRequiredPackagesResponse,
   },
   // Run executes a program and returns its result.
 run: {

@@ -36,6 +36,12 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ProviderHandshakeRequest,
         pulumi.provider_pb2.ProviderHandshakeResponse,
     ]
+    """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+    provider so that it may establish its own connections back, and to establish protocol configuration that will be
+    used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+    feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+    references.
+    """
     Parameterize: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ParameterizeRequest,
         pulumi.provider_pb2.ParameterizeResponse,
@@ -110,12 +116,14 @@ class ResourceProviderStub:
     thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
     Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
     AWS access key, should almost certainly not.
+
+    Implementations must satisfy the invariants documented on `DiffResponse`.
     """
     Configure: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ConfigureRequest,
         pulumi.provider_pb2.ConfigureResponse,
     ]
-    """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+    """`Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 
     * Provider-specific configuration, which is the set of inputs that have been validated by a previous
       [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -127,6 +135,19 @@ class ResourceProviderStub:
     Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
     the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
     indicate which keys are missing.
+
+    :::{important}
+    The use of `Configure` to configure protocol features is deprecated in favour of the
+    [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+    compatibility between older engines and providers:
+
+    * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+      set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+      must support them. See [](pulumirpc.ConfigureRequest) for more information.
+    * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+      indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+      [](pulumirpc.ConfigureResponse) for more information.
+    :::
     """
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.InvokeRequest,
@@ -169,6 +190,8 @@ class ResourceProviderStub:
     """`Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
     difference (if any) between them. `Diff` should only be called with values that have at some point been validated
     by a [](pulumirpc.ResourceProvider.Check) call.
+
+    Implementations must satisfy the invariants documented on `DiffResponse`.
     """
     Create: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CreateRequest,
@@ -271,7 +294,13 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.provider_pb2.ProviderHandshakeRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.provider_pb2.ProviderHandshakeResponse: ...
+    ) -> pulumi.provider_pb2.ProviderHandshakeResponse:
+        """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+        provider so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+        feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+        references.
+        """
     
     def Parameterize(
         self,
@@ -354,6 +383,8 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
         Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
         AWS access key, should almost certainly not.
+
+        Implementations must satisfy the invariants documented on `DiffResponse`.
         """
     
     def Configure(
@@ -361,7 +392,7 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ConfigureRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.ConfigureResponse:
-        """`Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+        """`Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 
         * Provider-specific configuration, which is the set of inputs that have been validated by a previous
           [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -373,6 +404,19 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
         the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
         indicate which keys are missing.
+
+        :::{important}
+        The use of `Configure` to configure protocol features is deprecated in favour of the
+        [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+        compatibility between older engines and providers:
+
+        * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+          set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+          must support them. See [](pulumirpc.ConfigureRequest) for more information.
+        * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+          indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+          [](pulumirpc.ConfigureResponse) for more information.
+        :::
         """
     
     def Invoke(
@@ -425,6 +469,8 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         """`Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
         difference (if any) between them. `Diff` should only be called with values that have at some point been validated
         by a [](pulumirpc.ResourceProvider.Check) call.
+
+        Implementations must satisfy the invariants documented on `DiffResponse`.
         """
     
     def Create(

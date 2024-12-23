@@ -253,7 +253,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	})
 }
 
-func newProviderState(pkg, name, id string, delete bool, inputs resource.PropertyMap) *resource.State {
+func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *resource.State {
 	typ := MakeProviderType(tokens.Package(pkg))
 	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
@@ -263,7 +263,7 @@ func newProviderState(pkg, name, id string, delete bool, inputs resource.Propert
 		Type:   typ,
 		URN:    urn,
 		Custom: true,
-		Delete: delete,
+		Delete: del,
 		ID:     resource.ID(id),
 		Inputs: inputs,
 	}

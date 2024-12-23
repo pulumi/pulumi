@@ -22,6 +22,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamInvokeArgs? args = null, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Check codegen of functions with a List parameter.
+        /// </summary>
+        public static Output<FuncWithListParamResult> Invoke(FuncWithListParamInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithDefaults());
     }
 
 

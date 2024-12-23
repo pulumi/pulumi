@@ -81,17 +81,27 @@ namespace {{.Namespace}}
             dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
             return dst;
         }
-{{if .HasParameterization }}		public static global::Pulumi.RegisterPackageRequest PackageParameterization()
-		{
-			return new global::Pulumi.RegisterPackageRequest(
-				name: "{{.BaseProviderName}}",
-				version: "{{.BaseProviderVersion}}",
-				downloadUrl: "{{.BaseProviderPluginDownloadURL}}",
-				parameterization: new global::Pulumi.RegisterPackageRequest.PackageParameterization(
-					name: "{{.PackageName}}",
-					version: "{{.PackageVersion}}",
-					value: global::System.Convert.FromBase64String("{{.ParameterValue}}")));
-        }{{end}}
+
+        public static global::Pulumi.InvokeOutputOptions WithDefaults(this global::Pulumi.InvokeOutputOptions? src)
+        {
+            var dst = src ?? new global::Pulumi.InvokeOutputOptions{};
+            dst.Version = src?.Version ?? Version;{{if ne .PluginDownloadURL "" }}
+            dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
+            return dst;
+        }
+{{if .HasParameterization }}
+        public static global::Pulumi.RegisterPackageRequest PackageParameterization()
+        {
+            return new global::Pulumi.RegisterPackageRequest(
+                name: "{{.BaseProviderName}}",
+                version: "{{.BaseProviderVersion}}",
+                downloadUrl: "{{.BaseProviderPluginDownloadURL}}",
+                parameterization: new global::Pulumi.RegisterPackageRequest.PackageParameterization(
+                    name: "{{.PackageName}}",
+                    version: "{{.PackageVersion}}",
+                    value: global::System.Convert.FromBase64String("{{.ParameterValue}}")));
+        }
+{{end}}
         private readonly static string version;
         public static string Version => version;
 

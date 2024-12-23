@@ -23,6 +23,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceProviderClient interface {
+	// `Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+	// used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+	// feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+	// references.
 	Handshake(ctx context.Context, in *ProviderHandshakeRequest, opts ...grpc.CallOption) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
@@ -83,8 +88,10 @@ type ResourceProviderClient interface {
 	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
-	// `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
 	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
 	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -96,6 +103,19 @@ type ResourceProviderClient interface {
 	// Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
 	// the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
 	// indicate which keys are missing.
+	//
+	// :::{important}
+	// The use of `Configure` to configure protocol features is deprecated in favour of the
+	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+	// compatibility between older engines and providers:
+	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
+	// :::
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
@@ -120,6 +140,8 @@ type ResourceProviderClient interface {
 	// `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
@@ -398,6 +420,11 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
 type ResourceProviderServer interface {
+	// `Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+	// used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+	// feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+	// references.
 	Handshake(context.Context, *ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 	// `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
 	// a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
@@ -458,8 +485,10 @@ type ResourceProviderServer interface {
 	// thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
 	// Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
 	// AWS access key, should almost certainly not.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
-	// `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
 	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
 	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -471,6 +500,19 @@ type ResourceProviderServer interface {
 	// Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
 	// the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
 	// indicate which keys are missing.
+	//
+	// :::{important}
+	// The use of `Configure` to configure protocol features is deprecated in favour of the
+	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+	// compatibility between older engines and providers:
+	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
+	// :::
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
@@ -495,6 +537,8 @@ type ResourceProviderServer interface {
 	// `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
 	// difference (if any) between them. `Diff` should only be called with values that have at some point been validated
 	// by a [](pulumirpc.ResourceProvider.Check) call.
+	//
+	// Implementations must satisfy the invariants documented on `DiffResponse`.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
 	// provider-assigned ID for the resource as well as the output properties that arose from the creation properties.

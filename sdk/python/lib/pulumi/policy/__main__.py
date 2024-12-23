@@ -58,7 +58,7 @@ def main():
     try:
         runpy.run_path(program, run_name="__main__")
         successful = True
-    except Exception:
+    except Exception:  # noqa: BLE001 catch blind exception
         pulumi.log.error(
             "Program failed with an unhandled exception:\n" + traceback.format_exc()
         )

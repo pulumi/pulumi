@@ -33,21 +33,11 @@ type TestResult struct {
 }
 
 func TestOutput(ctx *pulumi.Context, args TestOutputArgs, opts ...pulumi.InvokeOption) TestResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (TestResultOutput, error) {
 			args := v.(TestArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv TestResult
-			secret, err := ctx.InvokePackageRaw("urnid:index:Test", args, &rv, "", opts...)
-			if err != nil {
-				return TestResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(TestResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(TestResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("urnid:index:Test", args, TestResultOutput{}, options).(TestResultOutput), nil
 		}).(TestResultOutput)
 }
 

@@ -21,10 +21,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -47,8 +50,8 @@ func newQueryCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
-		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
-		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		Hidden: !env.Experimental.Value() && !env.DebugCommands.Value(),
+		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
@@ -74,13 +77,13 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 				return err
 			}
 
-			b, err := currentBackend(ctx, ws, DefaultLoginManager, project, opts.Display)
+			b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts.Display)
 			if err != nil {
 				return err
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Experimental: hasExperimentalCommands(),
+				Experimental: env.Experimental.Value(),
 			}
 
 			err = b.Query(ctx, backend.QueryOperation{

@@ -18,7 +18,7 @@ def readme():
 
 
 setup(name='pulumi_myPkg',
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       version=VERSION,
       description="Test imports across different module names",
       long_description=readme(),
@@ -32,7 +32,7 @@ setup(name='pulumi_myPkg',
       },
       install_requires=[
           'parver>=0.2.1',
-          'pulumi>=3.136.0,<4.0.0',
+          'pulumi>=3.142.0,<4.0.0',
           'semver>=2.8.1',
           'typing-extensions>=4.11,<5; python_version < "3.11"'
       ],

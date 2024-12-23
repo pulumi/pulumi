@@ -85,7 +85,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             await servicer._server.stop(grace=0)
 
     # aio handles this being async but the pyi typings don't expect it.
-    async def Invoke(  # pylint: disable=invalid-overridden-method
+    async def Invoke(
         self, request: callback_pb2.CallbackInvokeRequest, context
     ) -> callback_pb2.CallbackInvokeResponse:
         log.debug(f"Invoke callback {request.token}")

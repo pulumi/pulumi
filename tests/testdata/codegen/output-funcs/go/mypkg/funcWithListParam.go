@@ -33,21 +33,11 @@ type FuncWithListParamResult struct {
 }
 
 func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (FuncWithListParamResultOutput, error) {
 			args := v.(FuncWithListParamArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv FuncWithListParamResult
-			secret, err := ctx.InvokePackageRaw("mypkg::funcWithListParam", args, &rv, "", opts...)
-			if err != nil {
-				return FuncWithListParamResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(FuncWithListParamResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(FuncWithListParamResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::funcWithListParam", args, FuncWithListParamResultOutput{}, options).(FuncWithListParamResultOutput), nil
 		}).(FuncWithListParamResultOutput)
 }
 

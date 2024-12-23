@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1680,6 +1682,8 @@ func TestAboutNodeJS(t *testing.T) {
 	// Assert we parsed the dependencies
 	assert.Containsf(t, stdout, "@types/node",
 		"Did not contain expected output. stderr: \n%q", stderr)
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesNode(t *testing.T) {
@@ -2152,6 +2156,40 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment
+func TestPackageAddNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+		t.Run(packageManager, func(t *testing.T) {
+			var err error
+			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
+			require.NoError(t, err)
+			err = fsutil.CopyFile(e.CWD, templatePath, nil)
+			require.NoError(t, err)
+
+			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+			assert.True(t, e.PathExists("sdks/random"))
+
+			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
+			assert.NoError(t, err)
+			packagesJSON := make(map[string]any)
+			err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+			assert.NoError(t, err)
+
+			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+			assert.True(t, ok)
+			cf, ok := dependencies["random"]
+			assert.True(t, ok)
+			cf, ok = cf.(string)
+			assert.True(t, ok)
+
+			assert.Equal(t, "file:sdks/random", cf)
+		})
+	}
+}
+
 func TestConstructFailuresNode(t *testing.T) {
 	t.Parallel()
 	testConstructFailures(t, "nodejs", "@pulumi/pulumi")
@@ -2186,4 +2224,74 @@ func TestLogDebugNode(t *testing.T) {
 			assert.LessOrEqual(t, count, 25, "%v is too many debug log events", count)
 		},
 	})
+}
+
+// Test custom autonaming configurations.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestAutonaming(t *testing.T) {
+	testCases := []struct {
+		name         string
+		experimental bool
+		autoName     string
+		config       map[string]string
+	}{
+		{
+			name:     "no autonaming configured",
+			autoName: "default-name",
+		},
+		{
+			name: "autonaming ignored in non-experimental mode",
+			config: map[string]string{
+				"pulumi:autonaming.mode": "verbatim",
+			},
+			experimental: false,
+			autoName:     "default-name",
+		},
+		{
+			name: "autonaming configured globally to verbatim",
+			config: map[string]string{
+				"pulumi:autonaming.mode": "verbatim",
+			},
+			experimental: true,
+			autoName:     "test1",
+		},
+		{
+			name: "autonaming configured on provider to a pattern",
+			config: map[string]string{
+				"pulumi:autonaming.providers.testprovider.pattern": "${config.foo}-${name}",
+				"foo": "bar",
+			},
+			experimental: true,
+			autoName:     "bar-test1",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		orderedConfig := []integration.ConfigValue{}
+		for k, v := range tc.config {
+			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
+		}
+		env := []string{}
+		if tc.experimental {
+			env = append(env, "PULUMI_EXPERIMENTAL=1")
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:           "autonaming",
+				Dependencies:  []string{"@pulumi/pulumi"},
+				Env:           env,
+				OrderedConfig: orderedConfig,
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "explicit-name", stackInfo.RootResource.Outputs["explicitName"])
+					assert.Equal(t, tc.autoName, stackInfo.RootResource.Outputs["autoName"])
+				},
+			})
+		})
+	}
 }

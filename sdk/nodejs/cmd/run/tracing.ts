@@ -16,7 +16,7 @@
 import * as packageJson from "../../package.json";
 import * as opentelemetry from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
-import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import { BatchSpanProcessor, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
@@ -62,8 +62,8 @@ export function start(destinationUrl: string) {
     // Tag traces from this program with metadata about their source.
     const resource = Resource.default().merge(
         new Resource({
-            [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-            [SemanticResourceAttributes.SERVICE_VERSION]: packageJson.version,
+            [ATTR_SERVICE_NAME]: serviceName,
+            [ATTR_SERVICE_VERSION]: packageJson.version,
         }),
     );
 

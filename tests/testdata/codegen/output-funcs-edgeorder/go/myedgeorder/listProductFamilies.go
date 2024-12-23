@@ -43,21 +43,11 @@ type ListProductFamiliesResult struct {
 }
 
 func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutputArgs, opts ...pulumi.InvokeOption) ListProductFamiliesResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (ListProductFamiliesResultOutput, error) {
 			args := v.(ListProductFamiliesArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv ListProductFamiliesResult
-			secret, err := ctx.InvokePackageRaw("myedgeorder::listProductFamilies", args, &rv, "", opts...)
-			if err != nil {
-				return ListProductFamiliesResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(ListProductFamiliesResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(ListProductFamiliesResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("myedgeorder::listProductFamilies", args, ListProductFamiliesResultOutput{}, options).(ListProductFamiliesResultOutput), nil
 		}).(ListProductFamiliesResultOutput)
 }
 

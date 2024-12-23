@@ -24,6 +24,13 @@ namespace Pulumi.Myedgeorder
         /// </summary>
         public static Output<ListProductFamiliesResult> Invoke(ListProductFamiliesInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// The list of product families.
+        /// API Version: 2020-12-01-preview.
+        /// </summary>
+        public static Output<ListProductFamiliesResult> Invoke(ListProductFamiliesInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithDefaults());
     }
 
 

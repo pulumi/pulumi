@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Fix potential race condition when using automation API

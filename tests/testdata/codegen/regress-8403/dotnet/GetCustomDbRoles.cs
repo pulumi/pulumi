@@ -16,6 +16,9 @@ namespace Pulumi.Mongodbatlas
 
         public static Output<GetCustomDbRolesResult> Invoke(InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<GetCustomDbRolesResult>("mongodbatlas::getCustomDbRoles", InvokeArgs.Empty, options.WithDefaults());
+
+        public static Output<GetCustomDbRolesResult> Invoke(InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<GetCustomDbRolesResult>("mongodbatlas::getCustomDbRoles", InvokeArgs.Empty, options.WithDefaults());
     }
 
 

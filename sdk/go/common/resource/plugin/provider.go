@@ -36,19 +36,25 @@ type GetSchemaRequest struct {
 	SubpackageVersion *semver.Version
 }
 
+// The type of requests sent as part of a Handshake call.
 type ProviderHandshakeRequest struct {
-	// The grpc address for the engine.
+	// The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance of
+	// the Engine service.
 	EngineAddress string
 
-	// The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
-	// This can't be sent when the engine is attaching to a provider via a port number.
-	RootDirectory string
-	// The optional absolute path to the directory of the provider program to execute. Generally, but not
-	// required to be, underneath the root directory. This can't be sent when the engine is attaching to a
-	// provider via a port number.
-	ProgramDirectory string
+	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
+	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been asked
+	// to attach to an existing running provider instance via a host/port number), this field will be empty.
+	RootDirectory *string
+
+	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root directory,
+	// though this is not required. In the event that the provider is *not* being booted by the engine (e.g. in the case
+	// that the engine has been asked to attach to an existing running provider instance via a host/port number), this
+	// field will be empty.
+	ProgramDirectory *string
 }
 
+// The type of responses sent as part of a Handshake call.
 type ProviderHandshakeResponse struct{}
 
 type ParameterizeParameters interface {
@@ -113,6 +119,31 @@ type ConfigureRequest struct {
 
 type ConfigureResponse struct{}
 
+// The mode that controls how the provider handles the proposed name. If not specified, defaults to `Propose`.
+type AutonamingMode int32
+
+const (
+	// Propose: The provider may use the proposed name as a suggestion but is free to modify it.
+	AutonamingModePropose AutonamingMode = iota
+	// Enforce: The provider must use exactly the proposed name or return an error.
+	AutonamingModeEnforce = 1
+	// Disabled: The provider should disable automatic naming and return an error if no explicit name is provided
+	// by user's program.
+	AutonamingModeDisabled = 2
+)
+
+// Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
+// handles resource names, including proposed names and naming modes.
+type AutonamingOptions struct {
+	// ProposedName is the name that the provider should use for the resource.
+	ProposedName string
+	// Mode is the mode that controls how the provider handles the proposed name.
+	Mode AutonamingMode
+	// WarnIfNoSupport indicates whether the provider plugin should log a warning if the provider does not support
+	// autonaming configuration.
+	WarnIfNoSupport bool
+}
+
 type CheckRequest struct {
 	URN  resource.URN
 	Name string
@@ -121,6 +152,7 @@ type CheckRequest struct {
 	Olds, News    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
+	Autonaming    *AutonamingOptions
 }
 
 type CheckResponse struct {
@@ -281,6 +313,11 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
+	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
+	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+	// used to communicate between the two parties. Providers that support Handshake implicitly support the set of
+	// feature flags previously handled by Configure prior to Handshake's introduction, such as secrets and resource
+	// references.
 	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 
 	// Parameterize adds a sub-package to this provider instance.

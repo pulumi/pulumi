@@ -15,6 +15,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, List, Mapping, Optional, Awaitable
+from dataclasses import dataclass
 
 from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
@@ -53,22 +54,34 @@ class StackSummary:
         self.url = url
 
 
+@dataclass
+class TokenInformation:
+    """Information about the token that was used to authenticate the current user."""
+
+    name: str
+    organization: Optional[str]
+    team: Optional[str]
+
+
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
     url: Optional[str]
     organizations: Optional[List[str]]
+    token_information: Optional[TokenInformation]
 
     def __init__(
         self,
         user: str,
         url: Optional[str] = None,
         organizations: Optional[List[str]] = None,
+        token_information: Optional[TokenInformation] = None,
     ) -> None:
         self.user = user
         self.url = url
         self.organizations = organizations
+        self.token_information = token_information
 
 
 class PluginInfo:

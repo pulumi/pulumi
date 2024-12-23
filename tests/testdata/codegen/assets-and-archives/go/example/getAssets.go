@@ -32,21 +32,11 @@ type GetAssetsResult struct {
 }
 
 func GetAssetsOutput(ctx *pulumi.Context, args GetAssetsOutputArgs, opts ...pulumi.InvokeOption) GetAssetsResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (GetAssetsResultOutput, error) {
 			args := v.(GetAssetsArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv GetAssetsResult
-			secret, err := ctx.InvokePackageRaw("example::GetAssets", args, &rv, "", opts...)
-			if err != nil {
-				return GetAssetsResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(GetAssetsResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(GetAssetsResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("example::GetAssets", args, GetAssetsResultOutput{}, options).(GetAssetsResultOutput), nil
 		}).(GetAssetsResultOutput)
 }
 

@@ -22,6 +22,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Check codegen of functions with default values.
+        /// </summary>
+        public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
     }
 
 

@@ -86,7 +86,6 @@ class LanguageServer(LanguageRuntimeServicer):
             except grpc.RpcError as exn:
                 # If the monitor is unavailable, it is in the process of shutting down or has already
                 # shut down. Don't emit an error if this is the case.
-                # pylint: disable=no-member
                 if exn.code() == grpc.StatusCode.UNAVAILABLE:
                     log.debug("Resource monitor has terminated, shutting down.")
                 else:
@@ -94,7 +93,7 @@ class LanguageServer(LanguageRuntimeServicer):
                     log.error(msg)
                     result.error = msg
                     return result
-            except Exception as exn:
+            except BaseException as exn:  # noqa: BLE001 catch blind exception
                 msg = str(
                     f"python inline source runtime error: {exn}\n{traceback.format_exc()}"
                 )
@@ -109,7 +108,7 @@ class LanguageServer(LanguageRuntimeServicer):
                 pending = (
                     # lint safety: we use the python version here to track deprecations
                     asyncio.all_tasks(loop)
-                )  # pylint: disable=no-member
+                )
                 log.debug(f"Cancelling {len(pending)} tasks.")
                 for task in pending:
                     task.cancel()

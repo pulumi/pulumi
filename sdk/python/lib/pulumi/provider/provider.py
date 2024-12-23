@@ -43,9 +43,7 @@ class CheckFailure:
     reason: str
     """The reason that the property failed validation."""
 
-    def __init__(
-        self, property: str, reason: str  # pylint: disable=redefined-builtin
-    ) -> None:
+    def __init__(self, property: str, reason: str) -> None:
         self.property = property
         self.reason = reason
 

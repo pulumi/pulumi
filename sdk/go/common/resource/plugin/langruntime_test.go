@@ -61,6 +61,12 @@ func (m *MockLanguageRuntimeClient) RunPlugin(
 	return m.RunPluginF(ctx, info)
 }
 
+func (m *MockLanguageRuntimeClient) GetRequiredPackages(
+	ctx context.Context, in *pulumirpc.GetRequiredPackagesRequest, opts ...grpc.CallOption,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) GetRequiredPlugins(
 	ctx context.Context, in *pulumirpc.GetRequiredPluginsRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
@@ -124,6 +130,12 @@ func (m *MockLanguageRuntimeClient) GeneratePackage(
 func (m *MockLanguageRuntimeClient) Pack(
 	ctx context.Context, in *pulumirpc.PackRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.PackResponse, error) {
+	panic("not implemented")
+}
+
+func (m *MockLanguageRuntimeClient) Handshake(
+	ctx context.Context, req *pulumirpc.LanguageHandshakeRequest, opts ...grpc.CallOption,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
 	panic("not implemented")
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@ package integration
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
@@ -265,4 +267,25 @@ func CheckRuntimeOptions(t *testing.T, root string, expected map[string]interfac
 	}
 
 	require.Equal(t, expected, config.Runtime.Options)
+}
+
+func createTemporaryGoFolder(prefix string) (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+
+	folder := fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(1000000)) //nolint:gosec
+
+	testRoot := filepath.Join(gopath, "src", folder)
+	err := os.MkdirAll(testRoot, 0o700)
+	if err != nil {
+		return "", err
+	}
+
+	return testRoot, err
 }

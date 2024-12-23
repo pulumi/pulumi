@@ -15,6 +15,7 @@
 """
 Utility functions for logging messages to the diagnostic stream of the Pulumi CLI.
 """
+
 import asyncio
 import sys
 from typing import Optional, TYPE_CHECKING

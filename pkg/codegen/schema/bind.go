@@ -255,6 +255,13 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	if info.Meta != nil {
 		supportPack = info.Meta.SupportPack
 	}
+	// Parameterized packages must always be built in SupportPack mode.
+	if info.Parameterization != nil {
+		supportPack = true
+	}
+
+	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
+	diags = diags.Extend(parameterizationDiagnostics)
 
 	pkg := &Package{
 		SupportPack:         supportPack,
@@ -273,6 +280,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		AllowedPackageNames: info.AllowedPackageNames,
 		LogoURL:             info.LogoURL,
 		Language:            language,
+		Parameterization:    parameterization,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the

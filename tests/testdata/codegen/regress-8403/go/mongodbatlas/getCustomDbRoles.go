@@ -29,21 +29,11 @@ type LookupCustomDbRolesResult struct {
 }
 
 func LookupCustomDbRolesOutput(ctx *pulumi.Context, args LookupCustomDbRolesOutputArgs, opts ...pulumi.InvokeOption) LookupCustomDbRolesResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
 		ApplyT(func(v interface{}) (LookupCustomDbRolesResultOutput, error) {
 			args := v.(LookupCustomDbRolesArgs)
-			opts = internal.PkgInvokeDefaultOpts(opts)
-			var rv LookupCustomDbRolesResult
-			secret, err := ctx.InvokePackageRaw("mongodbatlas::getCustomDbRoles", args, &rv, "", opts...)
-			if err != nil {
-				return LookupCustomDbRolesResultOutput{}, err
-			}
-
-			output := pulumi.ToOutput(rv).(LookupCustomDbRolesResultOutput)
-			if secret {
-				return pulumi.ToSecret(output).(LookupCustomDbRolesResultOutput), nil
-			}
-			return output, nil
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mongodbatlas::getCustomDbRoles", args, LookupCustomDbRolesResultOutput{}, options).(LookupCustomDbRolesResultOutput), nil
 		}).(LookupCustomDbRolesResultOutput)
 }
 

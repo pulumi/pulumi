@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -43,19 +42,38 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
+	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -179,7 +197,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-		PersistentPreRun: runCmdFunc(func(cmd *cobra.Command, args []string) error {
+		PersistentPreRun: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -313,23 +331,23 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
-				newNewCmd(),
-				newConfigCmd(),
-				newStackCmd(),
-				newConsoleCmd(),
-				newImportCmd(),
-				newRefreshCmd(),
-				newStateCmd(),
+				newcmd.NewNewCmd(),
+				config.NewConfigCmd(),
+				cmdStack.NewStackCmd(),
+				console.NewConsoleCmd(),
+				operations.NewImportCmd(),
+				operations.NewRefreshCmd(),
+				state.NewStateCmd(),
 				newInstallCmd(),
 			},
 		},
 		{
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
-				newUpCmd(),
-				newDestroyCmd(),
-				newPreviewCmd(),
-				newCancelCmd(),
+				operations.NewUpCmd(),
+				operations.NewDestroyCmd(),
+				operations.NewPreviewCmd(),
+				cancel.NewCancelCmd(),
 			},
 		},
 		{
@@ -341,32 +359,32 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				newLoginCmd(),
-				newLogoutCmd(),
-				newWhoAmICmd(),
-				newOrgCmd(),
-				newDeploymentCmd(),
+				auth.NewLoginCmd(),
+				auth.NewLogoutCmd(),
+				whoami.NewWhoAmICmd(),
+				org.NewOrgCmd(),
+				deployment.NewDeploymentCmd(),
 			},
 		},
 		{
 			Name: "Policy Management Commands",
 			Commands: []*cobra.Command{
-				newPolicyCmd(),
+				policy.NewPolicyCmd(),
 			},
 		},
 		{
 			Name: "Plugin Commands",
 			Commands: []*cobra.Command{
-				newPluginCmd(),
+				plugin.NewPluginCmd(),
 				newSchemaCmd(),
-				newPackageCmd(),
+				packagecmd.NewPackageCmd(),
 			},
 		},
 		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
-				newVersionCmd(),
-				newAboutCmd(),
+				cmdVersion.NewVersionCmd(),
+				about.NewAboutCmd(),
 				newGenCompletionCmd(cmd),
 			},
 		},
@@ -385,9 +403,9 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
 				newQueryCmd(),
-				newConvertCmd(),
-				newWatchCmd(),
-				newLogsCmd(),
+				convert.NewConvertCmd(),
+				operations.NewWatchCmd(),
+				logs.NewLogsCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -395,8 +413,8 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Developer Commands",
 			Commands: []*cobra.Command{
-				newViewTraceCmd(),
-				newConvertTraceCmd(),
+				trace.NewViewTraceCmd(),
+				trace.NewConvertTraceCmd(),
 				newReplayEventsCmd(),
 			},
 		},
@@ -405,7 +423,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				newAICommand(),
+				ai.NewAICommand(),
 			},
 		},
 	})
@@ -413,7 +431,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 		"Include the tracing header with the given contents.")
 
-	if !hasDebugCommands() {
+	if !env.DebugCommands.Value() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
 		contract.IgnoreError(err)
 	}
@@ -779,30 +797,4 @@ func isDevVersion(s semver.Version) bool {
 
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
-}
-
-func confirmPrompt(prompt string, name string, opts display.Options) bool {
-	out := opts.Stdout
-	if out == nil {
-		out = os.Stdout
-	}
-	in := opts.Stdin
-	if in == nil {
-		in = os.Stdin
-	}
-
-	if prompt != "" {
-		fmt.Fprint(out,
-			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
-	}
-
-	fmt.Fprint(out,
-		opts.Color.Colorize(
-			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
-				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
-
-	reader := bufio.NewReader(in)
-	line, _ := reader.ReadString('\n')
-	return strings.TrimSpace(line) == name
 }

@@ -24,6 +24,13 @@ namespace Pulumi.Myedgeorder
         /// </summary>
         public static Output<ListConfigurationsResult> Invoke(ListConfigurationsInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// The list of configurations.
+        /// API Version: 2020-12-01-preview.
+        /// </summary>
+        public static Output<ListConfigurationsResult> Invoke(ListConfigurationsInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithDefaults());
     }
 
 

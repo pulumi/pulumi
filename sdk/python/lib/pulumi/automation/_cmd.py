@@ -109,7 +109,7 @@ class PulumiCommand:
             return PulumiCommand(
                 root=root, version=version, skip_version_check=skip_version_check
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 catch blind exception
             pass  # Ignore
 
         if os.name == "nt":
@@ -124,7 +124,6 @@ class PulumiCommand:
     @classmethod
     def _install_windows(cls, root: str, version: VersionInfo):
         # TODO: Once we're on python 3.12 we can use a `with` context manager with `delete_on_close=False` and `delete=True` here
-        # pylint: disable-next=consider-using-with
         script = tempfile.NamedTemporaryFile(delete=False, suffix=".ps1")
         try:
             _download_to_file("https://get.pulumi.com/install.ps1", script.name)
@@ -163,7 +162,6 @@ class PulumiCommand:
     @classmethod
     def _install_posix(cls, root: str, version: VersionInfo):
         # TODO: Once we're on python 3.12 we can use a `with` context manager with `delete_on_close=False` and `delete=True` here
-        # pylint: disable-next=consider-using-with
         script = tempfile.NamedTemporaryFile(delete=False)
         try:
             _download_to_file("https://get.pulumi.com/install.sh", script.name)

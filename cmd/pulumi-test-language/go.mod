@@ -13,7 +13,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.142.0
+	github.com/pulumi/pulumi/sdk/v3 v3.143.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
@@ -184,14 +184,14 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	gocloud.dev v0.37.0 // indirect
 	gocloud.dev/secrets/hashivault v0.37.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/term v0.23.0 // indirect
-	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect

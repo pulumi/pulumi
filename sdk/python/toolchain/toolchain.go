@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -116,6 +117,43 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 		return newUv(options.Root, options.Virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
+}
+
+// ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
+// a virtual environment directory, and returns a new "activated" array with the virtual environment's
+// "bin" dir ("Scripts" on Windows) prepended to the `PATH` environment variable, the `VIRTUAL_ENV`
+// variable set to the path, and the `PYTHONHOME` variable removed.
+func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
+	virtualEnvBin := filepath.Join(virtualEnvDir, virtualEnvBinDirName())
+	var hasPath bool
+	var result []string
+	for _, env := range environ {
+		split := strings.SplitN(env, "=", 2)
+		contract.Assertf(len(split) == 2, "unexpected environment variable: %q", env)
+		key, value := split[0], split[1]
+
+		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
+		if strings.EqualFold(key, "PATH") {
+			hasPath = true
+			// Prepend the virtual environment bin directory to PATH so any calls to run
+			// python or pip will use the binaries in the virtual environment.
+			path := fmt.Sprintf("%s=%s%s%s", key, virtualEnvBin, string(os.PathListSeparator), value)
+			result = append(result, path)
+		} else if strings.EqualFold(key, "PYTHONHOME") {
+			// Skip PYTHONHOME to "unset" this value.
+		} else if strings.EqualFold(key, "VIRTUAL_ENV") {
+			// Skip VIRTUAL_ENV, we always set this to `virtualEnvDir`
+		} else {
+			result = append(result, env)
+		}
+	}
+	if !hasPath {
+		path := "PATH=" + virtualEnvBin
+		result = append(result, path)
+	}
+	virtualEnv := "VIRTUAL_ENV=" + virtualEnvDir
+	result = append(result, virtualEnv)
+	return result
 }
 
 func virtualEnvBinDirName() string {

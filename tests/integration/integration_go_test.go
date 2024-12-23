@@ -27,6 +27,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -39,13 +40,16 @@ import (
 	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -131,8 +135,14 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		Quick:         true,
 		SkipRefresh:   true,
 		NoParallel:    true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.Contains(t, stderr.String(), "panic: great sadness\n")
+		ExtraRuntimeValidation: func(t *testing.T, _ integration.RuntimeValidationStackInfo) {
+			const needle = "panic: great sadness\n"
+			haystack := stderr.String()
+			// 2 instances of needle:
+			// - One instance is the returned error.
+			// - Another instance is in the stderr output.
+			assert.Equal(t, 2, strings.Count(haystack, needle),
+				"Expected only two instance of %q in:\n%s", needle, haystack)
 		},
 	})
 }
@@ -930,6 +940,8 @@ func TestAboutGo(t *testing.T) {
 
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/pulumi/pulumi/sdk/v3")
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+go\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesGo(t *testing.T) {
@@ -1200,19 +1212,6 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParameterizedGo(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
-
-	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
-	// work.
-	var err error
-	e.CWD, err = filepath.Abs("go/parameterized")
-	require.NoError(t, err)
-
-	err = os.RemoveAll(filepath.Join("go", "parameterized", "sdk"))
-	require.NoError(t, err)
-
-	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "go")
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("go", "parameterized"),
 		Dependencies: []string{
@@ -1221,7 +1220,73 @@ func TestParameterizedGo(t *testing.T) {
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
+		PrePrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+			path := info.Proj.Plugins.Providers[0].Path
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+			return nil
+		},
 	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("go/packageadd")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	_, _ = e.RunCommand("pulumi", "package", "add", "random")
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
+	assert.NoError(t, err)
+	_, err = modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	// Currently package add does not work correctly for non parameterized
+	// packages, once they add the go.mod as expected we can parse it and check
+	// if it contains a rename as the parameterized version of this test does.
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddGoParameterized(t *testing.T) {
+	t.Skip("mod replace is wrong after pulumi-terraform-provider release https://github.com/pulumi/pulumi/issues/18048")
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("go/packageadd")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random")
+
+	assert.True(t, e.PathExists("sdks/random/go.mod"))
+	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/random/go.mod"))
+	assert.NoError(t, err)
+	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
+	assert.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	containsRename := false
+	for _, r := range gomod.Replace {
+		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/Pulumi/pulumi-random/sdk/go/v3" {
+			containsRename = true
+		}
+	}
+
+	assert.True(t, containsRename)
 }
 
 func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {
@@ -1427,6 +1492,7 @@ func TestRunPlugin(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")
 	e.RunCommand("pulumi", "preview")

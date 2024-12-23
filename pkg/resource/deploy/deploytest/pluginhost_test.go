@@ -181,7 +181,7 @@ func TestPluginHostProvider(t *testing.T) {
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 	})
-	t.Run("GetRequiredPlugins (language runtime is shutting down)", func(t *testing.T) {
+	t.Run("GetRequiredPackages (language runtime is shutting down)", func(t *testing.T) {
 		t.Parallel()
 		host := &pluginHost{
 			closed: true,
@@ -190,7 +190,7 @@ func TestPluginHostProvider(t *testing.T) {
 			},
 		}
 
-		_, err := host.GetRequiredPlugins(plugin.ProgramInfo{}, 0)
+		_, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {

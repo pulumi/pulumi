@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -624,4 +625,37 @@ func TestWithValue(t *testing.T) {
 	assert.Equal(t, nil, testCtx.Value(key))
 	assert.Equal(t, val, newCtx.Value(key))
 	assert.Equal(t, newCtx.state, testCtx.state)
+}
+
+func TestInvokeOutput(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			if args.Token == "test:invoke:fail" {
+				return nil, errors.New("invoke error")
+			}
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	type invokeArgs struct {
+		Arg string
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		outType := AnyOutput{}
+		output := ctx.InvokeOutput("test:invoke:success", &invokeArgs{"will succeed"}, outType, InvokeOutputOptions{})
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	err = RunErr(func(ctx *Context) error {
+		outType := AnyOutput{}
+		output := ctx.InvokeOutput("test:invoke:fail", &invokeArgs{"will fail"}, outType, InvokeOutputOptions{})
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "invoke error")
 }

@@ -56,6 +56,13 @@ namespace Pulumi.Xyz
             return dst;
         }
 
+        public static global::Pulumi.InvokeOutputOptions WithDefaults(this global::Pulumi.InvokeOutputOptions? src)
+        {
+            var dst = src ?? new global::Pulumi.InvokeOutputOptions{};
+            dst.Version = src?.Version ?? Version;
+            return dst;
+        }
+
         private readonly static string version;
         public static string Version => version;
 

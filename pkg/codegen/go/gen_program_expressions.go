@@ -362,6 +362,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
 					case "pluginDownloadUrl":
 						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+					case "dependsOn":
+						destType := model.NewListType(resourceType)
+						value, temps := g.lowerExpression(item.Value, destType)
+						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+						if isInputty(value.Type()) {
+							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+						} else {
+							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
+						}
 					}
 
 					if !last {
@@ -576,14 +585,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	destType model.Type,
 	typeName string,
 ) {
-	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
-	// if strings.HasSuffix(typeName, "Args") {
-	// 	isInput = true
-	// }
-	// // invokes are not inputty
-	// if strings.Contains(typeName, ".Lookup") || strings.Contains(typeName, ".Get") {
-	// 	isInput = false
-	// }
 	isMap := strings.HasPrefix(typeName, "map[")
 
 	// TODO: retrieve schema and propagate optionals to emit bool ptr, etc.

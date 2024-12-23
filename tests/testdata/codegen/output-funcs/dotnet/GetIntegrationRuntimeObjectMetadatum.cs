@@ -24,6 +24,13 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Output<GetIntegrationRuntimeObjectMetadatumResult> Invoke(GetIntegrationRuntimeObjectMetadatumInvokeArgs args, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<GetIntegrationRuntimeObjectMetadatumResult>("mypkg::getIntegrationRuntimeObjectMetadatum", args ?? new GetIntegrationRuntimeObjectMetadatumInvokeArgs(), options.WithDefaults());
+
+        /// <summary>
+        /// Another failing example. A list of SSIS object metadata.
+        /// API Version: 2018-06-01.
+        /// </summary>
+        public static Output<GetIntegrationRuntimeObjectMetadatumResult> Invoke(GetIntegrationRuntimeObjectMetadatumInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<GetIntegrationRuntimeObjectMetadatumResult>("mypkg::getIntegrationRuntimeObjectMetadatum", args ?? new GetIntegrationRuntimeObjectMetadatumInvokeArgs(), options.WithDefaults());
     }
 
 

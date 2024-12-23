@@ -30,11 +30,24 @@ class LanguageRuntimeStub:
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
+    Handshake: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.LanguageHandshakeRequest,
+        pulumi.language_pb2.LanguageHandshakeResponse,
+    ]
+    """`Handshake` is the first call made by the engine to a language host. It is used to pass the 
+    engine's address to the language host so that it may establish its own connections back,
+    and to establish protocol configuration that will be used to communicate between the two parties.
+    """
     GetRequiredPlugins: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.GetRequiredPluginsRequest,
         pulumi.language_pb2.GetRequiredPluginsResponse,
     ]
     """GetRequiredPlugins computes the complete set of anticipated plugins required by a program."""
+    GetRequiredPackages: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.GetRequiredPackagesRequest,
+        pulumi.language_pb2.GetRequiredPackagesResponse,
+    ]
+    """GetRequiredPackages computes the complete set of anticipated packages required by a program."""
     Run: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.RunRequest,
         pulumi.language_pb2.RunResponse,
@@ -97,12 +110,29 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """
 
     
+    def Handshake(
+        self,
+        request: pulumi.language_pb2.LanguageHandshakeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.LanguageHandshakeResponse:
+        """`Handshake` is the first call made by the engine to a language host. It is used to pass the 
+        engine's address to the language host so that it may establish its own connections back,
+        and to establish protocol configuration that will be used to communicate between the two parties.
+        """
+    
     def GetRequiredPlugins(
         self,
         request: pulumi.language_pb2.GetRequiredPluginsRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.GetRequiredPluginsResponse:
         """GetRequiredPlugins computes the complete set of anticipated plugins required by a program."""
+    
+    def GetRequiredPackages(
+        self,
+        request: pulumi.language_pb2.GetRequiredPackagesRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.GetRequiredPackagesResponse:
+        """GetRequiredPackages computes the complete set of anticipated packages required by a program."""
     
     def Run(
         self,

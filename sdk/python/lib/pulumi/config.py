@@ -15,6 +15,7 @@
 """
 The config module contains all configuration management functionality.
 """
+
 import json
 from typing import Any, Callable, Optional, overload
 
@@ -49,7 +50,6 @@ class Config:
             raise TypeError("Expected name to be a string")
         self.name = name
 
-    # pylint: disable=unused-argument
     def _get(
         self,
         key: str,

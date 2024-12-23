@@ -754,7 +754,7 @@ func (h *mockHost) StartDebugging(plugin.DebuggingInfo) error {
 type mockLanguageRuntime struct {
 	CloseF func() error
 
-	GetRequiredPluginsF func(info plugin.ProgramInfo) ([]workspace.PluginSpec, error)
+	GetRequiredPackagesF func(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error)
 
 	RunF func(info plugin.RunInfo) (string, bool, error)
 
@@ -805,9 +805,9 @@ func (rt *mockLanguageRuntime) Close() error {
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) GetRequiredPlugins(info plugin.ProgramInfo) ([]workspace.PluginSpec, error) {
-	if rt.GetRequiredPluginsF != nil {
-		return rt.GetRequiredPluginsF(info)
+func (rt *mockLanguageRuntime) GetRequiredPackages(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error) {
+	if rt.GetRequiredPackagesF != nil {
+		return rt.GetRequiredPackagesF(info)
 	}
 	panic("unimplemented")
 }

@@ -720,3 +720,71 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 		})
 	}
 }
+
+// Quick sanity tests to check that import for a package picks up the right version. This uses Go as the language choice
+// shouldn't matter for the test.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestImportVersionSmoke(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// `new` wants to work in an empty directory but our use of local url means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "random-go", "--yes")
+
+	// Install the version of the random provider used by the template and another
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+
+	// Now try and import a random resource, this should use the projects currently known packages to help
+	// choose the right Provider. i.e. it should use 4.13.0 rather than 4.16.7.
+	e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
+
+	// Check this used the right provider
+	stack, _ := e.RunCommand("pulumi", "stack", "export")
+	assert.Contains(t, stack, "\"4.13.0\"")
+}
+
+// Test that the warning for upgrading and then running a refresh is shown.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestRefreshUpgradeWarning(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// `new` wants to work in an empty directory but our use of local url means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "random-go", "--yes")
+
+	// Assert that the current go.mod is on the 4.13.0 version
+	goMod, err := os.ReadFile(filepath.Join(projectDir, "go.mod"))
+	require.NoError(t, err)
+	assert.Contains(t, string(goMod), "github.com/pulumi/pulumi-random/sdk/v4 v4.13.0")
+	// and install the 4.13 provider we need
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Update the provider to a new version
+	e.RunCommand("go", "get", "github.com/pulumi/pulumi-random/sdk/v4@v4.16.7")
+
+	// Run a refresh and check that the warning is shown
+	stdout, _ := e.RunCommand("pulumi", "refresh", "--yes")
+	assert.Contains(t, stdout, "refresh operation is using an older version of plugin 'random' "+
+		"than the specified program version: 4.13.0 < 4.16.7")
+}

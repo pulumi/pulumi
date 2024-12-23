@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -750,6 +751,36 @@ build-backend = "poetry.core.masonry.api"
 package-mode = false
 [tool.poetry.dependencies]
 pulumi = ">=3.0.0,<4.0.0"
-python = "^3.8"
+python = "^3.9"
 `, string(b))
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/17877
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestUvWindowsError(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// This test will hang on Windows without the fix for https://github.com/pulumi/pulumi/issues/17877
+	done := make(chan struct{})
+	var stdout string
+	go func() {
+		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
+		e.RunCommand("pulumi", "install")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+		stdout, _ = e.RunCommandExpectError("pulumi", "preview")
+
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+		require.Contains(t, stdout, "Duplicate resource URN")
+	case <-time.After(3 * time.Minute):
+		t.Fatal("Timed out waiting for TestUvWindowsError")
+	}
 }

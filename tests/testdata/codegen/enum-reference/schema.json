@@ -19,7 +19,7 @@
         },
         "csharp": {
             "packageReferences": {
-                "Pulumi": "3.33.2",
+                "Pulumi": "3.71.0",
                 "Pulumi.GoogleNative": "0.20.0"
             }
         },

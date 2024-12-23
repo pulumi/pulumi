@@ -25,6 +25,7 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
@@ -83,6 +84,8 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
+	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
+	Autonamer autonaming.Autonamer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

@@ -51,7 +51,6 @@ class PartitionPackage:
 
 
 INTEGRATION_TEST_PACKAGES = {
-    "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi",
     "github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils",
     "github.com/pulumi/pulumi/pkg/v3/graph/dotconv",
     "github.com/pulumi/pulumi/pkg/v3/testing/integration",
@@ -72,7 +71,8 @@ PERFORMANCE_TEST_PACKAGES = {
 def is_unit_test(pkg: str) -> bool:
     """Checks if the package is a unit test"""
     return not (
-        pkg.startswith("github.com/pulumi/pulumi/tests")
+        pkg.startswith("github.com/pulumi/pulumi/pkg/v3/cmd/pulumi")
+        or pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
         or pkg in PERFORMANCE_TEST_PACKAGES
     )
@@ -139,15 +139,15 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "go": "1.22.x",
     "nodejs": "18.x",
     # When updating the minimum Python version here, also update `mypy.ini` and
-    # `.pylintrc` to target this version.
-    "python": "3.8.x",
+    # `ruff.toml` to target this version.
+    "python": "3.9.x",
 }
 
 ALL_VERSION_SET = {
     "dotnet": ["6", "8", "9"],
     "go": ["1.22.x", "1.23.x"],
     "nodejs": ["18.x", "20.x", "22.x", "23.x"],
-    "python": ["3.8.x", "3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
+    "python": ["3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
 }
 
 CURRENT_VERSION_SET = {

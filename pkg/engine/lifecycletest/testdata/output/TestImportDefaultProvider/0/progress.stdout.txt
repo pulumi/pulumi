@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>= <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 2%}>importing<{%reset%}> 
+ <{%fg 2%}>= <{%reset%}> pkgA:m:typA resB <{%fg 2%}>imported<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-test <{%fg 2%}>created<{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

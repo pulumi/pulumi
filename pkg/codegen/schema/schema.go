@@ -965,8 +965,11 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	var metadata *MetadataSpec
-	if pkg.moduleFormat != nil || pkg.SupportPack {
-		metadata = &MetadataSpec{SupportPack: pkg.SupportPack}
+	// Don't set support pack in meta spec if Parameterization is present because that implictly sets
+	// SupportPack when reading back in anyway.
+	supportPack := pkg.SupportPack && pkg.Parameterization == nil
+	if pkg.moduleFormat != nil || supportPack {
+		metadata = &MetadataSpec{SupportPack: supportPack}
 		if pkg.moduleFormat != nil {
 			metadata.ModuleFormat = pkg.moduleFormat.String()
 		}
@@ -1983,6 +1986,9 @@ type PackageInfoSpec struct {
 
 	// Language specifies additional language-specific data about the package.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
+
+	// Parameterization is the optional parameterization for this package.
+	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2076,6 +2082,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		Meta:                p.Meta,
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
+		Parameterization:    p.Parameterization,
 	}
 }
 
@@ -2095,6 +2102,4 @@ type PartialPackageSpec struct {
 	Resources map[string]json.RawMessage `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
-	// Parameterization contains parameterization information about the package.
-	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }

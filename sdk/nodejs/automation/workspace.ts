@@ -430,12 +430,22 @@ export interface Deployment {
 export type PulumiFn = () => Promise<Record<string, any> | void>;
 
 /**
+ * The currently logged-in Pulumi access token.
+ */
+export interface TokenInfomation {
+    name: string;
+    organization?: string;
+    team?: string;
+}
+
+/**
  * The currently logged-in Pulumi identity.
  */
 export interface WhoAmIResult {
     user: string;
     url?: string;
     organizations?: string[];
+    tokenInformation?: TokenInfomation;
 }
 
 export interface PluginInfo {

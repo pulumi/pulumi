@@ -44,7 +44,8 @@ type PackageReference interface {
 	// Repository returns the package repository.
 	Repository() string
 
-	// SupportPack specifies the package definition can be packed by language plugins
+	// SupportPack specifies the package definition can be packed by language plugins, this is always true for
+	// parameterized packages.
 	SupportPack() bool
 
 	// Types returns the package's types.

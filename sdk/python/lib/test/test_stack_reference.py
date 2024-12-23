@@ -43,7 +43,6 @@ def simple_mock():
 
 
 class StackReferenceOutputMock(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
         assert "pulumi:pulumi:StackReference" == args.typ
         return [

@@ -1,8 +1,8 @@
 [project]
   name = "pulumi_primitive_ref"
-  dependencies = ["parver>=0.2.1", "pulumi>=3.136.0,<4.0.0", "semver>=2.8.1", "typing-extensions>=4.11; python_version < \"3.11\""]
+  dependencies = ["parver>=0.2.1", "pulumi>=3.142.0,<4.0.0", "semver>=2.8.1", "typing-extensions>=4.11; python_version < \"3.11\""]
   readme = "README.md"
-  requires-python = ">=3.8"
+  requires-python = ">=3.9"
   version = "11.0.0"
 
 [build-system]

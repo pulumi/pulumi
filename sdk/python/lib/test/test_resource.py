@@ -260,7 +260,6 @@ def build_dep_tracker(preview: bool = False):
 
 
 class MinimalMocks(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
         return [args.name + "_id", args.inputs]
 
@@ -269,7 +268,6 @@ class MinimalMocks(pulumi.runtime.Mocks):
 
 
 class DependencyTrackingMonitorWrapper:
-
     def __init__(self, inner):
         self.inner = inner
         self.dependencies = {}

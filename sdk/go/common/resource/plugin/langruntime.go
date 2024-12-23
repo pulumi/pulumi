@@ -116,8 +116,8 @@ func (options InstallDependenciesRequest) String() string {
 type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
-	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-	GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error)
+	// GetRequiredPackages computes the complete set of anticipated packages required by a program.
+	GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error)
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real

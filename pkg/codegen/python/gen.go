@@ -68,7 +68,7 @@ type imports codegen.StringSet
 // package metadata if the schema does not provide a value. This version corresponds
 // to the minimum supported version as listed in the reference documentation:
 // https://www.pulumi.com/docs/languages-sdks/python/
-const defaultMinPythonVersion = ">=3.8"
+const defaultMinPythonVersion = ">=3.9"
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
@@ -2242,8 +2242,10 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
 		pulumiPlugin.Version = pkg.Version.String()
-	}
-	if pkg.SupportPack {
+	} else if pkg.SupportPack {
+		if pkg.Version == nil {
+			return nil, errors.New("package version is required")
+		}
 		pulumiPlugin.Version = pkg.Version.String()
 	}
 	if pkg.Parameterization != nil {
@@ -2280,7 +2282,15 @@ func genPackageMetadata(
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
+	} else if pkg.SupportPack {
+		// Parameterized schemas _always_ respect schema version
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
+	fmt.Fprintf(w, "VERSION = %s\n", version)
+
 	if !ok || typedDictEnabled(info.InputTypes) {
 		// Add typing-extensions to the requires
 		updatedRequires := make(map[string]string, len(requires))
@@ -2290,14 +2300,6 @@ func genPackageMetadata(
 		updatedRequires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
 		requires = updatedRequires
 	}
-	// Parameterized schemas _always_ respect schema version
-	if pkg.SupportPack || pkg.Parameterization != nil {
-		if pkg.Version == nil {
-			return "", errors.New("package version is required")
-		}
-		version = "\"" + PypiVersion(*pkg.Version) + "\""
-	}
-	fmt.Fprintf(w, "VERSION = %s\n", version)
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -3309,8 +3311,7 @@ func genPyprojectTOML(tool string,
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = PypiVersion(*pkg.Version)
-	}
-	if pkg.SupportPack || pkg.Parameterization != nil {
+	} else if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
@@ -3413,11 +3414,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.136.0,<4.0.0"
-
-// Require the SDK to fall within the same major version, and be at least 3.134.0 which added support for the
-// package reference feature flag.
-var MinimumValidParameterizationSDKVersion = ">=3.134.0,<4.0.0"
+var MinimumValidSDKVersion = ">=3.142.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
@@ -3433,21 +3430,16 @@ func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (m
 	deps := map[string]string{}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 
-	minimumVersion := MinimumValidSDKVersion
-	if parameterized {
-		minimumVersion = MinimumValidParameterizationSDKVersion
-	}
-
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": minimumVersion,
+			"pulumi": MinimumValidSDKVersion,
 		}
 		return result, nil
 	}
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = minimumVersion
+		deps["pulumi"] = MinimumValidSDKVersion
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.

@@ -46,7 +46,6 @@ class ComponentDependenciesTest(LanghostTest):
         _providers,
         source_position,
     ):
-
         if name == "resD":
             self.assertListEqual(_dependencies, ["resA"], msg=f"{name}._dependencies")
             self.assertDictEqual(

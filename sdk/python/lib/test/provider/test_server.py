@@ -45,9 +45,7 @@ async def test_construct_inputs_parses_request():
     value = "foobar"
     inputs = _as_struct({"echo": value})
     req = ConstructRequest(inputs=inputs)
-    inputs = await ProviderServicer._construct_inputs(
-        req.inputs, req.inputDependencies
-    )  # pylint: disable=no-member
+    inputs = await ProviderServicer._construct_inputs(req.inputs, req.inputDependencies)  # pylint: disable=no-member
     assert len(inputs) == 1
     assert inputs["echo"] == value
 
@@ -57,9 +55,7 @@ async def test_construct_inputs_preserves_unknowns():
     unknown = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
     inputs = _as_struct({"echo": unknown})
     req = ConstructRequest(inputs=inputs)
-    inputs = await ProviderServicer._construct_inputs(
-        req.inputs, req.inputDependencies
-    )  # pylint: disable=no-member
+    inputs = await ProviderServicer._construct_inputs(req.inputs, req.inputDependencies)  # pylint: disable=no-member
     assert len(inputs) == 1
     assert isinstance(inputs["echo"], pulumi.output.Unknown)
 

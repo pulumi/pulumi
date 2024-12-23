@@ -32,7 +32,6 @@ from .helpers import raises
 
 
 class MyMocks(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
         result = XProvider().create(args=args.inputs)
         return [result.id, result.outs]

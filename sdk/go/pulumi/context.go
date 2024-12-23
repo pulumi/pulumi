@@ -668,31 +668,56 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) invokePackageRaw(
 	tok string, args interface{}, packageRef string, opts ...InvokeOption,
-) (resource.PropertyMap, error) {
+) (resource.PropertyMap, []Resource, error) {
 	if tok == "" {
-		return nil, errors.New("invoke token must not be empty")
+		return nil, []Resource{}, errors.New("invoke token must not be empty")
 	}
-
-	options, err := NewInvokeOptions(opts...)
-	if err != nil {
-		return nil, err
+	options := mergeInvokeOptions(opts...)
+	deps := []Resource{}
+	depSet := urnSet{} // Only used for `addURNs` below.
+	for _, d := range options.DependsOn {
+		// This will await the resources, ensuring that we don't call the invoke before the dependencies are ready.
+		if err := d.addURNs(ctx.ctx, depSet, nil); err != nil {
+			return nil, []Resource{}, err
+		}
+		switch d := d.(type) {
+		case resourceDependencySet:
+			deps = append(deps, d...)
+		case *resourceArrayInputDependencySet:
+			out := d.input.ToResourceArrayOutput()
+			value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
+			if err != nil || !known {
+				return nil, []Resource{}, err
+			}
+			resources, ok := value.([]Resource)
+			if !ok {
+				return nil, []Resource{},
+					fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+						reflect.TypeOf(value))
+			}
+			deps = append(deps, resources...)
+		default:
+			// Unreachable.
+			// We control all implementations of dependencySet.
+			contract.Failf("Unknown dependencySet %T", d)
+		}
 	}
-
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	var err error
 	if err = ctx.beginRPC(); err != nil {
-		return nil, err
+		return nil, []Resource{}, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return nil, err
+		return nil, []Resource{}, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return nil, err
+			return nil, []Resource{}, err
 		}
 		providerRef = pr
 	}
@@ -703,7 +728,7 @@ func (ctx *Context) invokePackageRaw(
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -720,7 +745,7 @@ func (ctx *Context) invokePackageRaw(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -736,7 +761,7 @@ func (ctx *Context) invokePackageRaw(
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, err
+		return nil, []Resource{}, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -747,17 +772,21 @@ func (ctx *Context) invokePackageRaw(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, []Resource{}, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	return plugin.UnmarshalProperties(
+	r, err := plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
 		})
+	if err != nil {
+		return nil, []Resource{}, err
+	}
+	return r, deps, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
@@ -778,7 +807,18 @@ func (ctx *Context) InvokePackage(
 		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	invokeOpts, optsErr := NewInvokeOptions(opts...)
+	if optsErr != nil {
+		return optsErr
+	}
+	if len(invokeOpts.DependsOn) > 0 {
+		return fmt.Errorf("DependsOn is not supported for direct form invoke of %q, use the output form instead", tok)
+	}
+	if len(invokeOpts.DependsOnInputs) > 0 {
+		return fmt.Errorf("DependsOnInputs is not supported for direct form invoke of %q, use the output form instead", tok)
+	}
+
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return err
 	}
@@ -802,7 +842,7 @@ func (ctx *Context) InvokePackageRaw(
 		return false, errors.New("result must be a pointer to a struct or map value")
 	}
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
+	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, opts...)
 	if err != nil {
 		return false, err
 	}
@@ -812,6 +852,43 @@ func (ctx *Context) InvokePackageRaw(
 	}
 	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return hasSecret, nil
+}
+
+// InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
+type InvokeOutputOptions struct {
+	// The package reference for parameterized providers.
+	PackageRef string
+	// The options provided by the user for the invoke call, such as `Provider`,
+	// `Version, `DependsOn`, etc.
+	InvokeOptions []InvokeOption
+}
+
+// InvokeOutput will invoke a provider's function, identified by its token tok. This function is
+// used by generated SDK code for Output form invokes.
+// `output` is used to determine the output type to return.
+func (ctx *Context) InvokeOutput(
+	tok string, args interface{}, output Output, options InvokeOutputOptions,
+) Output {
+	output = ctx.newOutput(reflect.TypeOf(output))
+
+	go func() {
+		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, options.InvokeOptions...)
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+
+		dest := reflect.New(output.ElementType()).Elem()
+		known := !outProps.ContainsUnknowns()
+		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+	}()
+
+	return output
 }
 
 // Call will invoke a provider call function, identified by its token tok.
@@ -1138,9 +1215,13 @@ func (ctx *Context) readPackageResource(
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
+	protect := options.Protect
+	if parent != nil {
+		protect = protect || parent.getProtect()
+	}
 
 	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, provider,
+	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
@@ -1335,9 +1416,13 @@ func (ctx *Context) registerResource(
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
+	protect := options.Protect
+	if parent != nil {
+		protect = protect || parent.getProtect()
+	}
 
 	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, provider,
+	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
@@ -1527,6 +1612,7 @@ type resourceState struct {
 	outputs           map[string]Output
 	providers         map[string]ProviderResource
 	provider          ProviderResource
+	protect           bool
 	version           string
 	pluginDownloadURL string
 	name              string
@@ -1674,7 +1760,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
+	provider ProviderResource, protect bool, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation,
 ) *resourceState {
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1765,6 +1851,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.providers = providers
 		state.provider = provider
 		rs.provider = provider
+		state.protect = protect
+		rs.protect = protect
 		state.version = version
 		rs.version = version
 		state.rawOutputs = rawOutputs
@@ -2066,9 +2154,9 @@ func (ctx *Context) mapAliases(aliases []Alias,
 func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
 	state *resourceState, remote, custom bool,
 ) (*resourceInputs, error) {
-	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
-	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote, custom)
+	// Get the parent and dependency URNs from the options.  If there wasn't an explicit parent, and a root stack resource
+	// exists, we will automatically parent to that.
+	resOpts, err := ctx.getOpts(res, state.provider, opts, remote, custom)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -2136,7 +2224,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	return &resourceInputs{
 		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
-		protect:                 resOpts.protect,
+		protect:                 res.getProtect(),
 		provider:                resOpts.providerRef,
 		providers:               resOpts.providerRefs,
 		resolvedProps:           resolvedProps,
@@ -2170,7 +2258,6 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 type resourceOpts struct {
 	parentURN               URN
 	depURNs                 []URN
-	protect                 bool
 	providerRef             string
 	providerRefs            map[string]string
 	deleteBeforeReplace     bool
@@ -2183,7 +2270,7 @@ type resourceOpts struct {
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
 func (ctx *Context) getOpts(
-	res Resource, t string, provider ProviderResource, opts *resourceOptions, remote, custom bool,
+	res Resource, provider ProviderResource, opts *resourceOptions, remote, custom bool,
 ) (resourceOpts, error) {
 	var importID ID
 	if opts.Import != nil {
@@ -2242,7 +2329,6 @@ func (ctx *Context) getOpts(
 	return resourceOpts{
 		parentURN:               parentURN,
 		depURNs:                 depURNs,
-		protect:                 opts.Protect,
 		providerRef:             providerRef,
 		providerRefs:            providerRefs,
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,

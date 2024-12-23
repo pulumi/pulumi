@@ -49,7 +49,7 @@ class InlineSourceRuntimeError(CommandError):
         self.name = "InlineSourceRuntimeError"
 
 
-class RuntimeError(CommandError):  # pylint: disable=redefined-builtin
+class RuntimeError(CommandError):
     def __init__(self, command_result: "CommandResult"):
         super().__init__(command_result)
         self.name = "RuntimeError"

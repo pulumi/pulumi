@@ -75,6 +75,6 @@ func SpecificArgs(argNames []string) cobra.PositionalArgs {
 
 // RangeArgs is the same as cobra.RangeArgs, except it is wrapped with ArgsFunc to provide standard
 // Pulumi error handling.
-func RangeArgs(min int, max int) cobra.PositionalArgs {
-	return ArgsFunc(cobra.RangeArgs(min, max))
+func RangeArgs(minimum int, maximum int) cobra.PositionalArgs {
+	return ArgsFunc(cobra.RangeArgs(minimum, maximum))
 }

@@ -36,6 +36,7 @@ from ._workspace import (
     PluginInfo,
     PulumiFn,
     StackSummary,
+    TokenInformation,
     WhoAmIResult,
     Workspace,
 )
@@ -377,6 +378,14 @@ class LocalWorkspace(Workspace):
         if ver >= VersionInfo(3, 58):
             result = self._run_pulumi_cmd_sync(["whoami", "--json"])
             who_am_i_json = json.loads(result.stdout)
+            token_data = None
+            if "tokenInformation" in who_am_i_json:
+                token_data = TokenInformation(
+                    name=who_am_i_json["tokenInformation"].get("name"),
+                    organization=who_am_i_json["tokenInformation"].get("organization"),
+                    team=who_am_i_json["tokenInformation"].get("team"),
+                )
+
             return WhoAmIResult(
                 user=who_am_i_json["user"],
                 url=who_am_i_json["url"] if "url" in who_am_i_json else None,
@@ -385,8 +394,8 @@ class LocalWorkspace(Workspace):
                     if "organizations" in who_am_i_json
                     else None
                 ),
+                token_information=token_data,
             )
-
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
@@ -723,7 +732,13 @@ def create_stack(
     args = locals()
     if _is_inline_program(**args):
         # Type checks are ignored because we have already asserted that the correct args are present.
-        return _inline_source_stack_helper(stack_name, program, project_name, Stack.create, opts)  # type: ignore
+        return _inline_source_stack_helper(
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.create,
+            opts,
+        )
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
@@ -776,7 +791,13 @@ def select_stack(
     """
     args = locals()
     if _is_inline_program(**args):
-        return _inline_source_stack_helper(stack_name, program, project_name, Stack.select, opts)  # type: ignore
+        return _inline_source_stack_helper(
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.select,
+            opts,
+        )
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
@@ -829,9 +850,20 @@ def create_or_select_stack(
     """
     args = locals()
     if _is_inline_program(**args):
-        return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
+        return _inline_source_stack_helper(
+            stack_name,
+            program,  # type: ignore
+            project_name,  # type: ignore
+            Stack.create_or_select,
+            opts,
+        )
     if _is_local_program(**args):
-        return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
+        return _local_source_stack_helper(
+            stack_name,
+            work_dir,  # type: ignore
+            Stack.create_or_select,
+            opts,
+        )
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 

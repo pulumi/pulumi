@@ -23,8 +23,15 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LanguageRuntimeClient interface {
+	// `Handshake` is the first call made by the engine to a language host. It is used to pass the
+	// engine's address to the language host so that it may establish its own connections back,
+	// and to establish protocol configuration that will be used to communicate between the two parties.
+	Handshake(ctx context.Context, in *LanguageHandshakeRequest, opts ...grpc.CallOption) (*LanguageHandshakeResponse, error)
+	// Deprecated: Do not use.
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 	GetRequiredPlugins(ctx context.Context, in *GetRequiredPluginsRequest, opts ...grpc.CallOption) (*GetRequiredPluginsResponse, error)
+	// GetRequiredPackages computes the complete set of anticipated packages required by a program.
+	GetRequiredPackages(ctx context.Context, in *GetRequiredPackagesRequest, opts ...grpc.CallOption) (*GetRequiredPackagesResponse, error)
 	// Run executes a program and returns its result.
 	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
@@ -57,9 +64,28 @@ func NewLanguageRuntimeClient(cc grpc.ClientConnInterface) LanguageRuntimeClient
 	return &languageRuntimeClient{cc}
 }
 
+func (c *languageRuntimeClient) Handshake(ctx context.Context, in *LanguageHandshakeRequest, opts ...grpc.CallOption) (*LanguageHandshakeResponse, error) {
+	out := new(LanguageHandshakeResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Handshake", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Deprecated: Do not use.
 func (c *languageRuntimeClient) GetRequiredPlugins(ctx context.Context, in *GetRequiredPluginsRequest, opts ...grpc.CallOption) (*GetRequiredPluginsResponse, error) {
 	out := new(GetRequiredPluginsResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetRequiredPlugins", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) GetRequiredPackages(ctx context.Context, in *GetRequiredPackagesRequest, opts ...grpc.CallOption) (*GetRequiredPackagesResponse, error) {
+	out := new(GetRequiredPackagesResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetRequiredPackages", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,8 +241,15 @@ func (c *languageRuntimeClient) Pack(ctx context.Context, in *PackRequest, opts 
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
 type LanguageRuntimeServer interface {
+	// `Handshake` is the first call made by the engine to a language host. It is used to pass the
+	// engine's address to the language host so that it may establish its own connections back,
+	// and to establish protocol configuration that will be used to communicate between the two parties.
+	Handshake(context.Context, *LanguageHandshakeRequest) (*LanguageHandshakeResponse, error)
+	// Deprecated: Do not use.
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 	GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error)
+	// GetRequiredPackages computes the complete set of anticipated packages required by a program.
+	GetRequiredPackages(context.Context, *GetRequiredPackagesRequest) (*GetRequiredPackagesResponse, error)
 	// Run executes a program and returns its result.
 	Run(context.Context, *RunRequest) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
@@ -246,8 +279,14 @@ type LanguageRuntimeServer interface {
 type UnimplementedLanguageRuntimeServer struct {
 }
 
+func (UnimplementedLanguageRuntimeServer) Handshake(context.Context, *LanguageHandshakeRequest) (*LanguageHandshakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
 func (UnimplementedLanguageRuntimeServer) GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GetRequiredPackages(context.Context, *GetRequiredPackagesRequest) (*GetRequiredPackagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) Run(context.Context, *RunRequest) (*RunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
@@ -295,6 +334,24 @@ func RegisterLanguageRuntimeServer(s grpc.ServiceRegistrar, srv LanguageRuntimeS
 	s.RegisterService(&LanguageRuntime_ServiceDesc, srv)
 }
 
+func _LanguageRuntime_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LanguageHandshakeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Handshake(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Handshake",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Handshake(ctx, req.(*LanguageHandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LanguageRuntime_GetRequiredPlugins_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRequiredPluginsRequest)
 	if err := dec(in); err != nil {
@@ -309,6 +366,24 @@ func _LanguageRuntime_GetRequiredPlugins_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetRequiredPlugins(ctx, req.(*GetRequiredPluginsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_GetRequiredPackages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequiredPackagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/GetRequiredPackages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, req.(*GetRequiredPackagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -525,8 +600,16 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LanguageRuntimeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Handshake",
+			Handler:    _LanguageRuntime_Handshake_Handler,
+		},
+		{
 			MethodName: "GetRequiredPlugins",
 			Handler:    _LanguageRuntime_GetRequiredPlugins_Handler,
+		},
+		{
+			MethodName: "GetRequiredPackages",
+			Handler:    _LanguageRuntime_GetRequiredPackages_Handler,
 		},
 		{
 			MethodName: "Run",

@@ -108,12 +108,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 
 	"github.com/blang/semver"
-	"github.com/nxadm/tail"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -128,6 +126,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -1041,6 +1040,12 @@ func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
 }
 
+// GetAllConfigWithOptions returns the full config map with optional ConfigAllConfigOptions.
+// Allows using a config file and controlling how secrets are shown
+func (s *Stack) GetAllConfigWithOptions(ctx context.Context, opts *GetAllConfigOptions) (ConfigMap, error) {
+	return s.Workspace().GetAllConfigWithOptions(ctx, s.Name(), opts)
+}
+
 // SetConfig sets the specified config key-value pair.
 func (s *Stack) SetConfig(ctx context.Context, key string, val ConfigValue) error {
 	return s.Workspace().SetConfig(ctx, s.Name(), key, val)
@@ -1624,7 +1629,7 @@ type fileWatcher struct {
 }
 
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
-	t, err := tail.TailFile(path, tail.Config{
+	t, err := tail.File(path, tail.Config{
 		Follow:        true,
 		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
 		Logger:        tail.DiscardingLogger,
@@ -1688,25 +1693,6 @@ func (fw *fileWatcher) Close() {
 	}
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
-
-	// The tail library we're using is racy when shutting down.
-	// If it gets the shutdown signal before reading the data, it
-	// will just shut down before finding the EoF.  This problem
-	// is exacerbated on Windows, where we use the poller, which
-	// polls for changes every 250ms.  Sleep a little bit longer
-	// than that to ensure the tail library had a chance to read
-	// the whole file.  On OSs that don't use the poller we still
-	// want to try to avoid the problem so we sleep for a short
-	// amount of time.
-	//
-	// TODO: remove this once https://github.com/nxadm/tail/issues/67
-	// is fixed and we can upgrade nxadm/tail.
-	if runtime.GOOS == "windows" {
-		time.Sleep(300 * time.Millisecond)
-	} else {
-		time.Sleep(150 * time.Millisecond)
-	}
-
 	//nolint:errcheck
 	fw.tail.StopAtEOF()
 	<-fw.done

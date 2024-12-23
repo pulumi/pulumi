@@ -12,9 +12,15 @@ import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/stru
 export class ProviderHandshakeRequest extends jspb.Message { 
     getEngineAddress(): string;
     setEngineAddress(value: string): ProviderHandshakeRequest;
-    getRootDirectory(): string;
+
+    hasRootDirectory(): boolean;
+    clearRootDirectory(): void;
+    getRootDirectory(): string | undefined;
     setRootDirectory(value: string): ProviderHandshakeRequest;
-    getProgramDirectory(): string;
+
+    hasProgramDirectory(): boolean;
+    clearProgramDirectory(): void;
+    getProgramDirectory(): string | undefined;
     setProgramDirectory(value: string): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
@@ -30,8 +36,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
 export namespace ProviderHandshakeRequest {
     export type AsObject = {
         engineAddress: string,
-        rootDirectory: string,
-        programDirectory: string,
+        rootDirectory?: string,
+        programDirectory?: string,
     }
 }
 

@@ -15,9 +15,10 @@
 """
 Support for automatic stack components.
 """
+
 import asyncio
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
+from typing import Any, Callable, Dict, List, Awaitable, Optional
 
 from . import settings
 from .. import log
@@ -45,9 +46,6 @@ from .settings import (
     set_root_resource,
 )
 from .sync_await import _sync_await
-
-if TYPE_CHECKING:
-    from .. import Output
 
 
 async def run_pulumi_func(func: Callable[[], None]):

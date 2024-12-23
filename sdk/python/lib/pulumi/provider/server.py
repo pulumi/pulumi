@@ -104,7 +104,7 @@ class ProviderServicer(ResourceProviderServicer):
 
         return status
 
-    async def Construct(  # pylint: disable=invalid-overridden-method
+    async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
@@ -131,7 +131,6 @@ class ProviderServicer(ResourceProviderServicer):
     async def _construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # pylint: disable=unused-argument
         assert isinstance(
             request, proto.ConstructRequest
         ), f"request is not ConstructRequest but is {type(request)} instead"
@@ -253,9 +252,7 @@ class ProviderServicer(ResourceProviderServicer):
 
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
-    async def Call(
-        self, request: proto.CallRequest, context
-    ):  # pylint: disable=invalid-overridden-method
+    async def Call(self, request: proto.CallRequest, context):
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
         # avoid modifying globals, we can remove the locking.
         await self.lock.acquire()
@@ -277,7 +274,6 @@ class ProviderServicer(ResourceProviderServicer):
             self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
-        # pylint: disable=unused-argument
         assert isinstance(
             request, proto.CallRequest
         ), f"request is not CallRequest but is {type(request)} instead"
@@ -376,7 +372,7 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         return proto.InvokeResponse(**resp)
 
-    async def Invoke(  # pylint: disable=invalid-overridden-method
+    async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
         args = rpc.deserialize_properties(
@@ -386,19 +382,15 @@ class ProviderServicer(ResourceProviderServicer):
         response = await self._invoke_response(result)
         return response
 
-    async def Configure(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.ConfigureResponse:
+    async def Configure(self, request, context) -> proto.ConfigureResponse:
         return proto.ConfigureResponse(
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
 
-    async def GetPluginInfo(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.PluginInfo:
+    async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         return proto.PluginInfo(version=self.provider.version)
 
-    async def GetSchema(  # pylint: disable=invalid-overridden-method
+    async def GetSchema(
         self, request: proto.GetSchemaRequest, context
     ) -> proto.GetSchemaResponse:
         if request.version != 0:
@@ -454,7 +446,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         pass
 
 
-T = TypeVar("T")  # pylint: disable=invalid-name
+T = TypeVar("T")
 
 
 def _as_future(value: T) -> "asyncio.Future[T]":

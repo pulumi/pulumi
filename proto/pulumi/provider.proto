@@ -27,6 +27,11 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
 // as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
 service ResourceProvider {
+    // `Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+    // provider so that it may establish its own connections back, and to establish protocol configuration that will be
+    // used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
+    // feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
+    // references.
     rpc Handshake(ProviderHandshakeRequest) returns (ProviderHandshakeResponse) {}
 
     // `Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
@@ -91,9 +96,11 @@ service ResourceProvider {
     // thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
     // Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
     // AWS access key, should almost certainly not.
+    //
+    // Implementations must satisfy the invariants documented on `DiffResponse`.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
 
-    // `Configure` is the final stage in configuring a provider instance. Callers supply two sets of data:
+    // `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
     //
     // * Provider-specific configuration, which is the set of inputs that have been validated by a previous
     //   [](pulumirpc.ResourceProvider.CheckConfig) call.
@@ -105,6 +112,19 @@ service ResourceProvider {
     // Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
     // the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
     // indicate which keys are missing.
+    //
+    // :::{important}
+    // The use of `Configure` to configure protocol features is deprecated in favour of the
+    // [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+    // compatibility between older engines and providers:
+    //
+    // * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+    //   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+    //   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+    // * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+    //   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+    //   [](pulumirpc.ConfigureResponse) for more information.
+    // :::
     rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
 
     // Invoke dynamically executes a built-in function in the provider.
@@ -134,6 +154,8 @@ service ResourceProvider {
     // `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
     // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
     // by a [](pulumirpc.ResourceProvider.Check) call.
+    //
+    // Implementations must satisfy the invariants documented on `DiffResponse`.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
 
     // `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
@@ -197,19 +219,25 @@ service ResourceProvider {
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
 }
 
+// `ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call.
 message ProviderHandshakeRequest {
-    // The grpc address for the engine.
+    // The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
+    // of the [](pulumirpc.Engine) service.
     string engine_address = 1;
 
-    // The optional root directory, where the `PulumiPlugin.yaml` file or provider binary is located.
-    // This can't be sent when the engine is attaching to a provider via a port number.
-    string root_directory = 2;
-    // The optional absolute path to the directory of the provider program to execute. Generally, but not
-    // required to be, underneath the root directory. This can't be sent when the engine is attaching to a
-    // provider via a port number.
-    string program_directory = 3;
+    // A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
+    // In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been
+    // asked to attach to an existing running provider instance via a host/port number), this field will be empty.
+    optional string root_directory = 2;
+
+    // A *program directory* in which the provider should execute. This is generally a subdirectory of the root
+    // directory, though this is not required. In the event that the provider is *not* being booted by the engine (e.g.
+    // in the case that the engine has been asked to attach to an existing running provider instance via a host/port
+    // number), this field will be empty.
+    optional string program_directory = 3;
 }
 
+// `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
 message ProviderHandshakeResponse {
 }
 
@@ -314,21 +342,23 @@ message ConfigureRequest {
     google.protobuf.Struct args = 2;
 
     // True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
-    // provider supports them also.
+    // provider supports them also. *Must* be true if the caller has previously called
+    // [](pulumirpc.ResourceProvider.Handshake).
     bool acceptSecrets  = 3;
 
     // True if and only if the caller supports strongly typed resources. If true, operations should return resources as
-    // strongly typed values if the provider supports them also.
+    // strongly typed values if the provider supports them also. *Must* be true if the caller has previously called
+    // [](pulumirpc.ResourceProvider.Handshake).
     bool acceptResources = 4;
 
     // True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
     // [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
-    // these calls.
+    // these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     bool sends_old_inputs = 5;
 
     // True if and only if the caller supports sending old inputs and outputs as part of
     // [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
-    // these calls.
+    // these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     bool sends_old_inputs_to_delete = 6;
 }
 
@@ -336,20 +366,22 @@ message ConfigureRequest {
 // purpose is to communicate features that the provider supports back to the caller.
 message ConfigureResponse {
     // True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
-    // values to the provider.
+    // values to the provider. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
     bool acceptSecrets = 1;
 
     // True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
     // [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
-    // `true` during previews.
+    // `true` during previews. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
     bool supportsPreview = 2;
 
     // True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
-    // strongly typed values to the provider.
+    // strongly typed values to the provider. *Must* be true if the provider implements
+    // [](pulumirpc.ResourceProvider.Handshake).
     bool acceptResources = 3;
 
     // True if and only if the provider supports output values as inputs. If true, the engine should pass output values
-    // to the provider where possible.
+    // to the provider where possible. *Must* be true if the provider implements
+    // [](pulumirpc.ResourceProvider.Handshake).
     bool acceptOutputs = 4;
 
     // True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user.
@@ -619,6 +651,13 @@ message PropertyDiff {
 //   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
 //   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
 //   change occurred (e.g. a field was added, deleted or updated).
+//
+// The response must satisfy the following invariants:
+//
+// * For each top-level key in `diff` there is at least one matching property path, starting at that key, in `detailedDiff`.
+// * For each entry in `detailedDiff`, its top-level property is in `diff`.
+// * `diff` does not contain duplicates.
+// * `detailedDiff` does not contain duplicate keys.
 message DiffResponse {
     // A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
     // caller should replace the resource if this set is non-empty, or if any of the properties specified in

@@ -17,6 +17,9 @@ namespace Other.Example
 
         public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs? args = null, InvokeOptions? options = null)
             => global::Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
+
+        public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs args, InvokeOutputOptions options)
+            => global::Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
     }
 
 

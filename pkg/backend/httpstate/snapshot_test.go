@@ -449,6 +449,7 @@ type dynamicStackCase struct {
 }
 
 func (c dynamicStackCase) getName() string {
+	//nolint:gosec // resourcePayloadBytes is always positive
 	return fmt.Sprintf("%v_x_%v", c.resourceCount, humanize.Bytes(uint64(c.resourcePayloadBytes)))
 }
 

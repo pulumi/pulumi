@@ -152,12 +152,12 @@ func (u *tupleElementUnifier) unify(t *TupleType) {
 	if !u.any {
 		u.elementTypes, u.any, u.conversionKind = append([]Type(nil), t.ElementTypes...), true, SafeConversion
 	} else {
-		min := len(u.elementTypes)
-		if l := len(t.ElementTypes); l < min {
-			min = l
+		minimum := len(u.elementTypes)
+		if l := len(t.ElementTypes); l < minimum {
+			minimum = l
 		}
 
-		for i := 0; i < min; i++ {
+		for i := 0; i < minimum; i++ {
 			element, ck := u.elementTypes[i].unify(t.ElementTypes[i])
 			if ck < u.conversionKind {
 				u.conversionKind = ck
@@ -166,11 +166,11 @@ func (u *tupleElementUnifier) unify(t *TupleType) {
 		}
 
 		if len(u.elementTypes) > len(t.ElementTypes) {
-			for i := min; i < len(u.elementTypes); i++ {
+			for i := minimum; i < len(u.elementTypes); i++ {
 				u.elementTypes[i] = NewOptionalType(u.elementTypes[i])
 			}
 		} else {
-			for _, t := range t.ElementTypes[min:] {
+			for _, t := range t.ElementTypes[minimum:] {
 				u.elementTypes = append(u.elementTypes, NewOptionalType(t))
 			}
 		}

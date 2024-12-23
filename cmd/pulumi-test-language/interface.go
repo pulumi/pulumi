@@ -24,11 +24,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -121,7 +123,7 @@ func (eng *languageTestServer) Done() error {
 type providerLoader struct {
 	language, languageInfo string
 
-	providers []plugin.Provider
+	host plugin.Host
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
@@ -138,20 +140,26 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
 
-	// Find the provider with the given package name
-	var provider plugin.Provider
-	for _, p := range l.providers {
-		if string(p.Pkg()) == descriptor.Name {
-			info, err := p.GetPluginInfo(context.TODO())
-			if err != nil {
-				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
-			}
-
-			if descriptor.Version == nil || (info.Version != nil && descriptor.Version.EQ(*info.Version)) {
-				provider = p
-				break
-			}
+	// Defer to the host to find the provider for the given package descriptor.
+	workspaceDescriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              descriptor.Name,
+			Version:           descriptor.Version,
+			PluginDownloadURL: descriptor.DownloadURL,
+		},
+	}
+	if descriptor.Parameterization != nil {
+		workspaceDescriptor.Parameterization = &workspace.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
 		}
+	}
+
+	provider, err := l.host.Provider(workspaceDescriptor)
+	if err != nil {
+		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
 
 	if provider == nil {
@@ -231,17 +239,17 @@ func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
 ) (*testingrpc.GetLanguageTestsResponse, error) {
-	tests := make([]string, 0, len(languageTests))
-	for testName := range languageTests {
+	filtered := make([]string, 0, len(tests.LanguageTests))
+	for testName := range tests.LanguageTests {
 		// Don't return internal tests
 		if strings.HasPrefix(testName, "internal-") {
 			continue
 		}
-		tests = append(tests, testName)
+		filtered = append(filtered, testName)
 	}
 
 	return &testingrpc.GetLanguageTestsResponse{
-		Tests: tests,
+		Tests: filtered,
 	}, nil
 }
 
@@ -394,7 +402,7 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	test, has := languageTests[req.Test]
+	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
@@ -456,7 +464,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// And now replace the context host with our own test host
 	providers := make(map[string]plugin.Provider)
-	for _, provider := range test.providers {
+	for _, provider := range test.Providers {
 		version, err := getProviderVersion(provider)
 		if err != nil {
 			return nil, err
@@ -464,7 +472,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
 	}
 
-	pctx.Host = &testHost{
+	host := &testHost{
 		stderr:      stderr,
 		host:        pctx.Host,
 		runtime:     languageClient,
@@ -473,11 +481,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		connections: make(map[plugin.Provider]io.Closer),
 	}
 
+	pctx.Host = host
+
 	// Generate SDKs for all the packages we need
 	loader := &providerLoader{
-		providers:    test.providers,
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
+		host:         host,
 	}
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
@@ -490,10 +500,10 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
-	for i, run := range test.runs {
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -503,15 +513,15 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
-		if run.main != "" {
-			sourceDir = filepath.Join(sourceDir, run.main)
+		if run.Main != "" {
+			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
@@ -672,7 +682,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Create any stack references needed for the test
-	for name, outputs := range test.stackReferences {
+	for name, outputs := range test.StackReferences {
 		ref, err := testBackend.ParseStackReference(name)
 		if err != nil {
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
@@ -720,11 +730,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	var result LResult
-	for i, run := range test.runs {
+	var result tests.LResult
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -734,17 +744,17 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(projectDir, 0o755)
@@ -755,12 +765,22 @@ func (eng *languageTestServer) RunLanguageTest(
 		// Generate the project and read in the Pulumi.yaml
 		rootDirectory := sourceDir
 		projectJSON := func() string {
-			if run.main == "" {
+			if run.Main == "" {
 				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
 			}
-			sourceDir = filepath.Join(sourceDir, run.main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+			sourceDir = filepath.Join(sourceDir, run.Main)
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
 		}()
+
+		// Check the PCL is valid and get the list of packages it reports
+		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		if err != nil {
+			return nil, fmt.Errorf("bind PCL program: %v", err)
+		}
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("bind PCL program: %v", diags)
+		}
+		programPackages := program.PackageReferences()
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 		diagnostics, err := languageClient.GenerateProject(
@@ -780,7 +800,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
 		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
@@ -841,20 +861,15 @@ func (eng *languageTestServer) RunLanguageTest(
 				Name: "pulumi", Version: token.CoreVersion,
 			})
 		}
-		for _, provider := range test.providers {
-			pkg := string(provider.Pkg())
-			version, err := getProviderVersion(provider)
-			if err != nil {
-				return nil, err
-			}
-			if pkg == "parameterized" {
-				// TODO: not sure what to do with this yet because we can't get the parameterized package name
-				// unless we call `Parameterize` which we can't do here because we don't have the descriptor info
+		for _, pkg := range programPackages {
+			if pkg.Name() == "pulumi" {
+				// Skip the pulumi package, the version for that is handled above.
 				continue
 			}
+
 			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
-				Name:    pkg,
-				Version: version.String(),
+				Name:    pkg.Name(),
+				Version: pkg.Version().String(),
 			})
 		}
 		for _, expectedDependency := range expectedDependencies {
@@ -913,6 +928,100 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
+		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
+		packages, err := languageClient.GetRequiredPackages(programInfo)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
+		}
+		expectedPackages := []workspace.PackageDescriptor{}
+		for _, pkg := range programPackages {
+			if pkg.Name() == "pulumi" {
+				// Skip the pulumi package, the version for that is handled above.
+				continue
+			}
+
+			pkgDef, err := pkg.Definition()
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
+			}
+
+			var desc workspace.PackageDescriptor
+			if pkgDef.Parameterization == nil {
+				desc = workspace.PackageDescriptor{
+					PluginSpec: workspace.PluginSpec{
+						Name:    pkgDef.Name,
+						Version: pkgDef.Version,
+					},
+				}
+			} else {
+				desc = workspace.PackageDescriptor{
+					PluginSpec: workspace.PluginSpec{
+						Name:    pkgDef.Parameterization.BaseProvider.Name,
+						Version: &pkgDef.Parameterization.BaseProvider.Version,
+					},
+					Parameterization: &workspace.Parameterization{
+						Name:    pkgDef.Name,
+						Version: *pkgDef.Version,
+						Value:   pkgDef.Parameterization.Parameter,
+					},
+				}
+			}
+
+			expectedPackages = append(expectedPackages, desc)
+		}
+
+		versionsMatch := func(expected, actual *semver.Version) bool {
+			if expected == nil && actual == nil {
+				return true
+			}
+			if expected == nil || actual == nil {
+				return false
+			}
+			return expected.EQ(*actual)
+		}
+		parameterizationsMatch := func(expected, actual *workspace.Parameterization) bool {
+			if expected == nil && actual == nil {
+				return true
+			}
+			if expected == nil || actual == nil {
+				return false
+			}
+			return expected.Name == actual.Name &&
+				versionsMatch(&expected.Version, &actual.Version) &&
+				slices.Equal(expected.Value, actual.Value)
+		}
+		for _, expectedPackage := range expectedPackages {
+			var found bool
+			for _, actual := range packages {
+				if actual.Name == expectedPackage.Name &&
+					versionsMatch(expectedPackage.Version, actual.Version) &&
+					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
+			}
+		}
+		// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
+		for _, actual := range packages {
+			var found bool
+			for _, expectedPackage := range expectedPackages {
+				if actual.Name == expectedPackage.Name &&
+					versionsMatch(expectedPackage.Version, actual.Version) &&
+					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
+			}
+		}
+
 		testBackend.SetCurrentProject(project)
 
 		// Create a new stack for the test
@@ -933,7 +1042,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		updateOptions := run.updateOptions
+		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
 
 		// Set up the stack and engine configuration
@@ -949,7 +1058,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		cfg := backend.StackConfiguration{
-			Config:    run.config,
+			Config:    run.Config,
 			Decrypter: dec,
 		}
 
@@ -985,8 +1094,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		result = WithL(func(l *L) {
-			run.assert(l, projectDir, res, snap, changes)
+		result = tests.WithL(func(l *tests.L) {
+			run.Assert(l, projectDir, res, snap, changes)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{
