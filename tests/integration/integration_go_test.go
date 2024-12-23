@@ -1314,7 +1314,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	containsRename := false
 	for _, r := range gomod.Replace {
 		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
-			"github.com/pulumi/pulumi-terraform-provider/sdks/go" {
+			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRename = true
 		}
 	}
