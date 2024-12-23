@@ -7,6 +7,7 @@ six~=1.12
 semver~=2.13
 pyyaml~=6.0
 debugpy~=1.8.7
+pip~=24.3.1
 
 # Dev packages only needed during development.
 mypy==1.9.0

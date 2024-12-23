@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Fix reading pulumi-plugin.json when using the uv toolchain
