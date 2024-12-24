@@ -52,6 +52,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 // This checks that the buildTarget option for Pulumi Go programs does build a binary.
@@ -1501,12 +1503,23 @@ func TestLogDebugGo(t *testing.T) {
 
 // Test that we can successfully start up a shimless provider and it gets the right environment
 // variables set.
+//
+//nolint:paralleltest // Depends on checking global process usage
 func TestRunPlugin(t *testing.T) {
-	t.Parallel()
-
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("run_plugin"))
+
+	// To start check there are no language plugins running.
+	processes, err := process.Processes()
+	require.NoError(t, err)
+	for _, p := range processes {
+		name, err := p.Name()
+		require.NoError(t, err)
+		if strings.Contains(name, "pulumi-language-") {
+			t.Fatalf("Found language plugin process %s %v", name, p)
+		}
+	}
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
@@ -1529,4 +1542,19 @@ func TestRunPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")
 	e.RunCommand("pulumi", "preview")
+
+	// After everything check all the processes are cleaned up.
+	processes, err = process.Processes()
+	require.NoError(t, err)
+	for _, p := range processes {
+		name, err := p.Cmdline()
+		require.NoError(t, err)
+		if strings.Contains(name, "pulumi-language-") {
+			t.Errorf("Found language plugin process %s %v", name, p)
+		} else if strings.Contains(name, "pulumi-go") {
+			t.Errorf("Found resource plugin process %s %v", name, p)
+		} else if strings.Contains(name, "provider-nodejs") {
+			t.Errorf("Found resource plugin process %s %v", name, p)
+		}
+	}
 }
