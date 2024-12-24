@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -250,6 +251,11 @@ func runConvert(
 		projectGenerator = generatorWrapper(
 			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
 				return javagen.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+			}, language)
+	case "go":
+		projectGenerator = generatorWrapper(
+			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
+				return gogen.GenerateProject(targetDirectory, proj, program, nil)
 			}, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
