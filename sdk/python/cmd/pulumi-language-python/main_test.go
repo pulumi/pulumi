@@ -226,8 +226,6 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Run(toolchainName+"/non-empty", func(t *testing.T) {
 			t.Parallel()
 			cwd := t.TempDir()
-			// cwd := filepath.Join(os.TempDir(), "banana3")
-			// require.NoError(t, os.MkdirAll(cwd, 0o777))
 			opts := getOptions(t, toolchainName, cwd)
 			sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
 			assert.NoError(t, err)

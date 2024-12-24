@@ -203,13 +203,13 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	// https://github.com/astral-sh/uv/issues/9838
 	pipCmd, err := u.ModuleCommand(ctx, "pip", "list", "--format", "json", "-v")
 	if err != nil {
-		return nil, fmt.Errorf("error preparing pip list command: %w", err)
+		return nil, fmt.Errorf("preparing pip list command: %w", err)
 	}
 	// Check if pip is installed, if not, we'll fallback to `uvx pip`, which will install an
 	// isolated pip for us.
 	cmd, err := u.ModuleCommand(ctx, "pip")
 	if err != nil {
-		return nil, fmt.Errorf("error preparing pip command: %w", err)
+		return nil, fmt.Errorf("preparing check pip command: %w", err)
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(out), "No module named pip") {
@@ -217,18 +217,18 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 			cmd.Dir = u.root
 			pipCmd = cmd
 		} else {
-			return nil, errorWithStderr(err, "error checking for pip")
+			return nil, errorWithStderr(err, "checking for pip")
 		}
 	}
 
 	output, err := pipCmd.Output()
 	if err != nil {
-		return nil, errorWithStderr(err, "error listing packages")
+		return nil, errorWithStderr(err, "listing packages")
 	}
 
 	var packages []PythonPackage
 	if err := json.Unmarshal(output, &packages); err != nil {
-		return nil, fmt.Errorf("error parsing package list: %w", err)
+		return nil, fmt.Errorf("parsing package list: %w", err)
 	}
 
 	return packages, nil
