@@ -204,6 +204,22 @@ in-project = true
 	}
 }
 
+// pulumiWheel searches for the built pulumi wheel in the env/src/dist directory
+// and returns its path.
+func pulumiWheel(t *testing.T) string {
+	dir, err := filepath.Abs(filepath.Join("..", "..", "env", "src", "dist"))
+	assert.NoError(t, err)
+	files, err := os.ReadDir(dir)
+	assert.NoError(t, err)
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".whl" {
+			return filepath.Join(dir, file.Name())
+		}
+	}
+	t.Fatalf("could not find wheel in %s", dir)
+	return ""
+}
+
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
@@ -227,9 +243,8 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			t.Parallel()
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-			assert.NoError(t, err)
-			createVenv(t, cwd, toolchainName, opts, sdkDir, "pulumi-random", "pip-install-test")
+
+			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pulumi-random", "pip-install-test")
 
 			packages, err := determinePulumiPackages(context.Background(), opts)
 
@@ -299,9 +314,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-			assert.NoError(t, err)
-			createVenv(t, cwd, toolchainName, opts, sdkDir, "pip")
+			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pip")
 
 			// Install a local pulumi SDK that has a pulumi-plugin.json file with `{ "resource": false }`.
 			fooSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "foo-1.0.0"))
@@ -330,9 +343,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-			assert.NoError(t, err)
-			createVenv(t, cwd, toolchainName, opts, sdkDir)
+			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t))
 
 			// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 			oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
@@ -358,9 +369,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-			assert.NoError(t, err)
-			createVenv(t, cwd, toolchainName, opts, sdkDir, "pulumi-policy")
+			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pulumi-policy")
 
 			// The package should not be considered a Pulumi package since it is hardcoded not to be,
 			// since it does not have an associated plugin.
