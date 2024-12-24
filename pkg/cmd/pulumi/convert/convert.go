@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -223,8 +224,8 @@ func runConvert(
 	defer contract.IgnoreClose(pCtx.Host)
 
 	// Translate well known sources to plugins
-	switch from {
-	case "tf":
+	switch strings.ToLower(from) {
+	case "tf", "terraform":
 		from = "terraform"
 	case "":
 		from = "yaml"
