@@ -709,6 +709,7 @@ function grpcResponseFromError(e: { id: string; properties: any; message: string
 }
 
 export async function main(provider: Provider, args: string[]) {
+    require("source-map-support").install();
     // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
     // code.
     const uncaughtErrors = new Set<Error>();
