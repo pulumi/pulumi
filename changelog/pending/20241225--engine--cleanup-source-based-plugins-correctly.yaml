@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Cleanup source based plugins correctly
