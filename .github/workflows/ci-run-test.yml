@@ -232,7 +232,7 @@ jobs:
       - name: Python Version
         run: python --version
       - name: Install poetry
-        run: pipx install poetry --python $(python --version)
+        run: pipx install --python $(python --version) poetry
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
