@@ -996,6 +996,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
+		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
 			var installError *NotInstalledError

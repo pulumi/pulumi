@@ -64,3 +64,9 @@ core-metadata-version = "2.3"
 # This ensures that the version for pulumi in uv.lock is updated when the
 # version from _version changes.
 upgrade-package = ["pulumi"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+include = ["lib/test_types"]
+strict = ["lib/test_types"]
