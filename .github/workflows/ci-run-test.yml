@@ -231,8 +231,8 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
       - name: Python Version
         run: python --version
-      - name: Install poetry
-        run: pipx install --python $(python --version) poetry
+      - name: Poetry Version
+        run: poetry --version
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
