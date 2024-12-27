@@ -32,7 +32,7 @@ build:: build_package build_plugin
 
 lint:: ensure
 	uv run -m ruff format --check
-	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi --config-file=mypy.ini
+	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi
 	uv run -m ruff check
 	uv run -m pyright
 

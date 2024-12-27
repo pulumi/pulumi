@@ -105,3 +105,20 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.mypy]
+# The minimum Python version we support
+python_version = "3.9"
+
+[[tool.mypy.overrides]]
+module = [
+    "dill",
+    "google.protobuf.pyext._message",
+    "google.protobuf.pyext",
+    "pulumi.runtime.proto.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pulumi.runtime.proto.*"]
+ignore_errors = true
