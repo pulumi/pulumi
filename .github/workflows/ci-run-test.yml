@@ -229,8 +229,10 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
+      - name: Python Version
+        run: python --version
       - name: Install poetry
-        run: pipx install poetry --python ${{ fromJson(inputs.version-set).python }}
+        run: pipx install poetry --python $(python --version)
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
