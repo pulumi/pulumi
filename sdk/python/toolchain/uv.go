@@ -217,8 +217,8 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(out), "No module named pip") {
-			pythonInterpreter := filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), "python")
-			args = []string{"pip", "--python", pythonInterpreter, "list", "--format", "json", "-v"}
+			_, pythonPath := u.pythonExecutable()
+			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
 			if !transitive {
 				args = append(args, "--not-required")
 			}
@@ -252,11 +252,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// does not, and we end up with an orphaned Python process that's
 	// busy-waiting in the eventloop and never exits.
 	var cmd *exec.Cmd
-	name := "python"
-	if runtime.GOOS == windows {
-		name = name + ".exe"
-	}
-	cmdPath := filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
+	name, cmdPath := u.pythonExecutable()
 	if needsPythonShim(cmdPath) {
 		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
 		cmd = exec.CommandContext(ctx, shimCmd, args...)
@@ -333,4 +329,12 @@ func (u *uv) uvVersion(versionString string) (semver.Version, error) {
 			versionString, minUvVersion)
 	}
 	return sem, nil
+}
+
+func (u *uv) pythonExecutable() (string, string) {
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
 }
