@@ -201,7 +201,11 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
 	// `-v` flag, which is required to get the package location.
 	// https://github.com/astral-sh/uv/issues/9838
-	pipCmd, err := u.ModuleCommand(ctx, "pip", "list", "--format", "json", "-v")
+	args := []string{"list", "--format", "json", "-v"}
+	if !transitive {
+		args = append(args, "--not-required")
+	}
+	pipCmd, err := u.ModuleCommand(ctx, "pip", args...)
 	if err != nil {
 		return nil, fmt.Errorf("preparing pip list command: %w", err)
 	}
@@ -213,7 +217,12 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(out), "No module named pip") {
-			cmd := exec.CommandContext(ctx, "uvx", "pip", "list", "--format", "json", "-v")
+			pythonInterpreter := filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), "python")
+			args = []string{"pip", "--python", pythonInterpreter, "list", "--format", "json", "-v"}
+			if !transitive {
+				args = append(args, "--not-required")
+			}
+			cmd := exec.CommandContext(ctx, "uvx", args...)
 			cmd.Dir = u.root
 			pipCmd = cmd
 		} else {

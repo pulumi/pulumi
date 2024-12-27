@@ -230,7 +230,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
       - name: Install poetry
-        run: pipx install poetry
+        run: pipx install poetry --python ${{ fromJson(inputs.version-set).python }}
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
