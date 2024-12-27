@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import subprocess
 import sys
 import json
 
@@ -15,7 +16,7 @@ def main():
     if len(sys.argv) != 2:
         print("Usage: set-version.py <version>")
         sys.exit(1)
-   
+
     version = sys.argv[1]
 
     with open("sdk/.version", "w+") as f:
@@ -31,15 +32,12 @@ def main():
     with open("sdk/nodejs/version.ts", "w") as f:
         f.write("".join(node))
 
-    python = open("sdk/python/lib/setup.py").readlines()
-    replace_line(python, "VERSION = ", f'VERSION = "{version}"\n')
-    with open("sdk/python/lib/setup.py", "w") as f:
-        f.write("".join(python))
-
     python = open("sdk/python/lib/pulumi/_version.py").readlines()
     replace_line(python, "_VERSION = ", f'_VERSION = "{version}"\n')
     with open("sdk/python/lib/pulumi/_version.py", "w") as f:
         f.write("".join(python))
+    # Run `uv sync` to update the version in uv.lock
+    subprocess.run(["uv", "sync"], cwd="sdk/python")
 
 if __name__ == "__main__":
     main()

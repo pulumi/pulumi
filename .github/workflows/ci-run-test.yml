@@ -187,12 +187,15 @@ jobs:
       - name: Install delve
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
         uses: actions/setup-dotnet@v4
         with:
@@ -225,11 +228,9 @@ jobs:
           npm install -g yarn pnpm
       - name: Install Python deps
         run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet build
       - name: Install poetry
         run: pipx install poetry
-      - name: Install uv
-        run: pipx install uv
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"

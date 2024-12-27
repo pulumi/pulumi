@@ -204,10 +204,10 @@ in-project = true
 	}
 }
 
-// pulumiWheel searches for the built pulumi wheel in the env/src/dist directory
+// pulumiWheel searches for the built pulumi wheel in the sdk/python/dist directory
 // and returns its path.
 func pulumiWheel(t *testing.T) string {
-	dir, err := filepath.Abs(filepath.Join("..", "..", "env", "src", "dist"))
+	dir, err := filepath.Abs(filepath.Join("..", "..", "build"))
 	assert.NoError(t, err)
 	files, err := os.ReadDir(dir)
 	assert.NoError(t, err)

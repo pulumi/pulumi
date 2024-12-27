@@ -419,7 +419,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.FailNow()
 	}
 
-	pySDK, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	pySDK, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python"))
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

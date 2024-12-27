@@ -93,7 +93,6 @@ PULUMI_ROOT ?= $$HOME/.pulumi-dev
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
 # runtime.
 PYTHON ?= python3
-PIP ?= pip3
 
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 

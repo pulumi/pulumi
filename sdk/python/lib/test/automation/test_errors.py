@@ -78,7 +78,7 @@ class TestErrors(unittest.TestCase):
 
                 # Determine the locally built Pulumi SDK path.
                 script_dir = os.path.dirname(os.path.abspath(__file__))
-                env_src_dir = os.path.join(script_dir, "..", "..", "..", "env", "src")
+                env_src_dir = os.path.join(script_dir, "..", "..", "..")
 
                 # Install the locally built Pulumi SDK in the virtual environment.
                 subprocess.run(
