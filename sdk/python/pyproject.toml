@@ -60,6 +60,12 @@ packages = ["lib/pulumi"]
 # https://github.com/python-poetry/poetry/issues/9885
 core-metadata-version = "2.3"
 
+[tool.hatch.build.targets.sdist]
+packages = ["lib/pulumi"]
+# The latest version is 2.4, but Poetry <= 1.8.4 has issues with it.
+# https://github.com/python-poetry/poetry/issues/9885
+core-metadata-version = "2.3"
+
 [tool.uv]
 # This ensures that the version for pulumi in uv.lock is updated when the
 # version from _version changes.

@@ -47,7 +47,7 @@ jobs:
         run: |
           (
             cd artifacts.tmp/artifacts-python-sdk
-            for file in *.whl ; do
+            for file in "*.(whl|tar.gz)" ; do
               mv -vT "$file" "sdk-python-$file"
             done
           )

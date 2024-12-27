@@ -201,7 +201,7 @@ jobs:
           mkdir -p artifacts
           (
             cd artifacts.tmp/artifacts-python-sdk
-            for file in *"${version}a"*.whl ; do
+            for file in "*${version}a*.(whl|tar.gz)" ; do
               mv -vT "$file" "../../artifacts/sdk-python-${file}"
             done
           )
