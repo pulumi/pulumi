@@ -217,6 +217,9 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(out), "No module named pip") {
+			// Use the python executable of our virtual environment so that pip will
+			// list the packages from that venv, instead of the isolated venv where
+			// uvx installs pip.
 			_, pythonPath := u.pythonExecutable()
 			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
 			if !transitive {
