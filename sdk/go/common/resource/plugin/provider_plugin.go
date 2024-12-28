@@ -337,7 +337,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+func NewProviderFromPath(pCtx *Context, path string) (Provider, error) {
 	env := os.Environ()
 
 	handshake := func(
@@ -345,16 +345,16 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	) (*ProviderHandshakeResponse, error) {
 		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
-			EngineAddress:    host.ServerAddr(),
+			EngineAddress:    pCtx.Host.ServerAddr(),
 			RootDirectory:    &dir,
 			ProgramDirectory: &dir,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
-	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
-		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-		handshake, providerPluginDialOptions(ctx, "", path))
+	plug, handshakeRes, err := newPlugin(pCtx, pCtx.Pwd, path, "",
+		apitype.ResourcePlugin, []string{pCtx.Host.ServerAddr()}, env,
+		handshake, providerPluginDialOptions(pCtx, "", path))
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +363,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
 	p := &provider{
-		ctx:           ctx,
+		ctx:           pCtx,
 		plug:          plug,
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
@@ -381,7 +381,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
 	if plug.Bin == "" {
-		err := p.Attach(host.ServerAddr())
+		err := p.Attach(pCtx.Host.ServerAddr())
 		if err != nil {
 			return nil, err
 		}

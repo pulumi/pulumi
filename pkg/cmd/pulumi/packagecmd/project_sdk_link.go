@@ -748,12 +748,8 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
 	if !strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
-		if err != nil {
-			return nil, err
-		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(descriptor)
+		provider, err := pCtx.Host.Provider(descriptor)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(descriptor.Name); statErr == nil && isExecutable(info) {
@@ -767,7 +763,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 			}
 
 			log := func(sev diag.Severity, msg string) {
-				host.Log(sev, "", msg, 0)
+				pCtx.Host.Log(sev, "", msg, 0)
 			}
 
 			_, err = pkgWorkspace.InstallPlugin(pCtx.Base(), descriptor.PluginSpec, log)
@@ -775,7 +771,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 				return nil, err
 			}
 
-			p, err := host.Provider(descriptor)
+			p, err := pCtx.Host.Provider(descriptor)
 			if err != nil {
 				return nil, err
 			}
@@ -804,12 +800,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 		}
 	}
 
-	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := plugin.NewProviderFromPath(host, pCtx, packageSource)
+	p, err := plugin.NewProviderFromPath(pCtx, packageSource)
 	if err != nil {
 		return nil, err
 	}
