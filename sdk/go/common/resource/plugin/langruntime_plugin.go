@@ -644,8 +644,8 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	var eof sync.WaitGroup
 	eof.Add(1)
 	blockingKill := func() {
-		kill()
 		contract.IgnoreError(resp.CloseSend())
+		kill()
 		eof.Wait()
 	}
 
