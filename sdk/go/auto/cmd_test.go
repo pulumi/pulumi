@@ -286,7 +286,8 @@ func TestRunCanceled(t *testing.T) {
 	stackName := ptesting.RandomStackName()
 	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
 
-	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	defer cancel()
 
 	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, nil, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
