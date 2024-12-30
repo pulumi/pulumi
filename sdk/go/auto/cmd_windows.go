@@ -18,7 +18,6 @@
 package auto
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
@@ -27,8 +26,6 @@ import (
 )
 
 func interruptProcess(proc *os.Process) error {
-	fmt.Println(proc.Pid)
-	fmt.Println(os.Getpid())
 	return sigintwindows.SendCtrlBreak(proc.Pid)
 }
 
