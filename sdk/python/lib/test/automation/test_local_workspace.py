@@ -536,7 +536,9 @@ class TestLocalWorkspace(unittest.TestCase):
 
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
-            self.skipTest("Skipping test because tag methods are only supported in the cloud backend.")
+            self.skipTest(
+                "Skipping test because tag methods are only supported in the cloud backend."
+            )
         project_name = "python_test"
         runtime = "python"
         project_settings = ProjectSettings(name=project_name, runtime=runtime)
