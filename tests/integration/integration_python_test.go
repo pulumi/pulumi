@@ -1755,7 +1755,7 @@ func TestDynamicProviderPython(t *testing.T) {
 			} else {
 				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 				require.NoError(t, err)
-				_, err = fmt.Fprintf(f, coreSDK)
+				_, err = fmt.Fprintln(f, coreSDK)
 				require.NoError(t, err)
 				require.NoError(t, f.Close())
 				e.RunCommand("pulumi", "install")
