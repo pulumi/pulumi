@@ -1737,3 +1737,35 @@ func TestLogDebugPython(t *testing.T) {
 		},
 	})
 }
+
+func TestDynamicProviderPython(t *testing.T) {
+	t.Parallel()
+	for _, toolchain := range []string{"pip", "uv", "poetry"} {
+		toolchain := toolchain
+		t.Run(toolchain, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(filepath.Join("python", "dynamic-provider", toolchain))
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+			require.NoError(t, err)
+			if toolchain == "poetry" {
+				e.RunCommand("pulumi", "install")
+				e.RunCommand("poetry", "add", coreSDK)
+			} else {
+				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+				require.NoError(t, err)
+				_, err = fmt.Fprintf(f, coreSDK)
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+				e.RunCommand("pulumi", "install")
+			}
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+			e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
+			e.RunCommand("pulumi", "dn", "--yes", "--skip-preview")
+		})
+	}
+}
