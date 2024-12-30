@@ -19,21 +19,10 @@ package auto
 
 import (
 	"os"
-	"syscall"
+
+	"github.com/iwdgo/sigintwindows"
 )
 
 func interruptProcess(proc *os.Process) error {
-	d, e := syscall.LoadDLL("kernel32.dll")
-	if e != nil {
-		return e
-	}
-	p, e := d.FindProc("GenerateConsoleCtrlEvent")
-	if e != nil {
-		return e
-	}
-	r, _, e := p.Call(uintptr(syscall.CTRL_BREAK_EVENT), uintptr(pid))
-	if r == 0 {
-		return e // syscall.GetLastError()
-	}
-	return nil
+	return sigintwindows.SendCtrlBreak(proc.Pid)
 }
