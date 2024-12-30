@@ -20,6 +20,8 @@ package auto
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"syscall"
 
 	"github.com/iwdgo/sigintwindows"
 )
@@ -28,4 +30,10 @@ func interruptProcess(proc *os.Process) error {
 	fmt.Println(proc.Pid)
 	fmt.Println(os.Getpid())
 	return sigintwindows.SendCtrlBreak(proc.Pid)
+}
+
+func setSysprocAttrNewProcessGroup(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+	}
 }

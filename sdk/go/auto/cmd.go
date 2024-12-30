@@ -283,6 +283,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	cmd.Stdout = io.MultiWriter(additionalOutput...)
 	cmd.Stderr = io.MultiWriter(additionalErrorOutput...)
 	cmd.Stdin = stdin
+	setSysprocAttrNewProcessGroup(cmd)
 	cmd.Cancel = func() error {
 		err := interruptProcess(cmd.Process)
 		if err != nil {

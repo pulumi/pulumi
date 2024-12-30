@@ -17,8 +17,14 @@
 
 package auto
 
-import "os"
+import (
+	"os"
+	"os/exec"
+)
 
 func interruptProcess(proc *os.Process) error {
 	return proc.Signal(os.Interrupt)
+}
+
+func setSysprocAttrNewProcessGroup(_ *exec.Cmd) {
 }
