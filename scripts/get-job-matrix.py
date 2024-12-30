@@ -138,8 +138,8 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "dotnet": "6",
     "go": "1.22.x",
     "nodejs": "18.x",
-    # When updating the minimum Python version here, also update `mypy.ini` and
-    # `ruff.toml` to target this version.
+    # When updating the minimum Python version here, also update `pyproject.toml`, including the
+    # `mypy` and `ruff` sections.
     "python": "3.9.x",
 }
 
