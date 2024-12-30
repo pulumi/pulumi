@@ -36,6 +36,10 @@ def main():
     replace_line(python, "_VERSION = ", f'_VERSION = "{version}"\n')
     with open("sdk/python/lib/pulumi/_version.py", "w") as f:
         f.write("".join(python))
+    pyproject = open("sdk/python/pyproject.toml").readlines()
+    replace_line(pyproject, "version = ", f'version = "{version}"\n')
+    with open("sdk/python/pyproject.toml", "w") as f:
+        f.write("".join(pyproject))
     # Run `uv sync` to update the version in uv.lock
     subprocess.run(["uv", "sync"], cwd="sdk/python")
 

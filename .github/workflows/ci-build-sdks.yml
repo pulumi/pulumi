@@ -62,7 +62,7 @@ jobs:
       - name: Build Pulumi Python SDK wheel
         run: |
           cd sdk/python
-          sed -i.bak "s/^_VERSION = .*/_VERSION = \"${PYPI_VERSION}\"/g" lib/pulumi/_version.py && rm lib/pulumi/_version.py.bak
+          sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
           make build_package
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v4
