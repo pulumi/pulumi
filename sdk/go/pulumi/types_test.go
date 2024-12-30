@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1218,4 +1219,101 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 			return 42
 		})
 	}, "int-string should not be allowed")
+}
+
+// Test taking an interface type ID1 and enhancing it with standard Input (ID1Input) and Output (ID1Output) types. This
+// currently does not work. The code is taken from the standard ID type and renamed to ID1, but unlike ID1, ID is an
+// interface, not a string.
+func TestInputOutputWrappersForInterfaces(t *testing.T) {
+	id := "x"
+	var ex ID1 = &id1Impl{id}
+
+	assert.Equal(t, id, extractID(ex))
+
+	var exi ID1Input = ex
+	assert.Equal(t, id, extractID(exi))
+
+	var exOutput ID1Output = ToOutput(ex).(ID1Output)
+	assert.Equal(t, id, extractID(exOutput))
+}
+
+func extractID(i ID1Input) string {
+	c := make(chan string)
+	i.ToID1Output().ApplyT(func(x ID1) int {
+		c <- x.GetID()
+		return 0
+	})
+	return <-c
+}
+
+type ID1 interface {
+	GetID() string
+
+	// ElementType() reflect.Type
+	// ToID1Output() ID1Output
+	// ToID1OutputWithContext(ctx context.Context) ID1Output
+	ID1Input
+}
+
+type id1Impl struct {
+	theId string
+}
+
+func (self *id1Impl) ToID1Output() ID1Output {
+	return ToOutput(self).(ID1Output)
+}
+
+func (self *id1Impl) ToID1OutputWithContext(ctx context.Context) ID1Output {
+	return ToOutputWithContext(ctx, self).(ID1Output)
+}
+
+func (self *id1Impl) ElementType() reflect.Type {
+	return id1Type
+}
+
+func (self *id1Impl) GetID() string {
+	return self.theId
+}
+
+// The following code adapts IDInput from type_builtins.go
+var id1Type = reflect.TypeOf((*ID1)(nil)).Elem()
+
+// IDInput is an input type that accepts ID1 and IDOutput1 values.
+type ID1Input interface {
+	Input
+
+	ToID1Output() ID1Output
+	ToID1OutputWithContext(ctx context.Context) ID1Output
+}
+
+// ID1Output is an Output that returns ID values.
+type ID1Output struct{ *OutputState }
+
+func (ID1Output) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ID1Output) ToOutput(ctx context.Context) pulumix.Output[ID1] {
+	return pulumix.Output[ID1]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (ID1).
+func (ID1Output) ElementType() reflect.Type {
+	return id1Type
+}
+
+func (o ID1Output) ToID1Output() ID1Output {
+	return o
+}
+
+func (o ID1Output) ToID1OutputWithContext(ctx context.Context) ID1Output {
+	return o
+}
+
+func init() {
+	var exampleId ID1 = &id1Impl{""}
+	RegisterInputType(reflect.TypeOf((*ID1Input)(nil)).Elem(), exampleId)
+	RegisterOutputType(ID1Output{})
 }
