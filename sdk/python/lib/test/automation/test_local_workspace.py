@@ -80,9 +80,6 @@ def get_stack(stack_list: List[StackSummary], name: str) -> Optional[StackSummar
     return None
 
 
-@pytest.mark.skipif(
-    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
-)
 class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings(self):
         for ext in extensions:
@@ -538,6 +535,8 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(arr.value, '["one","two","three"]')
 
     def test_tag_methods(self):
+        if os.getenv("PULUMI_ACCESS_TOKEN") is None:
+            self.skipTest("Skipping test because tag methods are only supported in the cloud backend.")
         project_name = "python_test"
         runtime = "python"
         project_settings = ProjectSettings(name=project_name, runtime=runtime)

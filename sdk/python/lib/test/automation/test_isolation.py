@@ -79,9 +79,6 @@ async def async_stack_destroy(stack):
     return stack.destroy()
 
 
-@pytest.mark.skipif(
-    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
-)
 @pytest.mark.asyncio
 async def test_parallel_updates():
     first_stack_name = f"stack-{uuid.uuid4()}"
@@ -112,9 +109,6 @@ async def test_parallel_updates():
     )
 
 
-@pytest.mark.skipif(
-    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
-)
 @pytest.mark.skipif(
     sys.platform == "win32", reason="TODO[pulumi/pulumi#8716] fails on Windows"
 )
