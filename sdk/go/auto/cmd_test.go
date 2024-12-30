@@ -286,13 +286,18 @@ func TestRunCanceled(t *testing.T) {
 	stackName := ptesting.RandomStackName()
 	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
-	defer cancel()
+	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
 
 	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, nil, "preview", "-s", stackName)
-	require.ErrorContains(t, err, "exit status 255")
-	require.Contains(t, stdout, "error: preview canceled")
-	require.Equal(t, -1, code)
+	if runtime.GOOS == "windows" {
+		require.ErrorContains(t, err, "exit status 1")
+		require.Contains(t, stdout, "error: preview canceled")
+		require.Equal(t, 1, code)
+	} else {
+		require.ErrorContains(t, err, "exit status 255")
+		require.Contains(t, stdout, "error: preview canceled")
+		require.Equal(t, 255, code)
+	}
 
 	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }
