@@ -308,6 +308,8 @@ type ProgramTestOptions struct {
 	// Automatically create and use a virtual environment, rather than using the Pipenv tool. This is now the default
 	// behavior, so this option no longer has any affect. To go back to the old behavior use the `UsePipenv` option.
 	UseAutomaticVirtualEnv bool
+	// Use the uv tool to manage the virtual environment.
+	UseUv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
 	// Use a shared virtual environment for tests based on the contents of the requirements file. Defaults to false.
@@ -1162,6 +1164,15 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 	}
 
 	cmd := append([]string{virtualenvBinPath}, args[1:]...)
+	return pt.runCommand(name, cmd, wd)
+}
+
+func (pt *ProgramTester) runUvCommand(name string, args []string, wd string) error {
+	uvBin, err := exec.LookPath("uv")
+	if err != nil {
+		return fmt.Errorf("uv binary not found: %w", err)
+	}
+	cmd := append([]string{uvBin}, args...)
 	return pt.runCommand(name, cmd, wd)
 }
 
@@ -2278,6 +2289,10 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
 			return err
 		}
+	} else if !pt.opts.UseUv { // flipped for experimenting
+		if err = pt.preparePythonProjectWithUv(projinfo); err != nil {
+			return err
+		}
 	} else {
 		venvPath := "venv"
 		if cwd != projinfo.Root {
@@ -2309,6 +2324,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 				return err
 			}
 		}
+
 		command := []string{"python", "-m", "pip", "install", "-r", "requirements.txt"}
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
 			return err
@@ -2318,6 +2334,32 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	if !pt.opts.RunUpdateTest {
 		if err = pt.installPipPackageDeps(cwd); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo) error {
+	cwd, main, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	projinfo.Proj.Runtime.SetOption("toolchain", "uv")
+	projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
+	if err := projinfo.Proj.Save(projfile); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+
+	if err := pt.runPulumiCommand("pulumi-install", []string{"install"}, cwd, false); err != nil {
+		return err
+	}
+
+	if pt.opts.InstallDevReleases {
+		if err := pt.runUvCommand("uv-pip-install-pre-pulumi",
+			[]string{"pip", "install", "--pre", "pulumi"}, main); err != nil {
+			return fmt.Errorf("create virtual environment with uv: %w", err)
 		}
 	}
 
@@ -2383,6 +2425,11 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 			if err := pt.runPipenvCommand("pipenv-install-package",
 				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
+			}
+		} else if !pt.opts.UseUv { // flipped for experimenting
+			if err := pt.runUvCommand("uv-pip-install-package",
+				[]string{"pip", "install", "-e", dep}, cwd); err != nil {
+				return fmt.Errorf("uv command: %w", err)
 			}
 		} else {
 			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
