@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3"
@@ -270,4 +271,27 @@ func TestMinimumVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestRunCanceled(t *testing.T) {
+	cmd, err := NewPulumiCommand(nil)
+	require.NoError(t, err)
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "1234")
+
+	e.ImportDirectory("testdata/slow")
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	defer cancel()
+
+	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, nil, "preview", "-s", stackName)
+	require.ErrorContains(t, err, "signal: interrupt")
+	require.Equal(t, -1, code)
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }
