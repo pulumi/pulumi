@@ -229,8 +229,8 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
-      - name: Install poetry
-        run: pipx install poetry
+      - name: Install Poetry
+        run: python -m pip install poetry
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"

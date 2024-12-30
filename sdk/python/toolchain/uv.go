@@ -201,7 +201,11 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
 	// `-v` flag, which is required to get the package location.
 	// https://github.com/astral-sh/uv/issues/9838
-	pipCmd, err := u.ModuleCommand(ctx, "pip", "list", "--format", "json", "-v")
+	args := []string{"list", "--format", "json", "-v"}
+	if !transitive {
+		args = append(args, "--not-required")
+	}
+	pipCmd, err := u.ModuleCommand(ctx, "pip", args...)
 	if err != nil {
 		return nil, fmt.Errorf("preparing pip list command: %w", err)
 	}
@@ -213,7 +217,15 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(out), "No module named pip") {
-			cmd := exec.CommandContext(ctx, "uvx", "pip", "list", "--format", "json", "-v")
+			// Use the python executable of our virtual environment so that pip will
+			// list the packages from that venv, instead of the isolated venv where
+			// uvx installs pip.
+			_, pythonPath := u.pythonExecutable()
+			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
+			if !transitive {
+				args = append(args, "--not-required")
+			}
+			cmd := exec.CommandContext(ctx, "uvx", args...)
 			cmd.Dir = u.root
 			pipCmd = cmd
 		} else {
@@ -243,11 +255,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// does not, and we end up with an orphaned Python process that's
 	// busy-waiting in the eventloop and never exits.
 	var cmd *exec.Cmd
-	name := "python"
-	if runtime.GOOS == windows {
-		name = name + ".exe"
-	}
-	cmdPath := filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
+	name, cmdPath := u.pythonExecutable()
 	if needsPythonShim(cmdPath) {
 		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
 		cmd = exec.CommandContext(ctx, shimCmd, args...)
@@ -324,4 +332,12 @@ func (u *uv) uvVersion(versionString string) (semver.Version, error) {
 			versionString, minUvVersion)
 	}
 	return sem, nil
+}
+
+func (u *uv) pythonExecutable() (string, string) {
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
 }
