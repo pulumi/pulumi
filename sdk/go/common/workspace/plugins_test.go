@@ -1691,3 +1691,169 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(tempdir, "symlink", "pulumi-resource-aws"), path)
 }
+
+func TestNewPluginSpec(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("1.0.0")
+	v0deadbeef := semver.MustParse("0.0.0-xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+	cases := []struct {
+		name               string
+		source             string
+		version            *semver.Version
+		kind               apitype.PluginKind
+		pluginDownloadURL  string
+		ExpectedPluginSpec PluginSpec
+		Error              error
+	}{
+		{
+			name:   "regular plugin",
+			source: "pulumi-example",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "pulumi-example",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "",
+				PluginDir:         "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "plugin with version",
+			source: "pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "pulumi-example",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "",
+				PluginDir:         "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "plugin with invalid semver",
+			source: "pulumi-example@v1.0.0.0",
+			kind:   apitype.ResourcePlugin,
+			Error:  errors.New("VERSION must be valid semver: Invalid character(s) found in patch number \"0.0\""),
+		},
+		{
+			name:   "git plugin",
+			source: "github.com/pulumi/pulumi-example",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDir:         "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "git plugin with version",
+			source: "github.com/pulumi/pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDir:         "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "git plugin with commit hash version",
+			source: "github.com/pulumi/pulumi-example@deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v0deadbeef,
+				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDir:         "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "git plugin with invalid version hash",
+			source: "github.com/pulumi/pulumi-example@abcd",
+			kind:   apitype.ResourcePlugin,
+			Error:  errors.New("VERSION must be valid semver or git commit hash: abcd"),
+		},
+		{
+			name:   "local plugin",
+			source: "./test/plugin",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "./test/plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:   "local plugin absolute path",
+			source: "/test/plugin",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "/test/plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           nil,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:    "conflicting versions error",
+			source:  "plugin@v1.0.0",
+			version: &v1,
+			kind:    apitype.ResourcePlugin,
+			Error:   errors.New("cannot specify a version when the version is part of the name"),
+		},
+		{
+			name:    "passed in version is used",
+			source:  "plugin",
+			kind:    apitype.ResourcePlugin,
+			version: &v1,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "plugin",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "",
+				Checksums:         nil,
+			},
+		},
+		{
+			name:              "plugin download url and git url",
+			source:            "github.com/pulumi/pulumi-example@v1.0.0",
+			kind:              apitype.ResourcePlugin,
+			pluginDownloadURL: "https://example.com/pulumi-example",
+			Error:             errors.New("cannot specify a plugin download URL when the plugin name is a URL"),
+		},
+		{
+			name:   "invalid version with git plugin",
+			source: "github.com/pulumi/pulumi-example@v1.0.0.0",
+			kind:   apitype.ResourcePlugin,
+			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			spec, err := NewPluginSpec(c.source, c.kind, c.version, c.pluginDownloadURL, nil)
+			if c.Error != nil {
+				require.EqualError(t, err, c.Error.Error())
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.ExpectedPluginSpec, spec)
+		})
+	}
+}

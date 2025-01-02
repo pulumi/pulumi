@@ -138,12 +138,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		pluginSpec := workspace.PluginSpec{
-			Kind:              apitype.PluginKind(args[0]),
-			Name:              args[1],
-			Version:           version,
-			PluginDownloadURL: cmd.serverURL, // If empty, will use default plugin source.
-			Checksums:         checksums,
+		pluginSpec, err := workspace.NewPluginSpec(args[1], apitype.PluginKind(args[0]), version, cmd.serverURL, checksums)
+		if err != nil {
+			return err
 		}
 
 		// Bundled plugins are generally not installable with this command. They are expected to be
