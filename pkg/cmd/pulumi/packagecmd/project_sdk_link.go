@@ -28,7 +28,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -716,20 +715,9 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
 	descriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind: apitype.ResourcePlugin,
-			Name: packageSource,
-		},
-	}
-
-	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
-		descriptor.Name = s[0]
-		v, err := semver.ParseTolerant(s[1])
-		if err != nil {
-			return nil, fmt.Errorf("VERSION must be valid semver: %w", err)
-		}
-		descriptor.Version = &v
+		PluginSpec: pluginSpec,
 	}
 
 	isExecutable := func(info fs.FileInfo) bool {
@@ -742,7 +730,8 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
-	if !strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
+	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
+		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err
