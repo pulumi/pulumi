@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/diy
+  description: Added "how to fix" instructions for "already exists" errors
