@@ -1,5 +1,16 @@
 @echo off
 
+REM If PULUMI_RUNTIME_VIRTUALENV is not set, try to set it based on the PULUMI_RUNTIME_TOOLCHAIN.
+if not defined PULUMI_RUNTIME_VIRTUALENV (
+    if defined PULUMI_RUNTIME_TOOLCHAIN (
+        if "%PULUMI_RUNTIME_TOOLCHAIN%"=="uv" (
+            set PULUMI_RUNTIME_VIRTUALENV=.venv
+        ) else if "%PULUMI_RUNTIME_TOOLCHAIN%"=="poetry" (
+            for /f "tokens=*" %%i in ('poetry env info --path') do set PULUMI_RUNTIME_VIRTUALENV=%%i
+        )
+    )
+)
+
 if defined PULUMI_RUNTIME_VIRTUALENV (
     REM If python exists in the virtual environment, set PATH and run it.
     if exist "%PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe" (

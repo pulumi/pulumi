@@ -1,5 +1,15 @@
 #!/bin/sh
 
+
+# If PULUMI_RUNTIME_VIRTUALENV is not set, try to set it based on the PULUMI_RUNTIME_TOOLCHAIN.
+if [ -z "${PULUMI_RUNTIME_VIRTUALENV:-}" ]; then
+    if [ "${PULUMI_RUNTIME_TOOLCHAIN:-}" = "uv" ]; then
+        PULUMI_RUNTIME_VIRTUALENV=".venv"
+    elif [ "${PULUMI_RUNTIME_TOOLCHAIN:-}" = "poetry" ]; then
+        PULUMI_RUNTIME_VIRTUALENV=$(poetry env info --path)
+    fi
+fi
+
 if [ -n "${PULUMI_RUNTIME_VIRTUALENV:-}" ] ; then
     # Remove trailing slash.
     PULUMI_RUNTIME_VIRTUALENV=${PULUMI_RUNTIME_VIRTUALENV%/}
