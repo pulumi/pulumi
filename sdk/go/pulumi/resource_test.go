@@ -1246,6 +1246,12 @@ func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption)
 	return &res
 }
 
+func newUnknwonRes() *testRes {
+	r := testRes{}
+	r.id = IDOutput{} // Make the id unknown
+	return &r
+}
+
 func urnForRes(t *testing.T, ctx *Context, res Resource) URN {
 	urn, _, _, err := res.URN().awaitURN(ctx.ctx)
 	if err != nil {
@@ -1386,6 +1392,12 @@ type DoEchoArgs struct {
 	Echo *string `pulumi:"echo"`
 }
 
+type DoEchoResultOutput struct{ *OutputState }
+
+func (DoEchoResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DoEchoResult)(nil)).Elem()
+}
+
 func TestInvokeDependsOn(t *testing.T) {
 	t.Parallel()
 
@@ -1408,15 +1420,20 @@ func TestInvokeDependsOn(t *testing.T) {
 		var args DoEchoArgs
 		dep := newTestRes(t, ctx, "dep")
 		opt := DependsOn([]Resource{dep})
-		options := mergeInvokeOptions(opt)
 
-		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", *options)
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
+			InvokeOptions: []InvokeOption{opt},
+		})
 
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
 		require.NoError(t, err)
-		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+		require.True(t, known)
+		require.False(t, secret)
 		require.True(t, resolved)
 		require.Len(t, deps, 1)
-		require.Equal(t, dep.URN(), deps[0].URN())
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
 		return nil
 	}, WithMocks("project", "stack", monitor))
 	require.NoError(t, err)
@@ -1445,15 +1462,44 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 		dep := newTestRes(t, ctx, "dep")
 		ro := NewResourceOutput(dep)
 		opt := DependsOnInputs(NewResourceArrayOutput(ro))
-		options := mergeInvokeOptions(opt)
 
-		props, deps, err := ctx.invokePackageRaw("pkg:index:doEcho", args, "some-package-ref", *options)
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
+			InvokeOptions: []InvokeOption{opt},
+		})
 
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
 		require.NoError(t, err)
-		require.Equal(t, resource.NewStringProperty("hello"), props[resource.PropertyKey("echo")])
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+		require.True(t, known)
+		require.False(t, secret)
 		require.True(t, resolved)
 		require.Len(t, deps, 1)
-		require.Equal(t, dep.URN(), deps[0].URN())
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+func TestInvokeDependsOnUnknown(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		var args DoEchoArgs
+		unknownDep := newUnknwonRes()
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
+			InvokeOptions: []InvokeOption{DependsOn([]Resource{unknownDep})},
+		})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.Len(t, deps, 1)
+		require.True(t, deps[0] == unknownDep)
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
