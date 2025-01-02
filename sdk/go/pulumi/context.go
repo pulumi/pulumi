@@ -837,8 +837,6 @@ func (ctx *Context) InvokeOutput(
 ) Output {
 	output = ctx.newOutput(reflect.TypeOf(output))
 
-	fmt.Printf("InvokeOutput\n")
-
 	go func() {
 		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
