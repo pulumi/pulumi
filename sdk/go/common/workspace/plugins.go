@@ -810,6 +810,37 @@ type PackageDescriptor struct {
 	Parameterization *Parameterization
 }
 
+// PackageName returns the name of the package.
+func (pd PackageDescriptor) PackageName() string {
+	if pd.Parameterization != nil {
+		return pd.Parameterization.Name
+	}
+	return pd.PluginSpec.Name
+}
+
+// PackageVersion returns the version of the package.
+func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Parameterization != nil {
+		return &pd.Parameterization.Version
+	}
+	return pd.PluginSpec.Version
+}
+
+func (pd PackageDescriptor) String() string {
+	name := pd.PluginSpec.Name
+	version := pd.PluginSpec.Version
+	if pd.Parameterization != nil {
+		name = pd.Parameterization.Name
+		version = &pd.Parameterization.Version
+	}
+
+	var v string
+	if version != nil {
+		v = fmt.Sprintf("-%s", version)
+	}
+	return name + v
+}
+
 // A Parameterization may be applied to a supporting plugin to yield a package.
 type Parameterization struct {
 	// The name of the package that will be produced by the parameterization.
@@ -831,6 +862,75 @@ type PluginSpec struct {
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
+}
+
+func NewPluginSpec(
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginSpec, error) {
+	name := source
+	isGitPlugin := false
+	versionStr := ""
+
+	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
+	if s := strings.SplitN(source, "@", 2); len(s) == 2 {
+		name = s[0]
+		versionStr = s[1]
+	}
+
+	if versionStr != "" && version != nil {
+		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
+	}
+
+	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9]$`)
+	if urlRegex.MatchString(name) {
+		u, err := url.Parse(name)
+		// If we don't have a URL, we just treat it as a normal plugin name.
+		if err == nil {
+			if pluginDownloadURL != "" {
+				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
+			}
+			name = strings.ReplaceAll(u.RequestURI(), "/", "_")
+			pluginDownloadURL = u.String()
+			isGitPlugin = true
+		}
+	}
+
+	if versionStr != "" {
+		// Semver versions will have two `.`s.
+		if !isGitPlugin || strings.Count(versionStr, ".") == 2 {
+			v, err := semver.ParseTolerant(versionStr)
+			if err != nil {
+				additionalMsg := ""
+				if isGitPlugin {
+					additionalMsg = " or git commit hash"
+				}
+				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver%s: %w", additionalMsg, err)
+			}
+			version = &v
+		} else {
+			// Allow sha1 and sha256 hashes.
+			gitCommitRegex := regexp.MustCompile(`^[0-9a-fA-F]{40,64}$`)
+			if !gitCommitRegex.MatchString(versionStr) {
+				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
+			}
+			version = &semver.Version{
+				// VersionStr cannot start with a 0, so we prefix it with an 'x' to avoid this.
+				Pre: []semver.PRVersion{{VersionStr: "x" + versionStr}},
+			}
+		}
+	}
+
+	return PluginSpec{
+		Name:              name,
+		Kind:              kind,
+		Version:           version,
+		PluginDownloadURL: pluginDownloadURL,
+		Checksums:         checksums,
+	}, nil
 }
 
 // Dir gets the expected plugin directory for this plugin.

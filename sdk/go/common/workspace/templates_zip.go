@@ -162,6 +162,9 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 	if err != nil {
 		return "", err
 	}
+	if packageResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download template: %s\n%s", packageResponse.Status, string(packageResponseBody))
+	}
 	archive, err := zip.NewReader(bytes.NewReader(packageResponseBody), int64(len(packageResponseBody)))
 	if err != nil {
 		return "", err

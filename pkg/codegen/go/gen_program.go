@@ -964,6 +964,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// We do this before we let the user set overrides. That way the user can still have a
 	// module named IndexToken.
 	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+	mod = strings.ToLower(mod)
 	importPath := func(mod string) string {
 		importBasePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
 		if info.ImportBasePath != "" {
@@ -1864,6 +1865,8 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
+	mod = strings.ToLower(mod)
+	originalMod = strings.ToLower(originalMod)
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")
@@ -1874,7 +1877,7 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 			}
 			return moduleAlias
 		}
-		return mod
+		return strings.ToLower(mod)
 	}
 
 	importPath := func(mod string) string {
@@ -1884,15 +1887,15 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
 				return strings.ReplaceAll(importedPath, "{baseImportPath}", importBasePath)
 			}
-			return fmt.Sprintf("%s/%s", importBasePath, mod)
+			return fmt.Sprintf("%s/%s", importBasePath, strings.ToLower(mod))
 		}
 		return importBasePath
 	}
 
 	if m, ok := info.ModuleToPackage[mod]; ok {
-		mod = m
+		mod = strings.ToLower(m)
 	} else {
-		mod = originalMod
+		mod = strings.ToLower(originalMod)
 	}
 
 	path := importPath(mod)

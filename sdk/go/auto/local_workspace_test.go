@@ -966,6 +966,24 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestInlineSourceFamilyReturnsErrorWhenNil(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	// initialize
+	_, err := NewStackInlineSource(ctx, stackName, pName, nil)
+	assert.ErrorContains(t, err, "program must be specified")
+
+	_, err = UpsertStackInlineSource(ctx, stackName, pName, nil)
+	assert.ErrorContains(t, err, "program must be specified")
+
+	_, err = SelectStackInlineSource(ctx, stackName, pName, nil)
+	assert.ErrorContains(t, err, "program must be specified")
+}
+
 func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
 	t.Parallel()
 

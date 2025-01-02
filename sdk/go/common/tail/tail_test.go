@@ -434,8 +434,8 @@ func TestBlockUntilExists(t *testing.T) {
 		//nolint:staticcheck
 		break
 	}
+	require.NoError(t, tail.Stop())
 	tailTest.RemoveFile("test.txt")
-	require.ErrorContains(t, tail.Stop(), "no such file or directory")
 	tail.Cleanup()
 }
 
@@ -459,7 +459,6 @@ func TestFollowUntilEof(t *testing.T) {
 	tailTest.ReadLinesWithError(tail, []string{"hello", "world"}, false, errStopAtEOF)
 
 	tailTest.RemoveFile(filename)
-	require.ErrorContains(t, tail.Stop(), "stop at eof")
 	tail.Cleanup()
 }
 

@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -1575,6 +1576,37 @@ func TestInstallWithMain(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
+func TestTranspileOnly(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []string{"tsconfig-no-check", "swc"} {
+		test := test
+		t.Run(test, func(t *testing.T) {
+			t.Parallel()
+			dir := filepath.Join("nodejs", test)
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(dir)
+
+			stackName := ptesting.RandomStackName()
+
+			// For this test we need to properly install the core SDK instead of yarn
+			// linkining, because yarn link breaks the typescript version detection, and
+			// causes us to use the vendored typescript 3.8.3, which does not support
+			// the `noCheck` option.
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			require.NoError(t, err)
+			e.RunCommand("yarn", "install")
+			e.RunCommand("yarn", "add", coreSDK)
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--yes")
+			_, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+		})
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePaths(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -2180,7 +2212,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 			assert.True(t, ok)
-			cf, ok := dependencies["random"]
+			cf, ok := dependencies["@pulumi/random"]
 			assert.True(t, ok)
 			cf, ok = cf.(string)
 			assert.True(t, ok)
@@ -2188,6 +2220,36 @@ func TestPackageAddNode(t *testing.T) {
 			assert.Equal(t, "file:sdks/random", cf)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
+
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	assert.NoError(t, err)
+	packagesJSON := make(map[string]any)
+	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+	assert.NoError(t, err)
+
+	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+	assert.True(t, ok)
+	cf, ok := dependencies["@pulumi/supabase"]
+	assert.True(t, ok)
+	cf, ok = cf.(string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "file:sdks/supabase", cf)
 }
 
 func TestConstructFailuresNode(t *testing.T) {
@@ -2294,4 +2356,61 @@ func TestAutonaming(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestNodejsSourcemapTest(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("nodejs/sourcemap-in-test")
+	e.RunCommand("yarn", "install")
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "add", coreSDK)
+
+	_, stderr := e.RunCommandExpectError("yarn", "test")
+
+	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
+
+    this is a test error
+
+      1 | export function willThrow() {
+      2 |     if (true) {
+    > 3 |         throw new Error("this is a test error");
+        |               ^
+      4 |     }
+      5 | }
+      6 |
+
+      at willThrow (index.ts:3:15)
+`
+	require.Contains(t, stripansi.Strip(stderr), expectedTrace)
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsSourcemapProgramTypescript(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsSourcemapProgramJavascript(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+		},
+	})
 }

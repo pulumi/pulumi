@@ -51,7 +51,7 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("get current working directory: %w", err)
 	}
 
-	pCtx, err := newPluginContext(cwd)
+	pCtx, err := NewPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin context: %w", err)
 	}

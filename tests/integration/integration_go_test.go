@@ -1272,7 +1272,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	assert.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random", packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
 	assert.NoError(t, err)
@@ -1281,7 +1281,40 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/Pulumi/pulumi-random/sdk/go/v3" {
+		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random" {
+			containsRename = true
+		}
+	}
+
+	assert.True(t, containsRename)
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
+
+	assert.True(t, e.PathExists("godir/go.mod"))
+	assert.True(t, e.PathExists("godir/sdks/supabase/go.mod"))
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
+	assert.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	containsRename := false
+	for _, r := range gomod.Replace {
+		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRename = true
 		}
 	}
@@ -1482,7 +1515,7 @@ func TestRunPlugin(t *testing.T) {
 
 	e.CWD = filepath.Join(e.RootPath, "provider-python")
 	e.RunCommand("python", "-m", "venv", "venv", "--clear")
-	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	e.RunCommand(filepath.Join("venv", "bin", "python"), "-m", "pip", "install", "-e", pythonSdkPath)
 	e.Env = append(e.Env, "PATH="+filepath.Join(e.CWD, "venv", "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))

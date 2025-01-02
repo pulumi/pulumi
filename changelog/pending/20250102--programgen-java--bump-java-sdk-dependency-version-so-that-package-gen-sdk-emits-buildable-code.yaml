@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen/java
+  description: Bump Java SDK dependency version so that `package gen-sdk` emits buildable code

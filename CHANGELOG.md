@@ -1,5 +1,75 @@
 # Changelog
 
+## 3.144.1 (2024-12-20)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Reverts #18041
+
+## 3.144.0 (2024-12-20)
+
+
+### Features
+
+- [engine] Warn if `refresh` or `destroy` use older parameterized packages
+  [#18029](https://github.com/pulumi/pulumi/pull/18029)
+
+- [sdk/dotnet] Update dotnet to 3.71.1
+  [#18084](https://github.com/pulumi/pulumi/pull/18084)
+
+- [auto/go] Add ConfigFile to GetConfig and SetConfig operations, add GetAllConfigWithOptions to extend GetAllConfig
+  [#17939](https://github.com/pulumi/pulumi/pull/17939)
+
+- [cli/plugin] Log plugin unstructured output to debug instead of info
+  [#17943](https://github.com/pulumi/pulumi/pull/17943)
+
+- [sdk/yaml] Update pulumi-yaml to 1.13.0
+  [#18077](https://github.com/pulumi/pulumi/pull/18077)
+
+
+### Bug Fixes
+
+- [backend/diy] Retry deletes of lock files if they fail
+  [#18059](https://github.com/pulumi/pulumi/pull/18059)
+
+- [auto/go] Fix potential race condition when using automation API
+  [#18044](https://github.com/pulumi/pulumi/pull/18044)
+
+- [auto/go] Fix "debug" flag in automation api
+  [#18071](https://github.com/pulumi/pulumi/pull/18071)
+
+- [cli/install] Avoid unnecessary Node.js installations
+  [#18041](https://github.com/pulumi/pulumi/pull/18041)
+
+- [engine] Use package load v2 in loader server so it can include paramaterization
+  [#18072](https://github.com/pulumi/pulumi/pull/18072)
+  [#18021](https://github.com/pulumi/pulumi/pull/18021)
+
+- [programgen/dotnet] Emit local dependencies in restore sources deterministically
+  [#18026](https://github.com/pulumi/pulumi/pull/18026)
+
+- [sdk/go] Ignore DependsOn for direct form invokes instead of raising an error
+  [#18089](https://github.com/pulumi/pulumi/pull/18089)
+
+- [sdk/nodejs] Respect the noCheck option from tsconfig.json
+  [#18067](https://github.com/pulumi/pulumi/pull/18067)
+
+- [sdk/nodejs] Gracefully handle errors that don't implement toString
+  [#18080](https://github.com/pulumi/pulumi/pull/18080)
+
+- [sdk/python] Fix hang on error when using uv on Windows
+  [#18054](https://github.com/pulumi/pulumi/pull/18054)
+
+- [sdkgen/dotnet] Compute restore sources from local dependencies and referenced packages
+  [#18042](https://github.com/pulumi/pulumi/pull/18042)
+
+
+### Miscellaneous
+
+- [sdkgen/go] Skip TestPackageAddGoParameterized
+  [#18049](https://github.com/pulumi/pulumi/pull/18049)
+
 ## 3.143.0 (2024-12-12)
 
 

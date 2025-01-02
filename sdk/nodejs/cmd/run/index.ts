@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Enable source map support so we get good stack traces.
+import "source-map-support/register";
+
 import * as log from "../../log";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these

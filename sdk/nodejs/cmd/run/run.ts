@@ -29,6 +29,7 @@ import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
+import { defaultErrorMessage } from "./error";
 
 import * as mod from ".";
 
@@ -255,8 +256,27 @@ export async function run(
 
     span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
-        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+
+        // tanspileOnly controls wether ts-node should do type checking or not.
+        // Users might have a separate build step that runs tsc for type
+        // checking, and don't want to pay the performance cost of type checking
+        // twice. This also enables using swc, which doesn' support type
+        // checking, with ts-node.
+        //
+        // If the `PULUMI_NODEJS_TRANSPILE_ONLY `env variable is set, we use
+        // that to determine the value of `transpileOnly.` Otherwise we use the
+        // `noCheck `compiler option from the tsconfig. Otherwise we default to
+        // ts-node's default, which is to type check.
+        let transpileOnly = undefined;
+        const transpileOnlyEnv = process.env["PULUMI_NODEJS_TRANSPILE_ONLY"];
+        if (transpileOnlyEnv) {
+            transpileOnly = transpileOnlyEnv === "true";
+        } else {
+            // @ts-ignore
+            transpileOnly = compilerOptions.noCheck;
+        }
+
         const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
         const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
@@ -298,16 +318,6 @@ export async function run(
             return;
         }
 
-        // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, { colors: true });
-
-        // Default message should be to include the full stack (which includes the message), or
-        // fallback to just the message if we can't get the stack.
-        //
-        // If both the stack and message are empty, then just stringify the err object itself. This
-        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || "" + err;
-
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
@@ -329,12 +339,12 @@ ${errMsg}`,
             );
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
-            const message = err.hideStack ? err.message : defaultMessage;
+            const message = err.hideStack ? err.message : defaultErrorMessage(err);
             log.error(message, err.resource);
         } else {
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
-${defaultMessage}`,
+${defaultErrorMessage(err)}`,
             );
         }
 

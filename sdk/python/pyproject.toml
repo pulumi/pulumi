@@ -1,0 +1,124 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pulumi"
+version = "3.144.2"
+license = "Apache-2.0"
+license-files = ["../..LICENSE"]
+requires-python = ">=3.9"
+description = "Pulumi's Python SDK"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    'protobuf~=4.21',
+    'grpcio~=1.66.2',
+    'dill~=0.3',
+    'six~=1.12',
+    'semver~=2.13',
+    'pyyaml~=6.0',
+    'debugpy~=1.8.7',
+    'pip~=24.3.1',
+]
+
+[dependency-groups]
+dev = [
+    'mypy==1.9.0',
+    'pyright==1.1.375',
+    'pytest~=7.4.4',
+    'pytest-timeout',
+    'types-six',
+    'types-pyyaml',
+    'types-protobuf',
+    'pytest-asyncio',
+    'coverage>=6.0.2',
+    'wheel',
+    'ruff==0.8.0',
+    "build>=1.2.2.post1",
+]
+
+[project.urls]
+Documentation = "https://www.pulumi.com"
+Changelog = "https://github.com/pulumi/pulumi/blob/master/CHANGELOG.md"
+GitHub = "https://github.com/pulumi/pulumi"
+
+[tool.hatch.version]
+path = "lib/pulumi/_version.py"
+pattern = '_VERSION = "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+packages = ["lib/pulumi"]
+# The latest version is 2.4, but Poetry <= 1.8.4 has issues with it.
+# https://github.com/python-poetry/poetry/issues/9885
+core-metadata-version = "2.3"
+
+[tool.uv]
+# This ensures that the version for pulumi in uv.lock is updated when the
+# version from _version changes.
+upgrade-package = ["pulumi"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+include = ["lib/test_types"]
+strict = ["lib/test_types"]
+
+[tool.ruff]
+target-version = "py39"
+
+include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
+extend-exclude = ["*_pb2.py", "*_pb2.pyi", "*_pb2_grpc.py", "*_pb2_grpc.pyi"]
+
+[tool.ruff.lint]
+exclude = ["lib/test/**.py"]
+select = [
+    "E4",    # Defaults are E4", "E7", "E9", "F"
+    "E7",
+    "E9",
+    "F",
+    "A004",  # flake8-builtins - builtin-import-shadowing
+    "PL",    # pylint rules
+    "ICN",   # flake8-import-conventions
+    "ASYNC", # flake8-async
+    "BLE",   # flake8-blind-except
+    "S102",  # use of exec builtin
+]
+ignore = [
+    "PLR",  # pylint refactor rules
+    "S101", # use of assert, probably want to re-enable this
+    "E731", # lambda-assignment
+    "E741", # ambiguous-variable-name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"lib/pulumi/runtime/proto/*" = [
+    "F403", # undefined-local-with-import-star
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+# The minimum Python version we support
+python_version = "3.9"
+
+[[tool.mypy.overrides]]
+module = [
+    "dill",
+    "google.protobuf.pyext._message",
+    "google.protobuf.pyext",
+    "pulumi.runtime.proto.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pulumi.runtime.proto.*"]
+ignore_errors = true

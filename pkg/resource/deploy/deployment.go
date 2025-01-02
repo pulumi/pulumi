@@ -302,6 +302,8 @@ type Deployment struct {
 	news *gsync.Map[resource.URN, *resource.State]
 	// the set of new resource plans.
 	newPlans *resourcePlans
+	// the set of resources read as part of the deployment
+	reads *gsync.Map[resource.URN, *resource.State]
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -481,8 +483,10 @@ func NewDeployment(
 	// Create a resource map for the deployment.
 	newResources := &gsync.Map[resource.URN, *resource.State]{}
 
+	reads := &gsync.Map[resource.URN, *resource.State]{}
+
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient, newResources, ctx.Diag)
+	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -504,6 +508,7 @@ func NewDeployment(
 		goals:                newGoals,
 		news:                 newResources,
 		newPlans:             newResourcePlan(target.Config),
+		reads:                reads,
 	}, nil
 }
 

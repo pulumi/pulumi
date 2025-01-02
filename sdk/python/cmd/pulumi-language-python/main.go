@@ -332,27 +332,53 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain: toolchain.Pip,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// ensure build is up-to-date
-	buildUpgradeCmd, err := tc.ModuleCommand(ctx, "pip", "install", "--upgrade", "build")
-	if err != nil {
-		return nil, err
-	}
-	buildUpgradeCmd.Stdout = os.Stdout
-	buildUpgradeCmd.Stderr = os.Stderr
-	err = buildUpgradeCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("install build tools: %w", err)
-	}
-
 	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
+	}
+	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
+	// pack the Python SDK. We install this in an isolated virtual environment
+	// to avoid conflicts with the user's environment.
+	venv := filepath.Join(tmp, ".venv")
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain:  toolchain.Uv,
+		Virtualenv: venv,
+	})
+	if err == nil {
+		// `uv` is available, use it to create our virtual environment.
+		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
+		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
+		}
+		// Install `build` into the virtual environment.
+		cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
+		cmd.Env = toolchain.ActivateVirtualEnv(os.Environ(), venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
+		}
+	} else {
+		// Fallback to pip+venv
+		logging.V(5).Infof("Creating virtual environment using pip+venv at %s", venv)
+		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
+		}
+		tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
+			Toolchain:  toolchain.Pip,
+			Virtualenv: venv,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("setup pip toolchain: %w", err)
+		}
+		// Install `build` into the virtual environment.
+		cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
+		if err != nil {
+			return nil, err
+		}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
+		}
 	}
 
 	buildCmd, err := tc.ModuleCommand(ctx, "build", "--outdir", tmp)
@@ -970,6 +996,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
+		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
 			var installError *NotInstalledError

@@ -138,8 +138,8 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "dotnet": "6",
     "go": "1.22.x",
     "nodejs": "18.x",
-    # When updating the minimum Python version here, also update `mypy.ini` and
-    # `ruff.toml` to target this version.
+    # When updating the minimum Python version here, also update `pyproject.toml`, including the
+    # `mypy` and `ruff` sections.
     "python": "3.9.x",
 }
 
@@ -211,7 +211,7 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
             text=True,
         )
     except sp.CalledProcessError as err:
-        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds.\nstdout: {cmd.stdout}\nstderr: {cmd.stderr}"
+        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds. Also check that `make tidy` has been run."
         print(f"::error {message}", file=sys.stderr)
         raise Exception(message) from err
 

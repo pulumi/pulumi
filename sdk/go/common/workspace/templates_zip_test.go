@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSanitizeArchivePath(t *testing.T) {
@@ -183,6 +184,21 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 		// Assert.
 		assert.NoError(t, err)
 	}
+}
+
+func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+		_, err := rw.Write([]byte("Missing , or : between flow sequence items at line 30, column 20"))
+		require.NoError(t, err)
+	}))
+
+	_, err := retrieveZIPTemplates(server.URL)
+
+	assert.ErrorContains(t, err, "failed to download template: 500 Internal Server Error\n"+
+		"Missing , or : between flow sequence items at line 30, column 20")
 }
 
 // Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to

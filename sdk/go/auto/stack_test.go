@@ -224,3 +224,25 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	configFilePath := filepath.Join(stack.workspace.WorkDir(), "test.yaml")
 	assert.Contains(t, args, "--config-file="+configFilePath)
 }
+
+func TestRefreshOptsClearPendingCreates(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	args := refreshOptsToCmd(
+		&optrefresh.Options{
+			ClearPendingCreates: true,
+		},
+		&stack,
+		true,
+	)
+
+	assert.Contains(t, args, "--clear-pending-creates")
+}

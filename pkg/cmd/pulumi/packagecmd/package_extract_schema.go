@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])
+			pkg, err := SchemaFromSchemaSource(cmd.Context(), source, args[1:])
 			if err != nil {
 				return err
 			}

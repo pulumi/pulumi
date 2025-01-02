@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export const version = "3.143.1";
+export const version = "3.144.2";

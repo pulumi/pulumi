@@ -49,17 +49,24 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/query"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
@@ -338,7 +345,7 @@ func NewPulumiCmd() *cobra.Command {
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
-				newInstallCmd(),
+				install.NewInstallCmd(),
 			},
 		},
 		{
@@ -353,7 +360,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Environment Commands",
 			Commands: []*cobra.Command{
-				newEnvCmd(),
+				cmdEnv.NewEnvCmd(),
 			},
 		},
 		{
@@ -376,7 +383,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Plugin Commands",
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
-				newSchemaCmd(),
+				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
 			},
 		},
@@ -385,7 +392,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(),
-				newGenCompletionCmd(cmd),
+				completion.NewGenCompletionCmd(cmd),
 			},
 		},
 
@@ -393,7 +400,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Hidden Commands",
 			Commands: []*cobra.Command{
-				newGenMarkdownCmd(cmd),
+				markdown.NewGenMarkdownCmd(cmd),
 			},
 		},
 
@@ -402,7 +409,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				newQueryCmd(),
+				query.NewQueryCmd(),
 				convert.NewConvertCmd(),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(),
@@ -415,7 +422,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
-				newReplayEventsCmd(),
+				events.NewReplayEventsCmd(),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service

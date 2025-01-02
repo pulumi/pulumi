@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,7 +53,7 @@ func TestYamlConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
+		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
 		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
@@ -67,7 +68,7 @@ func TestPclConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		pkgWorkspace.Instance, env.Global(), []string{}, cwd,
+		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd,
 		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
@@ -100,6 +101,7 @@ func TestProjectNameDefaults(t *testing.T) {
 
 	// Act.
 	err = runConvert(
+		context.Background(),
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/
@@ -133,6 +135,7 @@ func TestProjectNameOverrides(t *testing.T) {
 
 	// Act.
 	err = runConvert(
+		context.Background(),
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/

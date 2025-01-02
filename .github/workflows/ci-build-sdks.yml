@@ -50,28 +50,25 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Build Pulumi Python SDK wheel
         run: |
-          # TODO unify with sdk/python/Makefile once that does not use pipenv
-          cp README.md sdk/python/lib
-          cd sdk/python/lib
-          sed -i.bak "s/^VERSION = .*/VERSION = \"$PYPI_VERSION\"/g" setup.py
-          rm setup.py.bak
-          python3 -m venv venv
-          source venv/bin/activate
-          python -m pip install wheel setuptools
-          python setup.py build bdist_wheel --python-tag py3
+          cd sdk/python
+          sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
+          make build_package
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-python-sdk
-          path: sdk/python/lib/dist/*.whl
+          path: sdk/python/build/*.whl
           retention-days: 1
           if-no-files-found: error
 

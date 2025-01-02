@@ -92,7 +92,12 @@ func NewImportDeployment(
 	// Create a goal map for the deployment.
 	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
 
-	builtins := newBuiltinProvider(nil, nil, ctx.Diag)
+	builtins := newBuiltinProvider(
+		nil, /*backendClient*/
+		nil, /*news*/
+		nil, /*reads*/
+		ctx.Diag,
+	)
 
 	// Create a new provider registry.
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)

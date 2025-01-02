@@ -474,9 +474,14 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 		newState.Lock.Unlock()
 
-		// If this is not a resource that is managed by Pulumi, then we can ignore it.
+		// At this point we'll track the resource so that it can be looked up later by e.g. consumers resolving resource
+		// references using pulumi:pulumi:getResource. If it's a resource managed by Pulumi (i.e. it's the result of a
+		// resource registration with a goal state), we'll record it in news. If it's not managed by Pulumi (i.e. it's the
+		// result of a Read, perhaps caused by a .get in an SDK, for instance), we'll record it in reads.
 		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
 			se.deployment.news.Store(newState.URN, newState)
+		} else if step.Op() == OpRead || step.Op() == OpReadReplacement {
+			se.deployment.reads.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.

@@ -165,6 +165,14 @@ func TestGetRequiredPackages(t *testing.T) {
 			filepath.Join(dir, "node_modules", "malformed", "tests", "malformed_test", "package.json"),
 			`{`,
 		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "false_main", "package.json"),
+			`{ "name": "false_main", "main": false }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "invalid_main", "package.json"),
+			`{ "name": "invalid_main", "main": ["this is an", "invalid main"]}`,
+		},
 	}
 	for _, file := range files {
 		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
@@ -868,6 +876,8 @@ func TestNodeInstall(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
+	fmt.Println(os.Getenv("PATH"))
+
 	// There's no fnm executable in PATH, installNodeVersion is a no-op
 	stdout := &bytes.Buffer{}
 	err := installNodeVersion(tmpDir, stdout)
@@ -898,6 +908,6 @@ func TestNodeInstall(t *testing.T) {
 	b, err := os.ReadFile(outPath)
 	require.NoError(t, err)
 	commands := strings.Split(strings.TrimSpace(string(b)), "\n")
-	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
+	require.Equal(t, "install 20.1.2 --progress never", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }

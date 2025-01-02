@@ -16,10 +16,12 @@ package diy
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gocloud.dev/blob"
 )
@@ -108,4 +110,33 @@ func TestWrappedBucket(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestRetry(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	succeedAfter := 0
+	retryFunc := func() error {
+		tries++
+		if tries < succeedAfter {
+			return errors.New("retry")
+		}
+		return nil
+	}
+
+	result := retryOp(retryFunc)
+	require.NoError(t, result)
+	assert.Equal(t, 1, tries)
+
+	succeedAfter = 3
+	tries = 0
+	result = retryOp(retryFunc)
+	require.NoError(t, result)
+	assert.Equal(t, 3, tries)
+
+	succeedAfter = 5
+	tries = 0
+	result = retryOp(retryFunc)
+	require.ErrorContains(t, result, "retry")
 }

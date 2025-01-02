@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Enable `pulumi:pulumi:getResource` to hydrate `Read` resources

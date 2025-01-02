@@ -78,7 +78,7 @@ func newDestroySource(
 	// no root directory/Pulumi.yaml (perhaps as the result of a command to which an explicit stack name has been passed),
 	// we'll populate an empty set of program plugins.
 
-	var programPlugins PluginSet
+	var programPackages PackageSet
 	if plugctx.Root != "" {
 		runtime := proj.Runtime.Name()
 		programInfo := plugin.NewProgramInfo(
@@ -89,38 +89,39 @@ func newDestroySource(
 		)
 
 		var err error
-		programPlugins, err = gatherPluginsFromProgram(plugctx, runtime, programInfo)
+		programPackages, err = gatherPackagesFromProgram(plugctx, runtime, programInfo)
 		if err != nil {
-			programPlugins = NewPluginSet()
+			programPackages = NewPackageSet()
 		}
 	} else {
-		programPlugins = NewPluginSet()
+		programPackages = NewPackageSet()
 	}
 
-	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, err
 	}
 
-	pluginUpdates := programPlugins.UpdatesTo(snapshotPlugins)
-	if len(pluginUpdates) > 0 {
-		for _, update := range pluginUpdates {
+	packageUpdates := programPackages.UpdatesTo(snapshotPackages)
+	if len(packageUpdates) > 0 {
+		for _, update := range packageUpdates {
 			plugctx.Diag.Warningf(diag.Message("", fmt.Sprintf(
-				"destroy operation is using an older version of plugin '%s' than the specified program version: %s < %s",
-				update.New.Name, update.Old.Version, update.New.Version,
+				"destroy operation is using an older version of package '%s' than the specified program version: %s < %s",
+				update.New.PackageName(), update.Old.PackageVersion(), update.New.PackageVersion(),
 			)))
 		}
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
+	allPlugins := snapshotPackages.ToPluginSet().Deduplicate()
 
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPlugins.Deduplicate(),
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 
 	// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
-	if err := ensurePluginsAreLoaded(plugctx, snapshotPlugins, plugin.AnalyzerPlugins); err != nil {
+	if err := ensurePluginsAreLoaded(plugctx, allPlugins, plugin.AnalyzerPlugins); err != nil {
 		return nil, err
 	}
 

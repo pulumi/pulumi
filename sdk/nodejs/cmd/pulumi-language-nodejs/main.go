@@ -1082,7 +1082,7 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "Setting Nodejs version to %s\n", version)
 	}
 	// This is a no-op if the version is already installed
-	installCmd := exec.Command("fnm", "use", version, "--install-if-missing")
+	installCmd := exec.Command("fnm", "install", version, "--progress", "never")
 	out, err := installCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to install Nodejs version: %v: %s", err, out)

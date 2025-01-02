@@ -73,12 +73,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      - name: Set up uv
+        if: ${{ matrix.language == 'python' }}
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         if: ${{ matrix.language == 'python' }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Install Python deps
         if: ${{ matrix.language == 'python' }}
         run: |
