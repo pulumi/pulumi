@@ -1554,3 +1554,55 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 		t.Fatal("test timed out")
 	}
 }
+
+func TestInvokeSecret(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				// The invoke result contains a secret.
+				"echo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			}, nil
+		},
+	}
+
+	// InvokePackageRaw
+	err := RunErr(func(ctx *Context) error {
+		var rv DoEchoResult
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		ro := NewResourceOutput(dep)
+		opts := DependsOnInputs(NewResourceArrayOutput(ro))
+
+		isSecret, err := ctx.InvokePackageRaw("pkg:index:doEcho", args, &rv, "some-package-ref", opts)
+		require.NoError(t, err)
+		require.True(t, isSecret)
+		require.Equal(t, "hello", *rv.Echo)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+
+	// InvokeOutput
+	err = RunErr(func(ctx *Context) error {
+		var args DoEchoArgs
+		dep := newTestRes(t, ctx, "dep")
+		ro := NewResourceOutput(dep)
+		opt := DependsOnInputs(NewResourceArrayOutput(ro))
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
+			InvokeOptions: []InvokeOption{opt},
+		})
+
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+		require.True(t, known)
+		require.True(t, secret)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+}
