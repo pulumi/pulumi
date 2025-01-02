@@ -1605,4 +1605,5 @@ func TestInvokeSecret(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
 }
