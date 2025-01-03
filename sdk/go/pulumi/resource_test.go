@@ -1250,7 +1250,7 @@ func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption)
 	return &res
 }
 
-func newUnknwonRes() *testRes {
+func newUnknownRes() *testRes {
 	r := testRes{}
 	r.id = IDOutput{} // Make the id unknown
 	return &r
@@ -1492,7 +1492,7 @@ func TestInvokeDependsOnUnknown(t *testing.T) {
 
 	err := RunErr(func(ctx *Context) error {
 		var args DoEchoArgs
-		unknownDep := newUnknwonRes()
+		unknownDep := newUnknownRes()
 
 		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
 			InvokeOptions: []InvokeOption{DependsOn([]Resource{unknownDep})},
@@ -1517,7 +1517,7 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 
 	err := RunErr(func(ctx *Context) error {
 		var args DoEchoArgs
-		unknownDep := newUnknwonRes()
+		unknownDep := newUnknownRes()
 		comp := &testComp{}
 		comp.children = resourceSet{}
 		comp.children.add(unknownDep)
