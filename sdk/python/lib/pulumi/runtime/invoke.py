@@ -34,6 +34,7 @@ from semver import VersionInfo
 from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
 from ..runtime.proto import resource_pb2
+from ..resource import CustomResource
 from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
@@ -244,7 +245,25 @@ def _invoke(
         # keep track of the dependencies from depends_on
         depends_on_dependencies: Set["Resource"] = set()
         if isinstance(opts, InvokeOutputOptions):
+            # The direct dependencies of the invoke.
             depends_on_dependencies = await _resolve_depends_on(opts._depends_on_list())
+            # The expanded set of dependencies, including children of components.
+            expanded_deps = await rpc._expand_dependencies(
+                depends_on_dependencies, None
+            )
+
+            # If we depend on any CustomResources, we need to ensure that their
+            # ID is known before proceeding. If it is not known, we will return
+            # an unknown result.
+            for res in expanded_deps.values():
+                if isinstance(res, CustomResource):
+                    if await res.id.is_known():
+                        await res.id.future()
+                    else:
+                        return (
+                            InvokeResult(None, is_secret=False, is_known=False),
+                            None,
+                        )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
