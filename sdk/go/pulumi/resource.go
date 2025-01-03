@@ -688,8 +688,7 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 // dependencySet unifies types that can provide dependencies for a
 // resource.
 type dependencySet interface {
-	// Adds URNs for addURNs from this set
-	// into the given urnSet.
+	// Adds dependencies into the depSet.
 	// Optionally pass the last Resource arg to short-circuit component
 	// children cycles.
 	addDeps(context.Context, depSet, Resource) error

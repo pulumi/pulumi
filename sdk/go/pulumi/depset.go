@@ -22,40 +22,20 @@ import (
 
 type depSet map[URN]Resource
 
-func (s depSet) add(v URN, r Resource) {
-	s[v] = r
+func (d depSet) add(v URN, r Resource) {
+	d[v] = r
 }
 
-func (s depSet) has(v URN) bool {
-	_, ok := s[v]
-	return ok
-}
-
-func (s depSet) contains(other urnSet) bool {
-	for v := range other {
-		if !s.has(v) {
-			return false
-		}
-	}
-	return true
-}
-
-func (s depSet) union(other depSet) {
-	for v, r := range other {
-		s.add(v, r)
-	}
-}
-
-func (s depSet) urns() []URN {
-	values := slice.Prealloc[URN](len(s))
-	for v := range s {
+func (d depSet) urns() []URN {
+	values := slice.Prealloc[URN](len(d))
+	for v := range d {
 		values = append(values, v)
 	}
 	return values
 }
 
-func (s depSet) sortedURNs() []URN {
-	v := s.urns()
+func (d depSet) sortedURNs() []URN {
+	v := d.urns()
 	sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
 	return v
 }
