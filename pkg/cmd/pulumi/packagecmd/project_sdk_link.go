@@ -656,7 +656,9 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 	if pluginSpec.PluginDownloadURL != "" && spec.PluginDownloadURL == "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
-	spec.Version = pluginSpec.Version.String()
+	if pluginSpec.Version != nil {
+		spec.Version = pluginSpec.Version.String()
+	}
 	return bind(spec)
 }
 
