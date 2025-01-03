@@ -335,11 +335,11 @@ async def _expand_dependencies(
     _expand_dependencies expands the given iterable of Resources into a map of URN -> Resource
     """
 
-    urns: dict[str, "Resource"] = {}
+    expanded_deps: dict[str, "Resource"] = {}
     for d in deps:
-        await _add_dependency(urns, d, from_resource)
+        await _add_dependency(expanded_deps, d, from_resource)
 
-    return urns
+    return expanded_deps
 
 
 async def serialize_property(
