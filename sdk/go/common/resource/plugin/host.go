@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -394,6 +395,11 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 		jsonConfig, err := json.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
+		}
+
+		if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") {
+			url := strings.TrimPrefix(descriptor.PluginDownloadURL, "git://")
+			pkg = strings.ReplaceAll(url, "/", "_")
 		}
 
 		plug, err := NewProvider(
