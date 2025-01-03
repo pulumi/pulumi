@@ -2231,6 +2231,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
+	pkgName := mod.pkg.Name()
 	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
 		provider = mod.resources[0]
 	} else {
@@ -2275,12 +2276,12 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "    },\n")
 		fmt.Fprintf(w, "};\n")
 		for _, name := range registrations.SortedValues() {
-			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name(), name)
+			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", pkgName, name)
 		}
 	}
 
 	if provider != nil {
-		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name())
+		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", pkgName)
 		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
 		fmt.Fprintf(w, "        if (type !== \"%v\") {\n", provider.Token)

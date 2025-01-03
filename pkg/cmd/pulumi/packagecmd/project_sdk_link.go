@@ -649,6 +649,14 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 	if err != nil {
 		return nil, err
 	}
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if pluginSpec.PluginDownloadURL != "" && spec.PluginDownloadURL == "" {
+		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
+	}
+	spec.Version = pluginSpec.Version.String()
 	return bind(spec)
 }
 
