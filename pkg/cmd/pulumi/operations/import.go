@@ -58,7 +58,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
@@ -876,8 +875,6 @@ func NewImportCmd() *cobra.Command {
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				programGenerator = wrapper(dotnet.GenerateProgram)
-			case "java":
-				programGenerator = wrapper(javagen.GenerateProgram)
 			default:
 				programGenerator = func(
 					program *pcl.Program, loader schema.ReferenceLoader,
