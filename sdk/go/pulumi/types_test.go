@@ -1221,6 +1221,46 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 	}, "int-string should not be allowed")
 }
 
+func TestDeferredOutputDelayedResolution(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	// Create a new unresolved output that we resolve *after* resolving the
+	// deferred output with it.
+	delayedOutput, resDelayedOutput, _ := NewOutput()
+	resolve(delayedOutput)
+	// Deferred output should still be pending.
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	resDelayedOutput("hello")
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, "hello", v)
+}
+
+func TestDeferredOutputDelayedRejection(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	// Create a new unresolved output that we reject *after* resolving the
+	// deferred output with it.
+	delayedRejection, _, reject := NewOutput()
+	resolve(delayedRejection)
+	// Deferred output should still be pending.
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	reject(errors.New("oh no!"))
+	_, _, _, _, err := await(deferred)
+	assert.ErrorContains(t, err, "oh no!")
+}
+
 func TestDeferredOutputString(t *testing.T) {
 	t.Parallel()
 
