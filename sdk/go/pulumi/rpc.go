@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -128,8 +129,12 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		}
 
 		if !v.IsNull() || len(allDeps) > 0 {
+			urns := slice.Prealloc[URN](len(allDeps))
+			for v := range allDeps {
+				urns = append(urns, v)
+			}
 			pmap[resource.PropertyKey(pname)] = v
-			pdeps[pname] = maps.Keys(allDeps)
+			pdeps[pname] = urns
 		}
 		return nil
 	}
