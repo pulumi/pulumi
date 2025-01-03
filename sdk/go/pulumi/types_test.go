@@ -1256,9 +1256,9 @@ func TestDeferredOutputDelayedRejection(t *testing.T) {
 	// Deferred output should still be pending.
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 
-	reject(errors.New("oh no!"))
+	reject(errors.New("oh no"))
 	_, _, _, _, err := await(deferred)
-	assert.ErrorContains(t, err, "oh no!")
+	assert.ErrorContains(t, err, "oh no")
 }
 
 func TestDeferredOutputString(t *testing.T) {
