@@ -1514,12 +1514,12 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
 		var args DoEchoArgs
 		unknownDep := newUnknwonRes()
-		comp := testComp{}
+		comp := &testComp{}
 		comp.children = resourceSet{}
 		comp.children.add(unknownDep)
 
 		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
-			InvokeOptions: []InvokeOption{DependsOn([]Resource{unknownDep})},
+			InvokeOptions: []InvokeOption{DependsOn([]Resource{comp})},
 		})
 
 		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
@@ -1527,7 +1527,7 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 		require.False(t, known)
 		require.False(t, secret)
 		require.Len(t, deps, 1)
-		require.True(t, deps[0] == unknownDep) // The component, not the child
+		require.True(t, deps[0] == comp) // The component, not the child
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
