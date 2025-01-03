@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Avoid calling invokes with dependencies on unknown resources
