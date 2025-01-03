@@ -30,7 +30,6 @@ def unknown() -> pulumi.Output[Any]:
     is_secret_fut: asyncio.Future[bool] = asyncio.Future()
     is_known_fut.set_result(False)
     is_secret_fut.set_result(False)
-
     value_fut: asyncio.Future[Any] = asyncio.Future()
     value_fut.set_result(pulumi.UNKNOWN)
     return pulumi.Output(set(), value_fut, is_known_fut, is_secret_fut)
