@@ -635,26 +635,6 @@ func (o *OutputState) applyTWithApplier(ctx context.Context, ap *applier) Output
 	return result
 }
 
-// DeferredOutput creates an Output whose value can be later resolved from another Output instance.
-func DeferredOutput(ctx context.Context) (Output, func(Output)) {
-	join := &WorkGroup{}
-	join.Add(1)
-	result := NewOutput(join, AnyOutputType)
-	resolve := func(o Output) {
-		go func() {
-			value, known, secret, deps, err := o.getState().await(ctx)
-			if err != nil || !known {
-				result.getState().fulfill(nil, known, secret, deps, err)
-				return
-			}
-
-			result.getState().fulfill(value, known, secret, deps, nil)
-		}()
-	}
-
-	return result, resolve
-}
-
 // IsSecret returns a bool representing the secretness of the Output
 //
 // IsSecret may return an inaccurate results if the Output is unknowable (during a

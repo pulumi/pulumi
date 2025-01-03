@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
@@ -307,10 +308,15 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 
 // DeferredOutput creates an Output whose value can be later resolved from another Output instance.
 func DeferredOutput[T any](ctx context.Context) (pulumix.Output[T], func(Output)) {
-	output, resolve := internal.DeferredOutput(ctx)
-	result := AnyOutput{internal.GetOutputState(output)}
-	converted, _ := pulumix.ConvertTyped[T](result)
-	return converted, resolve
+	rt := reflect.TypeFor[T]()
+	state := internal.NewOutputState(nil, rt)
+	out := pulumix.Output[T]{OutputState: state}
+	resolve := func(o Output) {
+		v, known, secret, deps, err := internal.AwaitOutput(ctx, o)
+		contract.Assertf(err == nil, "awaiting output: %s", err)
+		internal.ResolveOutput(out, v, known, secret, deps)
+	}
+	return out, resolve
 }
 
 type AnyOutput struct{ *OutputState }
