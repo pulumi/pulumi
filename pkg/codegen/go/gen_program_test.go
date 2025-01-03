@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -506,4 +507,42 @@ resource main "auto-deploy:index:AutoDeployer" {
 	assert.NotNil(t, files, "Files were generated")
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors())
+}
+
+func TestDeferredOutputTypeParameter(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "string", deferredOutputTypeParameter(model.StringType))
+	assert.Equal(t, "bool", deferredOutputTypeParameter(model.BoolType))
+	assert.Equal(t, "int", deferredOutputTypeParameter(model.IntType))
+	assert.Equal(t, "float64", deferredOutputTypeParameter(model.NumberType))
+	assert.Equal(t, "[]string", deferredOutputTypeParameter(model.NewListType(model.StringType)))
+	assert.Equal(t, "[]int", deferredOutputTypeParameter(model.NewListType(model.IntType)))
+	assert.Equal(t, "[]bool", deferredOutputTypeParameter(model.NewListType(model.BoolType)))
+	assert.Equal(t, "[]float64", deferredOutputTypeParameter(model.NewListType(model.NumberType)))
+	assert.Equal(t, "map[string]string", deferredOutputTypeParameter(model.NewMapType(model.StringType)))
+	assert.Equal(t, "map[string]int", deferredOutputTypeParameter(model.NewMapType(model.IntType)))
+	assert.Equal(t, "map[string]bool", deferredOutputTypeParameter(model.NewMapType(model.BoolType)))
+	assert.Equal(t, "map[string]float64", deferredOutputTypeParameter(model.NewMapType(model.NumberType)))
+	assert.Equal(t, "map[string][]string", deferredOutputTypeParameter(
+		model.NewMapType(model.NewListType(model.StringType))))
+	assert.Equal(t, "interface{}", deferredOutputTypeParameter(model.DynamicType))
+}
+
+func TestDeferredOutputCastTypeParameter(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "pulumi.AnyOutput", deferredOutputCastTypeParameter(model.DynamicType))
+	assert.Equal(t, "pulumi.StringOutput", deferredOutputCastTypeParameter(model.StringType))
+	assert.Equal(t, "pulumi.BoolOutput", deferredOutputCastTypeParameter(model.BoolType))
+	assert.Equal(t, "pulumi.IntOutput", deferredOutputCastTypeParameter(model.IntType))
+	assert.Equal(t, "pulumi.Float64Output", deferredOutputCastTypeParameter(model.NumberType))
+	assert.Equal(t, "pulumi.StringArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.StringType)))
+	assert.Equal(t, "pulumi.IntArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.IntType)))
+	assert.Equal(t, "pulumi.BoolArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.BoolType)))
+	assert.Equal(t, "pulumi.Float64ArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.NumberType)))
+	assert.Equal(t, "pulumi.ArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.DynamicType)))
+	assert.Equal(t, "pulumi.StringMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.StringType)))
+	assert.Equal(t, "pulumi.IntMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.IntType)))
+	assert.Equal(t, "pulumi.BoolMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.BoolType)))
+	assert.Equal(t, "pulumi.Float64MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.NumberType)))
+	assert.Equal(t, "pulumi.MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.DynamicType)))
 }
