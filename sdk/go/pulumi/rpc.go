@@ -193,7 +193,11 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		return nil, nil, nil, fmt.Errorf("cannot marshal Input that is not a struct or map, saw type %s", pt.String())
 	}
 
-	return pmap, pdeps, maps.Keys(deps), nil
+	urns := slice.Prealloc[URN](len(deps))
+	for v := range deps {
+		urns = append(urns, v)
+	}
+	return pmap, pdeps, urns, nil
 }
 
 // `gosec` thinks these are credentials, but they are not.
