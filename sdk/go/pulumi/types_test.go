@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1220,17 +1221,124 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 	}, "int-string should not be allowed")
 }
 
-func TestBasicDeferredOutput(t *testing.T) {
+func TestDeferredOutputDelayedResolution(t *testing.T) {
 	t.Parallel()
 
 	deferred, resolve := DeferredOutput[string](context.Background())
-	go func() {
-		resolve(String("hello").ToStringOutput())
-		v, known, secret, deps, err := await(deferred)
-		assert.NoError(t, err)
-		assert.True(t, known)
-		assert.False(t, secret)
-		assert.Nil(t, deps)
-		assert.Equal(t, "hello", v)
-	}()
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	// Create a new unresolved output that we resolve *after* resolving the
+	// deferred output with it.
+	delayedOutput, resDelayedOutput, _ := NewOutput()
+	resolve(delayedOutput)
+	// Deferred output should still be pending.
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	resDelayedOutput("hello")
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, "hello", v)
+}
+
+func TestDeferredOutputDelayedRejection(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	// Create a new unresolved output that we reject *after* resolving the
+	// deferred output with it.
+	delayedRejection, _, reject := NewOutput()
+	resolve(delayedRejection)
+	// Deferred output should still be pending.
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+
+	reject(errors.New("oh no!"))
+	_, _, _, _, err := await(deferred)
+	assert.ErrorContains(t, err, "oh no!")
+}
+
+func TestDeferredOutputString(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+	resolve(String("hello").ToStringOutput())
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, "hello", v)
+}
+
+func TestDeferredOutputStringArray(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[[]string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+	resolve(ToStringArray([]string{"hello"}).ToStringArrayOutput())
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, []string{"hello"}, v)
+}
+
+type SomeInterface interface {
+	SomeMethod() string
+}
+
+type SomeStruct struct {
+	A int
+}
+
+func (s SomeStruct) SomeMethod() string {
+	return fmt.Sprintf("hello from %d", s.A)
+}
+
+func TestDeferredOutputStruct(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[SomeInterface](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+	resolve(pulumix.Val[SomeInterface](SomeStruct{A: 42}))
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, SomeStruct{A: 42}, v)
+}
+
+func TestDeferredOutputNil(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[*string](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+	resolve(pulumix.Val[*string](nil))
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Nil(t, v)
+}
+
+func TestDeferredOutputAny(t *testing.T) {
+	t.Parallel()
+
+	deferred, resolve := DeferredOutput[any](context.Background())
+	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
+	resolve(String("hello").ToStringOutput())
+	v, known, secret, deps, err := await(deferred)
+	assert.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, "hello", v)
 }
