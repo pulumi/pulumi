@@ -840,10 +840,10 @@ func (ctx *Context) InvokeOutput(
 	go func() {
 		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
-		deps := []Resource{}
-		depSet := urnSet{} // Only used for `addURNs` below.
+		deps := []Resource{} // The direct dependencies of the invoke.
+		depSet := depSet{}   // The expanded set of dependencies, including children.
 		for _, d := range invokeOpts.DependsOn {
-			if err := d.addURNs(ctx.ctx, depSet, nil); err != nil {
+			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
 				return
 			}
 			switch d := d.(type) {
@@ -883,7 +883,7 @@ func (ctx *Context) InvokeOutput(
 		// tells us that wether a physical resource exists (if the state does
 		// not require a refresh), and we can avoid calling the invoke when it
 		// is unknown.
-		for _, d := range deps {
+		for _, d := range depSet {
 			if r, ok := d.(CustomResource); ok {
 				_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
 				if err != nil {
@@ -2317,13 +2317,13 @@ func (ctx *Context) getOpts(
 
 	var depURNs []URN
 	if opts.DependsOn != nil {
-		depSet := urnSet{}
+		depSet := depSet{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(ctx.ctx, depSet, res); err != nil {
+			if err := ds.addDeps(ctx.ctx, depSet, res); err != nil {
 				return resourceOpts{}, err
 			}
 		}
-		depURNs = depSet.values()
+		depURNs = depSet.urns()
 	}
 
 	var providerRef string

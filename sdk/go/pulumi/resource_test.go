@@ -203,13 +203,13 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	d3, d3Urn := newRes("d3")
 
 	resolveDependsOn := func(opts *resourceOptions) []URN {
-		allDeps := urnSet{}
+		allDeps := depSet{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(context.Background(), allDeps, nil /* from */); err != nil {
+			if err := ds.addDeps(context.Background(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return allDeps.sortedValues()
+		return allDeps.sortedURNs()
 	}
 
 	// two singleton options
@@ -1500,6 +1500,34 @@ func TestInvokeDependsOnUnknown(t *testing.T) {
 		require.False(t, secret)
 		require.Len(t, deps, 1)
 		require.True(t, deps[0] == unknownDep)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+func TestInvokeDependsOnUnknownChild(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		var args DoEchoArgs
+		unknownDep := newUnknwonRes()
+		comp := testComp{}
+		comp.children = resourceSet{}
+		comp.children.add(unknownDep)
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{
+			InvokeOptions: []InvokeOption{DependsOn([]Resource{unknownDep})},
+		})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.Len(t, deps, 1)
+		require.True(t, deps[0] == unknownDep) // The component, not the child
 
 		return nil
 	}, WithMocks("project", "stack", monitor))
