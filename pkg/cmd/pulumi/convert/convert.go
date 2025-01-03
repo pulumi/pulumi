@@ -32,7 +32,6 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -245,11 +244,6 @@ func runConvert(
 		projectGenerator = generatorWrapper(
 			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
 				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
-			}, language)
-	case "java":
-		projectGenerator = generatorWrapper(
-			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return javagen.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
 			}, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
