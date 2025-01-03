@@ -383,7 +383,7 @@ func (source *gitSource) Download(
 		// The version string is prefixed with a 'x' character because Pre-versions can't
 		// start with a 0. Strip that off to get the actual hash.
 		hash := plumbing.NewHash(version.Pre[0].VersionStr[1:])
-		err := gitutil.GitCloneAndCheckoutCommit(source.url, hash, tmpdir)
+		err := gitutil.GitCloneAndCheckoutCommit(ctx, source.url, hash, tmpdir)
 		if err != nil {
 			return nil, -1, err
 		}
@@ -394,7 +394,7 @@ func (source *gitSource) Download(
 		} else {
 			ref = plumbing.ReferenceName(version.String())
 		}
-		err := gitutil.GitCloneOrPull(source.url, ref, tmpdir, true /* shallow */)
+		err := gitutil.GitCloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
 		if err != nil {
 			return nil, -1, err
 		}
