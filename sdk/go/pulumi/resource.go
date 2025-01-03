@@ -691,7 +691,7 @@ type dependencySet interface {
 	// Adds dependencies into the depSet.
 	// Optionally pass the last Resource arg to short-circuit component
 	// children cycles.
-	addDeps(context.Context, depSet, Resource) error
+	addDeps(context.Context, map[URN]Resource, Resource) error
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
@@ -712,7 +712,7 @@ type resourceDependencySet []Resource
 
 var _ dependencySet = (resourceDependencySet)(nil)
 
-func (rs resourceDependencySet) addDeps(ctx context.Context, deps depSet, from Resource) error {
+func (rs resourceDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	for _, r := range rs {
 		if err := addDependency(ctx, deps, r, from); err != nil {
 			return err
@@ -746,7 +746,7 @@ type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
 
 var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 
-func (ra *resourceArrayInputDependencySet) addDeps(ctx context.Context, deps depSet, from Resource) error {
+func (ra *resourceArrayInputDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	out := ra.input.ToResourceArrayOutput()
 
 	value, known, _ /* secret */, _ /* deps */, err := internal.AwaitOutput(ctx, out)

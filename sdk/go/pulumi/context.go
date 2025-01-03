@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -840,8 +841,8 @@ func (ctx *Context) InvokeOutput(
 	go func() {
 		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
-		deps := []Resource{} // The direct dependencies of the invoke.
-		depSet := depSet{}   // The expanded set of dependencies, including children.
+		deps := []Resource{}         // The direct dependencies of the invoke.
+		depSet := map[URN]Resource{} // The expanded set of dependencies, including children.
 		for _, d := range invokeOpts.DependsOn {
 			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
 				return
@@ -2317,13 +2318,13 @@ func (ctx *Context) getOpts(
 
 	var depURNs []URN
 	if opts.DependsOn != nil {
-		depSet := depSet{}
+		depSet := map[URN]Resource{}
 		for _, ds := range opts.DependsOn {
 			if err := ds.addDeps(ctx.ctx, depSet, res); err != nil {
 				return resourceOpts{}, err
 			}
 		}
-		depURNs = depSet.urns()
+		depURNs = maps.Keys(depSet)
 	}
 
 	var providerRef string

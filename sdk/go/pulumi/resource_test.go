@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"sort"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -203,13 +205,15 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	d3, d3Urn := newRes("d3")
 
 	resolveDependsOn := func(opts *resourceOptions) []URN {
-		allDeps := depSet{}
+		allDeps := map[URN]Resource{}
 		for _, ds := range opts.DependsOn {
 			if err := ds.addDeps(context.Background(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return allDeps.sortedURNs()
+		urns := maps.Keys(allDeps)
+		sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+		return urns
 	}
 
 	// two singleton options
