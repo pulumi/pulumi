@@ -240,7 +240,7 @@ func GetRequiredPlugins(
 		plugins = append(plugins, dep.PluginSpec)
 	}
 
-	var newPlugins []workspace.PluginSpec
+	newPlugins := make([]workspace.PluginSpec, 0, len(plugins))
 	for _, plugin := range plugins {
 		if strings.HasPrefix(plugin.PluginDownloadURL, "git://") {
 			// This plugin is downloaded from a git source, so we need to rename it.

@@ -724,6 +724,9 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 	}
 
 	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
 	descriptor := workspace.PackageDescriptor{
 		PluginSpec: pluginSpec,
 	}
