@@ -2222,11 +2222,11 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 
 	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
 	var deps []string
-	depSet := urnSet{}
+	depSet := map[URN]struct{}{}
 	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
-		if !depSet.has(dep) {
+		if _, ok := depSet[dep]; !ok {
 			deps = append(deps, string(dep))
-			depSet.add(dep)
+			depSet[dep] = struct{}{}
 		}
 	}
 	sort.Strings(deps)
