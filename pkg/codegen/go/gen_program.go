@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -80,6 +81,7 @@ type generator struct {
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
+	deferredOutputVariables    []*pcl.DeferredOutputVariable
 }
 
 // GenerateProgramOptions are used to configure optional generator behavior.
@@ -190,6 +192,8 @@ func componentInputElementType(pclType model.Type) string {
 		switch pclType := pclType.(type) {
 		case *model.ListType, *model.MapType:
 			return componentInputType(pclType)
+		case *model.OutputType:
+			return componentInputElementType(pclType.ElementType)
 		// reduce option(T) to just T
 		// the generated args class assumes all properties are optional by default
 		case *model.UnionType:
@@ -711,12 +715,29 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 	contract.Assertf(len(diags) == 0, "Expcted no diagnostics, got %d", len(diags))
 }
 
+func hasDeferredOutputs(program *pcl.Program) bool {
+	for _, n := range program.Nodes {
+		if component, isComponent := n.(*pcl.Component); isComponent {
+			for _, input := range component.Inputs {
+				_, deferredOutputs := pcl.ExtractDeferredOutputVariables(program, component, input.Value)
+				if len(deferredOutputs) > 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
 	g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi", "pulumi")
+	if hasDeferredOutputs(program) {
+		g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumix", "pulumix")
+	}
 	for idx, group := range g.importer.ImportGroups() {
 		if idx > 0 {
 			g.Fprintf(w, "\n")
@@ -1297,6 +1318,83 @@ func AnnotateComponentInputs(component *pcl.Component) {
 	}
 }
 
+func deferredOutputTypeParameter(outputType model.Type) string {
+	unwrapped := pcl.UnwrapOption(outputType)
+	switch unwrapped {
+	case model.IntType:
+		return "int"
+	case model.BoolType:
+		return "bool"
+	case model.NumberType:
+		return "float64"
+	case model.StringType:
+		return "string"
+	default:
+		switch exprType := unwrapped.(type) {
+		case *model.ListType:
+			elementType := deferredOutputTypeParameter(exprType.ElementType)
+			return "[]" + elementType
+		case *model.MapType:
+			valueType := deferredOutputTypeParameter(exprType.ElementType)
+			return "map[string]" + valueType
+		case *model.OutputType:
+			return deferredOutputTypeParameter(exprType.ElementType)
+		}
+		return "interface{}"
+	}
+}
+
+func deferredOutputCastTypeParameter(outputType model.Type) string {
+	unwrapped := pcl.UnwrapOption(outputType)
+	switch unwrapped {
+	case model.IntType:
+		return "pulumi.IntOutput"
+	case model.BoolType:
+		return "pulumi.BoolOutput"
+	case model.NumberType:
+		return "pulumi.Float64Output"
+	case model.StringType:
+		return "pulumi.StringOutput"
+	default:
+		switch exprType := unwrapped.(type) {
+		case *model.ListType:
+			switch exprType.ElementType {
+			case model.IntType:
+				return "pulumi.IntArrayOutput"
+			case model.BoolType:
+				return "pulumi.BoolArrayOutput"
+			case model.NumberType:
+				return "pulumi.Float64ArrayOutput"
+			case model.StringType:
+				return "pulumi.StringArrayOutput"
+			}
+			return "pulumi.ArrayOutput"
+		case *model.MapType:
+			switch exprType.ElementType {
+			case model.IntType:
+				return "pulumi.IntMapOutput"
+			case model.BoolType:
+				return "pulumi.BoolMapOutput"
+			case model.NumberType:
+				return "pulumi.Float64MapOutput"
+			case model.StringType:
+				return "pulumi.StringMapOutput"
+			}
+			return "pulumi.MapOutput"
+		case *model.OutputType:
+			return deferredOutputCastTypeParameter(exprType.ElementType)
+		}
+		return "pulumi.AnyOutput"
+	}
+}
+
+func isDeferredOutputCast(expr model.Expression) bool {
+	if call, ok := expr.(*model.FunctionCallExpression); ok {
+		return call.Name == "castDeferredOutput"
+	}
+	return false
+}
+
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	// Compute resource options
@@ -1306,14 +1404,68 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	AnnotateComponentInputs(r)
 
 	configVariables := r.Program.ConfigVariables()
+
+	// collect here all the deferred output variables
+	// these must be declared before the component instantiation
+	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
+	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	for _, attr := range r.Inputs {
+		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
+		if len(deferredOutputs) > 0 {
+			lowered, _ := g.lowerExpression(expr, expr.Type())
+			expr = &model.FunctionCallExpression{
+				Name: "castDeferredOutput",
+				Args: []model.Expression{lowered},
+				Signature: model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "output",
+							Type: model.NewOutputType(expr.Type()),
+						},
+					},
+					ReturnType: model.NewOutputType(expr.Type()),
+				},
+			}
+
+			typecheckDiags := expr.Typecheck(true)
+			g.diagnostics = append(g.diagnostics, typecheckDiags...)
+		}
+
+		componentInputs = append(componentInputs, &model.Attribute{
+			Name:  attr.Name,
+			Value: expr,
+		})
+
+		// add the deferred outputs local to this component
+		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)
+		// add the deferred outputs to the global list of the program
+		// such that we can emit the resolution statement at the end
+		// of the component declaration (from which the output is resolved)
+		g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+	}
+
+	declareDeferredOutputVariables := func() {
+		for _, output := range componentDeferredOutputVariables {
+			typeParameter := deferredOutputTypeParameter(output.Expr.Type())
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "%s, resolve%s := pulumi.DeferredOutput[%s](ctx)\n",
+				output.Name,
+				Title(output.Name),
+				typeParameter)
+		}
+	}
+
 	// Add conversions to input properties
-	for _, input := range r.Inputs {
+	for _, input := range componentInputs {
 		for _, config := range configVariables {
 			if config.Name() == input.Name {
-				destType := config.Type()
-				expr, temps := g.lowerExpression(input.Value, destType)
+				destType := model.NewOutputType(config.Type())
+				expr := input.Value
+				if !isDeferredOutputCast(input.Value) {
+					expr, temps = g.lowerExpression(input.Value, destType)
+					g.genTemps(w, temps)
+				}
 				input.Value = expr
-				g.genTemps(w, temps)
 			}
 		}
 	}
@@ -1337,9 +1489,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		}
 		g.isErrAssigned = true
 
-		if len(r.Inputs) > 0 {
+		if len(componentInputs) > 0 {
 			g.Fgenf(w, "&%sArgs{\n", componentName)
-			for _, attr := range r.Inputs {
+			for _, attr := range componentInputs {
 				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
@@ -1371,6 +1523,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s-%%v", name, key0)`, resName)
 		}
+		declareDeferredOutputVariables()
 		instantiate("__res", resourceName, &buf)
 		instantiation := buf.String()
 		isValUsed := strings.Contains(instantiation, "val0")
@@ -1396,7 +1549,18 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s", name)`, resName)
 		}
+		declareDeferredOutputVariables()
 		instantiate(resNameVar, resourceName, w)
+	}
+
+	// Emit the deferred output resolution statements
+	for _, output := range g.deferredOutputVariables {
+		if output.SourceComponent.Name() == r.Name() {
+			g.Fgenf(w, "%s", g.Indent)
+			expr, temps := g.lowerExpression(output.Expr, output.Expr.Type())
+			g.genTemps(w, temps)
+			g.Fgenf(w, "resolve%s(%v);\n", Title(output.Name), expr)
+		}
 	}
 }
 
