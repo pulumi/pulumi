@@ -530,6 +530,10 @@ message CheckRequest {
         Mode mode = 2;
     }
     AutonamingOptions autonaming = 8;
+
+    // The organization to which this resource will belong. The project and stack can be retrieved through
+    // the resource's URN, but the organization is not part of this and cannot, so it requires its own field.
+    string organization = 9;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or

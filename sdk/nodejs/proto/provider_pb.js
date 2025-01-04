@@ -4727,7 +4727,8 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     randomseed: msg.getRandomseed_asB64(),
     name: jspb.Message.getFieldWithDefault(msg, 6, ""),
     type: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f)
+    autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f),
+    organization: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
 
   if (includeInstance) {
@@ -4794,6 +4795,10 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
       var value = new proto.pulumirpc.CheckRequest.AutonamingOptions;
       reader.readMessage(value,proto.pulumirpc.CheckRequest.AutonamingOptions.deserializeBinaryFromReader);
       msg.setAutonaming(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOrganization(value);
       break;
     default:
       reader.skipField();
@@ -4874,6 +4879,13 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
       8,
       f,
       proto.pulumirpc.CheckRequest.AutonamingOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getOrganization();
+  if (f.length > 0) {
+    writer.writeString(
+      9,
+      f
     );
   }
 };
@@ -5252,6 +5264,24 @@ proto.pulumirpc.CheckRequest.prototype.clearAutonaming = function() {
  */
 proto.pulumirpc.CheckRequest.prototype.hasAutonaming = function() {
   return jspb.Message.getField(this, 8) != null;
+};
+
+
+/**
+ * optional string organization = 9;
+ * @return {string}
+ */
+proto.pulumirpc.CheckRequest.prototype.getOrganization = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+ */
+proto.pulumirpc.CheckRequest.prototype.setOrganization = function(value) {
+  return jspb.Message.setProto3StringField(this, 9, value);
 };
 
 

@@ -1019,13 +1019,14 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Olds:       molds,
-		News:       mnews,
-		RandomSeed: req.RandomSeed,
-		Autonaming: autonaming,
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Olds:         molds,
+		News:         mnews,
+		RandomSeed:   req.RandomSeed,
+		Autonaming:   autonaming,
+		Organization: req.Organization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -713,6 +713,7 @@ class CheckRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     AUTONAMING_FIELD_NUMBER: builtins.int
+    ORGANIZATION_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource whose inputs are being checked. In the case of
     [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
@@ -745,6 +746,10 @@ class CheckRequest(google.protobuf.message.Message):
     """
     @property
     def autonaming(self) -> global___CheckRequest.AutonamingOptions: ...
+    organization: builtins.str
+    """The organization to which this resource will belong. The project and stack can be retrieved through
+    the resource's URN, but the organization is not part of this and cannot, so it requires its own field.
+    """
     def __init__(
         self,
         *,
@@ -755,9 +760,10 @@ class CheckRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         type: builtins.str = ...,
         autonaming: global___CheckRequest.AutonamingOptions | None = ...,
+        organization: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["autonaming", b"autonaming", "news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["autonaming", b"autonaming", "name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["autonaming", b"autonaming", "name", b"name", "news", b"news", "olds", b"olds", "organization", b"organization", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckRequest = CheckRequest
 

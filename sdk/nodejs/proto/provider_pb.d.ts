@@ -559,6 +559,8 @@ export class CheckRequest extends jspb.Message {
     clearAutonaming(): void;
     getAutonaming(): CheckRequest.AutonamingOptions | undefined;
     setAutonaming(value?: CheckRequest.AutonamingOptions): CheckRequest;
+    getOrganization(): string;
+    setOrganization(value: string): CheckRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
@@ -579,6 +581,7 @@ export namespace CheckRequest {
         name: string,
         type: string,
         autonaming?: CheckRequest.AutonamingOptions.AsObject,
+        organization: string,
     }
 
 

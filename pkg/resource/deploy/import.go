@@ -280,8 +280,9 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			providers.SetProviderChecksums(inputs, checksums)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
-			URN:  urn,
-			News: inputs,
+			URN:          urn,
+			News:         inputs,
+			Organization: string(i.deployment.target.Organization),
 		})
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)

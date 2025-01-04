@@ -230,9 +230,10 @@ func newQueryResourceMonitor(
 			urn := syntheticProviderURN(e.goal)
 
 			checkResponse, err := reg.Check(context.TODO(), plugin.CheckRequest{
-				URN:  urn,
-				Olds: resource.PropertyMap{},
-				News: e.goal.Properties,
+				URN:          urn,
+				Olds:         resource.PropertyMap{},
+				News:         e.goal.Properties,
+				Organization: string(runinfo.Target.Organization),
 			})
 			if err != nil {
 				providerRegErrChan <- err

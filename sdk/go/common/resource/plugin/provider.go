@@ -153,6 +153,7 @@ type CheckRequest struct {
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions
+	Organization  string
 }
 
 type CheckResponse struct {
