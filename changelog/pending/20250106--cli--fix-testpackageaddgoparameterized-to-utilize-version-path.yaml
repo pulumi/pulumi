@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix TestPackageAddGoParameterized to utilize version path
