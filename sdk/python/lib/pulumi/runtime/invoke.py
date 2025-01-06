@@ -257,9 +257,7 @@ def _invoke(
             # an unknown result.
             for res in expanded_deps.values():
                 if isinstance(res, CustomResource):
-                    if await res.id.is_known():
-                        await res.id.future()
-                    else:
+                    if not await res.id.is_known():
                         return (
                             InvokeResult(None, is_secret=False, is_known=False),
                             None,
