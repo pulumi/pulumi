@@ -1217,6 +1217,12 @@ func (host *goLanguageHost) RunPlugin(
 	cmd.Env = req.Env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
+	ctx := server.Context()
+	go func() {
+		<-ctx.Done()
+		contract.IgnoreError(cmd.Process.Kill())
+	}()
+
 	if err = cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {

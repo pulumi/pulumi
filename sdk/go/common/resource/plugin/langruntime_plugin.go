@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -640,6 +641,14 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		return nil, nil, nil, err
 	}
 
+	var eof sync.WaitGroup
+	eof.Add(1)
+	blockingKill := func() {
+		contract.IgnoreError(resp.CloseSend())
+		kill()
+		eof.Wait()
+	}
+
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
 
@@ -648,6 +657,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 			logging.V(10).Infoln("Waiting for plugin message")
 			msg, err := resp.Recv()
 			if err != nil {
+				eof.Done()
 				contract.IgnoreError(outw.CloseWithError(err))
 				contract.IgnoreError(errw.CloseWithError(err))
 				break
@@ -672,7 +682,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		}
 	}()
 
-	return outr, errr, kill, nil
+	return outr, errr, blockingKill, nil
 }
 
 func (h *langhost) GenerateProject(

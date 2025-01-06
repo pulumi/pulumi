@@ -464,10 +464,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		return &plugin{
-			Bin:    bin,
-			Args:   args,
-			Env:    env,
-			Kill:   func() error { kill(); return nil },
+			Bin:  bin,
+			Args: args,
+			Env:  env,
+			Kill: func() error {
+				kill()
+				return nil
+			},
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
 		}, nil
