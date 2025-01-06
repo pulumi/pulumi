@@ -1,0 +1,6 @@
+name: l2-component-program-resource-ref
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
