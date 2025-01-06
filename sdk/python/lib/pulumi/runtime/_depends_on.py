@@ -61,4 +61,5 @@ async def _resolve_depends_on_urns(
 
     all_deps = await _resolve_depends_on(depends_on)
 
-    return await _expand_dependencies(all_deps, from_resource)
+    expanded = await _expand_dependencies(all_deps, from_resource)
+    return set(expanded.keys())

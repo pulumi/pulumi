@@ -237,7 +237,8 @@ async def prepare_resource(
     dependencies: Set[str] = set(explicit_urn_dependencies)
     property_dependencies: Dict[str, List[str]] = {}
     for key, deps in property_dependencies_resources.items():
-        urns = await _expand_dependencies(deps, from_resource=res)
+        expanded_deps = await _expand_dependencies(deps, from_resource=res)
+        urns = set(expanded_deps.keys())
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
