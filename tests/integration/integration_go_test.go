@@ -1255,7 +1255,6 @@ func TestPackageAddGo(t *testing.T) {
 
 //nolint:paralleltest // mutates environment
 func TestPackageAddGoParameterized(t *testing.T) {
-	t.Skip("mod replace is wrong after pulumi-terraform-provider release https://github.com/pulumi/pulumi/issues/18048")
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -1272,7 +1271,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	assert.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random", packageMod.Module.Mod.Path)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
 	assert.NoError(t, err)
@@ -1281,7 +1280,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random" {
+		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3" {
 			containsRename = true
 		}
 	}
