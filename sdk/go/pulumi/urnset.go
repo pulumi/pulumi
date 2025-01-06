@@ -40,12 +40,6 @@ func (s urnSet) contains(other urnSet) bool {
 	return true
 }
 
-func (s urnSet) union(other urnSet) {
-	for v := range other {
-		s.add(v)
-	}
-}
-
 func (s urnSet) values() []URN {
 	values := slice.Prealloc[URN](len(s))
 	for v := range s {

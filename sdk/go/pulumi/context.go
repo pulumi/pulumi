@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -668,55 +669,26 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) invokePackageRaw(
 	tok string, args interface{}, packageRef string, options invokeOptions,
-) (resource.PropertyMap, []Resource, error) {
+) (resource.PropertyMap, error) {
 	if tok == "" {
-		return nil, []Resource{}, errors.New("invoke token must not be empty")
-	}
-	deps := []Resource{}
-	depSet := urnSet{} // Only used for `addURNs` below.
-	for _, d := range options.DependsOn {
-		// This will await the resources, ensuring that we don't call the invoke before the dependencies are ready.
-		if err := d.addURNs(ctx.ctx, depSet, nil); err != nil {
-			return nil, []Resource{}, err
-		}
-		switch d := d.(type) {
-		case resourceDependencySet:
-			deps = append(deps, d...)
-		case *resourceArrayInputDependencySet:
-			out := d.input.ToResourceArrayOutput()
-			value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
-			if err != nil || !known {
-				return nil, []Resource{}, err
-			}
-			resources, ok := value.([]Resource)
-			if !ok {
-				return nil, []Resource{},
-					fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
-						reflect.TypeOf(value))
-			}
-			deps = append(deps, resources...)
-		default:
-			// Unreachable.
-			// We control all implementations of dependencySet.
-			contract.Failf("Unknown dependencySet %T", d)
-		}
+		return nil, errors.New("invoke token must not be empty")
 	}
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	var err error
 	if err = ctx.beginRPC(); err != nil {
-		return nil, []Resource{}, err
+		return nil, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return nil, []Resource{}, err
+		return nil, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return nil, []Resource{}, err
+			return nil, err
 		}
 		providerRef = pr
 	}
@@ -727,7 +699,7 @@ func (ctx *Context) invokePackageRaw(
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -744,7 +716,7 @@ func (ctx *Context) invokePackageRaw(
 		},
 	)
 	if err != nil {
-		return nil, []Resource{}, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -760,7 +732,7 @@ func (ctx *Context) invokePackageRaw(
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, []Resource{}, err
+		return nil, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -771,7 +743,7 @@ func (ctx *Context) invokePackageRaw(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, []Resource{}, ferr
+		return nil, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
@@ -783,9 +755,9 @@ func (ctx *Context) invokePackageRaw(
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, []Resource{}, err
+		return nil, err
 	}
-	return r, deps, nil
+	return r, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
@@ -812,7 +784,7 @@ func (ctx *Context) InvokePackage(
 		invokeOpts.DependsOn = nil
 	}
 
-	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, *invokeOpts)
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *invokeOpts)
 	if err != nil {
 		return err
 	}
@@ -837,7 +809,7 @@ func (ctx *Context) InvokePackageRaw(
 	}
 
 	options := mergeInvokeOptions(opts...)
-	outProps, _, err := ctx.invokePackageRaw(tok, args, packageRef, *options)
+	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *options)
 	if err != nil {
 		return false, err
 	}
@@ -867,14 +839,70 @@ func (ctx *Context) InvokeOutput(
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
+		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
-		outProps, deps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
+		deps := []Resource{}         // The direct dependencies of the invoke.
+		depSet := map[URN]Resource{} // The expanded set of dependencies, including children.
+		for _, d := range invokeOpts.DependsOn {
+			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
+				return
+			}
+			switch d := d.(type) {
+			case resourceDependencySet:
+				deps = append(deps, d...)
+			case *resourceArrayInputDependencySet:
+				out := d.input.ToResourceArrayOutput()
+				value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
+				if err != nil || !known {
+					return
+				}
+				resources, ok := value.([]Resource)
+				if !ok {
+					return
+				}
+				deps = append(deps, resources...)
+			default:
+				// Unreachable.
+				// We control all implementations of dependencySet.
+				contract.Failf("Unknown dependencySet %T", d)
+			}
+		}
+
+		dest := reflect.New(output.ElementType()).Elem()
+
+		// DependsOn for resources is an ordering constraint for register
+		// resource calls. If a resource R1 depends on a resource R2, the
+		// register resource call for R2 will happen after R1. This is ensured
+		// by awaiting the URN for each resource dependency before calling
+		// register resource.
+		//
+		// For invokes, this causes a problem when running under preview. During
+		// preview, register resource immediately returns with the URN, however
+		// this does not tell us if the resource "exists".
+		//
+		// Instead of waiting for the dependency's URN, we wait for the ID. This
+		// tells us that wether a physical resource exists (if the state does
+		// not require a refresh), and we can avoid calling the invoke when it
+		// is unknown.
+		for _, d := range depSet {
+			if r, ok := d.(CustomResource); ok {
+				_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
+				if err != nil {
+					contract.Failf("Awaiting ID: %s", err)
+				}
+				if !known {
+					internal.ResolveOutput(output, dest.Interface(), known, false, resourcesToInternal(deps))
+					return
+				}
+			}
+		}
+
+		outProps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
 		}
 
-		dest := reflect.New(output.ElementType()).Elem()
 		known := !outProps.ContainsUnknowns()
 		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
 		if err != nil {
@@ -2290,13 +2318,13 @@ func (ctx *Context) getOpts(
 
 	var depURNs []URN
 	if opts.DependsOn != nil {
-		depSet := urnSet{}
+		depSet := map[URN]Resource{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(ctx.ctx, depSet, res); err != nil {
+			if err := ds.addDeps(ctx.ctx, depSet, res); err != nil {
 				return resourceOpts{}, err
 			}
 		}
-		depURNs = depSet.values()
+		depURNs = maps.Keys(depSet)
 	}
 
 	var providerRef string

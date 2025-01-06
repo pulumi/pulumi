@@ -18,15 +18,18 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 
 	"github.com/blang/semver"
+	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -61,7 +64,7 @@ import (
 // * Cust4 because it is a child of a custom resource
 // * Comp2 because it is a non-remote component resoruce
 // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
-func addDependency(ctx context.Context, deps urnSet, res, from Resource) error {
+func addDependency(ctx context.Context, deps map[URN]Resource, res, from Resource) error {
 	if _, custom := res.(CustomResource); !custom {
 		// If `res` is the same as `from`, exit early to avoid depending on
 		// children that haven't been registered yet.
@@ -85,19 +88,19 @@ func addDependency(ctx context.Context, deps urnSet, res, from Resource) error {
 	if err != nil {
 		return err
 	}
-	deps.add(urn)
+	deps[urn] = res
 	return nil
 }
 
 // expandDependencies expands the given slice of Resources into a set of URNs.
-func expandDependencies(ctx context.Context, deps []Resource) (urnSet, error) {
-	urns := urnSet{}
+func expandDependencies(ctx context.Context, deps []Resource) (map[URN]Resource, error) {
+	set := map[URN]Resource{}
 	for _, r := range deps {
-		if err := addDependency(ctx, urns, r, nil /* from */); err != nil {
+		if err := addDependency(ctx, set, r, nil /* from */); err != nil {
 			return nil, err
 		}
 	}
-	return urns, nil
+	return set, nil
 }
 
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
@@ -121,11 +124,17 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		if err != nil {
 			return err
 		}
-		deps.union(allDeps)
+		for k := range allDeps {
+			deps.add(k)
+		}
 
 		if !v.IsNull() || len(allDeps) > 0 {
+			urns := slice.Prealloc[URN](len(allDeps))
+			for v := range allDeps {
+				urns = append(urns, v)
+			}
 			pmap[resource.PropertyKey(pname)] = v
-			pdeps[pname] = allDeps.values()
+			pdeps[pname] = urns
 		}
 		return nil
 	}
@@ -265,14 +274,16 @@ func marshalInputImpl(v interface{},
 				}
 
 				// Expand dependencies.
-				urnSet, err := expandDependencies(context.TODO(), outputDeps)
+				depSet, err := expandDependencies(context.TODO(), outputDeps)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
 				var dependencies []resource.URN
-				if len(urnSet) > 0 {
-					dependencies = make([]resource.URN, len(urnSet))
-					for i, urn := range urnSet.sortedValues() {
+				if len(depSet) > 0 {
+					dependencies = make([]resource.URN, len(depSet))
+					urns := maps.Keys(depSet)
+					sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+					for i, urn := range urns {
 						dependencies[i] = resource.URN(urn)
 					}
 				}
