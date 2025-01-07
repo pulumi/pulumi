@@ -197,7 +197,7 @@ func TestListPackages(t *testing.T) {
 			// packages, so we have to exclude pip here.
 			var expectedPackages []string
 			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" {
+				if pkg != "pip" || opts.Toolchain == Poetry {
 					expectedPackages = append(expectedPackages, pkg)
 				}
 			}
@@ -229,7 +229,7 @@ func TestListPackages(t *testing.T) {
 			// packages, so we have to exclude pip here.
 			var expectedPackages []string
 			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" {
+				if pkg != "pip" || opts.Toolchain == Poetry {
 					expectedPackages = append(expectedPackages, pkg)
 				}
 			}
