@@ -192,8 +192,15 @@ func TestListPackages(t *testing.T) {
 			sort.Slice(packages, func(i, j int) bool {
 				return packages[i].Name < packages[j].Name
 			})
-
-			expectedPackages := append([]string{"pulumi_random"}, test.expectedPackages...)
+			// pulumi_random depends on pulumi, which has pip as a dependency.
+			// We are looking for packages that are not dependencies of other
+			// packages, so we have to exclude pip here.
+			var expectedPackages []string
+			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
+				if pkg != "pip" || opts.Toolchain == Poetry {
+					expectedPackages = append(expectedPackages, pkg)
+				}
+			}
 			sort.Strings(expectedPackages)
 
 			require.Len(t, packages, len(expectedPackages))
@@ -217,7 +224,15 @@ func TestListPackages(t *testing.T) {
 				return packages[i].Name < packages[j].Name
 			})
 
-			expectedPackages := append([]string{"pulumi_random", "pip"}, test.expectedPackages...)
+			// pulumi_random depends on pulumi, which has pip as a dependency.
+			// We are looking for packages that are not dependencies of other
+			// packages, so we have to exclude pip here.
+			var expectedPackages []string
+			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
+				if pkg != "pip" || opts.Toolchain == Poetry {
+					expectedPackages = append(expectedPackages, pkg)
+				}
+			}
 			expectedPackages = unique(expectedPackages)
 			sort.Strings(expectedPackages)
 
@@ -353,8 +368,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		for _, pkg := range packages {
 			cmd := exec.Command("poetry", "add", pkg)
 			cmd.Dir = opts.Root
-			err := cmd.Run()
-			require.NoError(t, err)
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 		}
 	} else if opts.Toolchain == Uv {
 		writePyprojectForUv(t, opts.Root)
