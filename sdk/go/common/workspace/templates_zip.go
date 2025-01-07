@@ -173,10 +173,7 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...Req
 		return "", err
 	}
 	if packageResponse.StatusCode == http.StatusUnauthorized && isPulumiHostResponse(packageResponse) {
-		return "", fmt.Errorf("failed to download package: %w", ErrPulumiCloudUnauthorized)
-	}
-	if packageResponse.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download package: %s", packageResponse.Status)
+		return "", fmt.Errorf("failed to download template from pulumi host: %w", ErrPulumiCloudUnauthorized)
 	}
 	packageResponseBody, err := io.ReadAll(packageResponse.Body)
 	if err != nil {
