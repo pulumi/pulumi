@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Return error if no inline program specified

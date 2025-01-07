@@ -1,5 +1,97 @@
 # Changelog
 
+## 3.145.0 (2025-01-07)
+
+
+### Features
+
+- [auto/go] Support --clear-pending-creates for refresh command in Go Automation API for preview refresh and refresh operations.
+  [#18101](https://github.com/pulumi/pulumi/pull/18101)
+
+- [programgen/{java,sdkgen/java}] Only use gRPC to communicate with the Java host
+  [#18138](https://github.com/pulumi/pulumi/pull/18138)
+
+- [cli/package] Support bridging to terraform providers automatically in pulumi convert
+  [#17992](https://github.com/pulumi/pulumi/pull/17992)
+
+- [sdk/go] Implement deferred output for the Go SDK and program-gen
+  [#17885](https://github.com/pulumi/pulumi/pull/17885)
+
+
+### Bug Fixes
+
+- [cli] Fix TestPackageAddGoParameterized to utilize version path
+  [#18150](https://github.com/pulumi/pulumi/pull/18150)
+
+- [cli/engine] Clarify the usage string for the --expect-no-changes flag
+  [#18105](https://github.com/pulumi/pulumi/pull/18105)
+
+- [auto/go] Return error if no inline program specified
+  [#18086](https://github.com/pulumi/pulumi/pull/18086)
+
+- [auto/go] Interrupt programs gracefully when the context is canceled
+  [#18124](https://github.com/pulumi/pulumi/pull/18124)
+
+- [cli/new] Provide a better error message when pulumi new --ai generates a program with errors
+  [#18091](https://github.com/pulumi/pulumi/pull/18091)
+
+- [cli/new] Provide a more meaningful message for the --language flag
+  [#18092](https://github.com/pulumi/pulumi/pull/18092)
+
+- [engine] Enable `pulumi:pulumi:getResource` to hydrate `Read` resources
+  [#18070](https://github.com/pulumi/pulumi/pull/18070)
+
+- [programgen] Allow for case-insensitive terraform convert source
+  [#18111](https://github.com/pulumi/pulumi/pull/18111)
+
+- [programgen/go] Fix importing module names in Go programs that aren't lower-case
+  [#18113](https://github.com/pulumi/pulumi/pull/18113)
+
+- [sdk/go] Fix panic when diffing computed property values
+  [#18104](https://github.com/pulumi/pulumi/pull/18104)
+
+- [sdk/go] Avoid calling invokes with dependencies on unknown resources
+  [#18133](https://github.com/pulumi/pulumi/pull/18133)
+
+- [sdk/nodejs] Fix source maps when using jest
+  [#18108](https://github.com/pulumi/pulumi/pull/18108)
+
+- [sdk/nodejs] Avoid calling invokes with dependencies on unknown resources
+  [#18152](https://github.com/pulumi/pulumi/pull/18152)
+
+- [sdk/python] Fix reading pulumi-plugin.json when using the uv toolchain
+  [#18107](https://github.com/pulumi/pulumi/pull/18107)
+
+- [sdk/python] Fix ListPackages when using uv
+  [#18121](https://github.com/pulumi/pulumi/pull/18121)
+
+- [sdk/python] Fix dynamic providers when using Poetry or uv
+  [#18126](https://github.com/pulumi/pulumi/pull/18126)
+
+- [sdk/python] Fix prerelease version
+  [#18125](https://github.com/pulumi/pulumi/pull/18125)
+
+- [sdk/python] Avoid calling invokes with dependencies on unknown resources
+  [#18141](https://github.com/pulumi/pulumi/pull/18141)
+
+
+### Miscellaneous
+
+- [programgen/java] Bump Java SDK dependency version so that `package gen-sdk` emits buildable code
+  [#18130](https://github.com/pulumi/pulumi/pull/18130)
+
+- [sdk/python] Switch to pyproject.toml + uv
+  [#18081](https://github.com/pulumi/pulumi/pull/18081)
+
+- [sdk/python] Move mypy configuration into pyproject.toml
+  [#18118](https://github.com/pulumi/pulumi/pull/18118)
+
+- [sdk/python] Move pyright configuration into pyproject.toml
+  [#18116](https://github.com/pulumi/pulumi/pull/18116)
+
+- [sdk/python] Move ruff configuration into pyproject.toml
+  [#18117](https://github.com/pulumi/pulumi/pull/18117)
+
 ## 3.144.1 (2024-12-20)
 
 

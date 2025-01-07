@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/engine
-  description: Clarify the usage string for the --expect-no-changes flag

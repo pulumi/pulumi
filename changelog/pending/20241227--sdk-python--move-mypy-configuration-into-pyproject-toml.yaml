@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Move mypy configuration into pyproject.toml
