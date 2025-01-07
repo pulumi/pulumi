@@ -273,23 +273,40 @@ func TestMinimumVersion(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestRunCanceled(t *testing.T) {
+	t.Parallel()
+
 	cmd, err := NewPulumiCommand(nil)
 	require.NoError(t, err)
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
-	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "1234")
 
 	e.ImportDirectory("testdata/slow")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	stackName := ptesting.RandomStackName()
 	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, nil, "preview", "-s", stackName)
+	go func() {
+		path := filepath.Join(e.RootPath, "ready")
+		for i := 0; i < 100; i++ {
+			if _, err := os.Stat(path); err == nil {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		cancel()
+	}()
+
+	env := []string{
+		"PULUMI_HOME=" + e.HomePath,
+		"PULUMI_BACKEND_URL=" + e.LocalURL(),
+		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
+	}
+	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
 		require.Contains(t, stdout, "error: preview canceled")
