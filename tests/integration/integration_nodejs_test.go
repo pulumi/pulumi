@@ -2400,3 +2400,19 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 		},
 	})
 }
+
+func TestPackageAddProviderFromRemoteSource(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd_remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd_remote", "--create")
+
+	e.RunCommand("pulumi", "package", "add",
+		"github.com/tgummerer/pulumi-tls-self-signed-cert@80e75c13ef793f7788e2877e04832922bd853ed4")
+
+	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}

@@ -1,0 +1,6 @@
+name: comp-as-comp
+description: A minimal TypeScript Pulumi program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn
