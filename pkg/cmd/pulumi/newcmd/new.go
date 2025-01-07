@@ -510,14 +510,14 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 	account, err := workspace.GetAccount(templatePulumiCloudHost)
 	if err != nil {
 		return workspace.TemplateRepository{}, fmt.Errorf(
-			"looking up pulumi cloud backend %s: %w\n\n%s",
-			templatePulumiCloudHost, err, howToLoginMessage(templatePulumiCloudHost))
+			"looking up pulumi cloud backend %s: %w",
+			templatePulumiCloudHost,
+			err,
+		)
 	}
 
 	if account.AccessToken == "" {
-		return workspace.TemplateRepository{}, fmt.Errorf(
-			"no access token found for %s\n\n%s",
-			templatePulumiCloudHost, howToLoginMessage(templatePulumiCloudHost))
+		return workspace.TemplateRepository{}, fmt.Errorf("no access token found for %s", templatePulumiCloudHost)
 	}
 
 	templateRepository, err := workspace.RetrieveZIPTemplates(templateURL, func(req *http.Request) {
@@ -526,20 +526,13 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 
 	if errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
 		return workspace.TemplateRepository{}, fmt.Errorf(
-			"unauthorized to access template at %s. You may not have access to this template or token may have expired.\n\n%s",
-			templatePulumiCloudHost, howToLoginMessage(templatePulumiCloudHost))
+			"unauthorized to access template at %s. You may not have access to this template or token may have expired",
+			templatePulumiCloudHost,
+		)
 	}
 
 	// Caller can handle other errors
 	return templateRepository, err
-}
-
-func howToLoginMessage(cloudURL string) string {
-	messageTemplate := `Please login to the %s pulumi cloud backend to retrieve this template:
-
-pulumi login %s --set-current=false
-`
-	return fmt.Sprintf(messageTemplate, cloudURL, cloudURL)
 }
 
 // isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
