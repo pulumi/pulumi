@@ -31,10 +31,10 @@ import {
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
 
-import { DependencyResource, ProviderResource, Resource } from "../resource";
+import { CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
-import { gatherExplicitDependencies } from "./dependsOn";
+import { gatherExplicitDependencies, getAllTransitivelyReferencedResources } from "./dependsOn";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as resourceproto from "../proto/resource_pb";
@@ -238,8 +238,26 @@ async function invokeAsync(
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
-        // Wait for any explicit dependencies to complete before proceeding.
+        // The direct dependencies of the invoke call from the dependsOn option.
         const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
+        // The expanded set of dependencies, including children of components.
+        const expandedDeps = await getAllTransitivelyReferencedResources(new Set(dependsOnDeps), new Set());
+        // If we depend on any CustomResources, we need to ensure that their
+        // ID is known before proceeding. If it is not known, we will return
+        // an unknown result.
+        for (const dep of expandedDeps) {
+            if (CustomResource.isInstance(dep)) {
+                const known = await dep.id.isKnown;
+                if (!known) {
+                    return {
+                        result: {},
+                        isKnown: false,
+                        containsSecrets: false,
+                        dependencies: [],
+                    };
+                }
+            }
+        }
 
         const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
         if (containsUnknownValues(serialized)) {

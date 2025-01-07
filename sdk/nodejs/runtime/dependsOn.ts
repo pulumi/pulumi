@@ -85,10 +85,10 @@ export async function gatherExplicitDependencies(
  *
  * @internal
  */
-export async function getAllTransitivelyReferencedResourceURNs(
+export async function getAllTransitivelyReferencedResources(
     resources: Set<Resource>,
     exclude: Set<Resource>,
-): Promise<Set<string>> {
+): Promise<Array<Resource>> {
     const transitivelyReachableResources = await getTransitivelyReferencedChildResourcesOfComponentResources(
         resources,
         exclude,
@@ -98,6 +98,20 @@ export async function getAllTransitivelyReferencedResourceURNs(
     const transitivelyReachableCustomResources = [...transitivelyReachableResources].filter(
         (r) => (CustomResource.isInstance(r) || (r as ComponentResource).__remote) && !exclude.has(r),
     );
+    return transitivelyReachableCustomResources;
+}
+
+/**
+ * Gather all URNs of resources transitively reachable from the given resources,
+ * see `getAllTransitivelyReferencedResources`.
+ *
+ * @internal
+ */
+export async function getAllTransitivelyReferencedResourceURNs(
+    resources: Set<Resource>,
+    exclude: Set<Resource>,
+): Promise<Set<string>> {
+    const transitivelyReachableCustomResources = await getAllTransitivelyReferencedResources(resources, exclude);
     const promises = transitivelyReachableCustomResources.map((r) => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
