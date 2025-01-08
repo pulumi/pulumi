@@ -108,6 +108,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Color allows specifying whether to colorize output. Choices are: always, never, raw, auto (default "auto")
+func Color(color string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Color = color
+	})
+}
+
 // Plan specifies the path to an update plan to use for the update.
 func Plan(path string) Option {
 	return optionFunc(func(opts *Options) {
