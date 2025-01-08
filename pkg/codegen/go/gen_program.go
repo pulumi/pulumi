@@ -140,7 +140,7 @@ type ObjectTypeFromConfigMetadata = struct {
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
-	objectType.Annotations = append(objectType.Annotations, &ObjectTypeFromConfigMetadata{
+	objectType.Annotate(&ObjectTypeFromConfigMetadata{
 		TypeName:      typeName,
 		ComponentName: componentName,
 	})
