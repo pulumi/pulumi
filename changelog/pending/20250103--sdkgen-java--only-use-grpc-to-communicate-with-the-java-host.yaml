@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/java,sdkgen/java
-  description: Only use gRPC to communicate with the Java host

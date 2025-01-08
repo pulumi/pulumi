@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Support --clear-pending-creates for refresh command in Go Automation API for preview refresh and refresh operations.

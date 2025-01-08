@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Allow for case-insensitive terraform convert source

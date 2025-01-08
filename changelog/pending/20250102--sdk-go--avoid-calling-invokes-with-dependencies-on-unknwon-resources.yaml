@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Avoid calling invokes with dependencies on unknown resources

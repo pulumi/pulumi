@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Provide a better error message when pulumi new --ai generates a program with errors

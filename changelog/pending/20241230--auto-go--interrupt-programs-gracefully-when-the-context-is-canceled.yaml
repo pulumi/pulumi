@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Interrupt programs gracefully when the context is canceled
