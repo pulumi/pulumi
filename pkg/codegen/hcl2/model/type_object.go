@@ -47,6 +47,25 @@ func NewObjectType(properties map[string]Type, annotations ...interface{}) *Obje
 	return &ObjectType{Properties: properties, Annotations: annotations}
 }
 
+// Annotate adds annotations to the object type. Annotations may be retrieved by GetObjectTypeAnnotation.
+func (t *ObjectType) Annotate(annotations ...interface{}) {
+	t.Annotations = append(t.Annotations, annotations...)
+}
+
+// GetObjectTypeAnnotation retrieves an annotation of the given type from the object type, if one exists.
+func GetObjectTypeAnnotation[T any](t *ObjectType) (T, bool) {
+	var result T
+	found := false
+	for _, a := range t.Annotations {
+		if v, ok := a.(T); ok {
+			result = v
+			found = true
+			break
+		}
+	}
+	return result, found
+}
+
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*ObjectType) SyntaxNode() hclsyntax.Node {
 	return syntax.None

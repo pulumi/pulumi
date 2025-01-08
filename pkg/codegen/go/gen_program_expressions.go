@@ -530,11 +530,9 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	switch argType := expr.Type().(type) {
 	case *model.ObjectType:
-		if len(argType.Annotations) > 0 {
-			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
-				g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
-				return
-			}
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
+			g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
+			return
 		}
 	}
 

@@ -64,7 +64,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			}
 
 			// top-level annotation for the type itself
-			arg.Annotations = append(arg.Annotations, schemaType)
+			arg.Annotate(schemaType)
 			// now for each property, annotate it with the associated type from the schema
 			for propertyName, propertyType := range arg.Properties {
 				if associatedType, ok := schemaProperties[propertyName]; ok {
