@@ -82,7 +82,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     @classmethod
     async def shutdown(cls):
         for servicer in cls._servicers:
-            await servicer._server.stop(grace=0)
+            await servicer._server.wait_for_termination(timeout=0)
 
     # aio handles this being async but the pyi typings don't expect it.
     async def Invoke(
