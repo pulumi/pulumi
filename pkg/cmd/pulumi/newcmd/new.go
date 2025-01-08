@@ -504,7 +504,7 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 		return workspace.TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
 	}
 	// Docs convention is to store the cloud URL with the protocol.
-	// e.g. `pulumi login https://api.pulumi.com` or pulumi login `https://api.acme.org`
+	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
 	templatePulumiCloudHost := "https://" + u.Host
 
 	account, err := workspace.GetAccount(templatePulumiCloudHost)
