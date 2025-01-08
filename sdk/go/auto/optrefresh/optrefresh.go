@@ -94,6 +94,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Color allows specifying whether to colorize output. Choices are: always, never, raw, auto (default "auto")
+func Color(color string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Color = color
+	})
+}
+
 // ShowSecrets configures whether to show config secrets when they appear in the config.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {

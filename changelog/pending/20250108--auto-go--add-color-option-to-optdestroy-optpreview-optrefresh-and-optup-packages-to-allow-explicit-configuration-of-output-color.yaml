@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Add `Color` option to `optdestroy`, `optpreview`, `optrefresh`, and `optup` packages to allow explicit configuration of output color.
