@@ -494,10 +494,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 // Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
 //
-// If we cannot find current credentials for the given Pulumi Cloud URL we ask the user to login to that
-// URL using `pulumi login <cloud-url> --set-current=false`. We do this an extra safey measure to ensure
-// the user is aware of host they are trying to retrieve the template from and will be sending some kind
-// of crendetials to.
+// workspace.GetAccount ensures the user has a valid session with the Pulumi Cloud backend.
+//   - If the user is not logged in, the login flow will be initiated.
+//   - If the user is not logged in and pulumi does not recognize the backend as a known workspace then
+//     the user will see an authentication error.
 func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateRepository, error) {
 	u, err := url.Parse(templateURL)
 	if err != nil {

@@ -201,6 +201,37 @@ func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
 		"Missing , or : between flow sequence items at line 30, column 20")
 }
 
+func TestRetrieveZIPTemplates_RaisesDetectablePulumiCloud401Error(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// How we id a Pulumi Cloud from an arbitrary http response.
+		rw.Header().Set("X-Pulumi-Request-ID", "123")
+		rw.WriteHeader(http.StatusUnauthorized)
+		_, err := rw.Write([]byte("Unauthorized"))
+		require.NoError(t, err)
+	}))
+
+	_, err := RetrieveZIPTemplates(server.URL)
+
+	// Make sure we can detect the error as a ErrPulumiCloudUnauthorized.
+	// Allows us to handle it properly and retry w/ credentials etc if needed.
+	assert.ErrorIs(t, err, ErrPulumiCloudUnauthorized)
+}
+
+func TestRetrieveZIPTemplates_RequestOptions(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Assert that the Authorization header is set in the request.
+		assert.Equal(t, "token 123", req.Header.Get("Authorization"))
+	}))
+
+	RetrieveZIPTemplates(server.URL, func(req *http.Request) {
+		req.Header.Set("Authorization", "token 123")
+	})
+}
+
 // Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to
 // paths, while values are slices whose values correspond to filenames that should be present in the ZIP file served at
 // that path.
