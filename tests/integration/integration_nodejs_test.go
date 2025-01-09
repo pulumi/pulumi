@@ -2223,6 +2223,8 @@ func TestPackageAddNode(t *testing.T) {
 }
 
 func TestKeywordOvlerapRenameTS(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	ppFile, err := filepath.Abs("nodejs/keywordoverlap")
