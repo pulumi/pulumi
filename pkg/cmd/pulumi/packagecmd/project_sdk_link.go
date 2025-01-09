@@ -382,7 +382,7 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 		return errors.New("failed to import go language info")
 	}
 
-	gomodFilepath := filepath.Join(out, "go.mod")
+	gomodFilepath := filepath.Join(root, "go.mod")
 	gomodFileContent, err := os.ReadFile(gomodFilepath)
 	if err != nil {
 		return fmt.Errorf("cannot read mod file: %w", err)
