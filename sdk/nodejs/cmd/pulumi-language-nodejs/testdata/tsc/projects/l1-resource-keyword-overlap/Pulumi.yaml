@@ -1,0 +1,5 @@
+name: l1-resource-keyword-overlap
+runtime:
+  name: nodejs
+  options:
+    typescript: false
