@@ -2407,17 +2407,21 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 
 	e.ImportDirectory("packageadd_remote")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd_remote", "--create")
 
-	stdout, stderr := e.RunCommandExpectError("pulumi", "package", "add",
+	e.RunCommand("pulumi", "package", "add",
 		"github.com/tgummerer/pulumi-tls-self-signed-cert@80e75c13ef793f7788e2877e04832922bd853ed4")
-
-	fmt.Println("package add", stdout, stderr)
-
-	stdout, stderr = e.RunCommand("find", e.RootPath)
-	fmt.Println("local", stdout, stderr)
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
+	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
+	// above is used.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_tgummerer_pulumi-tls-self-signed-cert")
+	require.Contains(t, stdout, "0.0.0-x80e75c13ef793f7788e2877e04832922bd853ed4")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
