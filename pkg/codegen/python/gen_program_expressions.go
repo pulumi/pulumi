@@ -332,6 +332,47 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
 	case "mimeType":
 		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
+	case pcl.Call:
+		self := expr.Args[0]
+		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+
+		if expr.Signature.MultiArgumentInputs {
+			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for method '%s'", method)
+			panic(err)
+		}
+
+		validMethod := makeValidIdentifier(method)
+		g.Fgenf(w, "%v.%s(", self, validMethod)
+
+		var args *model.ObjectConsExpression
+		if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[2]); converted {
+			args = objectArgs
+		} else {
+			args = expr.Args[2].(*model.ObjectConsExpression)
+		}
+		if len(args.Items) > 0 {
+			indenter := func(f func()) { f() }
+			if len(args.Items) > 1 {
+				indenter = g.Indented
+			}
+			indenter(func() {
+				for i, item := range args.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+					keyVal := PyName(key.Value.AsString())
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		g.Fprint(w, ")")
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",

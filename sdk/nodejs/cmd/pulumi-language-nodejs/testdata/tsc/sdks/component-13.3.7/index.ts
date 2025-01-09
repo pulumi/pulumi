@@ -5,6 +5,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export * from "./componentCallable";
+import { ComponentCallable } from "./componentCallable";
+
 export { ComponentCustomRefInputOutputArgs } from "./componentCustomRefInputOutput";
 export type ComponentCustomRefInputOutput = import("./componentCustomRefInputOutput").ComponentCustomRefInputOutput;
 export const ComponentCustomRefInputOutput: typeof import("./componentCustomRefInputOutput").ComponentCustomRefInputOutput = null as any;
@@ -30,6 +33,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "component:index:ComponentCallable":
+                return new ComponentCallable(name, <any>undefined, { urn })
             case "component:index:ComponentCustomRefInputOutput":
                 return new ComponentCustomRefInputOutput(name, <any>undefined, { urn })
             case "component:index:ComponentCustomRefOutput":
