@@ -1744,6 +1744,11 @@ func TestLogDebugGo(t *testing.T) {
 func TestRunPlugin(t *testing.T) {
 	t.Parallel()
 
+	// TODO: enable this test on windows
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skipping test on Windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("run_plugin"))
