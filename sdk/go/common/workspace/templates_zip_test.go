@@ -138,7 +138,7 @@ func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Act.
-		_, err = retrieveZIPTemplates(templateURL)
+		_, err = RetrieveZIPTemplates(templateURL)
 
 		// Assert.
 		assert.ErrorContains(t, err, "invalid template URL: "+parsed.String())
@@ -157,7 +157,7 @@ func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
 
 	for path := range cases {
 		// Act.
-		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+		_, err := RetrieveZIPTemplates(server.URL + "/" + path)
 
 		// Assert.
 		assert.ErrorContains(t, err, "template does not contain a Pulumi.yaml file")
@@ -179,7 +179,7 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 
 	for path := range cases {
 		// Act.
-		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+		_, err := RetrieveZIPTemplates(server.URL + "/" + path)
 
 		// Assert.
 		assert.NoError(t, err)
@@ -195,10 +195,42 @@ func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
 		require.NoError(t, err)
 	}))
 
-	_, err := retrieveZIPTemplates(server.URL)
+	_, err := RetrieveZIPTemplates(server.URL)
 
 	assert.ErrorContains(t, err, "failed to download template: 500 Internal Server Error\n"+
 		"Missing , or : between flow sequence items at line 30, column 20")
+}
+
+func TestRetrieveZIPTemplates_RaisesDetectablePulumiCloud401Error(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// How we id a Pulumi Cloud from an arbitrary http response.
+		rw.Header().Set("X-Pulumi-Request-ID", "123")
+		rw.WriteHeader(http.StatusUnauthorized)
+		_, err := rw.Write([]byte("Unauthorized"))
+		require.NoError(t, err)
+	}))
+
+	_, err := RetrieveZIPTemplates(server.URL)
+
+	// Make sure we can detect the error as a ErrPulumiCloudUnauthorized.
+	// Allows us to handle it properly and retry w/ credentials etc if needed.
+	assert.ErrorIs(t, err, ErrPulumiCloudUnauthorized)
+}
+
+func TestRetrieveZIPTemplates_RequestOptions(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Assert that the Authorization header is set in the request.
+		assert.Equal(t, "token 123", req.Header.Get("Authorization"))
+	}))
+
+	_, err := RetrieveZIPTemplates(server.URL, func(req *http.Request) {
+		req.Header.Set("Authorization", "token 123")
+	})
+	assert.Error(t, err)
 }
 
 // Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to
