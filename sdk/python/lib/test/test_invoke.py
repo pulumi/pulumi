@@ -194,6 +194,34 @@ async def test_invoke_depends_on_unknown_component_child() -> None:
     assert k == False
 
 
+@pulumi.runtime.test
+async def test_invoke_input_dependency() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+    # Create a resource with an unknown ID.
+    dep = MockResource(name="dep")
+    dep.__dict__["id"] = unknown()
+    # Create an output that depends on the resource.
+    arg_value = asyncio.Future[int]()
+    arg_value.set_result(0)
+    is_known = asyncio.Future[bool]()
+    is_known.set_result(True)
+    is_secret = asyncio.Future[bool]()
+    is_secret.set_result(False)
+    arg_with_resource_dependency = pulumi.Output(
+        resources={dep},
+        future=arg_value,
+        is_known=is_known,
+        is_secret=is_secret,
+    )
+
+    o = pulumi.runtime.invoke_output(
+        "test::MyFunction", {"arg": arg_with_resource_dependency}
+    )
+
+    k = await o.is_known()
+    assert k == False
+
+
 @pytest.mark.parametrize(
     "a,b,expected",
     [

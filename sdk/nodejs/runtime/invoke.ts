@@ -240,12 +240,32 @@ async function invokeAsync(
     try {
         // The direct dependencies of the invoke call from the dependsOn option.
         const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
-        // The expanded set of dependencies, including children of components.
-        const expandedDeps = await getAllTransitivelyReferencedResources(new Set(dependsOnDeps), new Set());
+        // The dependencies of the inputs to the invoke call.
+        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        if (containsUnknownValues(serialized)) {
+            // if any of the input properties are unknown,
+            // make sure the entire response is marked as unknown
+            return {
+                result: {},
+                isKnown: false,
+                containsSecrets: false,
+                dependencies: [],
+            };
+        }
         // If we depend on any CustomResources, we need to ensure that their
         // ID is known before proceeding. If it is not known, we will return
         // an unknown result.
-        for (const dep of expandedDeps) {
+        const resourcesToWaitFor = new Set<Resource>(dependsOnDeps);
+        // Add the dependencies from the inputs to the set of resources to wait for.
+        for (const resourceDeps of deps.values()) {
+            for (const value of resourceDeps.values()) {
+                resourcesToWaitFor.add(value);
+            }
+        }
+        // The expanded set of dependencies, including children of components.
+        const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
+        // Ensure that all resource IDs are known before proceeding.
+        for (const dep of expandedDeps.values()) {
             if (CustomResource.isInstance(dep)) {
                 const known = await dep.id.isKnown;
                 if (!known) {
@@ -257,18 +277,6 @@ async function invokeAsync(
                     };
                 }
             }
-        }
-
-        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
-        if (containsUnknownValues(serialized)) {
-            // if any of the input properties are unknown,
-            // make sure the entire response is marked as unknown
-            return {
-                result: {},
-                isKnown: false,
-                containsSecrets: false,
-                dependencies: [],
-            };
         }
 
         log.debug(
