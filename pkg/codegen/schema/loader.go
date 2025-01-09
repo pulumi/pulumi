@@ -262,11 +262,12 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
-		if version == nil {
+		if version == nil && descriptor.Parameterization != nil {
 			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
 			version = info.Version
 		}
+
 		return schemaBytes, version, nil
 	}
 
@@ -324,7 +325,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 	}
 
-	if version == nil {
+	if version == nil || descriptor.Parameterization != nil {
 		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
 		version = info.Version
 	}

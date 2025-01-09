@@ -571,18 +571,21 @@ func generateAndLinkSdksForPackages(
 		if err != nil {
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
-		defer returnToStartingDir()
 
 		_, _, err = ws.ReadProject()
 		if err != nil {
+			returnToStartingDir()
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packagecmd.LinkPackage(ws, language, "./", pkgSchema, sdkRelPath)
 		if err != nil {
+			returnToStartingDir()
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
+
+		returnToStartingDir()
 	}
 
 	return nil
