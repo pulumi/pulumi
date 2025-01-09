@@ -679,7 +679,7 @@ config "prefixes" "list(string)" { default = [] }
 
 lenPublicSubnets = invoke("std:index:max", {
   input = [
-    length(subnets), 
+    length(subnets),
     length(prefixes)
   ]
 })
@@ -736,6 +736,190 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 	assert.NotNil(t, program)
 }
 
+// Tests that valid applications of the `call` intrinsic with simple receivers bind with no errors or diagnostics.
+func TestCallValidSimpleReceiver(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+cRes1 = call(c, "identity", {})
+cRes2 = call(c, "prefixed", { prefix = "foo-" })
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.NoError(t, err)
+	require.Empty(t, diags, "There are no error or warning diagnostics")
+	require.NotNil(t, program)
+}
+
+// Tests that valid applications of the `call` intrinsic with complex receivers (e.g. compound expressions that
+// eventually result in resources) bind with no errors or diagnostics.
+func TestCallValidComplexReceiver(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+x = { c = c }
+
+cRes1 = call(x.c, "identity", {})
+cRes2 = call(x.c, "prefixed", { prefix = "foo-" })
+
+resource "cs" "component:index:Callable" {
+	options { range = 2 }
+	value = "quux"
+}
+
+csRes1 = call(cs[0], "identity", {})
+csRes2 = call(cs[1], "prefixed", { prefix = "baz-" })
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.NoError(t, err)
+	require.Empty(t, diags, "There are no error or warning diagnostics")
+	require.NotNil(t, program)
+}
+
+// Tests that applications of the `call` intrinsic with no arguments fail to bind with appropriate diagnostics.
+func TestCallNoArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+cRes1 = call()
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.ErrorContains(t, err, "call must be passed a receiver, method name, and arguments")
+	require.Len(t, diags, 4)
+	require.Contains(t, diags[0].Summary, "call must be passed a receiver")
+	require.Contains(t, diags[1].Summary, "missing required parameter 'self'")
+	require.Contains(t, diags[2].Summary, "missing required parameter 'method'")
+	require.Contains(t, diags[3].Summary, "missing required parameter 'args'")
+	require.Nil(t, program)
+}
+
+// Tests that applications of the `call` intrinsic with a receiver but no method name or arguments fail to bind with
+// appropriate diagnostics.
+func TestCallNoMethodNameOrMethodArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+cRes1 = call(c)
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.ErrorContains(t, err, "call must be passed a receiver, method name, and arguments")
+	require.Len(t, diags, 3)
+	require.Contains(t, diags[0].Summary, "call must be passed a receiver")
+	require.Contains(t, diags[1].Summary, "missing required parameter 'method'")
+	require.Contains(t, diags[2].Summary, "missing required parameter 'args'")
+	require.Nil(t, program)
+}
+
+// Tests that applications of the `call` intrinsic with a receiver and method name but no arguments fail to bind with
+// appropriate diagnostics.
+func TestCallNoMethodArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+cRes1 = call(c, "identity")
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.ErrorContains(t, err, "call must be passed a receiver, method name, and arguments")
+	require.Len(t, diags, 2)
+	require.Contains(t, diags[0].Summary, "call must be passed a receiver")
+	require.Contains(t, diags[1].Summary, "missing required parameter 'args'")
+	require.Nil(t, program)
+}
+
+// Tests that applications of the `call` intrinsic with an invalid receiver fail to bind with appropriate diagnostics.
+func TestCallInvalidReceiver(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+resource "cs" "component:index:Callable" {
+	options { range = 2 }
+	value = "bar"
+}
+
+cRes1 = call(cs[*], "identity", {})
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.ErrorContains(t, err, "call's receiver must be a single resource")
+	require.Len(t, diags, 1)
+	require.Contains(t, diags[0].Summary, "call's receiver must be a single resource")
+	require.Nil(t, program)
+}
+
+// Tests that applications of the `call` intrinsic with an invalid method name fail to bind with appropriate
+// diagnostics.
+func TestCallInvalidMethod(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+m = "identity"
+
+resource "c" "component:index:Callable" {
+	value = "bar"
+}
+
+cRes1 = call(c, "${m}", {})
+`
+
+	// Act.
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	require.ErrorContains(t, err, "call's method name must be a string literal")
+	require.Len(t, diags, 1)
+	require.Contains(t, diags[0].Summary, "call's method name must be a string literal")
+	require.Nil(t, program)
+}
+
 func TestBindingElementFunctionWithDynamicInput(t *testing.T) {
 	t.Parallel()
 	source := `
@@ -772,7 +956,7 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 func TestBindingMutuallyDependantResourcesFailsWithCircularReferenceError(t *testing.T) {
 	t.Parallel()
 	source := `
-resource "randomPetA" "random:index/randomPet:RandomPet" { 
+resource "randomPetA" "random:index/randomPet:RandomPet" {
 	prefix = randomPetB.prefix
 }
 

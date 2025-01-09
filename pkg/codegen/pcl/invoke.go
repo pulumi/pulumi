@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Invoke is the name of the PCL `invoke` intrinsic, which can be used to invoke provider functions.
 const Invoke = "invoke"
 
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
