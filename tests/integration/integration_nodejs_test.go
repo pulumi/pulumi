@@ -2212,7 +2212,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
-			assert.True(t, e.PathExists("sdks/random"))
+			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
 			assert.NoError(t, err)
@@ -2227,7 +2227,7 @@ func TestPackageAddNode(t *testing.T) {
 			cf, ok = cf.(string)
 			assert.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", cf)
+			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 		})
 	}
 }
@@ -2259,7 +2259,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
 
 	// Assert that we have a node_modules directory as a result of a successful install (since we didn't pass
 	// `--generate-only`).
@@ -2301,7 +2301,7 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
 
 	// Assert that we don't have a node_modules directory, since we passed `--generate-only`.
 	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")

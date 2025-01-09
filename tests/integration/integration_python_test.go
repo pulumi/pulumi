@@ -1529,7 +1529,7 @@ func TestPackageAddPython(t *testing.T) {
 			} else {
 				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
-				assert.Contains(t, string(b1), "sdks/random")
+				assert.Contains(t, string(b1), filepath.Join("sdks", "random"))
 
 				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
 				_, _ = e.RunCommand("pulumi", "package", "add", "random")
@@ -1580,9 +1580,9 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
-	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
 	assert.NoError(t, err)
-	assert.Contains(t, string(b), "sdks/supabase")
+	assert.Contains(t, string(b), filepath.Join("sdks", "supabase"))
 
 	// Check that `supabase` was installed
 	type dependency struct {
