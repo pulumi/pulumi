@@ -119,6 +119,7 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 	pkg := schema.PackageSpec{
 		Name:      "component",
 		Version:   "13.3.7",
+		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
 	}
 
@@ -156,6 +157,63 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 			"outputRef": refType("#/resources/component:index:Custom"),
 		},
 	)
+
+	callableResource := componentResource(
+		"A component resource that has callable methods.",
+		map[string]schema.PropertySpec{
+			"value": primitiveType("string"),
+		},
+		map[string]schema.PropertySpec{
+			"value": primitiveType("string"),
+		},
+	)
+	pkg.Functions["component:index:ComponentCallable/identity"] = schema.FunctionSpec{
+		Description: "The `identity` method of the `ComponentCallable` component resource. " +
+			"Returns the component's `value` unaltered.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"__self__": refType("#/resources/component:index:ComponentCallable"),
+			},
+			Required: []string{"__self__"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+	pkg.Functions["component:index:ComponentCallable/prefixed"] = schema.FunctionSpec{
+		Description: "The `prefixed` method of the `ComponentCallable` component resource. " +
+			"Accepts a string and returns the component's `value` prefixed with that string.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"__self__": refType("#/resources/component:index:ComponentCallable"),
+				"prefix":   primitiveType("string"),
+			},
+			Required: []string{"__self__", "prefix"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+	callableResource.Methods = map[string]string{
+		"identity": "component:index:ComponentCallable/identity",
+		"prefixed": "component:index:ComponentCallable/prefixed",
+	}
+
+	pkg.Resources["component:index:ComponentCallable"] = callableResource
 
 	jsonBytes, err := json.Marshal(pkg)
 	if err != nil {
@@ -282,11 +340,6 @@ func (p *ComponentProvider) Construct(
 	ctx context.Context,
 	req plugin.ConstructRequest,
 ) (plugin.ConstructResponse, error) {
-	if req.Type != "component:index:ComponentCustomRefInputOutput" &&
-		req.Type != "component:index:ComponentCustomRefOutput" {
-		return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
-	}
-
 	conn, err := grpc.NewClient(
 		req.Info.MonitorAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -305,6 +358,10 @@ func (p *ComponentProvider) Construct(
 
 	if req.Type == "component:index:ComponentCustomRefInputOutput" {
 		return p.constructComponentCustomRefInputOutput(ctx, req, monitor)
+	}
+
+	if req.Type == "component:index:ComponentCallable" {
+		return p.constructComponentCallable(ctx, req, monitor)
 	}
 
 	return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
@@ -472,6 +529,156 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 			"inputRef":  inputRefPropVal,
 			"outputRef": outputRefPropVal,
+		}),
+	}, nil
+}
+
+func (p *ComponentProvider) constructComponentCallable(
+	ctx context.Context,
+	req plugin.ConstructRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.ConstructResponse, error) {
+	// Register the parent component.
+	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type: "component:index:ComponentCallable",
+		Name: req.Name,
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
+	}
+
+	// Register a child resource, parented to the component we just created.
+	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:    "component:index:Custom",
+		Custom:  true,
+		Name:    req.Name + "-child",
+		Parent:  parent.Urn,
+		Version: "13.3.7",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register child resource: %w", err)
+	}
+
+	// Register the component's outputs and finish up.
+	value := child.Object.Fields["value"].GetStringValue()
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn: parent.Urn,
+		Outputs: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewStringValue(value),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register resource outputs: %w", err)
+	}
+
+	return plugin.ConstructResponse{
+		URN: resource.URN(parent.Urn),
+		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			"value": value,
+		}),
+	}, nil
+}
+
+func (p *ComponentProvider) Call(
+	ctx context.Context,
+	req plugin.CallRequest,
+) (plugin.CallResponse, error) {
+	conn, err := grpc.NewClient(
+		req.Info.MonitorAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return plugin.CallResponse{}, fmt.Errorf("connect to resource monitor: %w", err)
+	}
+	defer conn.Close()
+
+	monitor := pulumirpc.NewResourceMonitorClient(conn)
+	if req.Tok == "component:index:ComponentCallable/identity" {
+		return p.callComponentCallableIdentity(ctx, req, monitor)
+	} else if req.Tok == "component:index:ComponentCallable/prefixed" {
+		return p.callComponentCallablePrefixed(ctx, req, monitor)
+	}
+
+	return plugin.CallResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+}
+
+func (p *ComponentProvider) callComponentCallableIdentity(
+	ctx context.Context,
+	req plugin.CallRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.CallResponse, error) {
+	selfRef := req.Args["__self__"].ResourceReferenceValue()
+
+	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok: "pulumi:pulumi:getResource",
+		Args: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"urn": structpb.NewStringValue(string(selfRef.URN)),
+			},
+		},
+		AcceptResources: true,
+	})
+	if err != nil {
+		return plugin.CallResponse{}, fmt.Errorf("hydrating __self__ resource reference: %w", err)
+	}
+
+	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
+	result := value.GetStringValue()
+
+	return plugin.CallResponse{
+		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+			"result": result,
+		}),
+	}, nil
+}
+
+func (p *ComponentProvider) callComponentCallablePrefixed(
+	ctx context.Context,
+	req plugin.CallRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.CallResponse, error) {
+	prefix, ok := req.Args["prefix"]
+	if !ok {
+		return plugin.CallResponse{
+			Failures: makeCheckFailure("prefix", "missing prefix"),
+		}, nil
+	}
+
+	if !prefix.IsString() {
+		return plugin.CallResponse{
+			Failures: makeCheckFailure("prefix", "prefix is not a string"),
+		}, nil
+	}
+
+	selfRef := req.Args["__self__"].ResourceReferenceValue()
+
+	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok: "pulumi:pulumi:getResource",
+		Args: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"urn": structpb.NewStringValue(string(selfRef.URN)),
+			},
+		},
+		AcceptResources: true,
+	})
+	if err != nil {
+		return plugin.CallResponse{}, fmt.Errorf("hydrating __self__ resource reference: %w", err)
+	}
+
+	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
+	result := prefix.StringValue() + value.GetStringValue()
+
+	return plugin.CallResponse{
+		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+			"result": result,
 		}),
 	}, nil
 }

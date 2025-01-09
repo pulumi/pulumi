@@ -13,6 +13,7 @@
         "strict": true
     },
     "files": [
+        "componentCallable.ts",
         "componentCustomRefInputOutput.ts",
         "componentCustomRefOutput.ts",
         "custom.ts",
