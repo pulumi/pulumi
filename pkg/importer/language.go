@@ -16,11 +16,14 @@ package importer
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 
@@ -118,7 +121,7 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, ".", "_")
 }
 
-func createImportState(states []*resource.State, names NameTable) ImportState {
+func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
 		resourceID := state.ID.String()
@@ -154,26 +157,110 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 	return ImportState{
 		Names:               names,
 		PathedLiteralValues: pathedLiteralValues,
+		Snapshot:            snapshot,
 	}
 }
 
-// GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
-func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
+// GenerateLanguageDefintions generates a list of resource definitions for the given resource states. The current stack
+// snapshot is also provided in order to allow the importer to resolve package providers.
+func GenerateLanguageDefinitions(
+	w io.Writer,
+	loader schema.Loader,
+	gen LanguageGenerator,
+	states []*resource.State,
+	snapshot []*resource.State,
 	names NameTable,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
 		var hcl2Text bytes.Buffer
 
+		// Keep track of packages we've seen, we assume package names are unique.
+		seenPkgs := mapset.NewSet[string]()
+
 		for i, state := range states {
-			hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+			hcl2Def, pkgDesc, err := GenerateHCL2Definition(loader, state, importState)
 			if err != nil {
 				return nil, nil, err
 			}
-
 			pre := ""
 			if i > 0 {
 				pre = "\n"
 			}
+
+			pkgName := pkgDesc.Name
+			if pkgDesc.Parameterization != nil {
+				pkgName = pkgDesc.Parameterization.Name
+			}
+			if !seenPkgs.Contains(pkgName) {
+				seenPkgs.Add(pkgName)
+
+				items := make([]model.BodyItem, 0)
+				items = append(items, &model.Attribute{
+					Name: "baseProviderName",
+					Value: &model.LiteralValueExpression{
+						Value: cty.StringVal("\"" + pkgDesc.Name + "\""),
+					},
+				})
+				if pkgDesc.Version != nil {
+					items = append(items, &model.Attribute{
+						Name: "baseProviderVersion",
+						Value: &model.LiteralValueExpression{
+							Value: cty.StringVal("\"" + pkgDesc.Version.String() + "\""),
+						},
+					})
+				}
+				if pkgDesc.DownloadURL != "" {
+					items = append(items, &model.Attribute{
+						Name: "baseProviderDownloadUrl",
+						Value: &model.LiteralValueExpression{
+							Value: cty.StringVal("\"" + pkgDesc.DownloadURL + "\""),
+						},
+					})
+				}
+				if pkgDesc.Parameterization != nil {
+					base64Value := base64.StdEncoding.EncodeToString(pkgDesc.Parameterization.Value)
+
+					items = append(items, &model.Block{
+						Tokens: syntax.NewBlockTokens("parameterization"),
+						Type:   "parameterization",
+						Body: &model.Body{
+							Items: []model.BodyItem{
+								&model.Attribute{
+									Name: "name",
+									Value: &model.LiteralValueExpression{
+										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Name + "\""),
+									},
+								},
+								&model.Attribute{
+									Name: "version",
+									Value: &model.LiteralValueExpression{
+										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Version.String() + "\""),
+									},
+								},
+								&model.Attribute{
+									Name: "value",
+									Value: &model.LiteralValueExpression{
+										Value: cty.StringVal("\"" + base64Value + "\""),
+									},
+								},
+							},
+						},
+					})
+				}
+
+				pkgBlock := &model.Block{
+					Tokens: syntax.NewBlockTokens("package", pkgName),
+					Type:   "package",
+					Labels: []string{pkgName},
+					Body: &model.Body{
+						Items: items,
+					},
+				}
+				_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, pkgBlock)
+				contract.IgnoreError(err)
+				pre = "\n"
+			}
+
 			_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
 			contract.IgnoreError(err)
 		}
@@ -193,7 +280,7 @@ func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen Language
 		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
 	}
 
-	importState := createImportState(states, names)
+	importState := createImportState(states, snapshot, names)
 	program, diags, err := generateProgramText(importState)
 	if err != nil {
 		if strings.Contains(err.Error(), "circular reference") {
@@ -211,7 +298,7 @@ func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen Language
 			//    });
 			// fallback to the old code path where we don't guess references
 			// and instead just generate the code with the outputs as literals
-			program, diags, err = generateProgramText(ImportState{Names: names})
+			program, diags, err = generateProgramText(ImportState{Names: names, Snapshot: snapshot})
 			if err != nil {
 				return nil
 			}

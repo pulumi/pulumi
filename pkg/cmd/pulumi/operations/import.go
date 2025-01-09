@@ -516,22 +516,31 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	}
 
 	loader := schema.NewPluginLoader(ctx.Host)
-	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
-		files, _, err := programGenerator(p, loader)
-		if err != nil {
-			return err
-		}
+	err := importer.GenerateLanguageDefinitions(
+		out,
+		loader,
+		func(w io.Writer, p *pcl.Program) error {
+			files, _, err := programGenerator(p, loader)
+			if err != nil {
+				return err
+			}
 
-		var contents []byte
-		for _, v := range files {
-			contents = v
-		}
+			var contents []byte
+			for _, v := range files {
+				contents = v
+			}
 
-		if _, err := w.Write(contents); err != nil {
-			return err
-		}
-		return nil
-	}, resources, names)
+			if _, err := w.Write(contents); err != nil {
+				return err
+			}
+			return nil
+		},
+		resources,
+		snap.Resources,
+		names,
+	)
+
+	return true, err
 }
 
 func NewImportCmd() *cobra.Command {

@@ -17,7 +17,9 @@ package importer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -51,6 +53,27 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				t.Fatal()
 			}
 
+			snapshot := []*resource.State{
+				{
+					ID:     "123",
+					Custom: true,
+					Type:   "pulumi:providers:aws",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				},
+				{
+					ID:     "123",
+					Custom: true,
+					Type:   "pulumi:providers:random",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+				},
+				{
+					ID:     "id",
+					Custom: true,
+					Type:   "pulumi:providers:pkg",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+				},
+			}
+
 			var actualState *resource.State
 			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
 				if !assert.Len(t, p.Nodes, 1) {
@@ -64,7 +87,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, names)
+			}, []*resource.State{state}, snapshot, names)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -72,7 +95,9 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			assert.Equal(t, state.Type, actualState.Type)
 			assert.Equal(t, state.URN, actualState.URN)
 			assert.Equal(t, state.Parent, actualState.Parent)
-			assert.Equal(t, state.Provider, actualState.Provider)
+			if !strings.Contains(state.Provider, "::default_") {
+				assert.Equal(t, state.Provider, actualState.Provider)
+			}
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
 				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
@@ -102,6 +127,15 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		return nil
 	}
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
 	// Create a circular reference between two resources.
 	// In this case, generating the PCL would fail with a circular reference error but we retry the codegen
 	// without guessing the dependencies between the resources.
@@ -114,6 +148,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			Inputs: map[string]interface{}{
 				"bucket": "bucket-object-2",
 			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
 			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
@@ -123,6 +158,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			Inputs: map[string]interface{}{
 				"bucket": "bucket-object-1",
 			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -136,11 +172,16 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	}
 
 	var names NameTable
-	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names)
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
 	assert.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.
-	expectedCode := `resource first "aws:s3/bucketObject:BucketObject" {
+	expectedCode := `package aws {
+    baseProviderName = "aws"
+
+}
+
+resource first "aws:s3/bucketObject:BucketObject" {
     bucket = "bucket-object-2"
 
 }
@@ -178,12 +219,22 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		componentURN: "parentComponent",
 	}
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:random",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+		},
+	}
+
 	resources := []apitype.ResourceV3{
 		{
-			URN:    childURN,
-			Custom: true,
-			Type:   "random:index/randomPet:RandomPet",
-			Parent: componentURN,
+			URN:      childURN,
+			Custom:   true,
+			Type:     "random:index/randomPet:RandomPet",
+			Parent:   componentURN,
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -196,9 +247,14 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		states = append(states, state)
 	}
 
-	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, nameTable)
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
 	assert.NoError(t, err)
-	expectedCode := `resource randomPet "random:index/randomPet:RandomPet" {
+	expectedCode := `package random {
+    baseProviderName = "random"
+
+}
+
+resource randomPet "random:index/randomPet:RandomPet" {
 options {
 parent = parentComponent
 

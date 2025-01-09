@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/import
+  description: Import can now import resources from parameterized providers
