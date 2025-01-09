@@ -253,9 +253,6 @@ func (l *pluginLoader) loadSchemaBytes(
 		return nil, nil, err
 	}
 	version := descriptor.Version
-	if descriptor.Parameterization != nil {
-		version = &descriptor.Parameterization.Version
-	}
 
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
