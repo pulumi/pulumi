@@ -1,0 +1,6 @@
+name: l2-resource-option-deleted-with
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
