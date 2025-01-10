@@ -1,4 +1,3 @@
-
 // Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,31 +15,56 @@
 package tests
 
 import (
-	// "github.com/pulumi/pulumi/pkg/v3/display"
-	// "github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	// "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	// "github.com/stretchr/testify/assert"
-	// "github.com/stretchr/testify/require"
+	"slices"
+
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/stretchr/testify/assert"
 )
 
-// TODO do this with keywords
 func init() {
-	// LanguageTests["l2-resource-keyword-overlap"] = LanguageTest{
-	// 	Runs: []TestRun{
-	// 		{
-	// 			Assert: func(l *L,
-	// 				projectDirectory string, err error,
-	// 				snap *deploy.Snapshot, changes display.ResourceChanges,
-	// 			) {
-	// 				RequireStackResource(l, err, changes)
-	//
-	// 				require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-	// 				stack := snap.Resources[0]
-	// 				require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-	//
-	// 				outputs := stack.Outputs
-	// 			},
-	// 		},
-	// 	},
-	// }
+	LanguageTests["l2-resource-keyword-overlap"] = LanguageTest{
+		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Runs: []TestRun{
+			{
+				Assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					RequireStackResource(l, err, changes)
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+
+					resourceNames := []string{}
+					for _, res := range snap.Resources {
+						resourceNames = append(resourceNames, res.URN.Name())
+					}
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[2].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "class"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[3].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "export"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[4].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "mod"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[5].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "import"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[6].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "object"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[7].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "self"))
+
+					assert.Equal(l, "simple:index:Resource", snap.Resources[8].Type.String())
+					assert.True(l, slices.Contains(resourceNames, "this"))
+				},
+			},
+		},
+	}
 }
