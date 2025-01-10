@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs,python
+  description: Wait for resource in the input property dependencies

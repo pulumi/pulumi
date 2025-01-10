@@ -242,26 +242,27 @@ def _invoke(
             inputs
         )
 
-        # keep track of the dependencies from depends_on
-        depends_on_dependencies: Set["Resource"] = set()
-        if isinstance(opts, InvokeOutputOptions):
-            # The direct dependencies of the invoke.
-            depends_on_dependencies = await _resolve_depends_on(opts._depends_on_list())
-            # The expanded set of dependencies, including children of components.
-            expanded_deps = await rpc._expand_dependencies(
-                depends_on_dependencies, None
-            )
-
-            # If we depend on any CustomResources, we need to ensure that their
-            # ID is known before proceeding. If it is not known, we will return
-            # an unknown result.
-            for res in expanded_deps.values():
-                if isinstance(res, CustomResource):
-                    if not await res.id.is_known():
-                        return (
-                            InvokeResult(None, is_secret=False, is_known=False),
-                            None,
-                        )
+        # The direct dependencies of the invoke.
+        depends_on_dependencies: Set["Resource"] = await _resolve_depends_on(
+            opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
+        )
+        # If we depend on any CustomResources, we need to ensure that their
+        # ID is known before proceeding. If it is not known, we will return
+        # an unknown result.
+        resources_to_wait_for: Set["Resource"] = set(depends_on_dependencies)
+        # Add the dependencies from the inputs to the set of resources to wait for.
+        for deps in property_dependencies.values():
+            resources_to_wait_for = resources_to_wait_for.union(deps)
+        # The expanded set of dependencies, including children of components.
+        expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
+        # Ensure that all resource IDs are known before proceeding.
+        for res in expanded_deps.values():
+            if isinstance(res, CustomResource):
+                if not await res.id.is_known():
+                    return (
+                        InvokeResult(None, is_secret=False, is_known=False),
+                        None,
+                    )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""

@@ -1665,6 +1665,28 @@ describe("rpc", () => {
                 return { failures: undefined, ret: args };
             },
         },
+        invoke_output_input_dependencies: {
+            pwd: path.join(base, "078.invoke_output_input_dependencies"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                ...args: any
+            ) => {
+                const id = dryrun ? undefined : name + "_id";
+                return { urn: makeUrn(t, name), id, props: undefined };
+            },
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
+                if (dryrun) {
+                    assert.fail("invoke should not be called");
+                }
+                return { failures: undefined, ret: args };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
