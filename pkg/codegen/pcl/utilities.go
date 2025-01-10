@@ -194,11 +194,7 @@ func SortedFunctionParameters(expr *model.FunctionCallExpression) []*schema.Prop
 
 	switch args := expr.Signature.Parameters[1].Type.(type) {
 	case *model.ObjectType:
-		if len(args.Annotations) == 0 {
-			return []*schema.Property{}
-		}
-
-		originalSchemaType, ok := args.Annotations[0].(*schema.ObjectType)
+		originalSchemaType, ok := model.GetObjectTypeAnnotation[*schema.ObjectType](args)
 		if !ok {
 			return []*schema.Property{}
 		}
