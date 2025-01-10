@@ -564,37 +564,38 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 
 				g.Fgenf(w, "%s", g.Indent)
+				configVarName := makeValidIdentifier(configVar.Name())
 				switch configVarType := configVar.Type().(type) {
 				case *model.ObjectType:
 					// generate {...}
-					g.Fgenf(w, "%s%s: ", makeValidIdentifier(configVar.Name()), optional)
+					g.Fgenf(w, "%s%s: ", configVarName, optional)
 					g.genObjectTypedConfig(w, configVarType)
 					g.Fgen(w, ",\n")
 				case *model.ListType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate {...}[]
-						g.Fgenf(w, "%s%s: ", makeValidIdentifier(configVar.Name()), optional)
+						g.Fgenf(w, "%s%s: ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, "[],\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", makeValidIdentifier(configVar.Name()), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				case *model.MapType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate Record<string, {...}>
-						g.Fgenf(w, "%s%s: Record<string, ", makeValidIdentifier(configVar.Name()), optional)
+						g.Fgenf(w, "%s%s: Record<string, ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, ">,\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", makeValidIdentifier(configVar.Name()), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				default:
 					typeName := componentInputType(configVar.Type())
-					g.Fgenf(w, "%s%s: %s,\n", makeValidIdentifier(configVar.Name()), optional, typeName)
+					g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 				}
 			}
 		})
@@ -721,8 +722,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				// add the outputs to abject for registration
 				registeredOutputs.Items = append(registeredOutputs.Items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(makeValidIdentifier(output.Name()))),
-						Value:  cty.StringVal(output.Name()),
+						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(outputProperty)),
+						Value:  cty.StringVal(outputProperty),
 					},
 					Value: output.Value,
 				})
@@ -1303,12 +1304,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	g.genTrivia(w, v.Definition.Tokens.Name)
-	g.Fgenf(
-		w,
-		"%sconst %s = %.3v;\n",
-		g.Indent,
-		makeValidIdentifier(v.Name()), g.lowerExpression(v.Definition.Value, v.Type()),
-	)
+	vName := makeValidIdentifier(v.Name())
+	vValue := g.lowerExpression(v.Definition.Value, v.Type())
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, vName, vValue)
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
