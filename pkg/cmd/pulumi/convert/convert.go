@@ -596,5 +596,3 @@ func generateAndLinkSdksForPackages(
 
 			return err
 
-	return nil
-}
