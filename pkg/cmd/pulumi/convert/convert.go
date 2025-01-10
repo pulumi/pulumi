@@ -580,10 +580,6 @@ func generateAndLinkSdksForPackages(
 			}
 			defer returnToStartingDir()
 
-		_, _, err = ws.ReadProject()
-		if err != nil {
-			returnToStartingDir()
-			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 			_, _, err = ws.ReadProject()
 			if err != nil {
 				return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
@@ -594,9 +590,13 @@ func generateAndLinkSdksForPackages(
 			if err != nil {
 				return fmt.Errorf("failed to link SDK to project: %w", err)
 			}
-			returnToStartingDir()
-			return fmt.Errorf("failed to link SDK to project: %w", err)
-		}
 
+			return nil
+		}()
+		if err != nil {
 			return err
+		}
+	}
 
+	return nil
+}
