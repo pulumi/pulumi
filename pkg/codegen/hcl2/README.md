@@ -83,16 +83,16 @@ type without having to couple the type checker to how a resource's type is an
 object consisting of its output properties.
 
 This package's types mirror (and typically wrap) the types of the AST, adding
-semantic information such as [datatypes](pcl-type-system) and resolved
+semantic information such as [data types](pcl-type-system) and resolved
 references. So for instance, a `model.LiteralValueExpression`, which corresponds
-to a literalvalue such as the string `"foo"` or the number `42`, contains:
+to a literal value such as the string `"foo"` or the number `42`, contains:
 
 * a reference to the `hclsyntax.LiteralValueExpr` underpinning it in the syntax
   tree;
 * an evaluated `cty.Value` representing the value of the literal; and
 * a `model.Type` representing the datatype of the literal.
 
-The [cty package](https://pkg.go.dev/github.com/zclconf/go-cty/cty) is used to
+The [`cty` package](https://pkg.go.dev/github.com/zclconf/go-cty/cty) is used to
 represent values.
 
 (pcl-type-system)=
