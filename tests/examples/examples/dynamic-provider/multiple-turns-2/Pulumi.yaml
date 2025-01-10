@@ -1,4 +1,0 @@
-name: multiple-turns
-description: Tests a Pulumi program with multiple turns.
-runtime: nodejs
-

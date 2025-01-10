@@ -1,4 +1,0 @@
-name: derived-inputs
-description: Tests a Pulumi program with one resource's inputs derived from other another resource's outputs.
-runtime: nodejs
-
