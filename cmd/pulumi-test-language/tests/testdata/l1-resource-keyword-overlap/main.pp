@@ -1,20 +1,14 @@
-# Since the name is "this" it will fail in typescript and other languages with
-# this reservered keyword if it is not renamed.
-this = "somestring"
-cls = "class"
-export = "export"
-import = "import"
-object = { object = "object" }
-module = "module"
-self = "self"
-this = "this"
+# Keywords in various languages should be renamed and work.
+class = "class_output_string"
+export = "export_output_string"
+import = "import_output_string"
+mod = "mod_output_string"
+object = { object = "object_output_string" }
+self = "self_output_string"
+this = "this_output_string"
 
-output "output_this" {
-  value = this
-}
-
-output "output_cls" {
-  value = cls
+output "output_class" {
+  value = class
 }
 
 output "output_export" {
@@ -25,14 +19,19 @@ output "output_import" {
   value = import
 }
 
-output "output_object" {
-  value = object
+output "output_mod" {
+  value = mod
 }
 
-output "output_module" {
-  value = module
+output "output_object" {
+  value = object
 }
 
 output "output_self" {
   value = self
 }
+
+output "output_this" {
+  value = this
+}
+

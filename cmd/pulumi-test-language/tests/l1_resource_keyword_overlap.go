@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,8 +37,15 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 1, "expected 1 output")
-					AssertPropertyMapMember(l, outputs, "output", resource.NewStringProperty("somestring"))
+					AssertPropertyMapMember(l, outputs, "output_class", resource.NewStringProperty("class_output_string"))
+					AssertPropertyMapMember(l, outputs, "output_export", resource.NewStringProperty("export_output_string"))
+					AssertPropertyMapMember(l, outputs, "output_import", resource.NewStringProperty("import_output_string"))
+					AssertPropertyMapMember(l, outputs, "output_mod", resource.NewStringProperty("mod_output_string"))
+					AssertPropertyMapMember(l, outputs, "output_object",
+						resource.NewObjectProperty(resource.PropertyMap{"object": resource.NewStringProperty("object_output_string")}),
+					)
+					AssertPropertyMapMember(l, outputs, "output_self", resource.NewStringProperty("self_output_string"))
+					AssertPropertyMapMember(l, outputs, "output_this", resource.NewStringProperty("this_output_string"))
 				},
 			},
 		},
