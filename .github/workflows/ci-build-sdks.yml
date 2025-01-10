@@ -64,11 +64,13 @@ jobs:
           cd sdk/python
           sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
           make build_package
-      - name: Upload pulumi.whl
+      - name: Upload Python SDK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-python-sdk
-          path: sdk/python/build/*.whl
+          path: |
+            sdk/python/build/*.whl
+            sdk/python/build/*.tar.gz
           retention-days: 1
           if-no-files-found: error
 
