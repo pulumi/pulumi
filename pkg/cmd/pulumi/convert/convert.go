@@ -567,6 +567,10 @@ func generateAndLinkSdksForPackages(
 		// If we don't change the working directory, the workspace instance (when
 		// reading project etc) will not be correct when doing the local sdk
 		// linking, causing errors.
+		//
+		// We must also remember to call returnToStartingDir() to change back to
+		// the original directory after every iteration of the loop and before
+		// returning.
 		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
 		if err != nil {
 			return fmt.Errorf("could not change to output directory: %w", err)
