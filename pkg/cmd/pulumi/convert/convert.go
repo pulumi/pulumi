@@ -594,8 +594,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
 
-		returnToStartingDir()
-	}
+			return err
 
 	return nil
 }
