@@ -7,8 +7,6 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		// Since the name is "this" it will fail in typescript and other languages with
-		// this reservered keyword if it is not renamed.
 		_, err := simple.NewResource(ctx, "class", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})

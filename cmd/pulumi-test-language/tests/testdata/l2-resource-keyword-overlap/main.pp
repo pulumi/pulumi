@@ -1,5 +1,3 @@
-# Since the name is "this" it will fail in typescript and other languages with
-# this reservered keyword if it is not renamed.
 resource "class" "simple:index:Resource" {
   value = true
 }

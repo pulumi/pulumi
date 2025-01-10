@@ -1,0 +1,6 @@
+name: l2-resource-keyword-overlap
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
