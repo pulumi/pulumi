@@ -1357,9 +1357,6 @@ func NewStackInlineSource(
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
-	if program == nil {
-		return stack, errors.New("program must be specified")
-	}
 	opts = append(opts, Program(program))
 
 	proj, err := getProjectSettings(ctx, projectName, opts)
@@ -1391,9 +1388,6 @@ func UpsertStackInlineSource(
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
-	if program == nil {
-		return stack, errors.New("program must be specified")
-	}
 	opts = append(opts, Program(program))
 
 	proj, err := getProjectSettings(ctx, projectName, opts)
@@ -1424,9 +1418,6 @@ func SelectStackInlineSource(
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
-	if program == nil {
-		return stack, errors.New("program must be specified")
-	}
 	opts = append(opts, Program(program))
 
 	proj, err := getProjectSettings(ctx, projectName, opts)
