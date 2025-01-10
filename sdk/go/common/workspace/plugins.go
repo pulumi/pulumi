@@ -388,9 +388,7 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 func (source *gitSource) GetLatestVersion(
 	ctx context.Context, _ func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	// TODO: support this for the users convenience
-	return nil,
-		errors.New("GetLatestVersion is not supported for git sources, please specify the version of the plugin")
+	return gitutil.GetLatestTagOrHash(ctx, source.url)
 }
 
 // Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
