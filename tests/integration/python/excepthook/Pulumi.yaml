@@ -1,0 +1,7 @@
+name: pulumi-excepthook-bad-log
+description: A test case for https://github.com/pulumi/pulumi/issues/18176
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv

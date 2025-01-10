@@ -1769,3 +1769,29 @@ func TestDynamicProviderPython(t *testing.T) {
 		})
 	}
 }
+
+// The shutdown of the callback server used for transform would log exceptions
+// to stderr.
+// https://github.com/pulumi/pulumi/issues/18176
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestRegress18176(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
+		Dir: filepath.Join("python", "excepthook"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:      true,
+		SkipUpdate: true,
+		Stdout:     stdout,
+		Stderr:     stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Empty(t, stack.Events)
+			require.NotContains(t, stdout.String(), "Error in sys.excepthook")
+			require.NotContains(t, stderr.String(), "Error in sys.excepthook")
+		},
+	})
+}
