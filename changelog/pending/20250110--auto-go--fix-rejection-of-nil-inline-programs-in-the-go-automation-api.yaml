@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Fix rejection of `nil` inline programs in the Go automation API
