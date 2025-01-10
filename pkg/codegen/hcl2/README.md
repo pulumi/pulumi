@@ -93,7 +93,7 @@ to a literalvalue such as the string `"foo"` or the number `42`, contains:
 * a `model.Type` representing the datatype of the literal.
 
 The [cty package](https://pkg.go.dev/github.com/zclconf/go-cty/cty) is used to
-represent values."
+represent values.
 
 (pcl-type-system)=
 ### Type system
