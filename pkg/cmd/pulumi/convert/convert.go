@@ -564,17 +564,21 @@ func generateAndLinkSdksForPackages(
 
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 
-		// If we don't change the working directory, the workspace instance (when
-		// reading project etc) will not be correct when doing the local sdk
-		// linking, causing errors.
-		//
-		// We must also remember to call returnToStartingDir() to change back to
-		// the original directory after every iteration of the loop and before
-		// returning.
-		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
-		if err != nil {
-			return fmt.Errorf("could not change to output directory: %w", err)
-		}
+		err = func() error {
+			// If we don't change the working directory, the workspace instance (when
+			// reading project etc) will not be correct when doing the local sdk
+			// linking, causing errors.
+			//
+			// We must also remember to call returnToStartingDir() to change back to
+			// the original directory after every iteration of the loop and before
+			// returning.
+			//
+			// func for scope defer
+			returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
+			if err != nil {
+				return fmt.Errorf("could not change to output directory: %w", err)
+			}
+			defer returnToStartingDir()
 
 		_, _, err = ws.ReadProject()
 		if err != nil {
