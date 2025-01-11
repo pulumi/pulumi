@@ -22,17 +22,16 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
+func testProvider(ctx context.Context, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
 	// NewProviderFromPath requires a "binary", so we use a fake one. It then uses the directory for
 	// that to run the plugin.
 	fakeProviderBinary := filepath.Join(providerLocation, "pulumi-bin")
-	prov, err := plugin.NewProviderFromPath(host, pCtx, fakeProviderBinary)
+	prov, err := plugin.NewProviderFromPath(pCtx, fakeProviderBinary)
 	if err != nil {
 		return err
 	}
@@ -67,22 +66,18 @@ func main() {
 		if err != nil {
 			return err
 		}
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, tokens.PackageName("test"))
+
+		err = testProvider(ctx.Context(), pCtx, "provider-nodejs")
 		if err != nil {
 			return err
 		}
 
-		err = testProvider(ctx.Context(), host, pCtx, "provider-nodejs")
+		err = testProvider(ctx.Context(), pCtx, "provider-go")
 		if err != nil {
 			return err
 		}
 
-		err = testProvider(ctx.Context(), host, pCtx, "provider-go")
-		if err != nil {
-			return err
-		}
-
-		err = testProvider(ctx.Context(), host, pCtx, "provider-python")
+		err = testProvider(ctx.Context(), pCtx, "provider-python")
 		if err != nil {
 			return err
 		}
