@@ -11,7 +11,7 @@ on:
 jobs:
   homebrew:
     name: Bump Homebrew formula
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Add Homebrew to the PATH
         run: |

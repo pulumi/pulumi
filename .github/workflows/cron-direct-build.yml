@@ -7,7 +7,7 @@ on:
 
 jobs:
   pkg:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: GOPROXY=direct make build
   sdk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

@@ -30,7 +30,7 @@ defaults:
 jobs:
   info:
     name: gather
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     outputs:

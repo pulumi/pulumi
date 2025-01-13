@@ -18,7 +18,7 @@ jobs:
     name: Maintainer comment
     # We only care about commenting on a PR if the PR is from a fork
     if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@1.0.1

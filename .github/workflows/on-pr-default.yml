@@ -15,14 +15,14 @@ on:
 jobs:
   no-op:
     name: Skip CI on .version changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Skip CI on .version changes
         run: echo 'No need to run CI tests when only .version changes'
 
   ci-ok:
     name: ci-ok
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: CI succeeded
         run: exit 0

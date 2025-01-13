@@ -60,7 +60,7 @@ jobs:
       - run: ls -la
   linux-direct-install:
     name: Install Pulumi via script on Ubuntu
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Remove existing version
         run: sudo rm /usr/local/bin/pulumi
@@ -79,7 +79,7 @@ jobs:
           exit 1
   linux-verify-download-link:
     name: Verify Direct Download link on Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Direct Download
         run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-linux-x64.tar.gz"
@@ -184,7 +184,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        os: ["ubuntu-22.04", "windows-latest", "macos-13"]
     steps:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
