@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Retrieve Git metadata from the environment if not running in a repository
