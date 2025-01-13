@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -839,6 +839,39 @@ func (pd PackageDescriptor) String() string {
 		v = fmt.Sprintf("-%s", version)
 	}
 	return name + v
+}
+
+// SortPackageDescriptors is a comparison function for PackageDescriptors that sorts by version, with version-less
+// package descriptors appearing first. It returns -1 if the first argument should appear before the second, 0 if they
+// are equal, and 1 if the first argument should appear after the second. Designed for use with functions like
+// slices.SortFunc.
+func SortPackageDescriptors(x PackageDescriptor, y PackageDescriptor) int {
+	vx := x.PackageVersion()
+	vy := y.PackageVersion()
+
+	switch {
+	case vx == nil && vy == nil:
+		// Both packages lack any version. Consider them equal.
+		return 0
+	case vx == nil:
+		// x has no version. We want version-less packages to come first, so sort x before y (-1).
+		return -1
+	case vy == nil:
+		// y has no version. We want version-less packages to come first, so sort x after y (1).
+		return 1
+	default:
+		// We have two versions. Compare them using semver.
+		semverComparison := vx.Compare(*vy)
+		switch semverComparison {
+		case 0:
+			// The versions are semantically equal. We'll compare their string representations to break ties (e.g. between 1.0.0
+			// and 1.0.0+meta).
+			return strings.Compare(vx.String(), vy.String())
+		default:
+			// The versions are not equal. Sort them using semver comparison.
+			return semverComparison
+		}
+	}
 }
 
 // A Parameterization may be applied to a supporting plugin to yield a package.
@@ -2128,28 +2161,6 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 	}
 }
 func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
-
-// SortedPluginSpec is a wrapper around PluginSpec that allows for sorting by version.
-type SortedPluginSpec []PluginSpec
-
-func (sp SortedPluginSpec) Len() int { return len(sp) }
-func (sp SortedPluginSpec) Less(i, j int) bool {
-	iVersion := sp[i].Version
-	jVersion := sp[j].Version
-	switch {
-	case iVersion == nil && jVersion == nil:
-		return false
-	case iVersion == nil:
-		return true
-	case jVersion == nil:
-		return false
-	case iVersion.EQ(*jVersion):
-		return iVersion.String() < jVersion.String()
-	default:
-		return iVersion.LT(*jVersion)
-	}
-}
-func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
 // LegacySelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that
 // satisfies the requested version. It returns the highest version plugin greater than the requested version,

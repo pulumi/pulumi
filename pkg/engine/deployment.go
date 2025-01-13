@@ -281,6 +281,9 @@ func newDeployment(
 				if imp.PluginChecksums == nil {
 					imp.PluginChecksums = defaultProviderInfo[imp.Type.Package()].Checksums
 				}
+				if imp.Parameterization == nil {
+					imp.Parameterization = defaultProviderInfo[imp.Type.Package()].Parameterization
+				}
 			}
 		}
 

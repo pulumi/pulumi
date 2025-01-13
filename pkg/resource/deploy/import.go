@@ -30,20 +30,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type              tokens.Type       // The type token for the resource. Required.
-	Name              string            // The name of the resource. Required.
-	ID                resource.ID       // The ID of the resource. Required.
-	Parent            resource.URN      // The parent of the resource, if any.
-	Provider          resource.URN      // The specific provider to use for the resource, if any.
-	Version           *semver.Version   // The provider version to use for the resource, if any.
-	PluginDownloadURL string            // The provider PluginDownloadURL to use for the resource, if any.
-	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
-	Protect           bool              // Whether to mark the resource as protected after import
-	Properties        []string          // Which properties to include (Defaults to required properties)
+	Type              tokens.Type                 // The type token for the resource. Required.
+	Name              string                      // The name of the resource. Required.
+	ID                resource.ID                 // The ID of the resource. Required.
+	Parent            resource.URN                // The parent of the resource, if any.
+	Provider          resource.URN                // The specific provider to use for the resource, if any.
+	Version           *semver.Version             // The provider version to use for the resource, if any.
+	PluginDownloadURL string                      // The provider PluginDownloadURL to use for the resource, if any.
+	PluginChecksums   map[string][]byte           // The provider checksums to use for the resource, if any.
+	Protect           bool                        // Whether to mark the resource as protected after import
+	Properties        []string                    // Which properties to include (Defaults to required properties)
+	Parameterization  *workspace.Parameterization // The parameterization to use for the resource, if any.
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -230,7 +232,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, false, errors.New("incorrect package type specified")
 		}
-		req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+
+		parameterization := providers.ToProviderParameterization(imp.Parameterization)
+		req := providers.NewProviderRequest(
+			imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -391,7 +396,9 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+			parameterization := providers.ToProviderParameterization(imp.Parameterization)
+			req := providers.NewProviderRequest(
+				imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}

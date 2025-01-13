@@ -832,3 +832,80 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 	assert.Contains(t, stdout, "destroy operation is using an older version of package 'random' "+
 		"than the specified program version: 3.6.0 < 3.6.3")
 }
+
+// Quick sanity tests to check that import for a parameterized package works. This uses python as the language choice
+// shouldn't matter for the test. Regression test for https://github.com/pulumi/pulumi/issues/17289.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestImportParameterizedSmoke(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// `new` wants to work in an empty directory but our use of local url means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "random-python", "--yes")
+
+	// Install the terraform-provider plugin
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+
+	// Change to use the parameterised version of the provider
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.3.1")
+	replaceStringInFile := func(file, pattern, replacement string) {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		newData := strings.ReplaceAll(string(data), pattern, replacement)
+		err = os.WriteFile(file, []byte(newData), 0o600)
+		require.NoError(t, err)
+	}
+	replaceStringInFile(filepath.Join(projectDir, "requirements.txt"), "pulumi-random>=4.0.0,<5.0.0", "")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.6.3")
+	replaceStringInFile(filepath.Join(projectDir, "__main__.py"), "RandomPet", "Pet")
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Now try and import a random resource, this should use the projects currently known packages to help
+	// choose the right Provider, because "random" alone isn't enough to know to use the parameterized provider
+	// (it would normally use the github.com/pulumi/pulumi-random bridged version). For packages that aren't
+	// bridged this would result in an error (e.g. https://github.com/pulumi/pulumi/issues/17289)
+	e.RunCommand("pulumi", "import", "--yes", "random:index/id:Id", "identifier", "p-9hUg", "--generate-code=false")
+	// TODO: generate-code is currently false, we should fix that!
+
+	// Check this used the right provider, i.e. one with parameterization
+	stack, _ := e.RunCommand("pulumi", "stack", "export")
+	var state map[string]interface{}
+	err = json.Unmarshal([]byte(stack), &state)
+	require.NoError(t, err)
+
+	resources := state["deployment"].(map[string]interface{})["resources"].([]interface{})
+
+	var resource map[string]interface{}
+	var provider map[string]interface{}
+	for _, res := range resources {
+		res := res.(map[string]interface{})
+		if res["type"] == "random:index/id:Id" {
+			assert.Nil(t, resource) // only expect one
+			resource = res
+		}
+		if res["type"] == "pulumi:providers:random" {
+			assert.Nil(t, provider) // only expect one
+			provider = res
+		}
+	}
+	require.NotNil(t, resource)
+	require.NotNil(t, provider)
+
+	inputs := provider["inputs"].(map[string]interface{})
+	assert.Equal(t, "3.6.3", inputs["version"])
+	ref := provider["urn"].(string) + "::" + provider["id"].(string)
+
+	assert.Equal(t, "p-9hUg", resource["id"])
+	assert.Equal(t, ref, resource["provider"])
+}

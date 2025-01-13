@@ -233,7 +233,7 @@ func installPlugins(
 	ctx context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
 	plugctx *plugin.Context, returnInstallErrors bool,
-) (PluginSet, map[tokens.Package]workspace.PluginSpec, error) {
+) (PluginSet, map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -262,7 +262,8 @@ func installPlugins(
 		return nil, nil, err
 	}
 
-	allPlugins := languagePackages.Union(snapshotPackages).ToPluginSet().Deduplicate()
+	allPackages := languagePackages.Union(snapshotPackages)
+	allPlugins := allPackages.ToPluginSet().Deduplicate()
 
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//
@@ -278,7 +279,7 @@ func installPlugins(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPlugins(languagePackages.ToPluginSet(), allPlugins)
+	defaultProviderVersions := computeDefaultProviderPackages(languagePackages, allPackages)
 
 	return allPlugins, defaultProviderVersions, nil
 }
