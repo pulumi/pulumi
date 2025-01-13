@@ -20,7 +20,7 @@ on:
         type: string
       build-platform:
         required: false
-        default: ubuntu-latest
+        default: ubuntu-22.04
         description: 'Build platform (i.e.: runs-on) for job'
         type: string
       artifact-suffix:

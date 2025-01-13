@@ -63,7 +63,7 @@ env:
 jobs:
   sdks:
     name: ${{ matrix.language }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +107,7 @@ jobs:
 
   s3-blobs:
     name: s3 blobs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -150,7 +150,7 @@ jobs:
   dispatch:
     name: ${{ matrix.job.name }}
     if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [pr]
     strategy:
       fail-fast: false
