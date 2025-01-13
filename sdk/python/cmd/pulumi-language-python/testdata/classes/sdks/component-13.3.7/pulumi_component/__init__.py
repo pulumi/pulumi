@@ -5,6 +5,7 @@
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .component_callable import *
 from .component_custom_ref_input_output import *
 from .component_custom_ref_output import *
 from .custom import *
@@ -17,6 +18,7 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_component",
   "classes": {
+   "component:index:ComponentCallable": "ComponentCallable",
    "component:index:ComponentCustomRefInputOutput": "ComponentCustomRefInputOutput",
    "component:index:ComponentCustomRefOutput": "ComponentCustomRefOutput",
    "component:index:Custom": "Custom"

@@ -1,0 +1,6 @@
+name: l2-component-call-simple
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
