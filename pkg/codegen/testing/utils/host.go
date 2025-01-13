@@ -109,6 +109,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"kubernetes", "3.0.0"},
 		SchemaProvider{"aws", "4.37.1"},
 
+		SchemaProvider{"component", "13.3.7"},
 		SchemaProvider{"other", "0.1.0"},
 		SchemaProvider{"synthetic", "1.0.0"},
 		SchemaProvider{"basic-unions", "0.1.0"},
