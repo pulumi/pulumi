@@ -176,12 +176,9 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		var autonamer autonaming.Autonamer
-		if env.Experimental.Value() {
-			autonamer, err = autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
-			if err != nil {
-				return fmt.Errorf("getting autonaming config: %w", err)
-			}
+		autonamer, err := autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
+		if err != nil {
+			return fmt.Errorf("getting autonaming config: %w", err)
 		}
 
 		opts.Engine = engine.UpdateOptions{

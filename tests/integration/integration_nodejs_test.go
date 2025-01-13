@@ -2293,30 +2293,20 @@ func TestLogDebugNode(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestAutonaming(t *testing.T) {
 	testCases := []struct {
-		name         string
-		experimental bool
-		autoName     string
-		config       map[string]string
+		name     string
+		autoName string
+		config   map[string]string
 	}{
 		{
 			name:     "no autonaming configured",
 			autoName: "default-name",
 		},
 		{
-			name: "autonaming ignored in non-experimental mode",
-			config: map[string]string{
-				"pulumi:autonaming.mode": "verbatim",
-			},
-			experimental: false,
-			autoName:     "default-name",
-		},
-		{
 			name: "autonaming configured globally to verbatim",
 			config: map[string]string{
 				"pulumi:autonaming.mode": "verbatim",
 			},
-			experimental: true,
-			autoName:     "test1",
+			autoName: "test1",
 		},
 		{
 			name: "autonaming configured on provider to a pattern",
@@ -2324,8 +2314,7 @@ func TestAutonaming(t *testing.T) {
 				"pulumi:autonaming.providers.testprovider.pattern": "${config.foo}-${name}",
 				"foo": "bar",
 			},
-			experimental: true,
-			autoName:     "bar-test1",
+			autoName: "bar-test1",
 		},
 	}
 
@@ -2336,9 +2325,6 @@ func TestAutonaming(t *testing.T) {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
 		}
 		env := []string{}
-		if tc.experimental {
-			env = append(env, "PULUMI_EXPERIMENTAL=1")
-		}
 		t.Run(tc.name, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:           "autonaming",
