@@ -258,11 +258,33 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			importState := ImportState{
-				Names: names,
+			snapshot := []*resource.State{
+				{
+					ID:     "123",
+					Custom: true,
+					Type:   "pulumi:providers:aws",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				},
+				{
+					ID:     "123",
+					Custom: true,
+					Type:   "pulumi:providers:random",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+				},
+				{
+					ID:     "id",
+					Custom: true,
+					Type:   "pulumi:providers:pkg",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+				},
 			}
 
-			block, err := GenerateHCL2Definition(loader, state, importState)
+			importState := ImportState{
+				Names:    names,
+				Snapshot: snapshot,
+			}
+
+			block, _, err := GenerateHCL2Definition(loader, state, importState)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -293,7 +315,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			assert.Equal(t, state.Type, actualState.Type)
 			assert.Equal(t, state.URN, actualState.URN)
 			assert.Equal(t, state.Parent, actualState.Parent)
-			assert.Equal(t, state.Provider, actualState.Provider)
+			if !strings.Contains(state.Provider, "::default_") {
+				assert.Equal(t, state.Provider, actualState.Provider)
+			}
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
 				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
@@ -317,12 +341,22 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
-			ID:     "provider-generated-bucket-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucket:Bucket",
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
 			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
@@ -334,6 +368,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 				"bucket":       "provider-generated-bucket-id-abc123",
 				"storageClass": "STANDARD",
 			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -346,11 +381,11 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, names)
+	importState := createImportState(states, snapshot, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -381,22 +416,33 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
-			ID:     "provider-generated-bucket-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
 			Outputs: map[string]interface{}{
 				"name": "bucketName-12345",
 				"arn":  "arn:aws:s3:bucket-12345",
 			},
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:       "provider-generated-bucket-object-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]interface{}{
 				// this will be replaced with a reference to exampleBucket.name in the generated code
 				"bucket":       "bucketName-12345",
@@ -404,10 +450,11 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 			},
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
+			ID:       "provider-generated-bucket-object-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]interface{}{
 				// this will be replaced with a reference to exampleBucket.arn in the generated code
 				"bucket":       "arn:aws:s3:bucket-12345",
@@ -425,11 +472,11 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, names)
+	importState := createImportState(states, snapshot, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -466,24 +513,36 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
-			ID:     "provider-generated-bucket-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::secondBucket",
-			ID:     "provider-generated-bucket-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::secondBucket",
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:       "provider-generated-bucket-object-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]interface{}{
 				// this will *NOT* be replaced with a reference to either firstBucket.id or secondBucket.id
 				// because both have the same ID and it would be ambiguous
@@ -502,11 +561,11 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, names)
+	importState := createImportState(states, snapshot, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -541,12 +600,22 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:       "provider-generated-bucket-object-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]interface{}{
 				// this literal value will stay as is since it shouldn't self-reference the bucket object itself
 				"bucket":       "provider-generated-bucket-object-id-abc123",
@@ -564,11 +633,11 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, names)
+	importState := createImportState(states, snapshot, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
 		if err != nil {
 			t.Fatal(err)
 		}
