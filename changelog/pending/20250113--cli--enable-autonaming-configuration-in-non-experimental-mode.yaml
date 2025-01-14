@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Enable Autonaming Configuration in non-experimental mode
