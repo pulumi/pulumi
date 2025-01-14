@@ -33,19 +33,18 @@ func LoadConverterPlugin(
 	name string,
 	log func(sev diag.Severity, msg string),
 ) (plugin.Converter, error) {
-	// Default to the known version of the plugin, this ensures we use the version of the yaml-converter
-	// that aligns with the yaml codegen we've linked to for this CLI release.
-	pluginSpec := workspace.PluginSpec{
-		Kind: apitype.ConverterPlugin,
-		Name: name,
+	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ConverterPlugin, nil, "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not load converter plugin: %w", err)
 	}
+
 	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
 		ctx.Diag.Infof(
 			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
 	}
 
 	// Try and load the converter plugin for this
-	converter, err := plugin.NewConverter(ctx, name, pluginSpec.Version)
+	converter, err := plugin.NewConverter(ctx, pluginSpec.Name, pluginSpec.Version)
 	if err != nil {
 		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
 		// unless auto plugin installs are turned off.
@@ -60,7 +59,7 @@ func LoadConverterPlugin(
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}
 
-		converter, err = plugin.NewConverter(ctx, name, pluginSpec.Version)
+		converter, err = plugin.NewConverter(ctx, pluginSpec.Name, pluginSpec.Version)
 		if err != nil {
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}

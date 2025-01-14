@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Allow specifying a version with `pulumi convert --from=<plugin>@<version>`
