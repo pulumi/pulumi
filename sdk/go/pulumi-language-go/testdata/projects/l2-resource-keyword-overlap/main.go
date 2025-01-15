@@ -7,48 +7,54 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := simple.NewResource(ctx, "class", &simple.ResourceArgs{
+		class, err := simple.NewResource(ctx, "class", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "export", &simple.ResourceArgs{
+		ctx.Export("class", class)
+		export, err := simple.NewResource(ctx, "export", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "mod", &simple.ResourceArgs{
+		ctx.Export("export", export)
+		mod, err := simple.NewResource(ctx, "mod", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
+		ctx.Export("mod", mod)
 		_, err = simple.NewResource(ctx, "import", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "object", &simple.ResourceArgs{
+		object, err := simple.NewResource(ctx, "object", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "self", &simple.ResourceArgs{
+		ctx.Export("object", object)
+		self, err := simple.NewResource(ctx, "self", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "this", &simple.ResourceArgs{
+		ctx.Export("self", self)
+		this, err := simple.NewResource(ctx, "this", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
+		ctx.Export("this", this)
 		return nil
 	})
 }
