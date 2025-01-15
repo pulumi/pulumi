@@ -382,7 +382,10 @@ func (source *gitSource) Download(
 	ctx context.Context, version semver.Version, _ string, _ string,
 	_ func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	tmpdir := filepath.Join(os.TempDir(), "pulumi-plugins")
+	tmpdir, err := os.MkdirTemp("", "pulumi-plugin")
+	if err != nil {
+		return nil, -1, err
+	}
 	defer os.RemoveAll(tmpdir)
 	if version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0 {
 		if len(version.Pre) != 1 {
@@ -413,7 +416,7 @@ func (source *gitSource) Download(
 
 	tw := tar.NewWriter(zip)
 
-	err := tw.AddFS(os.DirFS(filepath.Join(tmpdir, source.path)))
+	err = tw.AddFS(os.DirFS(filepath.Join(tmpdir, source.path)))
 	if err != nil {
 		return nil, -1, err
 	}
