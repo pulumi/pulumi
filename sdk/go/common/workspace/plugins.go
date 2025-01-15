@@ -351,6 +351,9 @@ func (source *gitlabSource) URL() string {
 type gitSource struct {
 	url  string
 	path string
+
+	cloneAndCheckout func(context.Context, string, plumbing.Hash, string) error
+	cloneOrPull      func(context.Context, string, plumbing.ReferenceName, string, bool) error
 }
 
 func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
@@ -359,7 +362,12 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &gitSource{url: u, path: path}, nil
+	return &gitSource{
+		url:              u,
+		path:             path,
+		cloneAndCheckout: gitutil.GitCloneAndCheckoutCommit,
+		cloneOrPull:      gitutil.GitCloneOrPull,
+	}, nil
 }
 
 func (source *gitSource) GetLatestVersion(
@@ -371,19 +379,19 @@ func (source *gitSource) GetLatestVersion(
 }
 
 func (source *gitSource) Download(
-	ctx context.Context, version semver.Version, opSy string, arch string,
+	ctx context.Context, version semver.Version, _ string, _ string,
 	_ func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
 	tmpdir := filepath.Join(os.TempDir(), "pulumi-plugins")
 	defer os.RemoveAll(tmpdir)
-	if version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) >= 0 {
+	if version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0 {
 		if len(version.Pre) != 1 {
 			return nil, -1, fmt.Errorf("invalid version %s", version)
 		}
 		// The version string is prefixed with a 'x' character because Pre-versions can't
 		// start with a 0. Strip that off to get the actual hash.
 		hash := plumbing.NewHash(version.Pre[0].VersionStr[1:])
-		err := gitutil.GitCloneAndCheckoutCommit(ctx, source.url, hash, tmpdir)
+		err := source.cloneAndCheckout(ctx, source.url, hash, tmpdir)
 		if err != nil {
 			return nil, -1, err
 		}
@@ -392,9 +400,9 @@ func (source *gitSource) Download(
 		if version.Major == 0 && version.Minor == 0 && version.Patch == 0 {
 			ref = plumbing.HEAD
 		} else {
-			ref = plumbing.ReferenceName(version.String())
+			ref = plumbing.ReferenceName("refs/tags/v" + version.String())
 		}
-		err := gitutil.GitCloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
+		err := source.cloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
 		if err != nil {
 			return nil, -1, err
 		}
