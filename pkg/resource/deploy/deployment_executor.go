@@ -237,7 +237,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 					err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
 					if err != nil {
-						if !result.IsBail(err) {
+						shouldTreatErrorAsWarning := ex.deployment.opts.ContinueOnError && ex.deployment.opts.DryRun
+						if shouldTreatErrorAsWarning {
+							ex.deployment.Diag().Warningf(diag.Message("", fmt.Sprintf("could not preview deletes, continuing preview due to --continue-on-error: %s", err.Error())))
+						} else if !result.IsBail(err) {
 							logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
 							ex.reportError("", err)
 							return false, result.BailError(err)
@@ -272,6 +275,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	ex.stepExec.WaitForCompletion()
 
 	stepExecutorError := ex.stepExec.Errored()
+	shouldPropogateStepExecuteError := stepExecutorError != nil && !ex.deployment.opts.ContinueOnError && !ex.deployment.opts.DryRun
 
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
@@ -339,7 +343,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
+	if err != nil || shouldPropogateStepExecuteError || ex.stepGen.Errored() {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		ex.reportExecResult("failed")

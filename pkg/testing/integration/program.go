@@ -105,6 +105,12 @@ type EditDir struct {
 
 	// Run program directory in query mode.
 	QueryMode bool
+
+	// Skip Update for this step
+	SkipUpdate bool
+
+	// Set the continue on error flag for the update.
+	ContinueOnError bool
 }
 
 // TestCommandStats is a collection of data related to running a single command during a test.
@@ -204,6 +210,8 @@ type ProgramTestOptions struct {
 	RetryFailedSteps bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
+	// Sets the --continue-on-error flag for pulumi up/preview
+	ContinueOnError bool
 	// Require a preview after refresh to be a no-op (expect no changes). Has no effect if SkipRefresh is true.
 	RequireEmptyPreviewAfterRefresh bool
 	// SkipPreview indicates that the preview step should be skipped entirely.
@@ -1639,6 +1647,10 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
+	if pt.opts.ContinueOnError {
+		preview = append(preview, "--continue-on-error")
+		update = append(update, "--continue-on-error")
+	}
 
 	// If not in quick mode, run an explicit preview.
 	if !pt.opts.SkipPreview {
@@ -1813,6 +1825,18 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Stdout = oldStdOut
 		pt.opts.Stderr = oldStderr
 		pt.opts.Verbose = oldVerbose
+	}()
+
+	oldSkipUpdate := pt.opts.SkipUpdate
+	pt.opts.SkipUpdate = edit.SkipUpdate
+	defer func() {
+		pt.opts.SkipUpdate = oldSkipUpdate
+	}()
+
+	oldContinueOnError := pt.opts.ContinueOnError
+	pt.opts.ContinueOnError = edit.ContinueOnError
+	defer func() {
+		pt.opts.ContinueOnError = oldContinueOnError
 	}()
 
 	if !edit.QueryMode {

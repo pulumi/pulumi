@@ -275,6 +275,7 @@ func NewPreviewCmd() *cobra.Command {
 	var showReads bool
 	var suppressOutputs bool
 	var suppressProgress bool
+	var continueOnError bool
 	var suppressPermalink string
 	var targets []string
 	var replaces []string
@@ -466,6 +467,7 @@ func NewPreviewCmd() *cobra.Command {
 					// experimental mode to just get more testing of it.
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
 					Experimental:   env.Experimental.Value(),
+					ContinueOnError: continueOnError,
 					AttachDebugger: attachDebugger,
 					Autonamer:      autonamer,
 				},
@@ -650,6 +652,10 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
+		"Continue updating resources even if an error is encountered "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
