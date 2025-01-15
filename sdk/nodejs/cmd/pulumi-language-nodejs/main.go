@@ -1449,12 +1449,6 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	if len(env) == 0 {
-		env = os.Environ()
-	}
-	env = append(env, "PULUMI_ROOT_DIRECTORY="+req.Info.RootDirectory)
-	env = append(env, "PULUMI_PROGRAM_DIRECTORY="+req.Info.ProgramDirectory)
-
 	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
 	args = append(args, nodeargs...)

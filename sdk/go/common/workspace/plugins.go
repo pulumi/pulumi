@@ -362,6 +362,12 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 	if err != nil {
 		return nil, err
 	}
+	if path != "" {
+		return nil,
+			// TODO[pulumi/pulumi#18250]: We currently don't support installing plugins from subdirectories.
+			//nolint:lll
+			errors.New("cannot install git plugin from subdirectory.  See https://github.com/pulumi/pulumi/issues/18250")
+	}
 	return &gitSource{
 		url:              u,
 		path:             path,

@@ -2410,8 +2410,11 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
+	// The provider currently lives in the test-plugin branch in pulumi/pulumi.  Once we allow
+	// plugins installed from subdirectories, this should move into a subdirectory of tests/integration
+	// and the test-plugin branch can be deleted.
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/pulumi/tests/integration/packageadd-remote/provider/ts@cdcc2adfa7052a4d9abb09a95d4f25fc83c33602")
+		"github.com/pulumi/pulumi@178af2fc9a5da4b839e53681fadc4a0771b866ea")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
@@ -2421,7 +2424,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// above is used.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
-	require.Contains(t, stdout, "github.com_tgummerer_pulumi-tls-self-signed-cert")
-	require.Contains(t, stdout, "0.0.0-x80e75c13ef793f7788e2877e04832922bd853ed4")
+	require.Contains(t, stdout, "github.com_pulumi_pulumi")
+	require.Contains(t, stdout, "0.0.0-x178af2fc9a5da4b839e53681fadc4a0771b866ea")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
