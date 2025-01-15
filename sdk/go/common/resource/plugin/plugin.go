@@ -278,7 +278,8 @@ func newPlugin[T any](
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
-	if kind == apitype.ResourcePlugin {
+	if kind == apitype.ResourcePlugin && !isDynamicPluginBinary(bin) {
+		logging.Infof("Hiding logs from %q:%q", prefix, bin)
 		plug.unstructuredOutput = &unstructuredOutput{diag: ctx.Diag}
 	}
 	runtrace := func(t io.Reader, streamID streamID, done chan<- bool) {
@@ -604,4 +605,9 @@ func (p *plugin) Close() error {
 	}
 
 	return result
+}
+
+func isDynamicPluginBinary(path string) bool {
+	return strings.HasSuffix(path, "pulumi-resource-pulumi-nodejs") ||
+		strings.HasSuffix(path, "pulumi-resource-pulumi-python")
 }
