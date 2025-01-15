@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add ContinueOnError to pulumi preview and make deletion of protected present as warnings
