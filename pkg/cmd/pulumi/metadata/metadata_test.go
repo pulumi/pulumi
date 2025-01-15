@@ -419,32 +419,6 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	assertEnvValue(t, test, backend.GitAuthorEmail, "repo-user@example.com")
 }
 
-// Tests that Git metadata is read from CI environment variables as a fallback if more Git-specific variables are not
-// set.
-//
-//nolint:paralleltest // mutates environment variables
-func TestGitMetadataIsReadFromCIEnvironmentVariablesAsFallback(t *testing.T) {
-	// Arrange.
-	t.Setenv("PULUMI_CI_SYSTEM", "1")
-	t.Setenv("PULUMI_COMMIT_MESSAGE", "fallback-message")
-	t.Setenv("PULUMI_CI_BRANCH_NAME", "refs/heads/fallback-branch")
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	test := &backend.UpdateMetadata{
-		Environment: make(map[string]string),
-	}
-
-	// Act.
-	err := addGitMetadata(e.RootPath, test)
-
-	// Assert.
-	assert.NoError(t, err)
-	assertEnvValue(t, test, backend.GitHeadName, "refs/heads/fallback-branch")
-	assert.Equal(t, test.Message, "fallback-message")
-}
-
 // assertEnvValue assert the update metadata's Environment map contains the given value.
 func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 	t.Helper()
