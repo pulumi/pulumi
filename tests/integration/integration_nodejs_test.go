@@ -2411,7 +2411,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd_remote", "--create")
 
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/tgummerer/pulumi-tls-self-signed-cert@80e75c13ef793f7788e2877e04832922bd853ed4")
+		"github.com/pulumi/pulumi/tests/integration/packageadd_remote/provider/ts@cd2334b6955b6dc2ae3a02a0250580667df56488")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 

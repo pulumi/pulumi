@@ -203,7 +203,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
 	pkg.resourceTypeTable = types.resources
-	pkg.PluginDownloadURL = spec.PluginDownloadURL
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, nil, err
 	}
