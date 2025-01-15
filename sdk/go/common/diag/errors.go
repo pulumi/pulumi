@@ -45,6 +45,14 @@ func GetPreviewFailedError(urn resource.URN) *Diag {
 	return newError(urn, 2005, "Preview failed: %v")
 }
 
+// GetPreviewWarningError returns a diagnostic that indicates a warning occurred during preview.
+// This is useful when an error is swallowed such as when previewing something
+// that would actually fail in an update, but has no error in a preview. (eg
+// removing a protected resource).
+func GetPreviewWarningError(urn resource.URN) *Diag {
+	return newError(urn, 2005, "Preview warning, would fail on update: %v")
+}
+
 func GetBadProviderError(urn resource.URN) *Diag {
 	return newError(urn, 2006, "bad provider reference '%v' for resource '%v': %v")
 }

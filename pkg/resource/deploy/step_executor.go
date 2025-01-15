@@ -493,7 +493,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	}
 
 	if events != nil {
-		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
+		errorsAsWarnings := se.deployment.opts.DryRun && se.deployment.opts.ContinueOnError
+		if postErr := events.OnResourceStepPost(payload, step, status, err, errorsAsWarnings); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
 			return fmt.Errorf("post-step event returned an error: %w", postErr)
 		}
