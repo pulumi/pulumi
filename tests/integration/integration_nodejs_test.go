@@ -2405,13 +2405,13 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 
-	e.ImportDirectory("packageadd_remote")
+	e.ImportDirectory("packageadd-remote")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
-	e.RunCommand("pulumi", "stack", "select", "organization/packageadd_remote", "--create")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/pulumi/tests/integration/packageadd_remote/provider/ts@cd2334b6955b6dc2ae3a02a0250580667df56488")
+		"github.com/pulumi/pulumi/tests/integration/packageadd-remote/provider/ts@cdcc2adfa7052a4d9abb09a95d4f25fc83c33602")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
