@@ -743,6 +743,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
+	// We also always go here when we have a git URL, so we can download it.
 	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
 		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")

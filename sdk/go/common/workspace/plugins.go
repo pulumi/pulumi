@@ -1001,7 +1001,7 @@ func NewPluginSpec(
 		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
 	}
 
-	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9]$`)
+	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
 	if urlRegex.MatchString(name) {
 		u, err := url.Parse(name)
 		// If we don't have a URL, we just treat it as a normal plugin name.
