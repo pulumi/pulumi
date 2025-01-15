@@ -1883,17 +1883,19 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 		cloneOrPull: func(ctx context.Context, url string, ref plumbing.ReferenceName, tmpdir string, shallow bool) error {
 			require.Equal(t, "https://example.com/repo/test", url)
 			require.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), ref)
-			os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
-			os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
 
 			return nil
 		},
 	}
-	readCloser, len, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
-	require.Greater(t, len, int64(0))
+	require.Greater(t, l, int64(0))
 
 	zip, err := gzip.NewReader(readCloser)
 	require.NoError(t, err)
@@ -1920,17 +1922,19 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 		cloneOrPull: func(ctx context.Context, url string, ref plumbing.ReferenceName, tmpdir string, shallow bool) error {
 			require.Equal(t, "https://example.com/repo/test", url)
 			require.Equal(t, plumbing.HEAD, ref)
-			os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
-			os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
 
 			return nil
 		},
 	}
-	readCloser, len, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
-	require.Greater(t, len, int64(0))
+	require.Greater(t, l, int64(0))
 
 	zip, err := gzip.NewReader(readCloser)
 	require.NoError(t, err)
@@ -1957,17 +1961,19 @@ func TestGitSourceDownloadHash(t *testing.T) {
 		cloneAndCheckout: func(ctx context.Context, url string, hash plumbing.Hash, tmpdir string) error {
 			require.Equal(t, "https://example.com/repo/test", url)
 			require.Equal(t, plumbing.NewHash("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), hash)
-			os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
-			os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
 
 			return nil
 		},
 	}
-	readCloser, len, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
-	require.Greater(t, len, int64(0))
+	require.Greater(t, l, int64(0))
 
 	zip, err := gzip.NewReader(readCloser)
 	require.NoError(t, err)
