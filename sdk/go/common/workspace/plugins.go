@@ -989,6 +989,14 @@ type PluginSpec struct {
 	Checksums map[string][]byte
 }
 
+func (p *PluginSpec) PackageDescriptor() string {
+	if strings.HasPrefix(p.PluginDownloadURL, "git://") {
+		url := strings.TrimPrefix(p.PluginDownloadURL, "git://")
+		return strings.ReplaceAll(url, "/", "_")
+	}
+	return p.Name
+}
+
 func NewPluginSpec(
 	source string,
 	kind apitype.PluginKind,
