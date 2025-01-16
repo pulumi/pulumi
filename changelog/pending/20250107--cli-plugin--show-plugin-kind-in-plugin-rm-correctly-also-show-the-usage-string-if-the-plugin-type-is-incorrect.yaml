@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Show plugin kind in plugin rm correctly.  Also show the usage string if the plugin type is incorrect

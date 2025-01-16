@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/import
-  description: Add support for parameterized packages to `pulumi import`
