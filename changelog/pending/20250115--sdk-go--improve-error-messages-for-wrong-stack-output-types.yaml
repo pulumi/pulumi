@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Improve error messages for wrong stack output types

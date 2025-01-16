@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Passthrough unstructured logs from dynamic providers
