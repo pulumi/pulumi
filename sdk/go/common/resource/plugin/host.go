@@ -379,7 +379,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 
 func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		pkg := descriptor.PackageDescriptor()
+		pkg := descriptor.LocalName()
 		version := descriptor.Version
 
 		// Try to load and bind to a plugin.

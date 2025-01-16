@@ -348,12 +348,21 @@ func (source *gitlabSource) URL() string {
 	return fmt.Sprintf("gitlab://%s/%s", source.host, source.project)
 }
 
+func isPreReleaseVersion(version semver.Version) bool {
+	return version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0
+}
+
+// gitSource is used to download a plugin from a git repository.
 type gitSource struct {
-	url  string
+	// The git url to clone the plugin from.
+	url string
+	// The path within the repo to the plugin.
 	path string
 
+	// function to clone and checkout the repo.  Used so gitutil.GitCloneAndCheckoutCommit can be mocked in tests.
 	cloneAndCheckout func(context.Context, string, plumbing.Hash, string) error
-	cloneOrPull      func(context.Context, string, plumbing.ReferenceName, string, bool) error
+	// function to clone or pull the repo.  Used so gitutil.GitCloneOrPull can be mocked in tests.
+	cloneOrPull func(context.Context, string, plumbing.ReferenceName, string, bool) error
 }
 
 func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
@@ -380,10 +389,14 @@ func (source *gitSource) GetLatestVersion(
 	ctx context.Context, _ func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
 	// TODO: support this for the users convenience
-	return &semver.Version{},
+	return nil,
 		errors.New("GetLatestVersion is not supported for git sources, please specify the version of the plugin")
 }
 
+// Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
+// a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
+// The tag is expected to be prefixed with a 'v' character.
+// If the version is the special sentinel version 0.0.0, we'll use the latest commit on the default branch.
 func (source *gitSource) Download(
 	ctx context.Context, version semver.Version, _ string, _ string,
 	_ func(*http.Request) (io.ReadCloser, int64, error),
@@ -393,7 +406,7 @@ func (source *gitSource) Download(
 		return nil, -1, err
 	}
 	defer os.RemoveAll(tmpdir)
-	if version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0 {
+	if isPreReleaseVersion(version) {
 		if len(version.Pre) != 1 {
 			return nil, -1, fmt.Errorf("invalid version %s", version)
 		}
@@ -989,14 +1002,6 @@ type PluginSpec struct {
 	Checksums map[string][]byte
 }
 
-func (p *PluginSpec) PackageDescriptor() string {
-	if strings.HasPrefix(p.PluginDownloadURL, "git://") {
-		url := strings.TrimPrefix(p.PluginDownloadURL, "git://")
-		return strings.ReplaceAll(url, "/", "_")
-	}
-	return p.Name
-}
-
 func NewPluginSpec(
 	source string,
 	kind apitype.PluginKind,
@@ -1027,6 +1032,7 @@ func NewPluginSpec(
 				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 			}
 			name = strings.ReplaceAll(u.RequestURI(), "/", "_")
+			// Prefix the url with `git://`, so we can later recognize this as a git URL.
 			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true
 		}
@@ -1064,6 +1070,15 @@ func NewPluginSpec(
 		PluginDownloadURL: pluginDownloadURL,
 		Checksums:         checksums,
 	}, nil
+}
+
+// LocalName returns the local name of the plugin, which is used in the directory name.
+func (spec PluginSpec) LocalName() string {
+	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
+		url := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+		return strings.ReplaceAll(url, "/", "_")
+	}
+	return spec.Name
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -2230,7 +2245,7 @@ func getPluginInfoAndPath(
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior &&
 		version != nil &&
-		version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0 {
+		isPreReleaseVersion(*version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
 		match = SelectPrereleasePlugin(plugins, kind, name, version)
