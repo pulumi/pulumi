@@ -283,6 +283,7 @@ func newDeployment(
 				}
 				if imp.Parameterization == nil {
 					imp.Parameterization = defaultProviderInfo[imp.Type.Package()].Parameterization
+					imp.BaseProviderName = defaultProviderInfo[imp.Type.Package()].Name
 				}
 			}
 		}

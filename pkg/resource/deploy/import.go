@@ -46,6 +46,7 @@ type Import struct {
 	Protect           bool                        // Whether to mark the resource as protected after import
 	Properties        []string                    // Which properties to include (Defaults to required properties)
 	Parameterization  *workspace.Parameterization // The parameterization to use for the resource, if any.
+	BaseProviderName      string                      // If the provider is parameterized, the base (unparameterized) provider name.
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -233,9 +234,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
+		providerName := imp.Type.Package()
 		parameterization := providers.ToProviderParameterization(imp.Parameterization)
+		if imp.BaseProviderName != "" {
+			providerName = tokens.Package(imp.BaseProviderName)
+		}
 		req := providers.NewProviderRequest(
-			imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+			providerName, imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -283,6 +288,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
+		}
+		if parameterization := req.Parameterization(); parameterization != nil {
+			providers.SetProviderParameterization(inputs, parameterization)
+			providers.SetProviderName(inputs, req.Name())
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:  urn,
