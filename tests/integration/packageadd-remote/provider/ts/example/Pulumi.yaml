@@ -1,0 +1,16 @@
+name: cert-component-yaml
+runtime: yaml
+plugins:
+  providers:
+    - name: tls-self-signed-cert
+      path: ..
+resources:
+  mycert:
+    type: tls-self-signed-cert:SelfSignedCertificate
+    properties:
+      dnsName: example.com
+      validityPeriodHours: 24
+      localValidityPeriodHours: 24
+      subject:
+        organization: Example Org
+

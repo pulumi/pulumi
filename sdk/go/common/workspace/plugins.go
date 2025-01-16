@@ -15,7 +15,9 @@
 package workspace
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -40,6 +42,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
+	"github.com/go-git/go-git/v5/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -49,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -342,6 +346,111 @@ func (source *gitlabSource) Download(
 
 func (source *gitlabSource) URL() string {
 	return fmt.Sprintf("gitlab://%s/%s", source.host, source.project)
+}
+
+func isPreReleaseVersion(version semver.Version) bool {
+	return version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0
+}
+
+// gitSource is used to download a plugin from a git repository.
+type gitSource struct {
+	// The git url to clone the plugin from.
+	url string
+	// The path within the repo to the plugin.
+	path string
+
+	// function to clone and checkout the repo.  Used so gitutil.GitCloneAndCheckoutCommit can be mocked in tests.
+	cloneAndCheckout func(context.Context, string, plumbing.Hash, string) error
+	// function to clone or pull the repo.  Used so gitutil.GitCloneOrPull can be mocked in tests.
+	cloneOrPull func(context.Context, string, plumbing.ReferenceName, string, bool) error
+}
+
+func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
+	url.Scheme = "https"
+	u, path, err := gitutil.ParseGitRepoURL(url.String())
+	if err != nil {
+		return nil, err
+	}
+	if path != "" {
+		return nil,
+			// TODO[pulumi/pulumi#18250]: We currently don't support installing plugins from subdirectories.
+			//nolint:lll
+			errors.New("cannot install git plugin from subdirectory.  See https://github.com/pulumi/pulumi/issues/18250")
+	}
+	return &gitSource{
+		url:              u,
+		path:             path,
+		cloneAndCheckout: gitutil.GitCloneAndCheckoutCommit,
+		cloneOrPull:      gitutil.GitCloneOrPull,
+	}, nil
+}
+
+func (source *gitSource) GetLatestVersion(
+	ctx context.Context, _ func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
+	// TODO: support this for the users convenience
+	return nil,
+		errors.New("GetLatestVersion is not supported for git sources, please specify the version of the plugin")
+}
+
+// Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
+// a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
+// The tag is expected to be prefixed with a 'v' character.
+// If the version is the special sentinel version 0.0.0, we'll use the latest commit on the default branch.
+func (source *gitSource) Download(
+	ctx context.Context, version semver.Version, _ string, _ string,
+	_ func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
+	tmpdir, err := os.MkdirTemp("", "pulumi-plugin")
+	if err != nil {
+		return nil, -1, err
+	}
+	defer os.RemoveAll(tmpdir)
+	if isPreReleaseVersion(version) {
+		if len(version.Pre) != 1 {
+			return nil, -1, fmt.Errorf("invalid version %s", version)
+		}
+		// The version string is prefixed with a 'x' character because Pre-versions can't
+		// start with a 0. Strip that off to get the actual hash.
+		hash := plumbing.NewHash(version.Pre[0].VersionStr[1:])
+		err := source.cloneAndCheckout(ctx, source.url, hash, tmpdir)
+		if err != nil {
+			return nil, -1, err
+		}
+	} else {
+		var ref plumbing.ReferenceName
+		if version.Major == 0 && version.Minor == 0 && version.Patch == 0 {
+			ref = plumbing.HEAD
+		} else {
+			ref = plumbing.ReferenceName("refs/tags/v" + version.String())
+		}
+		err := source.cloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
+		if err != nil {
+			return nil, -1, err
+		}
+	}
+
+	tarbuf := bytes.NewBuffer([]byte{})
+	zip := gzip.NewWriter(tarbuf)
+
+	tw := tar.NewWriter(zip)
+
+	err = tw.AddFS(os.DirFS(filepath.Join(tmpdir, source.path)))
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// These close statements cannot be deferred, because expressions in return statements
+	// are executed before defer statements in Go.  Closing the writers in defer statements
+	// can lead to the tarbuf.Len() return value to be wrong.
+	tw.Close()
+	zip.Close()
+
+	return io.NopCloser(tarbuf), int64(tarbuf.Len()), nil
+}
+
+func (source *gitSource) URL() string {
+	return source.url
 }
 
 // githubSource can download a plugin from github releases
@@ -791,12 +900,8 @@ type ProjectPlugin struct {
 }
 
 // Spec Return a PluginSpec object for this project plugin.
-func (pp ProjectPlugin) Spec() PluginSpec {
-	return PluginSpec{
-		Name:    pp.Name,
-		Kind:    pp.Kind,
-		Version: pp.Version,
-	}
+func (pp ProjectPlugin) Spec() (PluginSpec, error) {
+	return NewPluginSpec(pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -918,7 +1023,7 @@ func NewPluginSpec(
 		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
 	}
 
-	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9]$`)
+	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
 	if urlRegex.MatchString(name) {
 		u, err := url.Parse(name)
 		// If we don't have a URL, we just treat it as a normal plugin name.
@@ -927,7 +1032,8 @@ func NewPluginSpec(
 				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 			}
 			name = strings.ReplaceAll(u.RequestURI(), "/", "_")
-			pluginDownloadURL = u.String()
+			// Prefix the url with `git://`, so we can later recognize this as a git URL.
+			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true
 		}
 	}
@@ -964,6 +1070,15 @@ func NewPluginSpec(
 		PluginDownloadURL: pluginDownloadURL,
 		Checksums:         checksums,
 	}, nil
+}
+
+// LocalName returns the local name of the plugin, which is used in the directory name.
+func (spec PluginSpec) LocalName() string {
+	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
+		url := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+		return strings.ReplaceAll(url, "/", "_")
+	}
+	return spec.Name
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -1117,6 +1232,8 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 		return newGitlabSource(url, name, kind)
 	case "http", "https":
 		return newHTTPSource(name, kind, url), nil
+	case "git":
+		return newGitHTTPSSource(url)
 	default:
 		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}
@@ -2019,7 +2136,10 @@ func getPluginInfoAndPath(
 			}
 		}
 
-		spec := plugin.Spec()
+		spec, err := plugin.Spec()
+		if err != nil {
+			return nil, "", err
+		}
 		info := &PluginInfo{
 			Name:    spec.Name,
 			Kind:    spec.Kind,
@@ -2123,7 +2243,13 @@ func getPluginInfoAndPath(
 	}
 
 	var match *PluginInfo
-	if !enableLegacyPluginBehavior && version != nil {
+	if !enableLegacyPluginBehavior &&
+		version != nil &&
+		isPreReleaseVersion(*version) {
+		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
+		match = SelectPrereleasePlugin(plugins, kind, name, version)
+	} else if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 	} else {
@@ -2161,6 +2287,19 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 	}
 }
 func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+
+// SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
+// are looking for, based on the commit hash.
+func SelectPrereleasePlugin(
+	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
+) *PluginInfo {
+	for _, cur := range plugins {
+		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+			return &cur
+		}
+	}
+	return nil
+}
 
 // LegacySelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that
 // satisfies the requested version. It returns the highest version plugin greater than the requested version,
@@ -2320,7 +2459,7 @@ func getCandidateExtensions() []string {
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
-		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
+		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted

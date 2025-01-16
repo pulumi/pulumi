@@ -28,7 +28,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -650,6 +649,16 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 	if err != nil {
 		return nil, err
 	}
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if pluginSpec.PluginDownloadURL != "" {
+		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
+	}
+	if pluginSpec.Version != nil {
+		spec.Version = pluginSpec.Version.String()
+	}
 	return bind(spec)
 }
 
@@ -716,20 +725,12 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	descriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind: apitype.ResourcePlugin,
-			Name: packageSource,
-		},
+	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, err
 	}
-
-	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
-		descriptor.Name = s[0]
-		v, err := semver.ParseTolerant(s[1])
-		if err != nil {
-			return nil, fmt.Errorf("VERSION must be valid semver: %w", err)
-		}
-		descriptor.Version = &v
+	descriptor := workspace.PackageDescriptor{
+		PluginSpec: pluginSpec,
 	}
 
 	isExecutable := func(info fs.FileInfo) bool {
@@ -742,7 +743,9 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
-	if !strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
+	// We also always go here when we have a git URL, so we can download it.
+	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
+		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err

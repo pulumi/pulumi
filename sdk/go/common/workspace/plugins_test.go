@@ -15,7 +15,9 @@
 package workspace
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -31,6 +33,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -1316,6 +1319,16 @@ func TestPluginSpec_GetSource(t *testing.T) {
 			expectedURL:        "gitlab://mygitlab.example.com/proj1",
 		},
 		{
+			name: "Use PluginDownloadURL (Git)",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "git://github.com/test/test",
+			},
+			expectedSourceType: "*workspace.gitSource",
+			expectedURL:        "https://github.com/test/test.git",
+		},
+		{
 			name: "Use fallback source",
 			spec: PluginSpec{
 				Name: "test-plugin",
@@ -1746,7 +1759,7 @@ func TestNewPluginSpec(t *testing.T) {
 				Name:              "github.com_pulumi_pulumi-example",
 				Kind:              apitype.ResourcePlugin,
 				Version:           nil,
-				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
 			},
@@ -1759,7 +1772,7 @@ func TestNewPluginSpec(t *testing.T) {
 				Name:              "github.com_pulumi_pulumi-example",
 				Kind:              apitype.ResourcePlugin,
 				Version:           &v1,
-				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
 			},
@@ -1772,7 +1785,7 @@ func TestNewPluginSpec(t *testing.T) {
 				Name:              "github.com_pulumi_pulumi-example",
 				Kind:              apitype.ResourcePlugin,
 				Version:           &v0deadbeef,
-				PluginDownloadURL: "github.com/pulumi/pulumi-example",
+				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
 				PluginDir:         "",
 				Checksums:         nil,
 			},
@@ -1856,4 +1869,121 @@ func TestNewPluginSpec(t *testing.T) {
 			require.Equal(t, c.ExpectedPluginSpec, spec)
 		})
 	}
+}
+
+func TestGitSourceDownloadSemver(t *testing.T) {
+	t.Parallel()
+
+	// Create a fake plugin.
+	version := semver.MustParse("1.0.0")
+
+	gitSource := &gitSource{
+		url:  "https://example.com/repo/test",
+		path: "path",
+		cloneOrPull: func(ctx context.Context, url string, ref plumbing.ReferenceName, tmpdir string, shallow bool) error {
+			require.Equal(t, "https://example.com/repo/test", url)
+			require.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), ref)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
+
+			return nil
+		},
+	}
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+	require.NoError(t, err)
+	require.NotNil(t, readCloser)
+	require.Greater(t, l, int64(0))
+
+	zip, err := gzip.NewReader(readCloser)
+	require.NoError(t, err)
+
+	tarReader := tar.NewReader(zip)
+	header, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "test", header.Name)
+
+	buf, err := io.ReadAll(tarReader)
+	require.NoError(t, err)
+	require.Equal(t, "a string", string(buf))
+}
+
+func TestGitSourceDownloadHEAD(t *testing.T) {
+	t.Parallel()
+
+	// Create a fake plugin.
+	version := semver.Version{}
+
+	gitSource := &gitSource{
+		url:  "https://example.com/repo/test",
+		path: "path",
+		cloneOrPull: func(ctx context.Context, url string, ref plumbing.ReferenceName, tmpdir string, shallow bool) error {
+			require.Equal(t, "https://example.com/repo/test", url)
+			require.Equal(t, plumbing.HEAD, ref)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
+
+			return nil
+		},
+	}
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+	require.NoError(t, err)
+	require.NotNil(t, readCloser)
+	require.Greater(t, l, int64(0))
+
+	zip, err := gzip.NewReader(readCloser)
+	require.NoError(t, err)
+
+	tarReader := tar.NewReader(zip)
+	header, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "test", header.Name)
+
+	buf, err := io.ReadAll(tarReader)
+	require.NoError(t, err)
+	require.Equal(t, "a string", string(buf))
+}
+
+func TestGitSourceDownloadHash(t *testing.T) {
+	t.Parallel()
+
+	// Create a fake plugin.
+	version := semver.MustParse("0.0.0-xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+
+	gitSource := &gitSource{
+		url:  "https://example.com/repo/test",
+		path: "path",
+		cloneAndCheckout: func(ctx context.Context, url string, hash plumbing.Hash, tmpdir string) error {
+			require.Equal(t, "https://example.com/repo/test", url)
+			require.Equal(t, plumbing.NewHash("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), hash)
+			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
+			require.NoError(t, err)
+
+			return nil
+		},
+	}
+	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+	require.NoError(t, err)
+	require.NotNil(t, readCloser)
+	require.Greater(t, l, int64(0))
+
+	zip, err := gzip.NewReader(readCloser)
+	require.NoError(t, err)
+
+	tarReader := tar.NewReader(zip)
+	header, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "test", header.Name)
+
+	buf, err := io.ReadAll(tarReader)
+	require.NoError(t, err)
+	require.Equal(t, "a string", string(buf))
 }
