@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Fix paramaterized providers not being loaded correctly on import
