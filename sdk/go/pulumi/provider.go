@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"golang.org/x/exp/maps"
 
 	"google.golang.org/grpc"
 )
@@ -74,11 +75,11 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	inputs := make(map[string]interface{}, len(deserializedInputs))
 	for key, value := range deserializedInputs {
 		k := string(key)
-		var deps urnSet
+		var deps map[URN]struct{}
 		if inputDeps, ok := inputDependencies[k]; ok {
-			deps = urnSet{}
+			deps = map[URN]struct{}{}
 			for _, depURN := range inputDeps.GetUrns() {
-				deps.add(URN(depURN))
+				deps[URN(depURN)] = struct{}{}
 			}
 		}
 
@@ -219,14 +220,15 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 
 type constructInput struct {
 	value resource.PropertyValue
-	deps  urnSet
+	deps  map[URN]struct{}
 }
 
 func (ci constructInput) Dependencies(ctx *Context) []Resource {
 	if ci.deps == nil {
 		return nil
 	}
-	urns := ci.deps.sortedValues()
+	urns := maps.Keys(ci.deps)
+	sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
 	var result []Resource
 	if len(urns) > 0 {
 		result = make([]Resource, len(urns))
@@ -261,7 +263,7 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 	return result, nil
 }
 
-func gatherDeps(v resource.PropertyValue, deps urnSet) {
+func gatherDeps(v resource.PropertyValue, deps map[URN]struct{}) {
 	switch {
 	case v.IsSecret():
 		gatherDeps(v.SecretValue().Element, deps)
@@ -269,11 +271,11 @@ func gatherDeps(v resource.PropertyValue, deps urnSet) {
 		gatherDeps(v.Input().Element, deps)
 	case v.IsOutput():
 		for _, urn := range v.OutputValue().Dependencies {
-			deps.add(URN(urn))
+			deps[URN(urn)] = struct{}{}
 		}
 		gatherDeps(v.OutputValue().Element, deps)
 	case v.IsResourceReference():
-		deps.add(URN(v.ResourceReferenceValue().URN))
+		deps[URN(v.ResourceReferenceValue().URN)] = struct{}{}
 	case v.IsArray():
 		for _, e := range v.ArrayValue() {
 			gatherDeps(e, deps)
@@ -614,12 +616,19 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 
 			// Find all nested dependencies.
-			deps := urnSet{}
+			deps := map[URN]struct{}{}
 			gatherDeps(ci.value, deps)
 
 			// If the top-level property dependencies are equal to (or a subset of) the gathered nested
 			// dependencies, we don't necessarily need to create a top-level output for the property.
-			if deps.contains(ci.deps) {
+			contains := true
+			for v := range ci.deps {
+				if _, ok := deps[v]; !ok {
+					contains = false
+					break
+				}
+			}
+			if contains {
 				if err := copyInputTo(ctx, ci.value, fieldV); err != nil {
 					return fmt.Errorf("copying input %q: %w", k, err)
 				}
@@ -785,11 +794,11 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	args := make(map[string]interface{}, len(deserializedArgs))
 	for key, value := range deserializedArgs {
 		k := string(key)
-		var deps urnSet
+		var deps map[URN]struct{}
 		if inputDeps, ok := argDependencies[k]; ok {
-			deps = urnSet{}
+			deps = map[URN]struct{}{}
 			for _, depURN := range inputDeps.GetUrns() {
-				deps.add(URN(depURN))
+				deps[URN(depURN)] = struct{}{}
 			}
 		}
 
