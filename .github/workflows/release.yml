@@ -61,9 +61,81 @@ env:
   PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
 jobs:
+  sdks:
+    name: ${{ matrix.language }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["nodejs", "python", "go"]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up uv
+        if: ${{ matrix.language == 'python' }}
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        if: ${{ matrix.language == 'python' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+      - name: Install Python deps
+        if: ${{ matrix.language == 'python' }}
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        if: ${{ matrix.language == 'nodejs' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          registry-url: https://registry.npmjs.org
+          always-auth: true
+      - name: Download release artifacts
+        if: ${{ matrix.language != 'go' }}
+        run: |
+          mkdir -p artifacts
+          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
+          find artifacts
+      - name: Publish Packages
+        run: |
+          make -C sdk/${{ matrix.language}} publish
+
+  s3-blobs:
+    name: s3 blobs
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Download release artifacts
+        run: |
+          mkdir -p artifacts
+          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'pulumi-*'
+          find artifacts
+      - name: Publish Blobs
+        run: |
+          aws s3 sync artifacts s3://get.pulumi.com/releases/sdk --acl public-read
+
   pr:
     # Relies on the Go SDK being published to update pkg
     name: PR
+    needs: [sdks]
     uses: ./.github/workflows/release-pr.yml
     permissions:
       contents: write
