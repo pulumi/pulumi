@@ -81,12 +81,12 @@ brew::
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
-publish::
+publish:: ensure
 	for file in ../../artifacts/sdk-python-*.whl; do \
 		basename=$$(basename $${file}); \
 		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
 	done
-	twine upload \
+	uv run twine upload \
 	-u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" \
 		../../artifacts/*.whl \
 		--skip-existing \
