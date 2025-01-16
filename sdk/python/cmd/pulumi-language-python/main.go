@@ -1008,6 +1008,10 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
+			var exiterr *exec.ExitError
+			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
+				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
 	}
@@ -1356,6 +1360,9 @@ func (host *pythonLanguageHost) RunPlugin(
 					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
+			}
+			if len(exiterr.Stderr) > 0 {
+				return fmt.Errorf("program exited unexpectedly: %w: %s", exiterr, exiterr.Stderr)
 			}
 			return fmt.Errorf("program exited unexpectedly: %w", exiterr)
 		}
