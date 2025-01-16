@@ -84,10 +84,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Install Python deps
-        if: ${{ matrix.language == 'python' }}
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
         uses: actions/setup-node@v4
