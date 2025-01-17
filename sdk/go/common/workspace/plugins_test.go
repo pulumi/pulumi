@@ -1792,9 +1792,9 @@ func TestNewPluginSpec(t *testing.T) {
 		},
 		{
 			name:   "git plugin with invalid version hash",
-			source: "github.com/pulumi/pulumi-example@abcd",
+			source: "github.com/pulumi/pulumi-example@abcdxyz",
 			kind:   apitype.ResourcePlugin,
-			Error:  errors.New("VERSION must be valid semver or git commit hash: abcd"),
+			Error:  errors.New("VERSION must be valid semver or git commit hash: abcdxyz"),
 		},
 		{
 			name:   "local plugin",
