@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 
-go 1.21
+go 1.22
+
+toolchain go1.22.1
 
 replace (
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
