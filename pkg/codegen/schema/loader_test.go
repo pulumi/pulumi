@@ -196,3 +196,146 @@ func TestLoadParameterized(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "aws", ref.Name())
 }
+
+// Tests that a PackageReferenceNameMismatchError is returned when the name in the descriptor does not match the name in
+// the schema returned by the loaded plugin.
+func TestLoadNameMismatch(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	pkg := "aws"
+	notPkg := "not-" + pkg
+
+	version := semver.MustParse("3.0.0")
+
+	provider := &plugin.MockProvider{
+		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+			schema := PackageSpec{
+				Name:    notPkg,
+				Version: version.String(),
+			}
+
+			data, err := json.Marshal(schema)
+			if err != nil {
+				return plugin.GetSchemaResponse{}, err
+			}
+
+			return plugin.GetSchemaResponse{
+				Schema: data,
+			}, nil
+		},
+	}
+
+	host := &plugin.MockHost{
+		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+			return provider, nil
+		},
+		ResolvePluginF: func(apitype.PluginKind, string, *semver.Version) (*workspace.PluginInfo, error) {
+			return &workspace.PluginInfo{
+				Name:    notPkg,
+				Kind:    apitype.ResourcePlugin,
+				Version: &version,
+			}, nil
+		},
+	}
+
+	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+		disableEntryCache: true,
+		disableMmap:       true,
+		disableFileCache:  true,
+	})
+
+	// Act.
+	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
+		Name:    pkg,
+		Version: &version,
+	})
+
+	// Assert.
+
+	// We should still get a reference back, even though the version doesn't match.
+	require.NotNil(t, ref)
+
+	var expectedErr *PackageReferenceNameMismatchError
+	require.ErrorAsf(t, err, &expectedErr, "expected PackageReferenceNameMismatchError, got %T", err)
+
+	require.Equal(t, pkg, expectedErr.RequestedName)
+	require.Equal(t, &version, expectedErr.RequestedVersion)
+
+	require.Equal(t, notPkg, expectedErr.LoadedName)
+	require.Equal(t, &version, expectedErr.LoadedVersion)
+
+	require.Equal(t, ref.Name(), expectedErr.LoadedName)
+	require.Equal(t, ref.Version(), expectedErr.LoadedVersion)
+}
+
+// Tests that a PackageReferenceVersionMismatchError is returned when the version in the descriptor does not match the
+// version in the schema returned by the loaded plugin.
+func TestLoadVersionMismatch(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	pkg := "aws"
+	requestVersion := semver.MustParse("3.0.0")
+	loadVersion := semver.MustParse("3.0.1")
+
+	provider := &plugin.MockProvider{
+		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+			schema := PackageSpec{
+				Name:    pkg,
+				Version: loadVersion.String(),
+			}
+
+			data, err := json.Marshal(schema)
+			if err != nil {
+				return plugin.GetSchemaResponse{}, err
+			}
+
+			return plugin.GetSchemaResponse{
+				Schema: data,
+			}, nil
+		},
+	}
+
+	host := &plugin.MockHost{
+		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+			return provider, nil
+		},
+		ResolvePluginF: func(apitype.PluginKind, string, *semver.Version) (*workspace.PluginInfo, error) {
+			return &workspace.PluginInfo{
+				Name:    pkg,
+				Kind:    apitype.ResourcePlugin,
+				Version: &loadVersion,
+			}, nil
+		},
+	}
+
+	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+		disableEntryCache: true,
+		disableMmap:       true,
+		disableFileCache:  true,
+	})
+
+	// Act.
+	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
+		Name:    pkg,
+		Version: &requestVersion,
+	})
+
+	// Assert.
+
+	// We should still get a reference back, even though the version doesn't match.
+	require.NotNil(t, ref)
+
+	var expectedErr *PackageReferenceVersionMismatchError
+	require.ErrorAsf(t, err, &expectedErr, "expected PackageReferenceVersionMismatchError, got %T", err)
+
+	require.Equal(t, pkg, expectedErr.RequestedName)
+	require.Equal(t, &requestVersion, expectedErr.RequestedVersion)
+
+	require.Equal(t, pkg, expectedErr.LoadedName)
+	require.Equal(t, &loadVersion, expectedErr.LoadedVersion)
+
+	require.Equal(t, ref.Name(), expectedErr.LoadedName)
+	require.Equal(t, ref.Version(), expectedErr.LoadedVersion)
+}

@@ -135,7 +135,17 @@ func GenerateHCL2Definition(
 
 	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, pkgDesc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
+		// If the version loaded does not match the version requested, we'll continue anyway. This matches behaviour prior
+		// to the introduction of parameterized packages (which confer stricter version checks), and allows some existing
+		// workflows, such as attaching already running instances of providers for debugging, without encountering mismatch
+		// errors.
+		//
+		// https://github.com/pulumi/pulumi/issues/18271 tracks the issue of whether we can do a bit better here (e.g.
+		// allowing semver-compatible version differences but not any others).
+		var versionMismatchErr *schema.PackageReferenceVersionMismatchError
+		if !errors.As(err, &versionMismatchErr) {
+			return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
+		}
 	}
 
 	// With the package loaded, we can get the full resource schema and use that to generate an appropriate HCL2

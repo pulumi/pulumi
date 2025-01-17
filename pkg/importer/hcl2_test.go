@@ -24,17 +24,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
@@ -335,6 +338,67 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Tests that HCL definitions can be generated even if there is a mismatch in the version of the provider in the
+// snapshot and the version of the provider loaded from the plugin.
+func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	pkg := tokens.Package("aws")
+	requestVersion := "4.37.0"
+	loadVersion := "4.37.1"
+
+	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
+		return &deploytest.Provider{
+			GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+				path := filepath.Join(testdataPath, fmt.Sprintf("%s-%s.json", pkg, loadVersion))
+				data, err := os.ReadFile(path)
+				if err != nil {
+					return plugin.GetSchemaResponse{}, err
+				}
+				return plugin.GetSchemaResponse{
+					Schema: data,
+				}, nil
+			},
+		}, nil
+	})
+
+	host := deploytest.NewPluginHost(nil /*sink*/, nil /*statusSink*/, nil /*languageRuntime*/, pluginLoader)
+	schemaLoader := schema.NewPluginLoader(host)
+
+	state := &resource.State{
+		Type:     "aws:cloudformation/stack:Stack",
+		URN:      "urn:pulumi:stack::project::aws:cloudformation/stack:Stack::Stack",
+		Custom:   true,
+		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
+		Inputs: resource.PropertyMap{
+			"name":         resource.NewStringProperty("foobar"),
+			"templateBody": resource.NewStringProperty("foobar"),
+		},
+	}
+
+	importState := ImportState{
+		Names: nil,
+		Snapshot: []*resource.State{
+			{
+				Type:   "pulumi:providers:aws",
+				ID:     "123",
+				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				Custom: true,
+				Inputs: resource.PropertyMap{
+					"version": resource.NewStringProperty("4.37.0"),
+				},
+			},
+		},
+	}
+
+	// Act.
+	_, _, err := GenerateHCL2Definition(schemaLoader, state, importState)
+
+	// Assert.
+	assert.NoError(t, err)
 }
 
 func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
