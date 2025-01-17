@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -30,8 +31,10 @@ import (
 
 	"github.com/blang/semver"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -234,6 +237,18 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		return fmt.Errorf("error executing node package manager command %s: %w", addCmd.String(), err)
 	}
 
+	return printNodeJsImportInstructions(os.Stdout, pkg, options)
+}
+
+// printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
+func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]interface{}) error {
+	var importName string
+	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+		importName = info.PackageName
+	} else {
+		importName = cgstrings.Camel(pkg.Name)
+	}
+
 	useTypescript := true
 	if typescript, ok := options["typescript"]; ok {
 		if val, ok := typescript.(bool); ok {
@@ -241,15 +256,15 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		}
 	}
 	if useTypescript {
-		fmt.Println("You can then import the SDK in your TypeScript code with:")
-		fmt.Println()
-		fmt.Printf("  import * as %s from \"%s\";\n", pkg.Name, pkg.Name)
+		fmt.Fprintln(w, "You can then import the SDK in your TypeScript code with:")
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "  import * as %s from \"@pulumi/%s\";\n", importName, pkg.Name)
 	} else {
-		fmt.Println("You can then import the SDK in your Javascript code with:")
-		fmt.Println()
-		fmt.Printf("  const %s = require(\"%s\");\n", pkg.Name, pkg.Name)
+		fmt.Fprintln(w, "You can then import the SDK in your Javascript code with:")
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "  const %s = require(\"@pulumi/%s\");\n", importName, pkg.Name)
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 	return nil
 }
 
