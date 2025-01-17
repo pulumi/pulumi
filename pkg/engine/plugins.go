@@ -252,6 +252,7 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
+	defer lang.Close()
 	pkgs, err := lang.GetRequiredPackages(info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover package requirements: %w", err)

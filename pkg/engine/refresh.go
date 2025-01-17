@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -82,7 +83,7 @@ func newRefreshSource(
 	// we'll populate an empty set of program plugins.
 
 	var programPackages PackageSet
-	if plugctx.Root != "" {
+	if plugctx.Root != "" && opts.ExecKind != constant.ExecKindAutoInline {
 		runtime := proj.Runtime.Name()
 		programInfo := plugin.NewProgramInfo(
 			/* rootDirectory */ plugctx.Root,

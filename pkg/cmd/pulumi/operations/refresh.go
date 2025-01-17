@@ -288,6 +288,7 @@ func NewRefreshCmd() *cobra.Command {
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Targets:                   deploy.NewUrnTargets(targetUrns),
 				Experimental:              env.Experimental.Value(),
+				ExecKind:                  execKind,
 			}
 
 			changes, err := s.Refresh(ctx, backend.UpdateOperation{

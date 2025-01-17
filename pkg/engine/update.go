@@ -178,6 +178,9 @@ type UpdateOptions struct {
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+
+	// The execution kind of the operation.
+	ExecKind string
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
