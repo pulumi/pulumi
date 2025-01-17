@@ -91,3 +91,109 @@ func TestConfigSet(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // changes global ConfigFile variable
+func TestConfigSetTypes(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name     string
+		args     []string
+		expected string
+		typ      string
+		path     bool
+	}{
+		{
+			name:     "toplevel bool",
+			args:     []string{"testProject:test", "true"},
+			typ:      "bool",
+			expected: "config:\n  testProject:test: true\n",
+		},
+		{
+			name:     "toplevel int",
+			args:     []string{"testProject:test", "123"},
+			typ:      "int",
+			expected: "config:\n  testProject:test: 123\n",
+		},
+		{
+			name:     "toplevel float",
+			args:     []string{"testProject:test", "123.456"},
+			typ:      "float",
+			expected: "config:\n  testProject:test: 123.456\n",
+		},
+		{
+			name:     "toplevel string",
+			args:     []string{"testProject:test", "123"},
+			typ:      "string",
+			expected: "config:\n  testProject:test: \"123\"\n",
+		},
+		{
+			name:     "path'd bool",
+			args:     []string{"testProject:test[0]", "true"},
+			typ:      "bool",
+			expected: "config:\n  testProject:test:\n    - true\n",
+			path:     true,
+		},
+		{
+			name:     "path'd int",
+			args:     []string{"testProject:test[0]", "123"},
+			typ:      "int",
+			expected: "config:\n  testProject:test:\n    - 123\n",
+			path:     true,
+		},
+		{
+			name:     "path'd float",
+			args:     []string{"testProject:test[0]", "123.456"},
+			typ:      "float",
+			expected: "config:\n  testProject:test:\n    - 123.456\n",
+			path:     true,
+		},
+		{
+			name:     "path'd string",
+			args:     []string{"testProject:test[0]", "123"},
+			typ:      "string",
+			expected: "config:\n  testProject:test:\n    - \"123\"\n",
+			path:     true,
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run("", func(t *testing.T) {
+			project := workspace.Project{
+				Name: "testProject",
+			}
+
+			s := backend.MockStack{
+				RefF: func() backend.StackReference {
+					return &backend.MockStackReference{
+						NameV: tokens.MustParseStackName("testStack"),
+					}
+				},
+			}
+
+			configSetCmd := &configSetCmd{
+				Path: c.path,
+				Type: c.typ,
+				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
+				},
+			}
+
+			tmpdir := t.TempDir()
+			stack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+			defer func() {
+				stack.ConfigFile = ""
+			}()
+
+			err := configSetCmd.Run(ctx, c.args, &project, &s)
+			require.NoError(t, err)
+
+			// verify the config was set
+			data, err := os.ReadFile(stack.ConfigFile)
+			require.NoError(t, err)
+
+			require.Equal(t, c.expected, string(data))
+		})
+	}
+}

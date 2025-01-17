@@ -559,6 +559,7 @@ type configSetCmd struct {
 	Plaintext bool
 	Secret    bool
 	Path      bool
+	Type      string
 }
 
 func newConfigSetCmd(stack *string) *cobra.Command {
@@ -619,6 +620,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	setCmd.PersistentFlags().BoolVar(
 		&configSetCmd.Secret, "secret", false,
 		"Encrypt the value instead of storing it in plaintext")
+	setCmd.PersistentFlags().StringVar(
+		&configSetCmd.Type, "type", "", "Save the value as the given type.  Allowed values are string, bool, int, and float")
+	setCmd.MarkFlagsMutuallyExclusive("secret", "plaintext", "type")
 
 	return setCmd
 }
@@ -684,7 +688,22 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 		v = config.NewSecureValue(enc)
 	} else {
-		v = config.NewValue(value)
+		var t config.Type
+		switch c.Type {
+		case "":
+			t = config.TypeUnknown
+		case "string":
+			t = config.TypeString
+		case "int":
+			t = config.TypeInt
+		case "bool":
+			t = config.TypeBool
+		case "float":
+			t = config.TypeFloat
+		default:
+			return fmt.Errorf("invalid type %q; must be one of string, int, bool, or float", c.Type)
+		}
+		v = config.NewTypedValue(value, t)
 
 		// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
 		if !c.Plaintext && looksLikeSecret(key, value) {
