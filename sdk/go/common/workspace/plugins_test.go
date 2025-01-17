@@ -1958,7 +1958,7 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	gitSource := &gitSource{
 		url:  "https://example.com/repo/test",
 		path: "path",
-		cloneAndCheckout: func(ctx context.Context, url string, hash plumbing.Hash, tmpdir string) error {
+		cloneAndCheckoutRevision: func(ctx context.Context, url string, hash plumbing.Hash, tmpdir string) error {
 			require.Equal(t, "https://example.com/repo/test", url)
 			require.Equal(t, plumbing.NewHash("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), hash)
 			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
