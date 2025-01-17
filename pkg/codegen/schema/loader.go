@@ -202,6 +202,12 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 		})
 }
 
+// LoadPackageReferenceV2 loads a package reference for the given descriptor using the given loader. When a reference is
+// loaded, the name and version of the reference are compared to the requested name and version. If the name or version
+// do not match, a PackageReferenceNameMismatchError or PackageReferenceVersionMismatchError is returned, respectively.
+//
+// In the event that a mismatch error is returned, the reference is still returned. This is to allow for the caller to
+// decide whether or not the mismatch impacts their use of the reference.
 func LoadPackageReferenceV2(
 	ctx context.Context, loader Loader, descriptor *PackageDescriptor,
 ) (PackageReference, error) {
@@ -230,19 +236,94 @@ func LoadPackageReferenceV2(
 		version = &descriptor.Parameterization.Version
 	}
 
-	if name != ref.Name() ||
-		version != nil &&
-			ref.Version() != nil &&
-			!ref.Version().Equals(*version) {
-		if l, ok := loader.(*cachedLoader); ok {
-			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", name, version,
-				l.entries, ref.Name(), ref.Version())
+	if name != ref.Name() {
+		return ref, &PackageReferenceNameMismatchError{
+			RequestedName:    name,
+			RequestedVersion: version,
+			LoadedName:       ref.Name(),
+			LoadedVersion:    ref.Version(),
 		}
-		return nil, fmt.Errorf(
-			"loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), name, version)
+	}
+
+	if version != nil && ref.Version() != nil && !ref.Version().Equals(*version) {
+		err := &PackageReferenceVersionMismatchError{
+			RequestedName:    name,
+			RequestedVersion: version,
+			LoadedName:       ref.Name(),
+			LoadedVersion:    ref.Version(),
+		}
+		if l, ok := loader.(*cachedLoader); ok {
+			err.Message = fmt.Sprintf("entries: %v", l.entries)
+		}
+
+		return ref, err
 	}
 
 	return ref, nil
+}
+
+// PackageReferenceNameMismatchError is the type of errors returned by LoadPackageReferenceV2 when the name of the
+// loaded reference does not match the requested name.
+type PackageReferenceNameMismatchError struct {
+	// The requested . name
+	RequestedName string
+	// The requested version.
+	RequestedVersion *semver.Version
+	// The loaded name.
+	LoadedName string
+	// The loaded version.
+	LoadedVersion *semver.Version
+	// An optional message to be appended to the error's string representation.
+	Message string
+}
+
+func (e *PackageReferenceNameMismatchError) Error() string {
+	if e.Message == "" {
+		return fmt.Sprintf(
+			"loader returned %s@%v; requested %s@%v",
+			e.LoadedName, e.LoadedVersion,
+			e.RequestedName, e.RequestedVersion,
+		)
+	}
+
+	return fmt.Sprintf(
+		"loader returned %s@%v; requested %s@%v (%s)",
+		e.LoadedName, e.LoadedVersion,
+		e.RequestedName, e.RequestedVersion,
+		e.Message,
+	)
+}
+
+// PackageReferenceVersionMismatchError is the type of errors returned by LoadPackageReferenceV2 when the version of the
+// loaded reference does not match the requested version.
+type PackageReferenceVersionMismatchError struct {
+	// The requested name.
+	RequestedName string
+	// The requested version.
+	RequestedVersion *semver.Version
+	// The loaded name.
+	LoadedName string
+	// The loaded version.
+	LoadedVersion *semver.Version
+	// An optional message to be appended to the error's string representation.
+	Message string
+}
+
+func (e *PackageReferenceVersionMismatchError) Error() string {
+	if e.Message == "" {
+		return fmt.Sprintf(
+			"loader returned %s@%v; requested %s@%v",
+			e.LoadedName, e.LoadedVersion,
+			e.RequestedName, e.RequestedVersion,
+		)
+	}
+
+	return fmt.Sprintf(
+		"loader returned %s@%v; requested %s@%v (%s)",
+		e.LoadedName, e.LoadedVersion,
+		e.RequestedName, e.RequestedVersion,
+		e.Message,
+	)
 }
 
 func (l *pluginLoader) loadSchemaBytes(
