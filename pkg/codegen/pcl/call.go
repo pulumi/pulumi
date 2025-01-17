@@ -57,7 +57,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	self := args[0]
 	var selfRes *Resource
 	if objectType, ok := self.Type().(*model.ObjectType); ok {
-		if annotation, ok := model.GetObjectTypeAnnotation[*resourceAnnotation](objectType); ok {
+		if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
 			selfRes = annotation.node
 		}
 	}
