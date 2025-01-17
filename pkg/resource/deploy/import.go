@@ -46,7 +46,8 @@ type Import struct {
 	Protect           bool                        // Whether to mark the resource as protected after import
 	Properties        []string                    // Which properties to include (Defaults to required properties)
 	Parameterization  *workspace.Parameterization // The parameterization to use for the resource, if any.
-	BaseProviderName      string                      // If the provider is parameterized, the base (unparameterized) provider name.
+	// If the provider is parameterized, the base (unparameterized) provider name.
+	BaseProviderName string
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
