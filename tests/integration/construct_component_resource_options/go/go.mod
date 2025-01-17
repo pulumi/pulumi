@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/construct_component_resource_options
 
-go 1.21
+go 1.22
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 

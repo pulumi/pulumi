@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
 
-go 1.21
+go 1.22
 
 replace (
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
