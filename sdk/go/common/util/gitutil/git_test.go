@@ -583,7 +583,7 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 			require.NoError(t, err)
 			defer os.RemoveAll(dir)
 
-			err = GitCloneAndCheckoutRevision(context.Background(), "revision-test.git", c.revision, dir)
+			err = GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
