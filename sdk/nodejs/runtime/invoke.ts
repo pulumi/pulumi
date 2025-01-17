@@ -266,7 +266,8 @@ async function invokeAsync(
         const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
         // Ensure that all resource IDs are known before proceeding.
         for (const dep of expandedDeps.values()) {
-            if (CustomResource.isInstance(dep)) {
+            // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
+            if (CustomResource.isInstance(dep) && dep.id) {
                 const known = await dep.id.isKnown;
                 if (!known) {
                     return {

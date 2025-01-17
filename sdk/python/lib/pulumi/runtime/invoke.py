@@ -257,7 +257,9 @@ def _invoke(
         expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
         # Ensure that all resource IDs are known before proceeding.
         for res in expanded_deps.values():
-            if isinstance(res, CustomResource):
+            # DependencyResources inherit from CustomResource, but they don't
+            # set the id. Skip them.
+            if isinstance(res, CustomResource) and res.__dict__.get("id", None):
                 if not await res.id.is_known():
                     return (
                         InvokeResult(None, is_secret=False, is_known=False),
