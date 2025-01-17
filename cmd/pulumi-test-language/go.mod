@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/cmd/pulumi-test-language
 
 go 1.22
 
-toolchain go1.22.1
-
 replace github.com/pulumi/pulumi/sdk/v3 => ../../sdk
 
 replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg

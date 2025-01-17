@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/tests
 
 go 1.22
 
-toolchain go1.22.1
-
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
