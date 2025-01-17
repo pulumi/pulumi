@@ -22,7 +22,7 @@ import time
 import pulumi
 from pulumi import InvokeOptions, InvokeOutputOptions
 from pulumi.output import UNKNOWN
-from pulumi.resource import Resource
+from pulumi.resource import DependencyResource, Resource
 
 
 def unknown() -> pulumi.Output[Any]:
@@ -157,14 +157,15 @@ async def test_invoke_depends_on_component() -> None:
 
     dep = MockComponentResource(name="c")
     MockResource(name="r", opts=pulumi.ResourceOptions(parent=dep))
+    dep_remote = DependencyResource("some:urn")
 
-    opts = pulumi.InvokeOutputOptions(depends_on=[dep])
+    opts = pulumi.InvokeOutputOptions(depends_on=[dep_remote, dep])
     o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
     v = await o.future()
     assert v == {"result": "mock"}
     deps = await o.resources()
-    assert len(deps) == 1
-    assert deps == {dep}
+    assert len(deps) == 2
+    assert deps == {dep, dep_remote}
 
 
 @pulumi.runtime.test

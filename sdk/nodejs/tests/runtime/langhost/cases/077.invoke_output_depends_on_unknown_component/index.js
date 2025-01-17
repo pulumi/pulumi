@@ -17,6 +17,7 @@ class MyComponent extends pulumi.ComponentResource {
 }
 
 const comp = new MyComponent("comp");
-const dependsOn = [comp];
+const remote = new pulumi.DependencyResource("some:urn");
+const dependsOn = [remote, comp];
 
 pulumi.runtime.invokeOutput("test:index:echo", {}, { dependsOn });
