@@ -365,7 +365,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	}
 	outputType := model.NewObjectType(
 		outputProperties,
-		&resourceAnnotation{node},
+		&ResourceAnnotation{node},
 		&schema.ObjectType{Properties: properties},
 	)
 
@@ -386,10 +386,10 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	return diagnostics
 }
 
-// resourceAnnotation is a type that can be used to annotate ObjectTypes that represent resources with their
+// ResourceAnnotation is a type that can be used to annotate ObjectTypes that represent resources with their
 // corresponding Resource node. We define a wrapper type that does not implement any interfaces so as to reduce the
 // chance of the annotation being plucked out by an interface-type query by accident.
-type resourceAnnotation struct {
+type ResourceAnnotation struct {
 	node *Resource
 }
 
