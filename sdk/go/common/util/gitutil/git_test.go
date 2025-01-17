@@ -617,6 +617,11 @@ func TestGetLatestTagOrHash(t *testing.T) {
 			expected: semver.MustParse("0.1.1"),
 			dataDir:  "testdata/tags.git",
 		},
+		{
+			name:     "alpha version",
+			expected: semver.MustParse("0.1.0-alpha"),
+			dataDir:  "testdata/alpha-tag.git",
+		},
 	}
 	for _, c := range cases {
 		c := c

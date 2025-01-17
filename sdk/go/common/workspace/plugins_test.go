@@ -1987,3 +1987,16 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "a string", string(buf))
 }
+
+func TestGitSourceGetLatestVersion(t *testing.T) {
+	t.Parallel()
+
+	gitSource := &gitSource{
+		url: "testdata/latest-version.git",
+	}
+	version, err := gitSource.GetLatestVersion(context.Background(), func(*http.Request) (io.ReadCloser, int64, error) {
+		panic("should not be called")
+	})
+	require.NoError(t, err)
+	require.Equal(t, semver.MustParse("0.1.1"), *version)
+}
