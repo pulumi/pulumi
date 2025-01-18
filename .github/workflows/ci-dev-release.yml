@@ -181,12 +181,21 @@ jobs:
 
 
   python-dev-sdk-release:
-    needs: [gather-info, build-sdks, sdk-check-release]
+    needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-22.04
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp
@@ -205,9 +214,6 @@ jobs:
               mv -vT "$file" "../../artifacts/sdk-python-${file}"
             done
           )
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Publish python release
         run: |
           find artifacts
