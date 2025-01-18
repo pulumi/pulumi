@@ -197,7 +197,7 @@ func TestListPackages(t *testing.T) {
 			// packages, so we have to exclude pip here.
 			var expectedPackages []string
 			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" || opts.Toolchain == Poetry {
+				if pkg != "pip" {
 					expectedPackages = append(expectedPackages, pkg)
 				}
 			}
@@ -229,7 +229,7 @@ func TestListPackages(t *testing.T) {
 			// packages, so we have to exclude pip here.
 			var expectedPackages []string
 			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" || opts.Toolchain == Poetry {
+				if pkg != "pip" {
 					expectedPackages = append(expectedPackages, pkg)
 				}
 			}
@@ -397,7 +397,7 @@ func writePyprojectForUv(t *testing.T, root string) {
 [project]
 name = "list-packages-test"
 version = "0.0.1"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = []
 `)
 	err = f.Close()
@@ -424,7 +424,7 @@ package-mode = false
 packages = [{include = "test_pulumi_venv"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 `)
 	err = f.Close()
 	require.NoError(t, err)
