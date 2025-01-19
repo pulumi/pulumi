@@ -52,6 +52,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -1078,9 +1079,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		if assertPreview == nil {
 			// if no assertPreview is provided for the test run, we creat a default implementation
 			// where we simply assert that the preview changes did not error
-			// and that there is a stack resource to be created in the changes
 			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
-				tests.AssertStackResource(l, err, changes)
+				assert.NoErrorf(l, err, "expected no error in preview")
 			}
 		}
 

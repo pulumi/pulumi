@@ -239,7 +239,9 @@ func (h *L2DestroyLanguageHost) Run(
 		}
 	}
 
-	h.currentRun++
+	if !req.DryRun {
+		h.currentRun++
+	}
 
 	return &pulumirpc.RunResponse{}, nil
 }
