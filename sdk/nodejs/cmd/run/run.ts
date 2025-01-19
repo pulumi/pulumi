@@ -251,7 +251,7 @@ export async function run(
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
     const defaultTsConfigPath = "tsconfig.json";
-    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
+    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ? path.resolve(process.env["PULUMI_NODEJS_TSCONFIG_PATH"]) : defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
     span.setAttribute("typescript-enabled", typeScript);
