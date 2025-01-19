@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -1062,7 +1063,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			Decrypter: dec,
 		}
 
-		changes, res := s.Update(ctx, backend.UpdateOperation{
+		updateOperation := backend.UpdateOperation{
 			Proj:               project,
 			Root:               projectDir,
 			Opts:               opts,
@@ -1071,7 +1072,36 @@ func (eng *languageTestServer) RunLanguageTest(
 			SecretsManager:     sm,
 			SecretsProvider:    b64secrets.Base64SecretsProvider,
 			Scopes:             backend.CancellationScopes,
+		}
+
+		assertPreview := run.AssertPreview
+		if assertPreview == nil {
+			// if no assertPreview is provided for the test run, we creat a default implementation
+			// where we simply assert that the preview changes did not error
+			// and that there is a stack resource to be created in the changes
+			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
+				tests.AssertStackResource(l, err, changes)
+			}
+		}
+
+		// Perform a preview on the stack
+		plan, previewChanges, res := s.Preview(ctx, updateOperation, nil)
+
+		// assert preview results
+		previewResult := tests.WithL(func(l *tests.L) {
+			assertPreview(l, projectDir, res, plan, previewChanges)
 		})
+
+		if previewResult.Failed {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  !previewResult.Failed,
+				Messages: previewResult.Messages,
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+			}, nil
+		}
+
+		changes, res := s.Update(ctx, updateOperation)
 
 		var snap *deploy.Snapshot
 		if res == nil {

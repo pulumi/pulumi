@@ -235,6 +235,8 @@ type TestRun struct {
 	Main string
 	// TODO: This should just return "string", if == "" then ok, else fail
 	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges)
+	// Assert resource changes during preview runs.
+	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges)
 	// updateOptions can be used to set the update options for the engine.
 	UpdateOptions engine.UpdateOptions
 }
