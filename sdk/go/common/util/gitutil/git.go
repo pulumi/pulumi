@@ -456,6 +456,38 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	})
 }
 
+// GitCloneAndCheckoutRevision clones a Git repository, resolves the revision and checks it out.
+func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumbing.Revision, path string) error {
+	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, revision, path)
+
+	u, auth, err := parseAuthURL(url)
+	if err != nil {
+		return err
+	}
+	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
+		URL:  u,
+		Auth: auth,
+	})
+	if err != nil {
+		return err
+	}
+
+	hash, err := repo.ResolveRevision(revision)
+	if err != nil {
+		return err
+	}
+
+	w, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	return w.Checkout(&git.CheckoutOptions{
+		Hash:  *hash,
+		Force: true,
+	})
+}
+
 // GitCloneOrPull pulls the repo located at rawurl into the directory specified by path.  If the repo already
 // exists, it will be updated to referenceName, otherwise it will be cloned, and referenceName will be checked
 // out. If shallow is true, a shallow clone will be performed.

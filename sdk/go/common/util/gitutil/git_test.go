@@ -15,6 +15,7 @@
 package gitutil
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/assert"
@@ -533,4 +535,65 @@ func TestParseAuthURL(t *testing.T) {
 		assert.ErrorContains(t, err, "SSH_AUTH_SOCK not-specified")
 		assert.Nil(t, auth)
 	})
+}
+
+func TestGitCloneAndCheckoutRevision(t *testing.T) {
+	t.Parallel()
+
+	// Check that we can clone a repository and checkout a
+	// specific revision.  We use a test repository that contains
+	// a single file, "test".  It has two revisions, the initial
+	// commit, where the file contains "initial", and the HEAD
+	// commit, where the file contains "HEAD".  So just cloning
+	// the repo should result in "HEAD", while checking out the
+	// initial commit should result in "initial".
+	cases := []struct {
+		name            string
+		revision        plumbing.Revision
+		expectedContent string
+		expectedError   string
+	}{
+		{
+			name:            "full-hash",
+			revision:        plumbing.Revision("c9bcda983f3078cf622b02acc625f6a2127f4e0a"),
+			expectedContent: "initial\n",
+		},
+		{
+			name:            "short-hash",
+			revision:        plumbing.Revision("c9bcda"),
+			expectedContent: "initial\n",
+		},
+		{
+			name:            "full-hash",
+			revision:        plumbing.Revision("HEAD"),
+			expectedContent: "HEAD\n",
+		},
+		{
+			name:          "unknown-revision",
+			revision:      plumbing.Revision("deadbeef"),
+			expectedError: "reference not found",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir, err := os.MkdirTemp("", "pulumi-git-test")
+			require.NoError(t, err)
+			defer os.RemoveAll(dir)
+
+			err = GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			if c.expectedError != "" {
+				require.ErrorContains(t, err, c.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			content, err := os.ReadFile(filepath.Join(dir, "test"))
+			if err != nil {
+				panic(err)
+			}
+			assert.Equal(t, c.expectedContent, string(content))
+		})
+	}
 }

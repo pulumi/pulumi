@@ -360,7 +360,7 @@ type gitSource struct {
 	path string
 
 	// function to clone and checkout the repo.  Used so gitutil.GitCloneAndCheckoutCommit can be mocked in tests.
-	cloneAndCheckout func(context.Context, string, plumbing.Hash, string) error
+	cloneAndCheckoutRevision func(context.Context, string, plumbing.Revision, string) error
 	// function to clone or pull the repo.  Used so gitutil.GitCloneOrPull can be mocked in tests.
 	cloneOrPull func(context.Context, string, plumbing.ReferenceName, string, bool) error
 }
@@ -378,10 +378,10 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 			errors.New("cannot install git plugin from subdirectory.  See https://github.com/pulumi/pulumi/issues/18250")
 	}
 	return &gitSource{
-		url:              u,
-		path:             path,
-		cloneAndCheckout: gitutil.GitCloneAndCheckoutCommit,
-		cloneOrPull:      gitutil.GitCloneOrPull,
+		url:                      u,
+		path:                     path,
+		cloneAndCheckoutRevision: gitutil.GitCloneAndCheckoutRevision,
+		cloneOrPull:              gitutil.GitCloneOrPull,
 	}, nil
 }
 
@@ -411,9 +411,10 @@ func (source *gitSource) Download(
 			return nil, -1, fmt.Errorf("invalid version %s", version)
 		}
 		// The version string is prefixed with a 'x' character because Pre-versions can't
-		// start with a 0. Strip that off to get the actual hash.
-		hash := plumbing.NewHash(version.Pre[0].VersionStr[1:])
-		err := source.cloneAndCheckout(ctx, source.url, hash, tmpdir)
+		// start with a 0. Strip that off to get the actual hash.  Note that we allow short
+		// hashes, so we need to create a go-git revision that's then resolved to a full hash.
+		revision := plumbing.Revision(version.Pre[0].VersionStr[1:])
+		err := source.cloneAndCheckoutRevision(ctx, source.url, revision, tmpdir)
 		if err != nil {
 			return nil, -1, err
 		}
@@ -1052,7 +1053,7 @@ func NewPluginSpec(
 			version = &v
 		} else {
 			// Allow sha1 and sha256 hashes.
-			gitCommitRegex := regexp.MustCompile(`^[0-9a-fA-F]{40,64}$`)
+			gitCommitRegex := regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
 			if !gitCommitRegex.MatchString(versionStr) {
 				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
 			}

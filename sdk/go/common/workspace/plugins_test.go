@@ -1792,9 +1792,9 @@ func TestNewPluginSpec(t *testing.T) {
 		},
 		{
 			name:   "git plugin with invalid version hash",
-			source: "github.com/pulumi/pulumi-example@abcd",
+			source: "github.com/pulumi/pulumi-example@abcdxyz",
 			kind:   apitype.ResourcePlugin,
-			Error:  errors.New("VERSION must be valid semver or git commit hash: abcd"),
+			Error:  errors.New("VERSION must be valid semver or git commit hash: abcdxyz"),
 		},
 		{
 			name:   "local plugin",
@@ -1958,9 +1958,9 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	gitSource := &gitSource{
 		url:  "https://example.com/repo/test",
 		path: "path",
-		cloneAndCheckout: func(ctx context.Context, url string, hash plumbing.Hash, tmpdir string) error {
+		cloneAndCheckoutRevision: func(ctx context.Context, url string, revision plumbing.Revision, tmpdir string) error {
 			require.Equal(t, "https://example.com/repo/test", url)
-			require.Equal(t, plumbing.NewHash("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), hash)
+			require.Equal(t, plumbing.Revision("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), revision)
 			err := os.MkdirAll(filepath.Join(tmpdir, "path"), 0o700)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(tmpdir, filepath.Join("path", "test")), []byte("a string"), 0o600)
