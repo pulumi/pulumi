@@ -153,7 +153,7 @@ def invoke_output(
     async def do_invoke_output() -> None:
         try:
             invoke_result = await _invoke(
-                tok, props, opts, typ, package_ref=package_ref
+                tok, props, opts, typ, package_ref=package_ref, check_dependencies=True
             )
 
             resolve_value.set_result(
@@ -196,6 +196,7 @@ def _invoke(
     opts: Optional[Union[InvokeOptions, InvokeOutputOptions]],
     typ: Optional[type],
     package_ref: Optional[Awaitable[Optional[str]]],
+    check_dependencies: Optional[bool] = False,
 ) -> Awaitable[InvokeResult]:
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
@@ -243,28 +244,35 @@ def _invoke(
         )
 
         # The direct dependencies of the invoke.
-        depends_on_dependencies: Set["Resource"] = await _resolve_depends_on(
-            opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
-        )
-        # If we depend on any CustomResources, we need to ensure that their
-        # ID is known before proceeding. If it is not known, we will return
-        # an unknown result.
-        resources_to_wait_for: Set["Resource"] = set(depends_on_dependencies)
-        # Add the dependencies from the inputs to the set of resources to wait for.
-        for deps in property_dependencies.values():
-            resources_to_wait_for = resources_to_wait_for.union(deps)
-        # The expanded set of dependencies, including children of components.
-        expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
-        # Ensure that all resource IDs are known before proceeding.
-        for res in expanded_deps.values():
-            # DependencyResources inherit from CustomResource, but they don't
-            # set the id. Skip them.
-            if isinstance(res, CustomResource) and res.__dict__.get("id", None):
-                if not await res.id.is_known():
-                    return (
-                        InvokeResult(None, is_secret=False, is_known=False),
-                        None,
-                    )
+        depends_on_dependencies: Set["Resource"] = set()
+        # Only check the resource dependencies for output form invokes. For
+        # plain invokes, we do not want to check the dependencies. Technically,
+        # these should only receive plain arguments, but this is not strictly
+        # enforced, and in practice people pass in outputs. This happens to work
+        # because we serialize the arguments.
+        if check_dependencies:
+            depends_on_dependencies = await _resolve_depends_on(
+                opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
+            )
+            # If we depend on any CustomResources, we need to ensure that their
+            # ID is known before proceeding. If it is not known, we will return
+            # an unknown result.
+            resources_to_wait_for: Set["Resource"] = set(depends_on_dependencies)
+            # Add the dependencies from the inputs to the set of resources to wait for.
+            for deps in property_dependencies.values():
+                resources_to_wait_for = resources_to_wait_for.union(deps)
+            # The expanded set of dependencies, including children of components.
+            expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
+            # Ensure that all resource IDs are known before proceeding.
+            for res in expanded_deps.values():
+                # DependencyResources inherit from CustomResource, but they don't
+                # set the id. Skip them.
+                if isinstance(res, CustomResource) and res.__dict__.get("id", None):
+                    if not await res.id.is_known():
+                        return (
+                            InvokeResult(None, is_secret=False, is_known=False),
+                            None,
+                        )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""

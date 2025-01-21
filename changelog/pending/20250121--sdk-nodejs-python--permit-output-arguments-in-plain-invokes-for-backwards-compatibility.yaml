@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs,python
+  description: Permit output arguments in plain invokes for backwards compatibility
