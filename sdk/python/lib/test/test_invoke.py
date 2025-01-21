@@ -120,6 +120,34 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
 
 
 @pulumi.runtime.test
+def test_invoke_plain_invoke_takes_output_args() -> None:
+    # Plain invoke calls serialize_properties on the arguments, so even though
+    # it is supposed to only take plain values, it still happens to work with
+    # Outputs. In practice, people rely on this behavior, so we test it here to
+    # ensure we don't break it this behavior.
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    # Construct an argument that depends on an unknown resource.
+    dep = MockResource(name="dep")
+    dep.__dict__["id"] = unknown()
+    arg_value = asyncio.Future[int]()
+    arg_value.set_result(0)
+    is_known = asyncio.Future[bool]()
+    is_known.set_result(True)
+    is_secret = asyncio.Future[bool]()
+    is_secret.set_result(False)
+    arg = pulumi.Output(
+        resources={dep},
+        future=arg_value,
+        is_known=is_known,
+        is_secret=is_secret,
+    )
+
+    result = pulumi.runtime.invoke("test::MyFunction", {"arg": arg})
+    assert result.value == {"result": "mock"}
+
+
+@pulumi.runtime.test
 async def test_invoke_depends_on() -> None:
     pulumi.runtime.mocks.set_mocks(MyMocks())
 
