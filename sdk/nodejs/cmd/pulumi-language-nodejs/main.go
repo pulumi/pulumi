@@ -1081,8 +1081,24 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 	if stdout != nil {
 		fmt.Fprintf(stdout, "Setting Nodejs version to %s\n", version)
 	}
-	// This is a no-op if the version is already installed
-	installCmd := exec.Command("fnm", "install", version, "--progress", "never")
+	// `fnm install` always installs the latest available (upstream) matching
+	// version if the version is not fully specified. For example, `fnm install
+	// 20` will install the latest 20.x.x version, even if an older version of
+	// 20.x.x is locally installed. This leads to unnecessary installations.
+	//
+	// `fnm use --install-if-missing` does what we want, it activates a locally
+	// installed version if possible, and only installs a new version if the
+	// requested version can't be satisfied locally.
+	installCmd := exec.Command("fnm", "use", version, "--install-if-missing")
+	// `fnm use` requires a shell setup for fnm to work correctly. Run the
+	// command in a temporary shell, if we're not setup for fnm. This is
+	// typically the case in container like environments, where we do not run
+	// within a shell. Version switching is managed by setting the default
+	// version of nodejs below.
+	if os.Getenv("FNM_MULTISHELL_PATH") == "" {
+		installCmd = exec.Command("bash", "-c", fmt.Sprintf("eval \"$(fnm env --shell bash)\";"+
+			"fnm use '%s' --install-if-missing", version)) // #nosec G204
+	}
 	out, err := installCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to install Nodejs version: %v: %s", err, out)
