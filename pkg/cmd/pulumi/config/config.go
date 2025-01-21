@@ -569,7 +569,10 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"  - `pulumi config set --path parent.nested value` " +
 			"will set the value of `parent` to a map `nested: value`.\n" +
 			"  - `pulumi config set --path '[\"parent.name\"][\"nested.name\"]' value` will set the value of \n" +
-			"    `parent.name` to a map `nested.name: value`.",
+			"    `parent.name` to a map `nested.name: value`.\n\n" +
+			"When setting the config for a path, \"true\" and \"false\" are treated as boolean values, and\n" +
+			"integers are treated as numbers. All other values are treated as strings.  Top level entries\n" +
+			"are always treated as strings.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
