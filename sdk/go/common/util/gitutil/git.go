@@ -924,16 +924,14 @@ func GetLatestTagOrHash(ctx context.Context, url string) (*semver.Version, error
 				// We didn't see any valid tags yet, use this one.
 				version = v
 				foundVersion = true
-			} else {
-				if isPrerelease(v) == isPrerelease(version) && v.GT(version) {
-					// If either both or neither the current max version and the current tag
-					// are prerelease versions we pick the higher version.
-					version = v
-				} else if isPrerelease(version) && !isPrerelease(v) {
-					// If the currently tracked version is a prerelease version and the current tag
-					// isn't, we use that tag.
-					version = v
-				}
+			} else if isPrerelease(v) == isPrerelease(version) && v.GT(version) {
+				// If either both or neither the current max version and the current tag
+				// are prerelease versions we pick the higher version.
+				version = v
+			} else if isPrerelease(version) && !isPrerelease(v) {
+				// If the currently tracked version is a prerelease version and the current tag
+				// isn't, we use that tag.
+				version = v
 			}
 		} else if name.IsBranch() {
 			namedHashes[name] = ref.Hash()
