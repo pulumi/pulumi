@@ -371,12 +371,6 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	if path != "" {
-		return nil,
-			// TODO[pulumi/pulumi#18250]: We currently don't support installing plugins from subdirectories.
-			//nolint:lll
-			errors.New("cannot install git plugin from subdirectory.  See https://github.com/pulumi/pulumi/issues/18250")
-	}
 	return &gitSource{
 		url:                      u,
 		path:                     path,
@@ -1074,8 +1068,11 @@ func NewPluginSpec(
 // LocalName returns the local name of the plugin, which is used in the directory name.
 func (spec PluginSpec) LocalName() string {
 	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
-		url := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
-		return strings.ReplaceAll(url, "/", "_")
+		url, path, err := gitutil.ParseGitRepoURL(strings.TrimPrefix(spec.PluginDownloadURL, "git://"))
+		if err != nil {
+			return strings.ReplaceAll(spec.PluginDownloadURL, "/", "_")
+		}
+		return filepath.Join(strings.ReplaceAll(url, "/", "_"), path)
 	}
 	return spec.Name
 }
