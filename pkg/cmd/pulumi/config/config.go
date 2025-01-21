@@ -625,6 +625,10 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 	if stdin == nil {
 		stdin = os.Stdin
 	}
+	loadProjectStack := c.LoadProjectStack
+	if loadProjectStack == nil {
+		loadProjectStack = cmdStack.LoadProjectStack
+	}
 	key, err := ParseConfigKey(args[0])
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
@@ -655,7 +659,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := c.LoadProjectStack(project, s)
+	ps, err := loadProjectStack(project, s)
 	if err != nil {
 		return err
 	}
