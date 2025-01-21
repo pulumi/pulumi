@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs,python
-  description: Fix handling of DependencyResource when checking invoke deps
