@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.147.0 (2025-01-21)
+
+
+### Features
+
+- [cli] Update go.mod to require go1.22
+  [#18274](https://github.com/pulumi/pulumi/pull/18274)
+
+- [cli/config] Improve documentation for pulumi config set
+  [#18285](https://github.com/pulumi/pulumi/pull/18285)
+
+- [cli/package] Allow short hashes as versions in package add
+  [#18277](https://github.com/pulumi/pulumi/pull/18277)
+
+- [cli/{package,plugin}] Support getting plugins from remote git sources
+  [#17827](https://github.com/pulumi/pulumi/pull/17827)
+
+
+### Bug Fixes
+
+- [engine] Skip acquiring program packages during refresh when running inline automation programs
+  [#18283](https://github.com/pulumi/pulumi/pull/18283)
+
+- [sdk/nodejs] Avoid unnecessary Node.js installations
+  [#18293](https://github.com/pulumi/pulumi/pull/18293)
+
+- [sdk/{nodejs,python}] Fix handling of DependencyResource when checking invoke deps
+  [#18275](https://github.com/pulumi/pulumi/pull/18275)
+
+- [sdk/{nodejs,python}] Permit output arguments in plain invokes for backwards compatibility
+  [#18304](https://github.com/pulumi/pulumi/pull/18304)
+
+
+### Miscellaneous
+
+- [sdk/python] Manage the publish dependencies in pyproject.toml
+  [#18261](https://github.com/pulumi/pulumi/pull/18261)
+
 ## 3.146.0 (2025-01-15)
 
 

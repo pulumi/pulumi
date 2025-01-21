@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Skip acquiring program packages during refresh when running inline automation programs

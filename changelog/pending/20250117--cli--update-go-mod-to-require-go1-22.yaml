@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Update go.mod to require go1.22
