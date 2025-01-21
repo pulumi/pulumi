@@ -119,7 +119,7 @@ export class StackReference extends CustomResource {
      * {@link StackReferenceOutputDetails} with it.
      *
      * The returned object has its `value` or `secretValue` fields set depending
-     * on wehther the output is a secret. Neither field is set if the output was
+     * on whether the output is a secret. Neither field is set if the output was
      * not found.
      *
      * @param name
