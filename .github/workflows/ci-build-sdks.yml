@@ -51,7 +51,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
