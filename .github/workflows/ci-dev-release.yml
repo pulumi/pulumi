@@ -192,7 +192,7 @@ jobs:
         with:
           python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock

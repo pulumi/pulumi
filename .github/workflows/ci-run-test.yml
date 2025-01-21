@@ -188,7 +188,7 @@ jobs:
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
