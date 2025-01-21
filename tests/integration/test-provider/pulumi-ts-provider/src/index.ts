@@ -1,0 +1,1 @@
+export {componentProviderHost} from './provider';
