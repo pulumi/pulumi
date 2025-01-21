@@ -552,10 +552,17 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 	return refreshCmd
 }
 
+type configSetCmd struct {
+	Stdin            *os.File
+	LoadProjectStack func(*workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
+
+	Plaintext bool
+	Secret    bool
+	Path      bool
+}
+
 func newConfigSetCmd(stack *string) *cobra.Command {
-	var plaintext bool
-	var secret bool
-	var path bool
+	configSetCmd := &configSetCmd{}
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
@@ -596,88 +603,96 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			key, err := ParseConfigKey(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid configuration key: %w", err)
-			}
-
-			var value string
-			switch {
-			case len(args) == 2:
-				value = args[1]
-			//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
-			case !term.IsTerminal(int(os.Stdin.Fd())):
-				b, readerr := io.ReadAll(os.Stdin)
-				if readerr != nil {
-					return readerr
-				}
-				value = cmdutil.RemoveTrailingNewline(string(b))
-			case !cmdutil.Interactive():
-				return errors.New("config value must be specified in non-interactive mode")
-			case secret:
-				value, err = cmdutil.ReadConsoleNoEcho("value")
-				if err != nil {
-					return err
-				}
-			default:
-				value, err = cmdutil.ReadConsole("value")
-				if err != nil {
-					return err
-				}
-			}
-
-			ps, err := cmdStack.LoadProjectStack(project, s)
-			if err != nil {
-				return err
-			}
-
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-
-			// Encrypt the config value if needed.
-			var v config.Value
-			if secret {
-				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-				// config data.
-				c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
-				if cerr != nil {
-					return cerr
-				}
-				enc, eerr := c.EncryptValue(ctx, value)
-				if eerr != nil {
-					return eerr
-				}
-				v = config.NewSecureValue(enc)
-			} else {
-				v = config.NewValue(value)
-
-				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-				if !plaintext && looksLikeSecret(key, value) {
-					return fmt.Errorf("config value for '%s' looks like a secret; "+
-						"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
-						key)
-				}
-			}
-
-			err = ps.Config.Set(key, v, path)
-			if err != nil {
-				return err
-			}
-
-			return cmdStack.SaveProjectStack(s, ps)
+			return configSetCmd.Run(ctx, args, project, s)
 		}),
 	}
 
 	setCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
+		&configSetCmd.Path, "path", false,
 		"The key contains a path to a property in a map or list to set")
 	setCmd.PersistentFlags().BoolVar(
-		&plaintext, "plaintext", false,
+		&configSetCmd.Plaintext, "plaintext", false,
 		"Save the value as plaintext (unencrypted)")
 	setCmd.PersistentFlags().BoolVar(
-		&secret, "secret", false,
+		&configSetCmd.Secret, "secret", false,
 		"Encrypt the value instead of storing it in plaintext")
 
 	return setCmd
+}
+
+func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspace.Project, s backend.Stack) error {
+	stdin := c.Stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	key, err := ParseConfigKey(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid configuration key: %w", err)
+	}
+
+	var value string
+	switch {
+	case len(args) == 2:
+		value = args[1]
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
+	case !term.IsTerminal(int(stdin.Fd())):
+		b, readerr := io.ReadAll(stdin)
+		if readerr != nil {
+			return readerr
+		}
+		value = cmdutil.RemoveTrailingNewline(string(b))
+	case !cmdutil.Interactive():
+		return errors.New("config value must be specified in non-interactive mode")
+	case c.Secret:
+		value, err = cmdutil.ReadConsoleNoEcho("value")
+		if err != nil {
+			return err
+		}
+	default:
+		value, err = cmdutil.ReadConsole("value")
+		if err != nil {
+			return err
+		}
+	}
+
+	ps, err := c.LoadProjectStack(project, s)
+	if err != nil {
+		return err
+	}
+
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+
+	// Encrypt the config value if needed.
+	var v config.Value
+	if c.Secret {
+		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
+		// config data.
+		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
+		if cerr != nil {
+			return cerr
+		}
+		enc, eerr := c.EncryptValue(ctx, value)
+		if eerr != nil {
+			return eerr
+		}
+		v = config.NewSecureValue(enc)
+	} else {
+		v = config.NewValue(value)
+
+		// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
+		if !c.Plaintext && looksLikeSecret(key, value) {
+			return fmt.Errorf("config value for '%s' looks like a secret; "+
+				"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+				key)
+		}
+	}
+
+	err = ps.Config.Set(key, v, c.Path)
+	if err != nil {
+		return fmt.Errorf("could not set config: %g", err)
+	}
+
+	return cmdStack.SaveProjectStack(s, ps)
 }
 
 func newConfigSetAllCmd(stack *string) *cobra.Command {
