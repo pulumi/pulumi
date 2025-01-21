@@ -471,16 +471,19 @@ to lose information:
 A `ResourceReference` represents a reference to a [resource](resource). Resource
 references most commonly appear in the context of [component
 providers](component-providers), where it is often useful for a component to be
-able to return references to its child components in its outputs. Moreover, it
-is useful to be able to rehydrate these references into bonafide strongly-typed
-resources upon deserialization. To this end, a resource reference contains both
-a [URN](urns) and, in the case that the resource is not a
-[component](component-resources), an [ID](resource-ids) and the version of the
-[provider](providers) that manages the resource. While in principle a URN is
-sufficient for the purposes of uniquely identifying a resource, including the ID
-and provider version means that the engine does not have to query state to enact
-several common operations, such as passing an ID to a downstream SDK or provider
-that does not understand full resource references. The provider version in
-particular allows deserialization to ensure that the correct version of the
-relevant SDK is used to rehydrate the referenced resource; this is necessary as
-resource shapes may change between SDK versions.
+able to accept references to other resources, or to return references to its
+child components in its outputs. In order to support the rehydration of these
+references into bonafide strongly-typed resources upon deserialization, a
+resource reference contains both a [URN](urns) and, in the case that the
+resource is not a [component](component-resources), an [ID](resource-ids) and
+the version of the [provider](providers) that manages the resource. While in
+principle a URN is sufficient for the purposes of uniquely identifying a
+resource, including the ID and provider version means that the engine does not
+have to query state to enact several common operations, such as passing an ID to
+a downstream SDK or provider that does not understand full resource references.
+The provider version in particular allows deserialization to ensure that the
+correct version of the relevant SDK is used to rehydrate the referenced
+resource; this is necessary as resource shapes may change between SDK versions.
+
+Resource references are hydrated using the [built-in
+provider](built-in-provider)'s `getResource` invoke.
