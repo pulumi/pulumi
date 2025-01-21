@@ -390,7 +390,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 // corresponding Resource node. We define a wrapper type that does not implement any interfaces so as to reduce the
 // chance of the annotation being plucked out by an interface-type query by accident.
 type ResourceAnnotation struct {
-	node *Resource
+	Node *Resource
 }
 
 type resourceScopes struct {
