@@ -69,6 +69,7 @@ their implementation:
 :maxdepth: 1
 :titlesonly:
 
+/docs/architecture/providers/built-in
 /docs/architecture/providers/default
 /docs/architecture/providers/components
 /docs/architecture/providers/dynamic
