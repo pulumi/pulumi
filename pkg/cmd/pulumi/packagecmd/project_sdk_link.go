@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -280,7 +281,7 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		return err
 	}
 
-	modifyRequirements := func() error {
+	modifyRequirements := func(virtualenv string) error {
 		fPath := filepath.Join(root, "requirements.txt")
 		fBytes, err := os.ReadFile(fPath)
 		if err != nil {
@@ -293,15 +294,14 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			return fmt.Errorf("could not write requirments: %w", err)
 		}
 
-		//nolint:gosec // This input is controlled by the program.
-		cmd := exec.Command(
-			"python3",
-			"-m",
-			"pip",
-			"install",
-			"-r",
-			filepath.Join(root, "requirements.txt"),
-		)
+		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+			Root:       root,
+			Virtualenv: virtualenv,
+		})
+		cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
+		if err != nil {
+			return fmt.Errorf("error resolving toolchain: %w", err)
+		}
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		err = cmd.Run()
@@ -317,8 +317,16 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			var depAddCmd *exec.Cmd
 			switch tc {
 			case "pip":
-				if err := modifyRequirements(); err != nil {
-					return err
+				virtualenv, ok := options["virtualenv"]
+				if !ok {
+					return fmt.Errorf("virtualenv option is required")
+				}
+				if virtualenv, ok := virtualenv.(string); ok {
+					if err := modifyRequirements(virtualenv); err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("virtualenv option must be a string, got %T", virtualenv)
 				}
 			case "poetry":
 				depAddCmd = exec.Command("poetry", "add", packageSpecifier)
@@ -341,7 +349,7 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		}
 	} else {
 		// Assume pip if no packagemanager is specified
-		if err := modifyRequirements(); err != nil {
+		if err := modifyRequirements(""); err != nil {
 			return err
 		}
 	}
