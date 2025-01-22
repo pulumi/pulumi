@@ -339,3 +339,77 @@ func TestLoadVersionMismatch(t *testing.T) {
 	require.Equal(t, ref.Name(), expectedErr.LoadedName)
 	require.Equal(t, ref.Version(), expectedErr.LoadedVersion)
 }
+
+// Tests that when parameterization changes the version, the package still loads without error.
+func TestLoadVersionChangesWithParameterizationSchema(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	pkg := "aws"
+	currentVersion := semver.MustParse("3.0.0")
+
+	provider := &plugin.MockProvider{
+		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			assert.Equal(t, &plugin.ParameterizeValue{
+				Name:    "aws",
+				Version: semver.MustParse("7.0.0"),
+				Value:   []byte("testdata"),
+			}, req.Parameters)
+
+			currentVersion = semver.MustParse("7.0.0")
+
+			return plugin.ParameterizeResponse{
+				Name:    "aws",
+				Version: semver.MustParse("7.0.0"),
+			}, nil
+		},
+		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+			schema := PackageSpec{
+				Name:    pkg,
+				Version: currentVersion.String(),
+			}
+
+			data, err := json.Marshal(schema)
+			if err != nil {
+				return plugin.GetSchemaResponse{}, err
+			}
+
+			return plugin.GetSchemaResponse{
+				Schema: data,
+			}, nil
+		},
+	}
+
+	host := &plugin.MockHost{
+		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+			return provider, nil
+		},
+		ResolvePluginF: func(apitype.PluginKind, string, *semver.Version) (*workspace.PluginInfo, error) {
+			return &workspace.PluginInfo{
+				Name:    pkg,
+				Kind:    apitype.ResourcePlugin,
+				Version: &currentVersion,
+			}, nil
+		},
+	}
+
+	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+		disableEntryCache: true,
+		disableMmap:       true,
+		disableFileCache:  true,
+	})
+
+	// Act.
+	requestVersion := semver.MustParse("7.0.0")
+	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
+		Name:    pkg,
+		Version: &requestVersion,
+	})
+
+	// Assert.
+	require.NotNil(t, ref)
+	require.NoError(t, err)
+
+	require.Equal(t, pkg, ref.Name())
+	require.Equal(t, &requestVersion, ref.Version())
+}
