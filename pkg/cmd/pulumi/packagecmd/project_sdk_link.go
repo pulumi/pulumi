@@ -298,9 +298,12 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			Root:       root,
 			Virtualenv: virtualenv,
 		})
-		cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
 		if err != nil {
 			return fmt.Errorf("error resolving toolchain: %w", err)
+		}
+		cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
+		if err != nil {
+			return fmt.Errorf("error preparing pip install command: %w", err)
 		}
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
@@ -319,14 +322,14 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			case "pip":
 				virtualenv, ok := options["virtualenv"]
 				if !ok {
-					return fmt.Errorf("virtualenv option is required")
+					return errors.New("virtualenv option is required")
 				}
 				if virtualenv, ok := virtualenv.(string); ok {
 					if err := modifyRequirements(virtualenv); err != nil {
 						return err
 					}
 				} else {
-					return fmt.Errorf("virtualenv option must be a string, got %T", virtualenv)
+					return errors.New("virtualenv option must be a string")
 				}
 			case "poetry":
 				depAddCmd = exec.Command("poetry", "add", packageSpecifier)
