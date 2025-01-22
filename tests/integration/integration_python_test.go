@@ -1536,6 +1536,29 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
 	assert.NoError(t, err)
 	assert.Contains(t, string(b), "sdks/supabase")
+
+	// Check that `supabase` was installed
+	type dependency struct {
+		Name    string
+		Version string
+	}
+	type about struct {
+		Dependencies []dependency
+	}
+	e.CWD = filepath.Join(e.CWD, "pydir")
+	out, _ := e.RunCommand("pulumi", "about", "--json")
+	e.CWD = e.RootPath
+	a := about{}
+	err = json.Unmarshal([]byte(out), &a)
+	assert.NoError(t, err)
+	found := false
+	for _, dep := range a.Dependencies {
+		if dep.Name == "pulumi_supabase" {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "pulumi_subabase should be installed")
 }
 
 func TestConfigGetterOverloads(t *testing.T) {
