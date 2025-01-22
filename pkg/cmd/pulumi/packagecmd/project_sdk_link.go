@@ -301,6 +301,12 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		if err != nil {
 			return fmt.Errorf("error resolving toolchain: %w", err)
 		}
+		if virtualenv != "" {
+			if err := tc.EnsureVenv(context.TODO(), root, false, /* useLanguageVersionTools */
+				true /*showOutput*/, os.Stdout, os.Stderr); err != nil {
+				return fmt.Errorf("error ensuring virtualenv is setup: %w", err)
+			}
+		}
 		cmd, err := tc.ModuleCommand(context.TODO(), "pip", "install", "-r", fPath)
 		if err != nil {
 			return fmt.Errorf("error preparing pip install command: %w", err)
