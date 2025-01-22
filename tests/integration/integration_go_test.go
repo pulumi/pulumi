@@ -1299,7 +1299,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.6.0")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))

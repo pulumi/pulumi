@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -564,37 +563,22 @@ func generateAndLinkSdksForPackages(
 
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 
-		err = func() error {
-			// If we don't change the working directory, the workspace instance (when
-			// reading project etc) will not be correct when doing the local sdk
-			// linking, causing errors.
-			//
-			// We must also remember to call returnToStartingDir() to change back to
-			// the original directory after every iteration of the loop and before
-			// returning.
-			//
-			// func for scope defer
-			returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
-			if err != nil {
-				return fmt.Errorf("could not change to output directory: %w", err)
-			}
-			defer returnToStartingDir()
-
-			_, _, err = ws.ReadProject()
-			if err != nil {
-				return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
-			}
-
-			sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-			err = packagecmd.LinkPackage(ws, language, "./", pkgSchema, sdkRelPath)
-			if err != nil {
-				return fmt.Errorf("failed to link SDK to project: %w", err)
-			}
-
-			return nil
-		}()
+		subpackageWorkspacePath, err := workspace.DetectProjectPathFrom(convertOutputDirectory)
 		if err != nil {
-			return err
+			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
+		}
+		if subpackageWorkspacePath != convertOutputDirectory {
+			return fmt.Errorf("generated root is not a valid pulumi workspace %q", convertOutputDirectory)
+		}
+		subProject, err := workspace.LoadProject(subpackageWorkspacePath)
+		if err != nil {
+			return fmt.Errorf("generated root is not a valid pulumi project %q: %w", convertOutputDirectory, err)
+		}
+
+		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
+		err = packagecmd.LinkPackage(subProject, language, convertOutputDirectory, pkgSchema, sdkRelPath)
+		if err != nil {
+			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
 	}
 

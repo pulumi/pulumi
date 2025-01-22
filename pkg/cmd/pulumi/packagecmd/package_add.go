@@ -115,7 +115,7 @@ extension, Pulumi package schema is read from it directly:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			return LinkPackage(ws, language, root, pkg, out)
+			return LinkPackage(proj, language, root, pkg, out)
 		}),
 	}
 

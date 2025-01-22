@@ -177,13 +177,13 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 // LinkPackage links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(
-	ws pkgWorkspace.Context, language string, root string, pkg *schema.Package, out string,
+	proj *workspace.Project, language string, root string, pkg *schema.Package, out string,
 ) error {
 	switch language {
 	case "nodejs":
-		return linkNodeJsPackage(ws, root, pkg, out)
+		return linkNodeJsPackage(proj, root, pkg, out)
 	case "python":
-		return linkPythonPackage(ws, root, pkg, out)
+		return linkPythonPackage(proj, root, pkg, out)
 	case "go":
 		return linkGoPackage(root, pkg, out)
 	case "dotnet":
@@ -197,12 +197,8 @@ func LinkPackage(
 }
 
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
-func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
+func linkNodeJsPackage(proj *workspace.Project, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
-	proj, _, err := ws.ReadProject()
-	if err != nil {
-		return err
-	}
 	relOut, err := filepath.Rel(root, out)
 	if err != nil {
 		return err
@@ -269,13 +265,9 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 }
 
 // linkPythonPackage links a locally generated SDK to an existing Python project.
-func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
+func linkPythonPackage(proj *workspace.Project, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
-	proj, _, err := ws.ReadProject()
-	if err != nil {
-		return err
-	}
 	packageSpecifier, err := filepath.Rel(root, out)
 	if err != nil {
 		return err
