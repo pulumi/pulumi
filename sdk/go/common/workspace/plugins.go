@@ -385,6 +385,40 @@ func (source *gitSource) GetLatestVersion(
 	return gitutil.GetLatestTagOrHash(ctx, source.url)
 }
 
+func addFS(fsys fs.FS, tw *tar.Writer) error {
+	return fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		// TODO(#49580): Handle symlinks when fs.ReadLinkFS is available.
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		h, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		h.Name = name
+		if err := tw.WriteHeader(h); err != nil {
+			return err
+		}
+		f, err := fsys.Open(name)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = io.Copy(tw, f)
+		return err
+	})
+}
+
 // Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
 // a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
 // The tag is expected to be prefixed with a 'v' character.
@@ -428,7 +462,7 @@ func (source *gitSource) Download(
 
 	tw := tar.NewWriter(zip)
 
-	err = tw.AddFS(os.DirFS(filepath.Join(tmpdir, source.path)))
+	err = addFS(os.DirFS(tmpdir), tw)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -1024,7 +1058,12 @@ func NewPluginSpec(
 			if pluginDownloadURL != "" {
 				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 			}
-			name = strings.ReplaceAll(u.RequestURI(), "/", "_")
+			url, _, err := gitutil.ParseGitRepoURL("https://" + u.String())
+			if err != nil {
+				return PluginSpec{}, err
+			}
+			name = strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_")
+			fmt.Println("name is", name)
 			// Prefix the url with `git://`, so we can later recognize this as a git URL.
 			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true
@@ -1066,15 +1105,16 @@ func NewPluginSpec(
 }
 
 // LocalName returns the local name of the plugin, which is used in the directory name.
-func (spec PluginSpec) LocalName() string {
+func (spec PluginSpec) LocalName() (string, string) {
 	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
-		url, path, err := gitutil.ParseGitRepoURL(strings.TrimPrefix(spec.PluginDownloadURL, "git://"))
+		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
 		if err != nil {
-			return strings.ReplaceAll(spec.PluginDownloadURL, "/", "_")
+			return strings.ReplaceAll(trimmed, "/", "_"), ""
 		}
-		return filepath.Join(strings.ReplaceAll(url, "/", "_"), path)
+		return filepath.Join(strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path), path
 	}
-	return spec.Name
+	return spec.Name, ""
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -1084,6 +1124,12 @@ func (spec PluginSpec) Dir() string {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
 	return dir
+}
+
+// SubDir gets the expected subdirectory for this plugin.
+func (spec PluginSpec) SubDir() string {
+	_, path := spec.LocalName()
+	return path
 }
 
 // File gets the expected filename for this plugin, excluding any platform specific suffixes (e.g. ".exe" on
@@ -1802,8 +1848,10 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	// the progress bar.
 	contract.IgnoreClose(content)
 
+	subdir := filepath.Join(finalDir, spec.SubDir())
+
 	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
+	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 	}
@@ -1816,7 +1864,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, npm.AutoPackageManager, subdir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
@@ -1824,13 +1872,13 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
-				Root:       finalDir,
+				Root:       subdir,
 				Virtualenv: "venv",
 			})
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)
 			}
-			if err := tc.InstallDependencies(ctx, finalDir, false, /*useLanguageVersionTools */
+			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
 				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
@@ -2289,8 +2337,13 @@ func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 func SelectPrereleasePlugin(
 	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
 ) *PluginInfo {
+	parts := strings.SplitN(filepath.ToSlash(name), "/", 2)
+	name = parts[0]
 	for _, cur := range plugins {
 		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+			if len(parts) == 2 {
+				cur.Path = filepath.Join(cur.Path, parts[1])
+			}
 			return &cur
 		}
 	}

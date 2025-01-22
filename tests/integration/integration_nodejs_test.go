@@ -2414,7 +2414,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// plugins installed from subdirectories, this should move into a subdirectory of tests/integration
 	// and the test-plugin branch can be deleted.
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/pulumi@178af2fc9a5da4b839e53681fadc4a0771b866ea")
+		"github.com/pulumi/pulumi/tests/integration/test-provider@ad423524a10a736397decddf90e70db31fda94b5")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
@@ -2425,6 +2425,6 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_pulumi")
-	require.Contains(t, stdout, "0.0.0-x178af2fc9a5da4b839e53681fadc4a0771b866ea")
+	require.Contains(t, stdout, "0.0.0-xad423524a10a736397decddf90e70db31fda94b5")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }

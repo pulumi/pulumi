@@ -205,7 +205,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
 		path, err := workspace.GetPluginPath(ctx.Diag,
-			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),
+			apitype.ResourcePlugin, string(pkg),
 			version, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
