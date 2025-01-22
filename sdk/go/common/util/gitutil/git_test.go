@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -594,6 +595,41 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 				panic(err)
 			}
 			assert.Equal(t, c.expectedContent, string(content))
+		})
+	}
+}
+
+func TestGetLatestTagOrHash(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		expected semver.Version
+		dataDir  string
+	}{
+		{
+			name:     "no tags",
+			expected: semver.MustParse("0.0.0-x044e5858f018bd6fa666da9adbff645f581fb91b"),
+			dataDir:  "testdata/commit-only.git",
+		},
+		{
+			name:     "tags",
+			expected: semver.MustParse("0.1.1"),
+			dataDir:  "testdata/tags.git",
+		},
+		{
+			name:     "alpha version",
+			expected: semver.MustParse("0.1.0-alpha"),
+			dataDir:  "testdata/alpha-tag.git",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected.String(), v.String())
 		})
 	}
 }

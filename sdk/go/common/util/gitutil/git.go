@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/blang/semver"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -847,9 +848,7 @@ func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
 	return plumbing.HEAD, plumbing.ZeroHash, strings.Join(paths, "/"), nil
 }
 
-// GitListBranchesAndTags fetches a remote Git repository's branch and tag references
-// (including HEAD), sorted by the length of the short name descending.
-func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
+func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error) {
 	// We're only listing the references, so just use in-memory storage.
 	repo, err := git.Init(memory.NewStorage(), nil)
 	if err != nil {
@@ -869,9 +868,15 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 		return nil, err
 	}
 
-	refs, err := remote.List(&git.ListOptions{
+	return remote.List(&git.ListOptions{
 		Auth: auth,
 	})
+}
+
+// GitListBranchesAndTags fetches a remote Git repository's branch and tag references
+// (including HEAD), sorted by the length of the short name descending.
+func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
+	refs, err := gitListRefs(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}
@@ -887,6 +892,67 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 	sort.Sort(byShortNameLengthDesc(results))
 
 	return results, nil
+}
+
+func isPrerelease(version semver.Version) bool {
+	return len(version.Pre) > 0 || len(version.Build) > 0
+}
+
+// GetLatestTagOrHash returns the latest tag or hash in the repository.
+// To do this, we list all the tags in the repository and try to pars them as semver.  If we can't
+// find any valid tags that are semver, we'll use the hash of the default branch.  If we can't find
+// any tags or default branches we return an error.
+func GetLatestTagOrHash(ctx context.Context, url string) (*semver.Version, error) {
+	refs, err := gitListRefs(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	var version semver.Version
+	foundVersion := false
+	namedHashes := make(map[plumbing.ReferenceName]plumbing.Hash)
+	var headRef plumbing.ReferenceName
+	for _, ref := range refs {
+		name := ref.Name()
+		if name.IsTag() {
+			tag := name.Short()
+			v, err := semver.ParseTolerant(tag)
+			if err != nil {
+				continue
+			}
+			if !foundVersion {
+				// We didn't see any valid tags yet, use this one.
+				version = v
+				foundVersion = true
+			} else if isPrerelease(v) == isPrerelease(version) && v.GT(version) {
+				// If either both or neither the current max version and the current tag
+				// are prerelease versions we pick the higher version.
+				version = v
+			} else if isPrerelease(version) && !isPrerelease(v) {
+				// If the currently tracked version is a prerelease version and the current tag
+				// isn't, we use that tag.
+				version = v
+			}
+		} else if name.IsBranch() {
+			namedHashes[name] = ref.Hash()
+		} else if name == plumbing.HEAD {
+			headRef = ref.Target()
+		}
+	}
+	if version.Equals(semver.Version{}) {
+		if hash, ok := namedHashes[headRef]; ok {
+			return &semver.Version{
+				Major: 0,
+				Minor: 0,
+				Patch: 0,
+				Pre: []semver.PRVersion{
+					{VersionStr: "x" + hash.String()},
+				},
+			}, nil
+		}
+		return nil, errors.New("could not determine version in repo")
+	}
+	return &version, nil
 }
 
 type byShortNameLengthDesc []plumbing.ReferenceName
