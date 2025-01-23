@@ -2414,13 +2414,13 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// and want to make sure we can still install a different provider from a different subdirectory,
 	// from the same repository and the same revision.
 	e.RunCommandExpectError("pulumi", "package", "add",
-		"github.com/pulumi/pulumi/tests/integration/broken-test-provider@ad423524a10a736397decddf90e70db31fda94b5")
+		"github.com/pulumi/component-test-providers/broken-test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
-	require.Contains(t, stdout, "github.com_pulumi_pulumi")
-	require.Contains(t, stdout, "0.0.0-xad423524a10a736397decddf90e70db31fda94b5")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/pulumi/tests/integration/test-provider@ad423524a10a736397decddf90e70db31fda94b5")
+		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
@@ -2430,7 +2430,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// above is used.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
-	require.Contains(t, stdout, "github.com_pulumi_pulumi")
-	require.Contains(t, stdout, "0.0.0-xad423524a10a736397decddf90e70db31fda94b5")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }

@@ -428,7 +428,7 @@ func (source *gitSource) Download(
 
 	tw := tar.NewWriter(zip)
 
-	err = addFS(os.DirFS(tmpdir), tw)
+	err = tw.AddFS(os.DirFS(tmpdir))
 	if err != nil {
 		return nil, -1, err
 	}
