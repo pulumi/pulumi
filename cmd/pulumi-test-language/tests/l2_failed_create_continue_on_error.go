@@ -34,6 +34,12 @@ func init() {
 				UpdateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
+				AssertPreview: func(l *L,
+					projectDirectory string, err error,
+					plan *deploy.Plan, changes display.ResourceChanges,
+				) {
+					require.True(l, result.IsBail(err), "expected a bail result on preview")
+				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
