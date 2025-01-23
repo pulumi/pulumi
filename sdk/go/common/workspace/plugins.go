@@ -1029,7 +1029,6 @@ func NewPluginSpec(
 				return PluginSpec{}, err
 			}
 			name = strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_")
-			fmt.Println("name is", name)
 			// Prefix the url with `git://`, so we can later recognize this as a git URL.
 			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true

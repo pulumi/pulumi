@@ -1453,9 +1453,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		runPath = defaultRunPluginPath
 	}
 
-	fmt.Println("locateModule", runPath, req.Info.ProgramDirectory, nodeBin, true)
 	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
-	fmt.Println(runPath)
 	if err != nil {
 		return err
 	}

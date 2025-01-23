@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Allow plugins from git sources to live in subdirectories in the repository

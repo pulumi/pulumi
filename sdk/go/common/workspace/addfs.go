@@ -1,3 +1,4 @@
+//nolint:goheader // This file is a copy of the Go source code.
 // Copyright 2009 The Go Authors.
 
 // Redistribution and use in source and binary forms, with or without
