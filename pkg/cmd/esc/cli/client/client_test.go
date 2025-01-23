@@ -504,6 +504,76 @@ func TestOpenEnvironment(t *testing.T) {
 	})
 }
 
+func TestRotateEnvironment(t *testing.T) {
+	t.Run("OK", func(t *testing.T) {
+		const expectedID = "open-id"
+		duration := 2 * time.Hour
+
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/rotate", func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
+
+			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
+			require.NoError(t, err)
+		})
+
+		id, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", duration)
+		require.NoError(t, err)
+		assert.Equal(t, expectedID, id)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("Diags", func(t *testing.T) {
+		expected := []EnvironmentDiagnostic{
+			{
+				Range: &esc.Range{
+					Environment: "test-env",
+					Begin:       esc.Pos{Line: 42, Column: 1},
+					End:         esc.Pos{Line: 42, Column: 42},
+				},
+				Summary: "diag 1",
+			},
+			{
+				Range: &esc.Range{
+					Environment: "import-env",
+					Begin:       esc.Pos{Line: 1, Column: 2},
+					End:         esc.Pos{Line: 3, Column: 4},
+				},
+				Summary: "diag 2",
+			},
+		}
+
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/rotate", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{
+				Code:        400,
+				Message:     "bad request",
+				Diagnostics: expected,
+			})
+			require.NoError(t, err)
+		})
+
+		_, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", 2*time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, expected, diags)
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/rotate", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    404,
+				Message: "not found",
+			})
+			require.NoError(t, err)
+		})
+
+		_, _, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", 2*time.Hour)
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
 func TestCheckYAMLEnvironment(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		yaml := []byte(`{"values":{"foo":"bar"}}`)

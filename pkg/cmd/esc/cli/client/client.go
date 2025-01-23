@@ -141,7 +141,7 @@ type Client interface {
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
-	// OpenEnvironment evaluates the environment envName in org orgName and returns the ID of the opened
+	// OpenEnvironment evaluates the environment projectName/envName in org orgName and returns the ID of the opened
 	// environment. The opened environment will be available for the indicated duration, after which it
 	// will expire.
 	//
@@ -152,6 +152,20 @@ type Client interface {
 		projectName string,
 		envName string,
 		version string,
+		duration time.Duration,
+	) (string, []EnvironmentDiagnostic, error)
+
+	// RotateEnvironment will rotate credentials in an environment.
+	// It also evaluates the environment projectName/envName in org orgName and returns the ID of the opened
+	// environment. The opened environment will be available for the indicated duration, after which it
+	// will expire.
+	//
+	// If the environment contains errors, the open will fail with diagnostics.
+	RotateEnvironment(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -604,6 +618,37 @@ func (pc *client) OpenEnvironment(
 	}
 	var errResp EnvironmentErrorResponse
 	err = pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
+		ErrorResponse: &errResp,
+	})
+	if err != nil {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+			return "", diags.Diagnostics, nil
+		}
+		return "", nil, err
+	}
+	return resp.ID, nil, nil
+}
+
+func (pc *client) RotateEnvironment(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	duration time.Duration,
+) (string, []EnvironmentDiagnostic, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/rotate", orgName, projectName, envName)
+
+	queryObj := struct {
+		Duration string `url:"duration"`
+	}{
+		Duration: duration.String(),
+	}
+	var resp struct {
+		ID string `json:"id"`
+	}
+	var errResp EnvironmentErrorResponse
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {

@@ -40,7 +40,6 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_ = args
 
 			var path resource.PropertyPath
 			if len(args) == 1 {
