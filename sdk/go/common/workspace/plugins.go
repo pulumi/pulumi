@@ -1070,7 +1070,8 @@ func NewPluginSpec(
 	}, nil
 }
 
-// LocalName returns the local name of the plugin, which is used in the directory name.
+// LocalName returns the local name of the plugin, which is used in the directory name, and a path
+// within that directory if the plugin is located in a subdirectory.
 func (spec PluginSpec) LocalName() (string, string) {
 	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
 		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
@@ -1814,7 +1815,21 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	subdir := filepath.Join(finalDir, spec.SubDir())
+	err = spec.InstallDependencies(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Installation is complete. Remove the partial file.
+	return os.Remove(partialFilePath)
+}
+
+func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
+	dir, err := spec.DirPath()
+	if err != nil {
+		return err
+	}
+	subdir := filepath.Join(dir, spec.SubDir())
 
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
@@ -1850,9 +1865,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			}
 		}
 	}
-
-	// Installation is complete. Remove the partial file.
-	return os.Remove(partialFilePath)
+	return nil
 }
 
 // cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
@@ -2312,6 +2325,7 @@ func SelectPrereleasePlugin(
 ) *PluginInfo {
 	for _, cur := range plugins {
 		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+			// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
 			if subdir != "" {
 				cur.Path = filepath.Join(cur.Path, subdir)
 			}

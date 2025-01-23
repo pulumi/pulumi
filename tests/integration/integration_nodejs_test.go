@@ -2410,9 +2410,15 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
-	// The provider currently lives in the test-plugin branch in pulumi/pulumi.  Once we allow
-	// plugins installed from subdirectories, this should move into a subdirectory of tests/integration
-	// and the test-plugin branch can be deleted.
+	// The broken provider doesn't succeed in generating the SDK.  We still want to see it installed,
+	// and want to make sure we can still install a different provider from a different subdirectory,
+	// from the same repository and the same revision.
+	e.RunCommandExpectError("pulumi", "package", "add",
+		"github.com/pulumi/pulumi/tests/integration/broken-test-provider@ad423524a10a736397decddf90e70db31fda94b5")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_pulumi")
+	require.Contains(t, stdout, "0.0.0-xad423524a10a736397decddf90e70db31fda94b5")
+
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/pulumi/tests/integration/test-provider@ad423524a10a736397decddf90e70db31fda94b5")
 
@@ -2423,7 +2429,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
-	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_pulumi")
 	require.Contains(t, stdout, "0.0.0-xad423524a10a736397decddf90e70db31fda94b5")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
