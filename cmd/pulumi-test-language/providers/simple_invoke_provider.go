@@ -211,6 +211,17 @@ func (p *SimpleInvokeProvider) Invoke(
 				Failures: makeCheckFailure("value", "missing value"),
 			}, nil
 		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				Properties: resource.PropertyMap{
+					"result": resource.NewComputedProperty(resource.Computed{
+						Element: resource.NewNullProperty(),
+					}),
+				},
+			}, nil
+		}
+
 		if !value.IsString() {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "is not a string"),
@@ -241,6 +252,20 @@ func (p *SimpleInvokeProvider) Invoke(
 				Failures: makeCheckFailure("value", "missing value"),
 			}, nil
 		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				Properties: resource.PropertyMap{
+					"response": resource.NewComputedProperty(resource.Computed{
+						Element: resource.NewNullProperty(),
+					}),
+					"secret": resource.NewComputedProperty(resource.Computed{
+						Element: resource.NewNullProperty(),
+					}),
+				},
+			}, nil
+		}
+
 		if !value.IsString() {
 			reason := fmt.Sprintf("value is not a string: %v", value)
 			return plugin.InvokeResponse{
