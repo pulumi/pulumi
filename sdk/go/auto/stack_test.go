@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -181,6 +182,60 @@ func TestAlwaysReadsCompleteLine(t *testing.T) {
 	require.NoError(t, event2.Error)
 	assert.Equal(t, "world", event2.StdoutEvent.Message)
 	assert.Equal(t, "red", event2.StdoutEvent.Color)
+}
+
+func TestUpOptsConfigFileLocalBackend(t *testing.T) {
+	
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName("organization", pName, sName)
+
+	cfg := ConfigMap{
+		"foo.bar": ConfigValue{
+			Value:  "triggers-failure",
+			Secret: true,
+		},
+	}
+	pDir := filepath.Join(".", "test", "testproj")
+
+	opts := []LocalWorkspaceOption{
+		SecretsProvider("passphrase"),
+		EnvVars(map[string]string{
+			"PULUMI_CONFIG_PASSPHRASE": "password",
+			"PULUMI_BACKEND_URL":       "file://~",
+		}),
+	}
+
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir, opts...)
+	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		err = os.RemoveAll(filepath.Join(stack.Workspace().WorkDir(), "failure.yaml"))
+		assert.NoError(t, err, "failed to remove test.json. File has leaked.")
+	}()
+
+	err = stack.SetAllConfigWithOptions(ctx, cfg, &ConfigOptions{ConfigFile: "failure.yaml", Path: true})
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	res, err := stack.Up(ctx, optup.ConfigFile("failure.yaml"), optup.Diff())
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	dRes, err := stack.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
 func TestDestroyOptsConfigFile(t *testing.T) {
