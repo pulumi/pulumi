@@ -39,15 +39,36 @@ func TestConfigSet(t *testing.T) {
 		path     bool
 	}{
 		{
+			name:     "toplevel bool",
+			args:     []string{"testProject:test", "true"},
+			expected: "config:\n  testProject:test: \"true\"\n",
+		},
+		{
 			name:     "toplevel int",
 			args:     []string{"testProject:test", "123"},
 			expected: "config:\n  testProject:test: \"123\"\n",
-			path:     false,
+		},
+		{
+			name:     "toplevel float",
+			args:     []string{"testProject:test", "123.456"},
+			expected: "config:\n  testProject:test: \"123.456\"\n",
+		},
+		{
+			name:     "path'd bool",
+			args:     []string{"testProject:test[0]", "true"},
+			expected: "config:\n  testProject:test:\n    - true\n",
+			path:     true,
 		},
 		{
 			name:     "path'd int",
 			args:     []string{"testProject:test[0]", "123"},
 			expected: "config:\n  testProject:test:\n    - 123\n",
+			path:     true,
+		},
+		{
+			name:     "path'd float",
+			args:     []string{"testProject:test[0]", "123.456"},
+			expected: "config:\n  testProject:test:\n    - \"123.456\"\n",
 			path:     true,
 		},
 	}
