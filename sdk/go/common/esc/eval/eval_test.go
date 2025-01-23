@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -136,6 +137,33 @@ func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, conte
 	return esc.NewValue(inputs), nil
 }
 
+type swapRotator struct{}
+
+func (swapRotator) Schema() (*schema.Schema, *schema.Schema, *schema.Schema) {
+	inputSchema := schema.Always()
+	stateSchema := schema.Record(schema.BuilderMap{
+		"a": schema.String(),
+		"b": schema.String(),
+	}).Schema()
+	outputSchema := schema.Record(schema.BuilderMap{
+		"a": schema.String(),
+		"b": schema.String(),
+	}).Schema()
+	return inputSchema, stateSchema, outputSchema
+}
+
+func (swapRotator) Open(ctx context.Context, inputs, state map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	return esc.NewValue(state), nil
+}
+
+func (swapRotator) Rotate(ctx context.Context, inputs, state map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	newState := esc.NewValue(map[string]esc.Value{
+		"a": state["b"],
+		"b": state["a"],
+	})
+	return newState, nil
+}
+
 type testProviders struct {
 	benchDelay time.Duration
 }
@@ -152,6 +180,14 @@ func (tp testProviders) LoadProvider(ctx context.Context, name string) (esc.Prov
 		return benchProvider{delay: tp.benchDelay}, nil
 	}
 	return nil, fmt.Errorf("unknown provider %q", name)
+}
+
+func (testProviders) LoadRotator(ctx context.Context, name string) (esc.Rotator, error) {
+	switch name {
+	case "swap":
+		return swapRotator{}, nil
+	}
+	return nil, fmt.Errorf("unknown rotator %q", name)
 }
 
 type testEnvironments struct {
@@ -245,6 +281,7 @@ func TestEval(t *testing.T) {
 	type testOverrides struct {
 		ShowSecrets     bool   `json:"showSecrets,omitempty"`
 		RootEnvironment string `json:"rootEnvironment,omitempty"`
+		Rotate          bool   `json:"rotate,omitempty"`
 	}
 
 	type expectedData struct {
@@ -256,6 +293,10 @@ func TestEval(t *testing.T) {
 		Eval             *esc.Environment   `json:"eval,omitempty"`
 		EvalJSONRedacted any                `json:"evalJsonRedacted,omitempty"`
 		EvalJSONRevealed any                `json:"evalJSONRevealed,omitempty"`
+		RotateDiags      syntax.Diagnostics `json:"rotateDiags,omitempty"`
+		Rotate           *esc.Environment   `json:"rotate,omitempty"`
+		RotateJSON       any                `json:"rotateJson,omitempty"`
+		RotatePatches    []*Patch           `json:"rotatePatches,omitempty"`
 	}
 
 	path := filepath.Join("testdata", "eval")
@@ -295,6 +336,7 @@ func TestEval(t *testing.T) {
 				environmentName = overrides.RootEnvironment
 			}
 			showSecrets := overrides.ShowSecrets
+			doRotate := overrides.Rotate
 
 			if accept() {
 				env, loadDiags, err := LoadYAMLBytes(environmentName, envBytes)
@@ -309,9 +351,18 @@ func TestEval(t *testing.T) {
 					&testEnvironments{basePath}, execContext)
 				sortEnvironmentDiagnostics(evalDiags)
 
+				var rotated *esc.Environment
+				var patches []*Patch
+				var rotateDiags syntax.Diagnostics
+				if doRotate {
+					rotated, patches, rotateDiags = RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+						&testEnvironments{basePath}, execContext)
+				}
+
 				var checkJSON any
 				var evalJSONRedacted any
 				var evalJSONRevealed any
+				var rotateJSON any
 				if check != nil {
 					check = normalize(t, check)
 					checkJSON = esc.NewValue(check.Properties).ToJSON(true)
@@ -320,6 +371,10 @@ func TestEval(t *testing.T) {
 					actual = normalize(t, actual)
 					evalJSONRedacted = esc.NewValue(actual.Properties).ToJSON(true)
 					evalJSONRevealed = esc.NewValue(actual.Properties).ToJSON(false)
+				}
+				if rotated != nil {
+					rotated = normalize(t, rotated)
+					rotateJSON = esc.NewValue(rotated.Properties).ToJSON(true)
 				}
 
 				bytes, err := json.MarshalIndent(expectedData{
@@ -331,6 +386,10 @@ func TestEval(t *testing.T) {
 					EvalJSONRedacted: evalJSONRedacted,
 					EvalJSONRevealed: evalJSONRevealed,
 					CheckJSON:        checkJSON,
+					RotateDiags:      rotateDiags,
+					Rotate:           rotated,
+					RotateJSON:       rotateJSON,
+					RotatePatches:    patches,
 				}, "", "    ")
 				bytes = append(bytes, '\n')
 				require.NoError(t, err)
@@ -364,9 +423,26 @@ func TestEval(t *testing.T) {
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 
+			var rotated *esc.Environment
+			if doRotate {
+				rotated_, patches, diags := RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+					&testEnvironments{basePath}, execContext)
+
+				sortEnvironmentDiagnostics(diags)
+				require.Equal(t, expected.RotateDiags, diags)
+
+				slices.SortFunc(patches, func(a, b *Patch) int {
+					return strings.Compare(a.DocPath, b.DocPath)
+				})
+				require.Equal(t, expected.RotatePatches, patches)
+
+				rotated = rotated_
+			}
+
 			// work around a schema comparison issue due to the 'compiled' field by roundtripping through JSON
 			check = normalize(t, check)
 			actual = normalize(t, actual)
+			rotated = normalize(t, rotated)
 
 			// work around a comparison issue when comparing nil slices/maps against zero-length slices/maps
 			if actual != nil {
@@ -389,8 +465,18 @@ func TestEval(t *testing.T) {
 				t.Logf("check: %v", string(bytes))
 			}
 
+			if rotated != nil {
+				rotateJSON := esc.NewValue(check.Properties).ToJSON(true)
+				assert.Equal(t, expected.CheckJSON, rotateJSON)
+
+				bytes, err := json.MarshalIndent(rotateJSON, "", "  ")
+				require.NoError(t, err)
+				t.Logf("rotate: %v", string(bytes))
+			}
+
 			assert.Equal(t, expected.Check, check)
 			assert.Equal(t, expected.Eval, actual)
+			assert.Equal(t, expected.Rotate, rotated)
 		})
 	}
 }

@@ -37,6 +37,8 @@ import (
 type ProviderLoader interface {
 	// LoadProvider loads the provider with the given name.
 	LoadProvider(ctx context.Context, name string) (esc.Provider, error)
+	// LoadRotator loads the rotator with the given name.
+	LoadRotator(ctx context.Context, name string) (esc.Rotator, error)
 }
 
 // An EnvironmentLoader provides the environment evaluator the capability to load imported environment definitions.
@@ -83,7 +85,8 @@ func EvalEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments, execContext, true)
+	opened, _, diags := evalEnvironment(ctx, false, false, name, env, decrypter, providers, environments, execContext, true)
+	return opened, diags
 }
 
 // CheckEnvironment symbolically evaluates the given environment. Calls to fn::open are not invoked, and instead
@@ -98,13 +101,29 @@ func CheckEnvironment(
 	execContext *esc.ExecContext,
 	showSecrets bool,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, true, name, env, decrypter, providers, environments, execContext, showSecrets)
+	checked, _, diags := evalEnvironment(ctx, true, false, name, env, decrypter, providers, environments, execContext, showSecrets)
+	return checked, diags
+}
+
+// RotateEnvironment evaluates the given environment and invokes provider rotate methods.
+// The updated rotation state is returned with a set of patches to be written back to the environment.
+func RotateEnvironment(
+	ctx context.Context,
+	name string,
+	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
+	providers ProviderLoader,
+	environments EnvironmentLoader,
+	execContext *esc.ExecContext,
+) (*esc.Environment, []*Patch, syntax.Diagnostics) {
+	return evalEnvironment(ctx, false, true, name, env, decrypter, providers, environments, execContext, true)
 }
 
 // evalEnvironment evaluates an environment and exports the result of evaluation.
 func evalEnvironment(
 	ctx context.Context,
 	validating bool,
+	rotating bool,
 	name string,
 	env *ast.EnvironmentDecl,
 	decrypter Decrypter,
@@ -112,12 +131,12 @@ func evalEnvironment(
 	envs EnvironmentLoader,
 	execContext *esc.ExecContext,
 	showSecrets bool,
-) (*esc.Environment, syntax.Diagnostics) {
+) (*esc.Environment, []*Patch, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{}, execContext, showSecrets)
+	ec := newEvalContext(ctx, validating, rotating, name, env, decrypter, providers, envs, map[string]*imported{}, execContext, showSecrets)
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -139,7 +158,7 @@ func evalEnvironment(
 		Properties:       v.export(name).Value.(map[string]esc.Value),
 		Schema:           s,
 		ExecutionContext: executionContext,
-	}, diags
+	}, ec.patchOutputs, diags
 }
 
 type imported struct {
@@ -151,6 +170,7 @@ type imported struct {
 type evalContext struct {
 	ctx          context.Context      // the cancellation context for evaluation
 	validating   bool                 // true if we are only checking the environment
+	rotating     bool                 // true if we are invoking rotators
 	showSecrets  bool                 // true if secrets should be decrypted during validation
 	name         string               // the name of the environment
 	env          *ast.EnvironmentDecl // the root of the environment AST
@@ -165,12 +185,15 @@ type evalContext struct {
 	root      *expr  // the root expression
 	base      *value // the base value
 
+	patchOutputs []*Patch // updated rotation state generated during evaluation, to be written back to the environment definition
+
 	diags syntax.Diagnostics // diagnostics generated during evaluation
 }
 
 func newEvalContext(
 	ctx context.Context,
 	validating bool,
+	rotating bool,
 	name string,
 	env *ast.EnvironmentDecl,
 	decrypter Decrypter,
@@ -183,6 +206,7 @@ func newEvalContext(
 	return &evalContext{
 		ctx:          ctx,
 		validating:   validating,
+		rotating:     rotating,
 		showSecrets:  showSecrets,
 		name:         name,
 		env:          env,
@@ -300,6 +324,16 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 			provider:    declare(e, "", x.Provider, nil),
 			inputs:      declare(e, "", x.Inputs, nil),
 			inputSchema: schema.Always().Schema(),
+		}
+		return newExpr(path, repr, schema.Always().Schema(), base)
+	case *ast.RotateExpr:
+		repr := &rotateExpr{
+			node:        x,
+			provider:    declare(e, "", x.Provider, nil),
+			inputs:      declare(e, "", x.Inputs, nil),
+			state:       declare(e, "", x.State, nil),
+			inputSchema: schema.Always().Schema(),
+			stateSchema: schema.Always().Schema(),
 		}
 		return newExpr(path, repr, schema.Always().Schema(), base)
 	case *ast.SecretExpr:
@@ -462,7 +496,8 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 			return
 		}
 
-		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets)
+		// we only want to rotate the root environment, so set rotating flag to false when evaluating imports
+		imp := newEvalContext(e.ctx, e.validating, false, name, env, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets)
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 
@@ -526,6 +561,8 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 		val = e.evaluateBuiltinJoin(x, repr)
 	case *openExpr:
 		val = e.evaluateBuiltinOpen(x, repr)
+	case *rotateExpr:
+		val = e.evaluateBuiltinRotate(x, repr)
 	case *secretExpr:
 		val = e.evaluateBuiltinSecret(x, repr)
 	case *toBase64Expr:
@@ -924,6 +961,87 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 	}
 
 	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext)
+	if err != nil {
+		e.errorf(repr.syntax(), "%s", err.Error())
+		v.unknown = true
+		return v
+	}
+	return unexport(output, x)
+}
+
+// evaluateBuiltinOpen evaluates a call to the fn::rotate builtin.
+func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
+	v := &value{def: x}
+
+	// Can happen if there are parse errors.
+	if repr.node.Provider == nil {
+		v.schema = schema.Always()
+		v.unknown = true
+		return v
+	}
+
+	rotator, err := e.providers.LoadRotator(e.ctx, repr.node.Provider.GetValue())
+	if err != nil {
+		e.errorf(repr.syntax(), "%v", err)
+	} else {
+		inputSchema, stateSchema, outputSchema := rotator.Schema()
+		if err := inputSchema.Compile(); err != nil {
+			e.errorf(repr.syntax(), "internal error: invalid input schema (%v)", err)
+		} else {
+			repr.inputSchema = inputSchema
+		}
+		if err := stateSchema.Compile(); err != nil {
+			e.errorf(repr.syntax(), "internal error: invalid state schema (%v)", err)
+		} else {
+			repr.stateSchema = stateSchema
+		}
+		if err := outputSchema.Compile(); err != nil {
+			e.errorf(repr.syntax(), "internal error: invalid schema (%v)", err)
+		} else {
+			x.schema = outputSchema
+		}
+	}
+	v.schema = x.schema
+
+	inputs, inputsOK := e.evaluateTypedExpr(repr.inputs, repr.inputSchema)
+	state, stateOK := e.evaluateTypedExpr(repr.state, repr.stateSchema)
+	if !inputsOK || inputs.containsUnknowns() || !stateOK || state.containsUnknowns() || e.validating || err != nil {
+		v.unknown = true
+		return v
+	}
+
+	// if rotating, invoke prior to open
+	if e.rotating {
+		newState, err := rotator.Rotate(
+			e.ctx,
+			inputs.export("").Value.(map[string]esc.Value),
+			state.export("").Value.(map[string]esc.Value),
+			e.execContext,
+		)
+		if err != nil {
+			e.errorf(repr.syntax(), "rotate: %s", err.Error())
+			v.unknown = true
+			return v
+		}
+
+		// todo: validate newState conforms to state schema
+
+		e.patchOutputs = append(e.patchOutputs, &Patch{
+			// rotation output is written back to the fn's `state` input
+			DocPath:     util.JoinKey(x.path, repr.node.Name().GetValue()) + ".state",
+			Replacement: newState,
+		})
+
+		// pass the updated state to open, as if it were already persisted
+		state = unexport(newState, x)
+	}
+
+	output, err := rotator.Open(
+		e.ctx,
+		inputs.export("").Value.(map[string]esc.Value),
+		state.export("").Value.(map[string]esc.Value),
+		e.execContext,
+	)
 	if err != nil {
 		e.errorf(repr.syntax(), "%s", err.Error())
 		v.unknown = true

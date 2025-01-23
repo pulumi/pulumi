@@ -29,3 +29,16 @@ type Provider interface {
 	// Open retrieves the provider's secrets.
 	Open(ctx context.Context, inputs map[string]Value, executionContext EnvExecContext) (Value, error)
 }
+
+// A Rotator enables environments to rotate a secret.
+// It is the responsibility of the caller to appropriately persist rotation state (e.g. by writing it back to the environment definition).
+type Rotator interface {
+	// Schema returns the rotator's input, state, and output schemata.
+	Schema() (inputs, state, outputs *schema.Schema)
+
+	// Open retrieves the rotator's secrets, using persisted state.
+	Open(ctx context.Context, inputs, state map[string]Value, executionContext EnvExecContext) (Value, error)
+
+	// Rotate rotates the provider's secret, and returns the rotator's new state to be persisted.
+	Rotate(ctx context.Context, inputs, state map[string]Value, executionContext EnvExecContext) (Value, error)
+}

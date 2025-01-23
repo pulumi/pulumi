@@ -215,6 +215,10 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
 
+func (testProviders) LoadRotator(ctx context.Context, name string) (esc.Rotator, error) {
+	return nil, fmt.Errorf("unknown rotator %q", name)
+}
+
 type rot128 struct{}
 
 func (rot128) Encrypt(_ context.Context, plaintext []byte) ([]byte, error) {

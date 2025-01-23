@@ -71,6 +71,10 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
 
+func (testProviders) LoadRotator(ctx context.Context, name string) (esc.Rotator, error) {
+	return nil, fmt.Errorf("unknown rotator %q", name)
+}
+
 type testEnvironments struct{}
 
 func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
