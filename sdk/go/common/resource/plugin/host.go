@@ -379,7 +379,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 
 func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		pkg, _ := descriptor.LocalName()
+		pkg, path := descriptor.LocalName()
 		version := descriptor.Version
 
 		// Try to load and bind to a plugin.
@@ -396,8 +396,8 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
 
-		plug, err := NewProvider(
-			host, host.ctx, tokens.Package(pkg), version,
+		plug, err := NewProviderFromSubdir(
+			host, host.ctx, tokens.Package(pkg), path, version,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())

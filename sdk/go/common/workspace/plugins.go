@@ -385,40 +385,6 @@ func (source *gitSource) GetLatestVersion(
 	return gitutil.GetLatestTagOrHash(ctx, source.url)
 }
 
-func addFS(fsys fs.FS, tw *tar.Writer) error {
-	return fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		// TODO(#49580): Handle symlinks when fs.ReadLinkFS is available.
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		h, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		h.Name = name
-		if err := tw.WriteHeader(h); err != nil {
-			return err
-		}
-		f, err := fsys.Open(name)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		_, err = io.Copy(tw, f)
-		return err
-	})
-}
-
 // Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
 // a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
 // The tag is expected to be prefixed with a 'v' character.
@@ -1112,7 +1078,7 @@ func (spec PluginSpec) LocalName() (string, string) {
 		if err != nil {
 			return strings.ReplaceAll(trimmed, "/", "_"), ""
 		}
-		return filepath.Join(strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path), path
+		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
 	}
 	return spec.Name, ""
 }
@@ -2099,7 +2065,14 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, true /* skipMetadata */, projectPlugins)
+	return GetPluginPathWithSubdir(d, kind, name, "", version, projectPlugins)
+}
+
+func GetPluginPathWithSubdir(
+	d diag.Sink, kind apitype.PluginKind, name, subdir string, version *semver.Version,
+	projectPlugins []ProjectPlugin,
+) (string, error) {
+	info, path, err := getPluginInfoAndPath(d, kind, name, subdir, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2112,7 +2085,7 @@ func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *s
 func GetPluginInfo(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(d, kind, name, "", version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2145,7 +2118,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	d diag.Sink,
-	kind apitype.PluginKind, name string, version *semver.Version, skipMetadata bool,
+	kind apitype.PluginKind, name, subdir string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := (&PluginSpec{Kind: kind, Name: name}).File()
@@ -2292,7 +2265,7 @@ func getPluginInfoAndPath(
 		isPreReleaseVersion(*version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
-		match = SelectPrereleasePlugin(plugins, kind, name, version)
+		match = SelectPrereleasePlugin(plugins, kind, name, subdir, version)
 	} else if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
@@ -2335,14 +2308,12 @@ func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
 // are looking for, based on the commit hash.
 func SelectPrereleasePlugin(
-	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
+	plugins []PluginInfo, kind apitype.PluginKind, name, subdir string, version *semver.Version,
 ) *PluginInfo {
-	parts := strings.SplitN(filepath.ToSlash(name), "/", 2)
-	name = parts[0]
 	for _, cur := range plugins {
 		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
-			if len(parts) == 2 {
-				cur.Path = filepath.Join(cur.Path, parts[1])
+			if subdir != "" {
+				cur.Path = filepath.Join(cur.Path, subdir)
 			}
 			return &cur
 		}
