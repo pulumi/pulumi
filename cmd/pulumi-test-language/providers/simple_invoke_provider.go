@@ -214,11 +214,10 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		if value.IsComputed() {
 			return plugin.InvokeResponse{
-				Properties: resource.PropertyMap{
-					"result": resource.NewComputedProperty(resource.Computed{
-						Element: resource.NewNullProperty(),
-					}),
-				},
+				// providers should not get computed values (during preview)
+				// since we bail out early in the core SDKs or generated provider SDKs
+				// when we encounter unknowns
+				Failures: makeCheckFailure("value", "value is unknown when calling myInvoke"),
 			}, nil
 		}
 
@@ -255,14 +254,7 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		if value.IsComputed() {
 			return plugin.InvokeResponse{
-				Properties: resource.PropertyMap{
-					"response": resource.NewComputedProperty(resource.Computed{
-						Element: resource.NewNullProperty(),
-					}),
-					"secret": resource.NewComputedProperty(resource.Computed{
-						Element: resource.NewNullProperty(),
-					}),
-				},
+				Failures: makeCheckFailure("value", "value is unknown when calling secretInvoke"),
 			}, nil
 		}
 
