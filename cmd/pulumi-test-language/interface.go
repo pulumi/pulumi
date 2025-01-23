@@ -1077,7 +1077,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		assertPreview := run.AssertPreview
 		if assertPreview == nil {
-			// if no assertPreview is provided for the test run, we creat a default implementation
+			// if no assertPreview is provided for the test run, we create a default implementation
 			// where we simply assert that the preview changes did not error
 			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
 				assert.NoErrorf(l, err, "expected no error in preview")
