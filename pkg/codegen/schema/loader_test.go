@@ -345,27 +345,30 @@ func TestLoadVersionChangesWithParameterizationSchema(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	pkg := "aws"
+	currentPkgName := "aws"
 	currentVersion := semver.MustParse("3.0.0")
+	parameterizationCalled := false
 
 	provider := &plugin.MockProvider{
 		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
 			assert.Equal(t, &plugin.ParameterizeValue{
-				Name:    "aws",
+				Name:    "someparam",
 				Version: semver.MustParse("7.0.0"),
 				Value:   []byte("testdata"),
 			}, req.Parameters)
 
 			currentVersion = semver.MustParse("7.0.0")
+			currentPkgName = "someparam"
+			parameterizationCalled = true
 
 			return plugin.ParameterizeResponse{
-				Name:    "aws",
+				Name:    "someparam",
 				Version: semver.MustParse("7.0.0"),
 			}, nil
 		},
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 			schema := PackageSpec{
-				Name:    pkg,
+				Name:    currentPkgName,
 				Version: currentVersion.String(),
 			}
 
@@ -386,7 +389,7 @@ func TestLoadVersionChangesWithParameterizationSchema(t *testing.T) {
 		},
 		ResolvePluginF: func(apitype.PluginKind, string, *semver.Version) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
-				Name:    pkg,
+				Name:    currentPkgName,
 				Kind:    apitype.ResourcePlugin,
 				Version: &currentVersion,
 			}, nil
@@ -400,16 +403,23 @@ func TestLoadVersionChangesWithParameterizationSchema(t *testing.T) {
 	})
 
 	// Act.
-	requestVersion := semver.MustParse("7.0.0")
+	requestVersion := semver.MustParse("1.0.0")
 	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
-		Name:    pkg,
+		Name:    currentPkgName,
 		Version: &requestVersion,
+		Parameterization: &ParameterizationDescriptor{
+			Name:    "someparam",
+			Version: semver.MustParse("7.0.0"),
+			Value:   []byte("testdata"),
+		},
 	})
 
 	// Assert.
 	require.NotNil(t, ref)
 	require.NoError(t, err)
 
-	require.Equal(t, pkg, ref.Name())
-	require.Equal(t, &requestVersion, ref.Version())
+	expectedVersion := semver.MustParse("7.0.0")
+	require.Equal(t, currentPkgName, ref.Name())
+	require.Equal(t, &expectedVersion, ref.Version())
+	require.True(t, parameterizationCalled)
 }
