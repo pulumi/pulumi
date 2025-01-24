@@ -2000,3 +2000,51 @@ func TestGitSourceGetLatestVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, semver.MustParse("0.1.1"), *version)
 }
+
+func TestLocalName(t *testing.T) {
+	cases := []struct {
+		name              string
+		pluginName        string
+		pluginDownloadURL string
+		expected          string
+		expectedPath      string
+	}{
+		{
+			name:       "simple",
+			pluginName: "pulumi-example",
+			expected:   "pulumi-example",
+		},
+		{
+			name:              "git plugin download url",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github.com/pulumi/pulumi-example",
+			expected:          "github.com_pulumi_pulumi-example.git",
+		},
+		{
+			name:              "git plugin download url with path",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github.com/pulumi/pulumi-example/path",
+			expected:          "github.com_pulumi_pulumi-example.git",
+			expectedPath:      "path",
+		},
+		{
+			name:              "invalid git plugin download url",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github",
+			expected:          "github",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			spec := PluginSpec{
+				Name:              c.pluginName,
+				PluginDownloadURL: c.pluginDownloadURL,
+			}
+			name, path := spec.LocalName()
+			require.Equal(t, c.expected, name)
+			require.Equal(t, c.expectedPath, path)
+		})
+	}
+}

@@ -1,2 +1,0 @@
-export declare function instantiateComponent(directoryPath: string, componentName: string, name: string, args: Record<string, any>, options: any): Promise<any>;
-//# sourceMappingURL=instantiator.d.ts.map
