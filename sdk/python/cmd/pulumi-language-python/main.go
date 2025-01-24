@@ -1277,7 +1277,11 @@ func (host *pythonLanguageHost) RunPlugin(
 		return err
 	}
 
-	args := []string{req.Info.ProgramDirectory}
+	opts.Toolchain = toolchain.Pip
+	opts.Virtualenv = "venv"
+
+	// Need to use the executor script here
+	args := []string{host.exec, req.Info.ProgramDirectory}
 	args = append(args, req.Args...)
 
 	tc, err := toolchain.ResolveToolchain(opts)
@@ -1300,6 +1304,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
+	logging.V(5).Infof("Running plugin command: %s %v", cmd.Path, cmd.Args)
 	if err = cmd.Run(); err != nil {
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {

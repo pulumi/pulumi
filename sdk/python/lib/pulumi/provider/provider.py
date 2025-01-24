@@ -82,6 +82,19 @@ class InvokeResult:
         self.failures = failures
 
 
+class ParameterizeResult:
+    """ParameterizeResult represents the results of a call to `Provider.paramterize`"""
+
+    name: str
+    """The name of the sub-package parameterized."""
+    version: str
+    """The version of the sub-package parameterized."""
+
+    def __init__(self, name: str, version: str) -> None:
+        self.name = name
+        self.version = version
+
+
 class Provider:
     """Provider represents an object that implements the resources and
     functions for a particular Pulumi package.
@@ -133,3 +146,23 @@ class Provider:
         """
 
         raise Exception(f"Unknown function {token}")
+
+    def parameterize_args(self, args: list[str]) -> ParameterizeResult:
+        """Parameterize a sub-package.
+
+        :param args list[str]: A parameter value, represented as an array of
+        strings, as might be provided by a command-line invocation, such as
+        that used to generate an SDK.
+        """
+        raise Exception("parameterize_args not implemented")
+
+    def parameterize_value(
+        self, name: str, version: str, value: str
+    ) -> ParameterizeResult:
+        """Parameterize a sub-package.
+
+        :param name str: The sub-package name for this sub-schema parameterization.
+        :param version str: The sub-package version for this sub-schema parameterization.
+        :param value str: The embedded value from the sub-package.
+        """
+        raise Exception("parameterize_value not implemented")
