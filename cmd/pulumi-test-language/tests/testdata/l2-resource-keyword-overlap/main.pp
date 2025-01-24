@@ -54,3 +54,11 @@ resource "this" "simple:index:Resource" {
 output "this" {
   value = this
 }
+
+resource "if" "simple:index:Resource" {
+  value = true
+}
+
+output "if" {
+  value = if
+}

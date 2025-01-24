@@ -55,6 +55,13 @@ func main() {
 			return err
 		}
 		ctx.Export("this", this)
+		_if, err := simple.NewResource(ctx, "if", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Export("if", _if)
 		return nil
 	})
 }

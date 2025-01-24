@@ -13,6 +13,7 @@ export = async () => {
     const object = new simple.Resource("object", {value: true});
     const self = new simple.Resource("self", {value: true});
     const _this = new simple.Resource("this", {value: true});
+    const _if = new simple.Resource("if", {value: true});
     return {
         "class": _class,
         "export": _export,
@@ -20,5 +21,6 @@ export = async () => {
         object: object,
         self: self,
         "this": _this,
+        "if": _if,
     };
 }

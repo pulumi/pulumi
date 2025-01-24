@@ -10,6 +10,7 @@ const object = {
 };
 const self = "self_output_string";
 const _this = "this_output_string";
+const _if = "if_output_string";
 export const output_class = _class;
 export const output_export = _export;
 export const output_import = _import;
@@ -17,3 +18,4 @@ export const output_mod = mod;
 export const output_object = object;
 export const output_self = self;
 export const output_this = _this;
+export const output_if = _if;

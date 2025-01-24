@@ -6,6 +6,7 @@ mod = "mod_output_string"
 object = { object = "object_output_string" }
 self = "self_output_string"
 this = "this_output_string"
+if = "if_output_string"
 
 output "output_class" {
   value = class
@@ -35,3 +36,6 @@ output "output_this" {
   value = this
 }
 
+output "output_if" {
+  value = if
+}
