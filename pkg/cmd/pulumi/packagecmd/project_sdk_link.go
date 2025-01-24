@@ -790,6 +790,25 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 			}
 
+			if descriptor.SubDir() != "" {
+				path, err := descriptor.DirPath()
+				if err != nil {
+					return nil, err
+				}
+				info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
+				if statErr == nil && info.IsDir() {
+					// The plugin is already installed.  But since it is in a subdirectory, it could be that
+					// we previously installed a plugin in a different subdirectory of the same repository.
+					// This is why the provider might have failed to start up.  Install the dependencies
+					// and try again.
+					depErr := descriptor.PluginSpec.InstallDependencies(pCtx.Base())
+					if depErr != nil {
+						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
+					}
+					return host.Provider(descriptor)
+				}
+			}
+
 			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 			var missingError *workspace.MissingError
 			if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {

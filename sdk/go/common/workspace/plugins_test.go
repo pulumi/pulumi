@@ -1756,7 +1756,7 @@ func TestNewPluginSpec(t *testing.T) {
 			source: "github.com/pulumi/pulumi-example",
 			kind:   apitype.ResourcePlugin,
 			ExpectedPluginSpec: PluginSpec{
-				Name:              "github.com_pulumi_pulumi-example",
+				Name:              "github.com_pulumi_pulumi-example.git",
 				Kind:              apitype.ResourcePlugin,
 				Version:           nil,
 				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
@@ -1769,7 +1769,7 @@ func TestNewPluginSpec(t *testing.T) {
 			source: "github.com/pulumi/pulumi-example@v1.0.0",
 			kind:   apitype.ResourcePlugin,
 			ExpectedPluginSpec: PluginSpec{
-				Name:              "github.com_pulumi_pulumi-example",
+				Name:              "github.com_pulumi_pulumi-example.git",
 				Kind:              apitype.ResourcePlugin,
 				Version:           &v1,
 				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
@@ -1782,7 +1782,7 @@ func TestNewPluginSpec(t *testing.T) {
 			source: "github.com/pulumi/pulumi-example@deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
 			kind:   apitype.ResourcePlugin,
 			ExpectedPluginSpec: PluginSpec{
-				Name:              "github.com_pulumi_pulumi-example",
+				Name:              "github.com_pulumi_pulumi-example.git",
 				Kind:              apitype.ResourcePlugin,
 				Version:           &v0deadbeef,
 				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
@@ -1903,7 +1903,7 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
-	require.Equal(t, "test", header.Name)
+	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -1942,7 +1942,7 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
-	require.Equal(t, "test", header.Name)
+	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -1981,7 +1981,7 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
-	require.Equal(t, "test", header.Name)
+	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -1999,4 +1999,54 @@ func TestGitSourceGetLatestVersion(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, semver.MustParse("0.1.1"), *version)
+}
+
+func TestLocalName(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name              string
+		pluginName        string
+		pluginDownloadURL string
+		expected          string
+		expectedPath      string
+	}{
+		{
+			name:       "simple",
+			pluginName: "pulumi-example",
+			expected:   "pulumi-example",
+		},
+		{
+			name:              "git plugin download url",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github.com/pulumi/pulumi-example",
+			expected:          "github.com_pulumi_pulumi-example.git",
+		},
+		{
+			name:              "git plugin download url with path",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github.com/pulumi/pulumi-example/path",
+			expected:          "github.com_pulumi_pulumi-example.git",
+			expectedPath:      "path",
+		},
+		{
+			name:              "invalid git plugin download url",
+			pluginName:        "pulumi-example",
+			pluginDownloadURL: "git://github",
+			expected:          "github",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			spec := PluginSpec{
+				Name:              c.pluginName,
+				PluginDownloadURL: c.pluginDownloadURL,
+			}
+			name, path := spec.LocalName()
+			require.Equal(t, c.expected, name)
+			require.Equal(t, c.expectedPath, path)
+		})
+	}
 }

@@ -371,12 +371,6 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	if path != "" {
-		return nil,
-			// TODO[pulumi/pulumi#18250]: We currently don't support installing plugins from subdirectories.
-			//nolint:lll
-			errors.New("cannot install git plugin from subdirectory.  See https://github.com/pulumi/pulumi/issues/18250")
-	}
 	return &gitSource{
 		url:                      u,
 		path:                     path,
@@ -434,7 +428,7 @@ func (source *gitSource) Download(
 
 	tw := tar.NewWriter(zip)
 
-	err = tw.AddFS(os.DirFS(filepath.Join(tmpdir, source.path)))
+	err = tw.AddFS(os.DirFS(tmpdir))
 	if err != nil {
 		return nil, -1, err
 	}
@@ -1030,7 +1024,11 @@ func NewPluginSpec(
 			if pluginDownloadURL != "" {
 				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 			}
-			name = strings.ReplaceAll(u.RequestURI(), "/", "_")
+			url, _, err := gitutil.ParseGitRepoURL("https://" + u.String())
+			if err != nil {
+				return PluginSpec{}, err
+			}
+			name = strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_")
 			// Prefix the url with `git://`, so we can later recognize this as a git URL.
 			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true
@@ -1071,13 +1069,18 @@ func NewPluginSpec(
 	}, nil
 }
 
-// LocalName returns the local name of the plugin, which is used in the directory name.
-func (spec PluginSpec) LocalName() string {
+// LocalName returns the local name of the plugin, which is used in the directory name, and a path
+// within that directory if the plugin is located in a subdirectory.
+func (spec PluginSpec) LocalName() (string, string) {
 	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
-		url := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
-		return strings.ReplaceAll(url, "/", "_")
+		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
+		if err != nil {
+			return strings.ReplaceAll(trimmed, "/", "_"), ""
+		}
+		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
 	}
-	return spec.Name
+	return spec.Name, ""
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -1087,6 +1090,12 @@ func (spec PluginSpec) Dir() string {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
 	return dir
+}
+
+// SubDir gets the expected subdirectory for this plugin.
+func (spec PluginSpec) SubDir() string {
+	_, path := spec.LocalName()
+	return path
 }
 
 // File gets the expected filename for this plugin, excluding any platform specific suffixes (e.g. ".exe" on
@@ -1805,8 +1814,24 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	// the progress bar.
 	contract.IgnoreClose(content)
 
+	err = spec.InstallDependencies(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Installation is complete. Remove the partial file.
+	return os.Remove(partialFilePath)
+}
+
+func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
+	dir, err := spec.DirPath()
+	if err != nil {
+		return err
+	}
+	subdir := filepath.Join(dir, spec.SubDir())
+
 	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
+	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 	}
@@ -1819,7 +1844,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, npm.AutoPackageManager, subdir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
@@ -1827,21 +1852,19 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
-				Root:       finalDir,
+				Root:       subdir,
 				Virtualenv: "venv",
 			})
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)
 			}
-			if err := tc.InstallDependencies(ctx, finalDir, false, /*useLanguageVersionTools */
+			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
 				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}
 	}
-
-	// Installation is complete. Remove the partial file.
-	return os.Remove(partialFilePath)
+	return nil
 }
 
 // cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
@@ -2054,7 +2077,14 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, true /* skipMetadata */, projectPlugins)
+	return GetPluginPathWithSubdir(d, kind, name, "", version, projectPlugins)
+}
+
+func GetPluginPathWithSubdir(
+	d diag.Sink, kind apitype.PluginKind, name, subdir string, version *semver.Version,
+	projectPlugins []ProjectPlugin,
+) (string, error) {
+	info, path, err := getPluginInfoAndPath(d, kind, name, subdir, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2067,7 +2097,7 @@ func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *s
 func GetPluginInfo(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(d, kind, name, "", version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2100,7 +2130,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	d diag.Sink,
-	kind apitype.PluginKind, name string, version *semver.Version, skipMetadata bool,
+	kind apitype.PluginKind, name, subdir string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := (&PluginSpec{Kind: kind, Name: name}).File()
@@ -2247,7 +2277,7 @@ func getPluginInfoAndPath(
 		isPreReleaseVersion(*version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
-		match = SelectPrereleasePlugin(plugins, kind, name, version)
+		match = SelectPrereleasePlugin(plugins, kind, name, subdir, version)
 	} else if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
@@ -2290,10 +2320,14 @@ func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
 // are looking for, based on the commit hash.
 func SelectPrereleasePlugin(
-	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
+	plugins []PluginInfo, kind apitype.PluginKind, name, subdir string, version *semver.Version,
 ) *PluginInfo {
 	for _, cur := range plugins {
 		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+			// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+			if subdir != "" {
+				cur.Path = filepath.Join(cur.Path, subdir)
+			}
 			return &cur
 		}
 	}

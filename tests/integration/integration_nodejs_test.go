@@ -2410,11 +2410,17 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
-	// The provider currently lives in the test-plugin branch in pulumi/pulumi.  Once we allow
-	// plugins installed from subdirectories, this should move into a subdirectory of tests/integration
-	// and the test-plugin branch can be deleted.
+	// The broken provider doesn't succeed in generating the SDK.  We still want to see it installed,
+	// and want to make sure we can still install a different provider from a different subdirectory,
+	// from the same repository and the same revision.
+	e.RunCommandExpectError("pulumi", "package", "add",
+		"github.com/pulumi/component-test-providers/broken-test-provider@d47cf0910e0450400775594609ee82566d1fb355")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/pulumi@178af2fc9a5da4b839e53681fadc4a0771b866ea")
+		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
 	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
@@ -2423,8 +2429,8 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
-	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
-	require.Contains(t, stdout, "github.com_pulumi_pulumi")
-	require.Contains(t, stdout, "0.0.0-x178af2fc9a5da4b839e53681fadc4a0771b866ea")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }

@@ -163,6 +163,13 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {
+	return NewProviderFromSubdir(host, ctx, pkg, "", version, options, disableProviderPreview, jsonConfig, projectName)
+}
+
+func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir string, version *semver.Version,
+	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	projectName tokens.PackageName,
+) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
 	var handshakeRes *ProviderHandshakeResponse
@@ -204,8 +211,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.Diag,
-			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),
+		path, err := workspace.GetPluginPathWithSubdir(ctx.Diag,
+			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"), subdir,
 			version, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
