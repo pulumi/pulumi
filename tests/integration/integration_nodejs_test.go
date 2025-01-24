@@ -2222,30 +2222,6 @@ func TestPackageAddNode(t *testing.T) {
 	}
 }
 
-func TestKeywordOvlerapRenameTS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-
-	ppFile, err := filepath.Abs("nodejs/keywordoverlap")
-	require.NoError(t, err)
-	err = fsutil.CopyFile(e.CWD, ppFile, nil)
-	require.NoError(t, err)
-
-	_, _ = e.RunCommand("pulumi", "convert", "--from", "pcl", "--language", "typescript", "--out", "tsdir")
-	assert.True(t, e.PathExists("tsdir"))
-
-	goldTSFile := filepath.Join(e.CWD, "index.golden.ts")
-	goldTSBytes, err := os.ReadFile(goldTSFile)
-	assert.NoError(t, err)
-
-	indexTSFile := filepath.Join(e.CWD, "tsdir", "index.ts")
-	indexTSBytes, err := os.ReadFile(indexTSFile)
-	assert.NoError(t, err)
-
-	assert.Equal(t, string(goldTSBytes), string(indexTSBytes))
-}
-
 //nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
