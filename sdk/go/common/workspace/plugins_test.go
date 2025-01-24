@@ -2002,6 +2002,8 @@ func TestGitSourceGetLatestVersion(t *testing.T) {
 }
 
 func TestLocalName(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name              string
 		pluginName        string
