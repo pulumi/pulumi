@@ -1533,7 +1533,7 @@ type DiscriminatorSpec struct {
 // DefaultSpec is the serializable form of extra information about the default value for a property.
 type DefaultSpec struct {
 	// Environment specifies a set of environment variables to probe for a default value.
-	Environment []string `json:"environment" yaml:"environment"`
+	Environment []string `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Language specifies additional language-specific data about the default value.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
