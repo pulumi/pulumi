@@ -223,6 +223,9 @@ func pulumiWheel(t *testing.T) string {
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
+	// This range needs to be compatible with the pip version in `sdk/python/pyproject.toml`
+	pipDependency := "pip>=24"
+
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
 		toolchainName := toolchainName
 		t.Run(toolchainName+"/empty", func(t *testing.T) {
@@ -231,7 +234,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			opts := getOptions(t, toolchainName, cwd)
 			// We need `pip` installed. This is a dependency of `pulumi`, so it will always be
 			// available Pulumi virtual environments.
-			createVenv(t, cwd, toolchainName, opts, "pip")
+			createVenv(t, cwd, toolchainName, opts, pipDependency)
 
 			packages, err := determinePulumiPackages(context.Background(), opts)
 
@@ -261,7 +264,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			createVenv(t, cwd, toolchainName, opts, "pip", "pip-install-test==0.5")
+			createVenv(t, cwd, toolchainName, opts, pipDependency, "pip-install-test==0.5")
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			// Find sitePackages folder in Python that contains pip_install_test subfolder.
@@ -314,7 +317,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
-			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pip")
+			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t))
 
 			// Install a local pulumi SDK that has a pulumi-plugin.json file with `{ "resource": false }`.
 			fooSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "foo-1.0.0"))

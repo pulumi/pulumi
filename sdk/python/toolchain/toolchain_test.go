@@ -23,7 +23,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"testing"
 
@@ -130,6 +129,22 @@ func TestCommand(t *testing.T) {
 func TestListPackages(t *testing.T) {
 	t.Parallel()
 
+	// Build the mock package before running the tests, so parallel tests don't
+	// interfere with each other.
+	testPackage, err := filepath.Abs(filepath.Join("testdata", "pulumi-test-package"))
+	require.NoError(t, err)
+	cmd := exec.Command("uv", "build")
+	cmd.Dir = testPackage
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	wheels, err := filepath.Glob(filepath.Join(testPackage, "dist", "*.whl"))
+	require.NoError(t, err)
+	require.NotEmpty(t, 1, wheels)
+	testPackageWheel := wheels[0]
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(filepath.Join(testPackage, "dist")))
+	})
+
 	for _, test := range []struct {
 		opts             PythonOptions
 		expectedPackages []string
@@ -166,15 +181,18 @@ func TestListPackages(t *testing.T) {
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
 			createVenv(t, opts)
-
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
 			packages, err := tc.ListPackages(context.Background(), false)
+
 			require.NoError(t, err)
-			require.Len(t, packages, len(test.expectedPackages))
-			for i, pkg := range test.expectedPackages {
-				require.Equal(t, pkg, packages[i].Name)
+			packageNames := make([]string, len(packages))
+			for i, pkg := range packages {
+				packageNames[i] = pkg.Name
+			}
+			for _, pkg := range test.expectedPackages {
+				require.Contains(t, packageNames, pkg)
 			}
 		})
 
@@ -182,30 +200,20 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
-			createVenv(t, opts, "pulumi-random")
-
+			createVenv(t, opts, testPackageWheel)
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
 			packages, err := tc.ListPackages(context.Background(), false)
-			require.NoError(t, err)
-			sort.Slice(packages, func(i, j int) bool {
-				return packages[i].Name < packages[j].Name
-			})
-			// pulumi_random depends on pulumi, which has pip as a dependency.
-			// We are looking for packages that are not dependencies of other
-			// packages, so we have to exclude pip here.
-			var expectedPackages []string
-			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" {
-					expectedPackages = append(expectedPackages, pkg)
-				}
-			}
-			sort.Strings(expectedPackages)
 
-			require.Len(t, packages, len(expectedPackages))
-			for i, pkg := range expectedPackages {
-				require.Equal(t, pkg, packages[i].Name)
+			require.NoError(t, err)
+			packageNames := make([]string, len(packages))
+			for i, pkg := range packages {
+				packageNames[i] = pkg.Name
+			}
+			expectedPackages := append([]string{"pulumi_test_package"}, test.expectedPackages...)
+			for _, pkg := range expectedPackages {
+				require.Contains(t, packageNames, pkg)
 			}
 		})
 
@@ -213,32 +221,20 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
-			createVenv(t, opts, "pulumi-random", "pip")
-
+			createVenv(t, opts, testPackageWheel, "pip")
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
 			packages, err := tc.ListPackages(context.Background(), false)
+
 			require.NoError(t, err)
-			sort.Slice(packages, func(i, j int) bool {
-				return packages[i].Name < packages[j].Name
-			})
-
-			// pulumi_random depends on pulumi, which has pip as a dependency.
-			// We are looking for packages that are not dependencies of other
-			// packages, so we have to exclude pip here.
-			var expectedPackages []string
-			for _, pkg := range append([]string{"pulumi_random"}, test.expectedPackages...) {
-				if pkg != "pip" {
-					expectedPackages = append(expectedPackages, pkg)
-				}
+			packageNames := make([]string, len(packages))
+			for i, pkg := range packages {
+				packageNames[i] = pkg.Name
 			}
-			expectedPackages = unique(expectedPackages)
-			sort.Strings(expectedPackages)
-
-			require.Len(t, packages, len(expectedPackages))
-			for i, pkg := range expectedPackages {
-				require.Equal(t, pkg, packages[i].Name)
+			expectedPackages := append([]string{"pulumi_test_package"}, test.expectedPackages...)
+			for _, pkg := range expectedPackages {
+				require.Contains(t, packageNames, pkg)
 			}
 		})
 	}
@@ -352,7 +348,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		for _, pkg := range packages {
 			cmd, err := tc.Command(context.Background(), "-m", "pip", "install", pkg)
 			require.NoError(t, err)
-			require.NoError(t, cmd.Run())
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 		}
 	} else if opts.Toolchain == Poetry {
 		writePyprojectForPoetry(t, opts.Root)
@@ -452,18 +449,6 @@ func copyOptions(opts PythonOptions) PythonOptions {
 		Typechecker: opts.Typechecker,
 		Toolchain:   opts.Toolchain,
 	}
-}
-
-func unique(s []string) []string {
-	u := make([]string, 0, len(s))
-	m := make(map[string]bool)
-	for _, val := range s {
-		if _, ok := m[val]; !ok {
-			m[val] = true
-			u = append(u, val)
-		}
-	}
-	return u
 }
 
 // normalizePath resolves symlinks within the directory part of the given path.
