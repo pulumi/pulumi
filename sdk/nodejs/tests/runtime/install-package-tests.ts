@@ -117,7 +117,10 @@ async function main() {
             // },
             {
                 name: "pnpm",
-                version: "*", // Latest version.
+                // TODO: This should use the latest version.
+                // https://github.com/pulumi/pulumi/issues/18338
+                // version: "*", // Latest version.
+                version: "10.0.0",
             },
         ];
 
