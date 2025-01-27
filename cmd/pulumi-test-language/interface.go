@@ -30,11 +30,13 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -50,6 +52,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -122,7 +125,7 @@ func (eng *languageTestServer) Done() error {
 type providerLoader struct {
 	language, languageInfo string
 
-	providers []plugin.Provider
+	host plugin.Host
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
@@ -139,20 +142,26 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
 
-	// Find the provider with the given package name
-	var provider plugin.Provider
-	for _, p := range l.providers {
-		if string(p.Pkg()) == descriptor.Name {
-			info, err := p.GetPluginInfo(context.TODO())
-			if err != nil {
-				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
-			}
-
-			if descriptor.Version == nil || (info.Version != nil && descriptor.Version.EQ(*info.Version)) {
-				provider = p
-				break
-			}
+	// Defer to the host to find the provider for the given package descriptor.
+	workspaceDescriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              descriptor.Name,
+			Version:           descriptor.Version,
+			PluginDownloadURL: descriptor.DownloadURL,
+		},
+	}
+	if descriptor.Parameterization != nil {
+		workspaceDescriptor.Parameterization = &workspace.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version,
+			Value:   descriptor.Parameterization.Value,
 		}
+	}
+
+	provider, err := l.host.Provider(workspaceDescriptor)
+	if err != nil {
+		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
 
 	if provider == nil {
@@ -232,17 +241,17 @@ func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
 ) (*testingrpc.GetLanguageTestsResponse, error) {
-	tests := make([]string, 0, len(languageTests))
-	for testName := range languageTests {
+	filtered := make([]string, 0, len(tests.LanguageTests))
+	for testName := range tests.LanguageTests {
 		// Don't return internal tests
 		if strings.HasPrefix(testName, "internal-") {
 			continue
 		}
-		tests = append(tests, testName)
+		filtered = append(filtered, testName)
 	}
 
 	return &testingrpc.GetLanguageTestsResponse{
-		Tests: tests,
+		Tests: filtered,
 	}, nil
 }
 
@@ -395,7 +404,7 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	test, has := languageTests[req.Test]
+	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
@@ -457,7 +466,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// And now replace the context host with our own test host
 	providers := make(map[string]plugin.Provider)
-	for _, provider := range test.providers {
+	for _, provider := range test.Providers {
 		version, err := getProviderVersion(provider)
 		if err != nil {
 			return nil, err
@@ -465,7 +474,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
 	}
 
-	pctx.Host = &testHost{
+	host := &testHost{
 		stderr:      stderr,
 		host:        pctx.Host,
 		runtime:     languageClient,
@@ -474,11 +483,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		connections: make(map[plugin.Provider]io.Closer),
 	}
 
+	pctx.Host = host
+
 	// Generate SDKs for all the packages we need
 	loader := &providerLoader{
-		providers:    test.providers,
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
+		host:         host,
 	}
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
@@ -491,10 +502,10 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
-	for i, run := range test.runs {
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -504,15 +515,15 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
-		if run.main != "" {
-			sourceDir = filepath.Join(sourceDir, run.main)
+		if run.Main != "" {
+			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
@@ -673,7 +684,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Create any stack references needed for the test
-	for name, outputs := range test.stackReferences {
+	for name, outputs := range test.StackReferences {
 		ref, err := testBackend.ParseStackReference(name)
 		if err != nil {
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
@@ -721,11 +732,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	var result LResult
-	for i, run := range test.runs {
+	var result tests.LResult
+	for i, run := range test.Runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -735,17 +746,17 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(projectDir, 0o755)
@@ -756,11 +767,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		// Generate the project and read in the Pulumi.yaml
 		rootDirectory := sourceDir
 		projectJSON := func() string {
-			if run.main == "" {
+			if run.Main == "" {
 				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
 			}
-			sourceDir = filepath.Join(sourceDir, run.main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+			sourceDir = filepath.Join(sourceDir, run.Main)
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
@@ -791,7 +802,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.Runs) > 1 {
 			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
 		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
@@ -1009,7 +1020,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			if !found {
-				return makeTestResponse(fmt.Sprintf("unepxected extra package %v", actual)), nil
+				return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
 			}
 		}
 
@@ -1033,7 +1044,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		updateOptions := run.updateOptions
+		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
 
 		// Set up the stack and engine configuration
@@ -1049,11 +1060,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		cfg := backend.StackConfiguration{
-			Config:    run.config,
+			Config:    run.Config,
 			Decrypter: dec,
 		}
 
-		changes, res := s.Update(ctx, backend.UpdateOperation{
+		updateOperation := backend.UpdateOperation{
 			Proj:               project,
 			Root:               projectDir,
 			Opts:               opts,
@@ -1062,7 +1073,35 @@ func (eng *languageTestServer) RunLanguageTest(
 			SecretsManager:     sm,
 			SecretsProvider:    b64secrets.Base64SecretsProvider,
 			Scopes:             backend.CancellationScopes,
+		}
+
+		assertPreview := run.AssertPreview
+		if assertPreview == nil {
+			// if no assertPreview is provided for the test run, we create a default implementation
+			// where we simply assert that the preview changes did not error
+			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
+				assert.NoErrorf(l, err, "expected no error in preview")
+			}
+		}
+
+		// Perform a preview on the stack
+		plan, previewChanges, res := s.Preview(ctx, updateOperation, nil)
+
+		// assert preview results
+		previewResult := tests.WithL(func(l *tests.L) {
+			assertPreview(l, projectDir, res, plan, previewChanges)
 		})
+
+		if previewResult.Failed {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  !previewResult.Failed,
+				Messages: previewResult.Messages,
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+			}, nil
+		}
+
+		changes, res := s.Update(ctx, updateOperation)
 
 		var snap *deploy.Snapshot
 		if res == nil {
@@ -1085,8 +1124,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		result = WithL(func(l *L) {
-			run.assert(l, projectDir, res, snap, changes)
+		result = tests.WithL(func(l *tests.L) {
+			run.Assert(l, projectDir, res, snap, changes)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

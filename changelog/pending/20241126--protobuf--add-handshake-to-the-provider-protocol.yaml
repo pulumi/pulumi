@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: protobuf
-  description: Add `Handshake` to the provider protocol

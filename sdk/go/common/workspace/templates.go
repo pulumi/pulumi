@@ -286,7 +286,7 @@ func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offlin
 	templateKind TemplateKind,
 ) (TemplateRepository, error) {
 	if isZIPTemplateURL(templateNamePathOrURL) {
-		return retrieveZIPTemplates(templateNamePathOrURL)
+		return RetrieveZIPTemplates(templateNamePathOrURL)
 	}
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline, templateKind)

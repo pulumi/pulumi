@@ -165,6 +165,14 @@ func TestGetRequiredPackages(t *testing.T) {
 			filepath.Join(dir, "node_modules", "malformed", "tests", "malformed_test", "package.json"),
 			`{`,
 		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "false_main", "package.json"),
+			`{ "name": "false_main", "main": false }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "invalid_main", "package.json"),
+			`{ "name": "invalid_main", "main": ["this is an", "invalid main"]}`,
+		},
 	}
 	for _, file := range files {
 		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
@@ -866,14 +874,19 @@ func TestNodeInstall(t *testing.T) {
 		t.Skip()
 	}
 	tmpDir := t.TempDir()
+	path := os.Getenv("PATH")
+
+	// Set path to *only* $TMPDIR/bin so that no `fnm` executable can not be found
+	// until after we write our mock.
 	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
-	fmt.Println(os.Getenv("PATH"))
-
-	// There's no fnm executable in PATH, installNodeVersion is a no-op
+	// There's no fnm executable in PATH, installNodeVersion returns an error
 	stdout := &bytes.Buffer{}
 	err := installNodeVersion(tmpDir, stdout)
 	require.ErrorIs(t, err, errFnmNotFound)
+
+	// Restore the original PATH and prepend $TMPDIR/bin to it.
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin")+":"+path)
 
 	// Add a mock fnm executable to $tmp/bin. For each execution, the mock fnm executable will
 	// append a line with its arguments to a file. We read back the file to verify that it was
@@ -891,15 +904,30 @@ func TestNodeInstall(t *testing.T) {
 	require.Error(t, err, errVersionFileNotFound)
 
 	// Create a .node-version file
-	// The mock fnm executable should be called with a command to install the requested version,
-	// and a command to set the default version to this version.
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.2"), 0o600))
+
+	t.Setenv("FNM_MULTISHELL_PATH", "")
 	stdout = &bytes.Buffer{}
 	err = installNodeVersion(tmpDir, stdout)
 	require.NoError(t, err)
 	b, err := os.ReadFile(outPath)
 	require.NoError(t, err)
 	commands := strings.Split(strings.TrimSpace(string(b)), "\n")
-	require.Equal(t, "install 20.1.2 --progress never", commands[0])
+	require.Equal(t, "env --shell bash", commands[0])
+	require.Equal(t, "use 20.1.2 --install-if-missing", commands[1])
+	require.Equal(t, "alias 20.1.2 default", commands[2])
+
+	// "activate" fnm shell integration
+	t.Setenv("FNM_MULTISHELL_PATH", tmpDir)
+	// Remove `outPath` before the next test
+	require.NoError(t, os.Remove(outPath))
+	stdout = &bytes.Buffer{}
+	err = installNodeVersion(tmpDir, stdout)
+	require.NoError(t, err)
+	b, err = os.ReadFile(outPath)
+	fmt.Printf("outPath: %s\n", string(b))
+	require.NoError(t, err)
+	commands = strings.Split(strings.TrimSpace(string(b)), "\n")
+	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }

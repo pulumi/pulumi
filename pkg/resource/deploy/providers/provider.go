@@ -22,25 +22,35 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ProviderParameterization struct {
 	// The name of the parametrized package.
-	name tokens.Package
+	Name tokens.Package
 	// The version of the parametrized package.
-	version semver.Version
+	Version semver.Version
 	// The value of the parameter.
-	value []byte
+	Value []byte
 }
 
 // NewProviderParameterization constructs a new provider parameterization.
 func NewProviderParameterization(name tokens.Package, version semver.Version, value []byte,
 ) *ProviderParameterization {
 	return &ProviderParameterization{
-		name:    name,
-		version: version,
-		value:   value,
+		Name:    name,
+		Version: version,
+		Value:   value,
 	}
+}
+
+// ToProviderParameterization converts a workspace parameterization to a provider parameterization.
+func ToProviderParameterization(parameterization *workspace.Parameterization) *ProviderParameterization {
+	if parameterization == nil {
+		return nil
+	}
+	return NewProviderParameterization(
+		tokens.Package(parameterization.Name), parameterization.Version, parameterization.Value)
 }
 
 // A ProviderRequest is a tuple of an optional semantic version, download server url, parameter, and a package name.
@@ -100,7 +110,7 @@ func (p ProviderRequest) Version() *semver.Version {
 // Package returns this provider request's package.
 func (p ProviderRequest) Package() tokens.Package {
 	if p.parameterization != nil {
-		return p.parameterization.name
+		return p.parameterization.Name
 	}
 	return p.name
 }
@@ -127,7 +137,7 @@ func (p ProviderRequest) DefaultName() string {
 
 	var v *semver.Version
 	if p.parameterization != nil {
-		v = &p.parameterization.version
+		v = &p.parameterization.Version
 	} else {
 		v = p.version
 	}
@@ -158,7 +168,7 @@ func (p ProviderRequest) DefaultName() string {
 func (p ProviderRequest) String() string {
 	var version string
 	if p.parameterization != nil {
-		version = "-" + p.parameterization.version.String()
+		version = "-" + p.parameterization.Version.String()
 	} else if p.version != nil {
 		version = "-" + p.version.String()
 	}

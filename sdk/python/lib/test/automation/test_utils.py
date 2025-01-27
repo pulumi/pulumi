@@ -19,6 +19,8 @@ from pulumi.automation import fully_qualified_stack_name
 
 
 def get_test_org():
+    if os.getenv("PULUMI_ACCESS_TOKEN") is None:
+        return "organization"
     test_org = "moolumi"
     env_var = os.getenv("PULUMI_TEST_ORG")
     if env_var is not None:

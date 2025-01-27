@@ -178,6 +178,9 @@ type UpdateOptions struct {
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+
+	// The execution kind of the operation.
+	ExecKind string
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -233,7 +236,7 @@ func installPlugins(
 	ctx context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
 	plugctx *plugin.Context, returnInstallErrors bool,
-) (PluginSet, map[tokens.Package]workspace.PluginSpec, error) {
+) (PluginSet, map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -253,23 +256,24 @@ func installPlugins(
 		/* entryPoint */ main,
 		/* options */ proj.Runtime.Options(),
 	)
-	languagePlugins, err := gatherPluginsFromProgram(plugctx, runtime, programInfo)
+	languagePackages, err := gatherPackagesFromProgram(plugctx, runtime, programInfo)
 	if err != nil {
 		return nil, nil, err
 	}
-	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	allPlugins := languagePlugins.Union(snapshotPlugins)
+	allPackages := languagePackages.Union(snapshotPackages)
+	allPlugins := allPackages.ToPluginSet().Deduplicate()
 
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins.Deduplicate(),
+	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
@@ -278,7 +282,7 @@ func installPlugins(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPlugins(languagePlugins, allPlugins)
+	defaultProviderVersions := computeDefaultProviderPackages(languagePackages, allPackages)
 
 	return allPlugins, defaultProviderVersions, nil
 }

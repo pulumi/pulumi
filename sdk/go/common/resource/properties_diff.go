@@ -391,6 +391,15 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		return vo.Element.DeepEquals(oo.Element)
 	}
 
+	if v.IsComputed() {
+		if !other.IsComputed() {
+			return false
+		}
+		vc := v.Input().Element
+		oc := other.Input().Element
+		return vc.DeepEquals(oc)
+	}
+
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }

@@ -14,13 +14,25 @@
 
 import pytest
 
-from typing import Awaitable, Optional, Union
+from typing import Any, Optional, Union
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import time
 
 import pulumi
 from pulumi import InvokeOptions, InvokeOutputOptions
+from pulumi.output import UNKNOWN
+from pulumi.resource import DependencyResource, Resource
+
+
+def unknown() -> pulumi.Output[Any]:
+    is_known_fut: asyncio.Future[bool] = asyncio.Future()
+    is_secret_fut: asyncio.Future[bool] = asyncio.Future()
+    is_known_fut.set_result(False)
+    is_secret_fut.set_result(False)
+    value_fut: asyncio.Future[Any] = asyncio.Future()
+    value_fut.set_result(pulumi.UNKNOWN)
+    return pulumi.Output(set(), value_fut, is_known_fut, is_secret_fut)
 
 
 class MyMocks(pulumi.runtime.Mocks):
@@ -34,6 +46,11 @@ class MyMocks(pulumi.runtime.Mocks):
 class MockResource(pulumi.CustomResource):
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
         super().__init__("python:test:MockResource", name, {}, opts)
+
+
+class MockComponentResource(pulumi.ComponentResource):
+    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+        super().__init__("python:test:MockComponentResource", name, {}, opts)
 
 
 @pytest.mark.parametrize(
@@ -103,6 +120,34 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
 
 
 @pulumi.runtime.test
+def test_invoke_plain_invoke_takes_output_args() -> None:
+    # Plain invoke calls serialize_properties on the arguments, so even though
+    # it is supposed to only take plain values, it still happens to work with
+    # Outputs. In practice, people rely on this behavior, so we test it here to
+    # ensure we don't break it this behavior.
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    # Construct an argument that depends on an unknown resource.
+    dep = MockResource(name="dep")
+    dep.__dict__["id"] = unknown()
+    arg_value = asyncio.Future[int]()
+    arg_value.set_result(0)
+    is_known = asyncio.Future[bool]()
+    is_known.set_result(True)
+    is_secret = asyncio.Future[bool]()
+    is_secret.set_result(False)
+    arg = pulumi.Output(
+        resources={dep},
+        future=arg_value,
+        is_known=is_known,
+        is_secret=is_secret,
+    )
+
+    result = pulumi.runtime.invoke("test::MyFunction", {"arg": arg})
+    assert result.value == {"result": "mock"}
+
+
+@pulumi.runtime.test
 async def test_invoke_depends_on() -> None:
     pulumi.runtime.mocks.set_mocks(MyMocks())
 
@@ -132,6 +177,78 @@ async def test_invoke_depends_on() -> None:
             assert invoke_result == {"result": "mock"}
 
         return o.apply(check)
+
+
+@pulumi.runtime.test
+async def test_invoke_depends_on_component() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    dep = MockComponentResource(name="c")
+    MockResource(name="r", opts=pulumi.ResourceOptions(parent=dep))
+    dep_remote = DependencyResource("some:urn")
+
+    opts = pulumi.InvokeOutputOptions(depends_on=[dep_remote, dep])
+    o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
+    v = await o.future()
+    assert v == {"result": "mock"}
+    deps = await o.resources()
+    assert len(deps) == 2
+    assert deps == {dep, dep_remote}
+
+
+@pulumi.runtime.test
+async def test_invoke_depends_on_unknown() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    dep = MockResource(name="dep")
+    dep.__dict__["id"] = unknown()
+
+    opts = pulumi.InvokeOutputOptions(depends_on=[dep])
+    o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
+    k = await o.is_known()
+    assert k == False
+
+
+@pulumi.runtime.test
+async def test_invoke_depends_on_unknown_component_child() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    comp = MockComponentResource(name="c")
+    dep = MockResource(name="dep", opts=pulumi.ResourceOptions(parent=comp))
+    dep.__dict__["id"] = unknown()
+
+    opts = pulumi.InvokeOutputOptions(depends_on=[comp])
+    o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
+    k = await o.is_known()
+    assert k == False
+
+
+@pulumi.runtime.test
+async def test_invoke_input_dependency() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+    # Create a resource with an unknown ID.
+    dep = MockResource(name="dep")
+    dep.__dict__["id"] = unknown()
+    # Create an output that depends on the resource.
+    arg_value = asyncio.Future[int]()
+    arg_value.set_result(0)
+    is_known = asyncio.Future[bool]()
+    is_known.set_result(True)
+    is_secret = asyncio.Future[bool]()
+    is_secret.set_result(False)
+    arg_with_resource_dependency = pulumi.Output(
+        resources={dep},
+        future=arg_value,
+        is_known=is_known,
+        is_secret=is_secret,
+    )
+
+    o = pulumi.runtime.invoke_output(
+        "test::MyFunction", {"arg": arg_with_resource_dependency}
+    )
+
+    k = await o.is_known()
+    assert k == False
 
 
 @pytest.mark.parametrize(

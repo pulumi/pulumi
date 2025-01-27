@@ -659,3 +659,35 @@ func TestInvokeOutput(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	require.ErrorContains(t, err, "invoke error")
 }
+
+func TestInvokePlainWithOutputArgument(t *testing.T) {
+	// Unlike Node.js and Python, Go sensibly does not permit passing in outputs
+	// as an argument to a plain invoke. This test verifies that we return an
+	// error in this case.
+
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	type result struct {
+		Result string
+	}
+
+	type InvokeOutputArgs struct {
+		Arg StringInput `pulumi:"arg"`
+	}
+
+	args := InvokeOutputArgs{
+		Arg: String("hello").ToStringOutput(),
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		res := result{}
+		return ctx.Invoke("test:invoke:success", args, &res)
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "cannot marshal an input of type")
+}

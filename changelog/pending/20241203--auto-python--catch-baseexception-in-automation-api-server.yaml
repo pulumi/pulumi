@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/python
-  description: Catch BaseException in automation API server

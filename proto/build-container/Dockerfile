@@ -2,7 +2,7 @@
 FROM ubuntu:bionic
 
 # This image was copied from https://github.com/pulumi/pulumi-build-container
-# It can probably be simplifed as it is now purely used to generate the protobuf files
+# It can probably be simplified as it is now purely used to generate the protobuf files
 
 LABEL description="Pulumi Protobuf Build Container"
 

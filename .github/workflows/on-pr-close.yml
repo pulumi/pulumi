@@ -7,7 +7,7 @@ on:
 jobs:
     cleanup:
       name: Remove Existing Codegen PRs
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-22.04
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}

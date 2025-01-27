@@ -96,6 +96,8 @@ service ResourceProvider {
     // thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
     // Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
     // AWS access key, should almost certainly not.
+    //
+    // Implementations must satisfy the invariants documented on `DiffResponse`.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
 
     // `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
@@ -152,6 +154,8 @@ service ResourceProvider {
     // `Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
     // difference (if any) between them. `Diff` should only be called with values that have at some point been validated
     // by a [](pulumirpc.ResourceProvider.Check) call.
+    //
+    // Implementations must satisfy the invariants documented on `DiffResponse`.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
 
     // `Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
@@ -647,6 +651,13 @@ message PropertyDiff {
 //   granular view of the changes that have occurred. Detailed diffs are designed to allow providers to control
 //   precisely which field names are displayed as responsible for a change, and to signal more accurately what kind of
 //   change occurred (e.g. a field was added, deleted or updated).
+//
+// The response must satisfy the following invariants:
+//
+// * For each top-level key in `diff` there is at least one matching property path, starting at that key, in `detailedDiff`.
+// * For each entry in `detailedDiff`, its top-level property is in `diff`.
+// * `diff` does not contain duplicates.
+// * `detailedDiff` does not contain duplicate keys.
 message DiffResponse {
     // A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
     // caller should replace the resource if this set is non-empty, or if any of the properties specified in

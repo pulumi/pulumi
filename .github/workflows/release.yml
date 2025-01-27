@@ -63,7 +63,7 @@ env:
 jobs:
   sdks:
     name: ${{ matrix.language }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -73,16 +73,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      - name: Set up uv
+        if: ${{ matrix.language == 'python' }}
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         if: ${{ matrix.language == 'python' }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache-dependency-path: sdk/python/requirements.txt
-      - name: Install Python deps
-        if: ${{ matrix.language == 'python' }}
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
         uses: actions/setup-node@v4
@@ -102,7 +103,7 @@ jobs:
 
   s3-blobs:
     name: s3 blobs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -145,7 +146,7 @@ jobs:
   dispatch:
     name: ${{ matrix.job.name }}
     if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [pr]
     strategy:
       fail-fast: false

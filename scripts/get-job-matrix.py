@@ -51,7 +51,6 @@ class PartitionPackage:
 
 
 INTEGRATION_TEST_PACKAGES = {
-    "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi",
     "github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils",
     "github.com/pulumi/pulumi/pkg/v3/graph/dotconv",
     "github.com/pulumi/pulumi/pkg/v3/testing/integration",
@@ -72,7 +71,8 @@ PERFORMANCE_TEST_PACKAGES = {
 def is_unit_test(pkg: str) -> bool:
     """Checks if the package is a unit test"""
     return not (
-        pkg.startswith("github.com/pulumi/pulumi/tests")
+        pkg.startswith("github.com/pulumi/pulumi/pkg/v3/cmd/pulumi")
+        or pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
         or pkg in PERFORMANCE_TEST_PACKAGES
     )
@@ -126,7 +126,7 @@ MAKEFILE_PERFORMANCE_TESTS: List[MakefileTest] = [
     {"name": "performance tests", "run": "./scripts/retry make test_performance", "eta": 10},
 ]
 
-ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
+ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
 
 
 # When updating the minumum and current versions, consider also updating the
@@ -138,8 +138,8 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "dotnet": "6",
     "go": "1.22.x",
     "nodejs": "18.x",
-    # When updating the minimum Python version here, also update `mypy.ini` and
-    # `ruff.toml` to target this version.
+    # When updating the minimum Python version here, also update `pyproject.toml`, including the
+    # `mypy` and `ruff` sections.
     "python": "3.9.x",
 }
 
@@ -211,7 +211,7 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
             text=True,
         )
     except sp.CalledProcessError as err:
-        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds.\nstdout: {cmd.stdout}\nstderr: {cmd.stderr}"
+        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds. Also check that `make tidy` has been run."
         print(f"::error {message}", file=sys.stderr)
         raise Exception(message) from err
 

@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
@@ -46,12 +47,28 @@ type wrappedBucket struct {
 	bucket *blob.Bucket
 }
 
+func retryOp(op func() error) error {
+	var err error
+	backoff := 20 * time.Millisecond
+	for i := 0; i < 3; i++ {
+		err = op()
+		if err == nil {
+			return nil
+		}
+		time.Sleep(backoff)
+		backoff *= 2
+	}
+	return err
+}
+
 func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
 	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
 }
 
 func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
-	return b.bucket.Delete(ctx, filepath.ToSlash(key))
+	return retryOp(func() error {
+		return b.bucket.Delete(ctx, filepath.ToSlash(key))
+	})
 }
 
 func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {

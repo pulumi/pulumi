@@ -36,7 +36,7 @@ jobs:
   update-dev-version:
     name: update-dev-version
     needs: [dev-release, info]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,7 +69,7 @@ jobs:
 
   tag-pkg:
     name: tag-pkg
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4

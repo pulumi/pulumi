@@ -8,9 +8,6 @@ $(info    VERSION       = $(VERSION))
 $(info    PYPI_VERSION  = $(PYPI_VERSION))
 endif
 
-PYENV := ./env
-PYENVSRC := $(PYENV)/src
-
 PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
 
 include ../../build/common.mk
@@ -19,22 +16,13 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
 
-ensure:: $(PYTHON).ensure .ensure.phony
-.ensure.phony:
-	$(PYTHON) -m venv venv
-	. venv/*/activate && python -m pip install --upgrade pip setuptools wheel
-	. venv/*/activate && python -m pip install -r requirements.txt
-	mkdir -p $(PYENVSRC)
-	@touch .ensure.phony
+ensure::
+	@command -v uv > /dev/null || { echo "uv command not found. Please install it first." && exit 1; }
+	uv venv --allow-existing
+	uv sync --dev
 
 build_package:: ensure
-	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
-	sed -i.bak 's/^VERSION = .*/VERSION = "$(PYPI_VERSION)"/g' $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
-	sed -i.bak 's/^_VERSION = .*/_VERSION = "$(VERSION)"/g' $(PYENVSRC)/pulumi/_version.py && rm $(PYENVSRC)/pulumi/_version.py.bak
-	cp ../../README.md $(PYENVSRC)
-	. venv/*/activate && cd $(PYENVSRC) && \
-		python setup.py build bdist_wheel --universal
-	. venv/*/activate && python -m pip install -e $(PYENVSRC)
+	uv run -m build --outdir ./build --installer uv
 
 build_plugin::
 	go install -C cmd/pulumi-language-python \
@@ -43,22 +31,17 @@ build_plugin::
 build:: build_package build_plugin
 
 lint:: ensure
-	. venv/*/activate && \
-		python -m ruff format --check
-	. venv/*/activate && \
-		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
-	. venv/*/activate && \
-		python -m ruff check
-	. venv/*/activate && \
-		python -m pyright
+	uv run -m ruff format --check
+	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi
+	uv run -m ruff check
+	uv run -m pyright
 
 lint_fix:: ensure
 	make format
 	make lint
 
 format:: ensure
-	. venv/*/activate && \
-		python -m ruff format
+	uv run -m ruff format
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
@@ -76,10 +59,10 @@ test_go:: $(TEST_ALL_DEPS)
 		$(GO_TEST) ${PROJECT_PKGS}
 
 test_fast:: $(TEST_ALL_DEPS)
-	. venv/*/activate && ./scripts/test_fast.sh
+	. .venv/*/activate && ./scripts/test_fast.sh
 
 test_auto:: $(TEST_ALL_DEPS)
-	. venv/*/activate && ./scripts/test_auto.sh
+	. .venv/*/activate && ./scripts/test_auto.sh
 
 test_all:: test_fast test_auto test_go
 
@@ -98,12 +81,12 @@ brew::
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
-publish::
+publish:: ensure
 	for file in ../../artifacts/sdk-python-*.whl; do \
 		basename=$$(basename $${file}); \
 		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
 	done
-	twine upload \
+	uv run twine upload \
 	-u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" \
 		../../artifacts/*.whl \
 		--skip-existing \

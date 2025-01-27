@@ -1,13 +1,13 @@
 package main
 
 import (
-	"git.example.org/pulumi-synthetic/resourceProperties"
+	"git.example.org/pulumi-synthetic/resourceproperties"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		rt, err := resourceProperties.NewRoot(ctx, "rt", nil)
+		rt, err := resourceproperties.NewRoot(ctx, "rt", nil)
 		if err != nil {
 			return err
 		}

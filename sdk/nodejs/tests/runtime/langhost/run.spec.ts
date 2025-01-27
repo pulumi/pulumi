@@ -49,7 +49,14 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any; ret: any };
+    invoke?: (
+        ctx: any,
+        dryrun: boolean,
+        tok: string,
+        args: any,
+        version: string,
+        provider: string,
+    ) => { failures: any; ret: any };
     readResource?: (
         ctx: any,
         t: string,
@@ -358,7 +365,7 @@ describe("rpc", () => {
         invoke: {
             pwd: path.join(base, "009.invoke"),
             expectResourceCount: 0,
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "");
                 assert.strictEqual(tok, "invoke:index:echo");
                 assert.deepStrictEqual(args, {
@@ -1006,7 +1013,7 @@ describe("rpc", () => {
                     props: {},
                 };
             },
-            invoke: (ctx: any, tok: string, args: any, version: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string) => {
                 switch (tok) {
                     case "invoke:index:doit":
                         assert.strictEqual(version, "0.19.1");
@@ -1288,7 +1295,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
             },
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
                 assert.deepStrictEqual(args, {
@@ -1318,7 +1325,7 @@ describe("rpc", () => {
             ) => {
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
             },
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
                 assert.deepStrictEqual(args, {
@@ -1337,7 +1344,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
             },
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
                 assert.deepStrictEqual(args, {
@@ -1371,7 +1378,7 @@ describe("rpc", () => {
 
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
             },
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
                 assert.deepStrictEqual(args, {
@@ -1598,10 +1605,25 @@ describe("rpc", () => {
         invoke_output_depends_on: {
             pwd: path.join(base, "075.invoke_output_depends_on"),
             expectResourceCount: 1,
-            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
+                if (dryrun) {
+                    assert.fail("invoke should not be called");
+                }
                 assert.strictEqual(tok, "test:index:echo");
                 assert.deepStrictEqual(args, { dependency: { resolved: true } });
                 return { failures: undefined, ret: args };
+            },
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                ...args: any
+            ) => {
+                const id = dryrun ? undefined : name + "_id";
+                return { urn: makeUrn(t, name), id, props: undefined };
             },
         },
         invoke_output_depends_on_non_resource: {
@@ -1642,6 +1664,69 @@ describe("rpc", () => {
                 };
             },
         },
+        invoke_output_depends_on_unknown_component: {
+            pwd: path.join(base, "077.invoke_output_depends_on_unknown_component"),
+            expectResourceCount: 2,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                ...args: any
+            ) => {
+                const id = dryrun ? undefined : name + "_id";
+                return { urn: makeUrn(t, name), id, props: undefined };
+            },
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
+                if (dryrun) {
+                    assert.fail("invoke should not be called");
+                }
+                return { failures: undefined, ret: args };
+            },
+        },
+        invoke_output_input_dependencies: {
+            pwd: path.join(base, "078.invoke_output_input_dependencies"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                ...args: any
+            ) => {
+                const id = dryrun ? undefined : name + "_id";
+                return { urn: makeUrn(t, name), id, props: undefined };
+            },
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
+                if (dryrun) {
+                    assert.fail("invoke should not be called");
+                }
+                return { failures: undefined, ret: args };
+            },
+        },
+        invoke_plain_takes_output: {
+            pwd: path.join(base, "079.invoke_plain_takes_output"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                ...args: any
+            ) => {
+                const id = dryrun ? undefined : name + "_id";
+                return { urn: makeUrn(t, name), id, props: undefined };
+            },
+            invoke: (ctx: any, dryrun: boolean, tok: string, args: any, version: string, provider: string) => {
+                return { failures: undefined, ret: args };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1672,7 +1757,14 @@ describe("rpc", () => {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();
                             const version: string = req.getVersion();
-                            const { failures, ret } = opts.invoke(ctx, req.getTok(), args, version, req.getProvider());
+                            const { failures, ret } = opts.invoke(
+                                ctx,
+                                dryrun,
+                                req.getTok(),
+                                args,
+                                version,
+                                req.getProvider(),
+                            );
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
                         }

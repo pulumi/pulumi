@@ -89,12 +89,16 @@ def _get_semver_version():
     elif pep440_version.pre_tag == 'rc':
         prerelease = f"rc.{pep440_version.pre}"
     elif pep440_version.dev is not None:
+        # PEP440 has explicit support for dev builds, while semver encodes them as "prerelease" versions. To bridge 
+        # between the two, we convert our dev build version into a prerelease tag. This matches what all of our other
+        # packages do when constructing their own semver string.
         prerelease = f"dev.{pep440_version.dev}"
+    elif pep440_version.local is not None:
+        # PEP440 only allows a small set of prerelease tags, so when converting an arbitrary prerelease,
+        # PypiVersion in /pkg/codegen/python/utilities.go converts it to a local version. Therefore, we need to
+        # do the reverse conversion here and set the local version as the prerelease tag.
+        prerelease = pep440_version.local
 
-    # The only significant difference between PEP440 and semver as it pertains to us is that PEP440 has explicit support
-    # for dev builds, while semver encodes them as "prerelease" versions. In order to bridge between the two, we convert
-    # our dev build version into a prerelease tag. This matches what all of our other packages do when constructing
-    # their own semver string.
     return SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
 
 

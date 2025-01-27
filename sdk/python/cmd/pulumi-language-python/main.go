@@ -46,9 +46,9 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/nxadm/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -332,27 +332,53 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain: toolchain.Pip,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// ensure build is up-to-date
-	buildUpgradeCmd, err := tc.ModuleCommand(ctx, "pip", "install", "--upgrade", "build")
-	if err != nil {
-		return nil, err
-	}
-	buildUpgradeCmd.Stdout = os.Stdout
-	buildUpgradeCmd.Stderr = os.Stderr
-	err = buildUpgradeCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("install build tools: %w", err)
-	}
-
 	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
+	}
+	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
+	// pack the Python SDK. We install this in an isolated virtual environment
+	// to avoid conflicts with the user's environment.
+	venv := filepath.Join(tmp, ".venv")
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain:  toolchain.Uv,
+		Virtualenv: venv,
+	})
+	if err == nil {
+		// `uv` is available, use it to create our virtual environment.
+		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
+		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
+		}
+		// Install `build` into the virtual environment.
+		cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
+		cmd.Env = toolchain.ActivateVirtualEnv(os.Environ(), venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
+		}
+	} else {
+		// Fallback to pip+venv
+		logging.V(5).Infof("Creating virtual environment using pip+venv at %s", venv)
+		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
+		}
+		tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
+			Toolchain:  toolchain.Pip,
+			Virtualenv: venv,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("setup pip toolchain: %w", err)
+		}
+		// Install `build` into the virtual environment.
+		cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
+		if err != nil {
+			return nil, err
+		}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
+		}
 	}
 
 	buildCmd, err := tc.ModuleCommand(ctx, "build", "--outdir", tmp)
@@ -465,14 +491,17 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 // These packages are known not to have any plugins.
 // TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumi-plugin.json`
 // file that indicates the package does not have an associated plugin, and enough time has passed.
+// TODO[pulumi/pulumi#18023]: Can only remove after this issue with `uv` is fixed
 var packagesWithoutPlugins = map[string]struct{}{
 	// We include both the hyphen and underscore variants of the package name
 	// to account for the fact that later versions of the package will come
 	// back from `python -m pip list` as the underscore variant due to a
 	// behavior change in setuptools where it keeps underscores rather than
 	// replacing them with hyphens.
-	"pulumi-policy": {},
-	"pulumi_policy": {},
+	"pulumi-policy":  {},
+	"pulumi_policy":  {},
+	"pulumi-esc-sdk": {},
+	"pulumi_esc_sdk": {},
 }
 
 // Returns if pkg is a pulumi package.
@@ -766,7 +795,7 @@ func (c *debugger) Cleanup() {
 // Returns an error if the context is canceled or the log file is unable to be tailed.
 func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	logFile := filepath.Join(c.LogDir, fmt.Sprintf("debugpy.server-%d.log", pid))
-	t, err := tail.TailFile(logFile, tail.Config{
+	t, err := tail.File(logFile, tail.Config{
 		Follow: true,
 		Logger: tail.DiscardingLogger,
 	})
@@ -967,6 +996,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
+		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
 			var installError *NotInstalledError
@@ -978,6 +1008,10 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
+			var exiterr *exec.ExitError
+			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
+				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
 	}
@@ -1326,6 +1360,9 @@ func (host *pythonLanguageHost) RunPlugin(
 					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
+			}
+			if len(exiterr.Stderr) > 0 {
+				return fmt.Errorf("program exited unexpectedly: %w: %s", exiterr, exiterr.Stderr)
 			}
 			return fmt.Errorf("program exited unexpectedly: %w", exiterr)
 		}

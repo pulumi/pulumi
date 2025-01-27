@@ -4628,7 +4628,9 @@ func packageRoot(pkg schema.PackageReference) (string, error) {
 	if goInfo, ok := def.Language["go"].(GoPackageInfo); ok {
 		info = goInfo
 	}
-	if info.RootPackageName != "" {
+	if !pkg.SupportPack() && info.RootPackageName != "" {
+		// Flat packages are not supported in SupportPack, otherwise we can't get
+		// the proper base path.
 		// package structure is flat
 		return "", nil
 	}
@@ -5062,22 +5064,15 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		var vPath string
-		if pkg.Version != nil && pkg.Version.Major > 1 {
-			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
-		}
-
 		modulePath := extractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ModulePath != "" {
 				modulePath = goInfo.ModulePath
 			} else if ok && goInfo.ImportBasePath != "" {
-				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
-				if separatorIndex >= 0 {
-					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
-					modulePath = fmt.Sprintf("%s%s", modulePrefix, vPath)
-				}
+				// if support pack is enabled we can infer the module path from the
+				// import base path, which is one up from the import base (ie without the package name).
+				modulePath = path.Dir(goInfo.ImportBasePath)
 			}
 		}
 

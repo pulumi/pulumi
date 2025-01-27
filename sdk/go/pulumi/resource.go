@@ -688,11 +688,10 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 // dependencySet unifies types that can provide dependencies for a
 // resource.
 type dependencySet interface {
-	// Adds URNs for addURNs from this set
-	// into the given urnSet.
+	// Adds dependencies into the depSet.
 	// Optionally pass the last Resource arg to short-circuit component
 	// children cycles.
-	addURNs(context.Context, urnSet, Resource) error
+	addDeps(context.Context, map[URN]Resource, Resource) error
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
@@ -713,9 +712,9 @@ type resourceDependencySet []Resource
 
 var _ dependencySet = (resourceDependencySet)(nil)
 
-func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
+func (rs resourceDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	for _, r := range rs {
-		if err := addDependency(ctx, urns, r, from); err != nil {
+		if err := addDependency(ctx, deps, r, from); err != nil {
 			return err
 		}
 	}
@@ -747,7 +746,7 @@ type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
 
 var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 
-func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
+func (ra *resourceArrayInputDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	out := ra.input.ToResourceArrayOutput()
 
 	value, known, _ /* secret */, _ /* deps */, err := internal.AwaitOutput(ctx, out)
@@ -765,7 +764,7 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 	toplevelDeps := getOutputDeps(out)
 
 	for _, r := range append(resources, toplevelDeps...) {
-		if err := addDependency(ctx, urns, r, from); err != nil {
+		if err := addDependency(ctx, deps, r, from); err != nil {
 			return err
 		}
 	}

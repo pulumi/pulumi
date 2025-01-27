@@ -651,7 +651,7 @@ func TestProviderDownloadURL(t *testing.T) {
 		name       string
 		dependency string
 	}{
-		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
+		{"python", filepath.Join("..", "..", "sdk", "python")},
 		{"nodejs", "@pulumi/pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
@@ -777,6 +777,158 @@ description: A Pulumi program testing passphrase config.
 	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
 	stdout, _ := e.RunCommand("pulumi", "config", "get", "foo")
 	assert.Contains(t, stdout, "bar")
+}
+
+// Tests that "config rm" and "config rm-all" work as expected.
+func TestConfigRmRmAll(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.Passphrase = "test-passphrase"
+	defer e.DeleteIfNotFailed()
+
+	pulumiProject := `
+name: config-rm-test
+runtime: yaml
+description: A Pulumi program testing config rm and config rm-all.
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "config-rm-test")
+	// Clear the config file so that "config set" has to re-initialize the passphrase config.
+	err := os.Remove(filepath.Join(e.RootPath, "Pulumi.config-rm-test.yaml"))
+	require.NoError(t, err)
+
+	configCmd := func(cmd string) func(args ...string) []string {
+		return func(args ...string) []string {
+			return append([]string{"config", cmd}, args...)
+		}
+	}
+
+	configSet := configCmd("set")
+	configSetAll := configCmd("set-all")
+	configGet := configCmd("get")
+	configRm := configCmd("rm")
+	configRmAll := configCmd("rm-all")
+
+	var stdout, stderr string
+
+	// Set a single plaintext value, then try to remove it.
+	e.RunCommand("pulumi", configSet("foo", "bar")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+
+	// Set a single secret value, then try to remove it.
+	e.RunCommand("pulumi", configSet("--secret", "foo", "bar")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+
+	// Set multiple values, then remove one plaintext value.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+	stdout, _ = e.RunCommand("pulumi", configGet("baz")...)
+	assert.Contains(t, stdout, "quux")
+
+	// Set multiple values, then remove one secret value.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRm("baz")...)
+	stdout, _ = e.RunCommand("pulumi", configGet("foo")...)
+	assert.Contains(t, stdout, "bar")
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("baz")...)
+	assert.Contains(t, stderr, "'baz' not found")
+
+	// Set multiple values, then remove them all.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRmAll("foo", "baz")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("baz")...)
+	assert.Contains(t, stderr, "'baz' not found")
+}
+
+// Tests that "config rm" and "config rm-all" work as expected with an explicit --config-file.
+func TestConfigRmRmAllExplicitConfig(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.Passphrase = "test-passphrase"
+	defer e.DeleteIfNotFailed()
+
+	pulumiProject := `
+name: config-rm-test
+runtime: yaml
+description: A Pulumi program testing config rm and config rm-all.
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "config-rm-test")
+	configFile := t.TempDir() + "/Pulumi.config-rm-test.yaml"
+
+	configCmd := func(cmd string) func(args ...string) []string {
+		return func(args ...string) []string {
+			return append([]string{"config", "--config-file", configFile, cmd}, args...)
+		}
+	}
+
+	configSet := configCmd("set")
+	configSetAll := configCmd("set-all")
+	configGet := configCmd("get")
+	configRm := configCmd("rm")
+	configRmAll := configCmd("rm-all")
+
+	var stdout, stderr string
+
+	// Set a single plaintext value, then try to remove it.
+	e.RunCommand("pulumi", configSet("foo", "bar")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+
+	// Set a single secret value, then try to remove it.
+	e.RunCommand("pulumi", configSet("--secret", "foo", "bar")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+
+	// Set multiple values, then remove one plaintext value.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRm("foo")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+	stdout, _ = e.RunCommand("pulumi", configGet("baz")...)
+	assert.Contains(t, stdout, "quux")
+
+	// Set multiple values, then remove one secret value.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRm("baz")...)
+	stdout, _ = e.RunCommand("pulumi", configGet("foo")...)
+	assert.Contains(t, stdout, "bar")
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("baz")...)
+	assert.Contains(t, stderr, "'baz' not found")
+
+	// Set multiple values, then remove them all.
+	e.RunCommand("pulumi", configSetAll("--plaintext", "foo=bar", "--secret", "baz=quux")...)
+
+	e.RunCommand("pulumi", configRmAll("foo", "baz")...)
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("foo")...)
+	assert.Contains(t, stderr, "'foo' not found")
+	_, stderr = e.RunCommandExpectError("pulumi", configGet("baz")...)
+	assert.Contains(t, stderr, "'baz' not found")
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/12593.
@@ -1156,7 +1308,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tc.InstallDependencies(context.Background(),
 		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false /*showOutput */, nil, nil))
-	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	gotSdk, err := test.PathExists(sdkDir)
 	require.NoError(t, err)

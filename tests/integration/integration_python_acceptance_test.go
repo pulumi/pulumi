@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
@@ -57,7 +58,7 @@ func TestDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomVal = stack.Outputs["random_val"].(string)
@@ -149,7 +150,7 @@ func optsForConstructPython(
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: localProviders,
 		Secrets: map[string]string{
@@ -205,7 +206,7 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	runComponentSetup(t, testDir)
 	pulumiRoot, err := filepath.Abs("../..")
 	require.NoError(t, err)
-	pulumiPySDK := filepath.Join("..", "..", "sdk", "python", "env", "src")
+	pulumiPySDK := filepath.Join("..", "..", "sdk", "python")
 	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/python")
 	opts := testConstructComponentConfigureProviderCommonOptions()
 	opts = opts.With(integration.ProgramTestOptions{
@@ -752,4 +753,35 @@ package-mode = false
 pulumi = ">=3.0.0,<4.0.0"
 python = "^3.9"
 `, string(b))
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/17877
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestUvWindowsError(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// This test will hang on Windows without the fix for https://github.com/pulumi/pulumi/issues/17877
+	done := make(chan struct{})
+	var stdout string
+	go func() {
+		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
+		e.RunCommand("pulumi", "install")
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+		stdout, _ = e.RunCommandExpectError("pulumi", "preview")
+
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+		require.Contains(t, stdout, "Duplicate resource URN")
+	case <-time.After(3 * time.Minute):
+		t.Fatal("Timed out waiting for TestUvWindowsError")
+	}
 }

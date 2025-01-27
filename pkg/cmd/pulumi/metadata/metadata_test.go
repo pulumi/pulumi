@@ -16,6 +16,8 @@ package metadata
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -310,6 +312,111 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 
 	expected := "[{\"id\":\"proj/env1\"},{\"id\":\"proj/env2@stable\"}]"
 	assert.Equal(t, expected, env[backend.StackEnvironments])
+}
+
+// Tests that Git metadata can be read from the environment if there is no Git repository present.
+//
+//nolint:paralleltest // mutates environment variables
+func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
+	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
+	// behaviour to change if it is being run in CI.
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	// Arrange.
+	t.Setenv("PULUMI_VCS_REPO_OWNER", "owner-name")
+	t.Setenv("PULUMI_VCS_REPO_NAME", "repo-name")
+	t.Setenv("PULUMI_VCS_REPO_KIND", "repo-kind")
+	t.Setenv("PULUMI_VCS_REPO_ROOT", "/repo/root")
+	t.Setenv("PULUMI_GIT_HEAD_NAME", "refs/heads/some-branch")
+	t.Setenv("PULUMI_GIT_HEAD", "1234567890abcdef")
+	t.Setenv("PULUMI_GIT_COMMIT_MESSAGE", "message")
+	t.Setenv("PULUMI_GIT_COMMITTER", "committer")
+	t.Setenv("PULUMI_GIT_COMMITTER_EMAIL", "committer@example.com")
+	t.Setenv("PULUMI_GIT_AUTHOR", "author")
+	t.Setenv("PULUMI_GIT_AUTHOR_EMAIL", "author@example.com")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	test := &backend.UpdateMetadata{
+		Environment: make(map[string]string),
+	}
+
+	// Act.
+	err := addGitMetadata(e.RootPath, test)
+
+	// Assert.
+	assert.NoError(t, err)
+	assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+	assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+	assertEnvValue(t, test, backend.VCSRepoKind, "repo-kind")
+	assertEnvValue(t, test, backend.VCSRepoRoot, "/repo/root")
+	assertEnvValue(t, test, backend.GitHeadName, "refs/heads/some-branch")
+	assertEnvValue(t, test, backend.GitHead, "1234567890abcdef")
+	assert.Equal(t, test.Message, "message")
+	assertEnvValue(t, test, backend.GitCommitter, "committer")
+	assertEnvValue(t, test, backend.GitCommitterEmail, "committer@example.com")
+	assertEnvValue(t, test, backend.GitAuthor, "author")
+	assertEnvValue(t, test, backend.GitAuthorEmail, "author@example.com")
+}
+
+// Tests that Git metadata is not read from the environment in the event that a real Git repository is present.
+//
+//nolint:paralleltest // mutates environment variables
+func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
+	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
+	// behaviour to change if it is being run in CI.
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	// Arrange.
+	t.Setenv("PULUMI_VCS_REPO_OWNER", "env-owner-name")
+	t.Setenv("PULUMI_VCS_REPO_NAME", "env-repo-name")
+	t.Setenv("PULUMI_VCS_REPO_KIND", "env-repo-kind")
+	t.Setenv("PULUMI_VCS_REPO_ROOT", "/env/repo/root")
+	t.Setenv("PULUMI_GIT_HEAD_NAME", "refs/heads/env-branch")
+	t.Setenv("PULUMI_GIT_HEAD", "1234567890abcdef")
+	t.Setenv("PULUMI_GIT_COMMIT_MESSAGE", "env-message")
+	t.Setenv("PULUMI_GIT_COMMITTER", "env-committer")
+	t.Setenv("PULUMI_GIT_COMMITTER_EMAIL", "env-committer@example.com")
+	t.Setenv("PULUMI_GIT_AUTHOR", "env-author")
+	t.Setenv("PULUMI_GIT_AUTHOR_EMAIL", "env-author@example.com")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("mkdir", "subdirectory")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.email", "repo-user@example.com")
+	e.RunCommand("git", "config", "user.name", "repo-user")
+	e.RunCommand("git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
+	e.RunCommand("git", "checkout", "-b", "master")
+
+	e.WriteTestFile("alpha.txt", "")
+	e.RunCommand("git", "add", ".")
+	e.RunCommand("git", "commit", "-m", "repo-message")
+
+	gitHead, _ := e.RunCommand("git", "rev-parse", "HEAD")
+
+	test := &backend.UpdateMetadata{
+		Environment: make(map[string]string),
+	}
+
+	// Act.
+	err := addGitMetadata(filepath.Join(e.RootPath, "subdirectory"), test)
+
+	// Assert.
+	assert.NoError(t, err)
+	assertEnvValue(t, test, backend.VCSRepoOwner, "repo-owner-name")
+	assertEnvValue(t, test, backend.VCSRepoName, "repo-repo-name")
+	assertEnvValue(t, test, backend.VCSRepoKind, "github.com")
+	assertEnvValue(t, test, backend.VCSRepoRoot, "subdirectory")
+	assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
+	assertEnvValue(t, test, backend.GitHead, strings.Trim(gitHead, "\n"))
+	assert.Equal(t, test.Message, "repo-message")
+	assertEnvValue(t, test, backend.GitCommitter, "repo-user")
+	assertEnvValue(t, test, backend.GitCommitterEmail, "repo-user@example.com")
+	assertEnvValue(t, test, backend.GitAuthor, "repo-user")
+	assertEnvValue(t, test, backend.GitAuthorEmail, "repo-user@example.com")
 }
 
 // assertEnvValue assert the update metadata's Environment map contains the given value.

@@ -306,6 +306,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
+	case "castDeferredOutput":
+		outputType := expr.Args[0].Type()
+		typeParameter := deferredOutputCastTypeParameter(outputType)
+		g.Fgenf(w, "pulumix.Cast[%s](%v)", typeParameter, expr.Args[0])
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",
@@ -526,11 +530,9 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	switch argType := expr.Type().(type) {
 	case *model.ObjectType:
-		if len(argType.Annotations) > 0 {
-			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
-				g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
-				return
-			}
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
+			g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
+			return
 		}
 	}
 

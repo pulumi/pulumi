@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -1575,6 +1576,37 @@ func TestInstallWithMain(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
+func TestTranspileOnly(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []string{"tsconfig-no-check", "swc"} {
+		test := test
+		t.Run(test, func(t *testing.T) {
+			t.Parallel()
+			dir := filepath.Join("nodejs", test)
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(dir)
+
+			stackName := ptesting.RandomStackName()
+
+			// For this test we need to properly install the core SDK instead of yarn
+			// linkining, because yarn link breaks the typescript version detection, and
+			// causes us to use the vendored typescript 3.8.3, which does not support
+			// the `noCheck` option.
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			require.NoError(t, err)
+			e.RunCommand("yarn", "install")
+			e.RunCommand("yarn", "add", coreSDK)
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--yes")
+			_, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+		})
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePaths(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -2180,7 +2212,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 			assert.True(t, ok)
-			cf, ok := dependencies["random"]
+			cf, ok := dependencies["@pulumi/random"]
 			assert.True(t, ok)
 			cf, ok = cf.(string)
 			assert.True(t, ok)
@@ -2188,6 +2220,36 @@ func TestPackageAddNode(t *testing.T) {
 			assert.Equal(t, "file:sdks/random", cf)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
+
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	assert.NoError(t, err)
+	packagesJSON := make(map[string]any)
+	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+	assert.NoError(t, err)
+
+	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+	assert.True(t, ok)
+	cf, ok := dependencies["@pulumi/supabase"]
+	assert.True(t, ok)
+	cf, ok = cf.(string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "file:sdks/supabase", cf)
 }
 
 func TestConstructFailuresNode(t *testing.T) {
@@ -2231,30 +2293,20 @@ func TestLogDebugNode(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestAutonaming(t *testing.T) {
 	testCases := []struct {
-		name         string
-		experimental bool
-		autoName     string
-		config       map[string]string
+		name     string
+		autoName string
+		config   map[string]string
 	}{
 		{
 			name:     "no autonaming configured",
 			autoName: "default-name",
 		},
 		{
-			name: "autonaming ignored in non-experimental mode",
-			config: map[string]string{
-				"pulumi:autonaming.mode": "verbatim",
-			},
-			experimental: false,
-			autoName:     "default-name",
-		},
-		{
 			name: "autonaming configured globally to verbatim",
 			config: map[string]string{
 				"pulumi:autonaming.mode": "verbatim",
 			},
-			experimental: true,
-			autoName:     "test1",
+			autoName: "test1",
 		},
 		{
 			name: "autonaming configured on provider to a pattern",
@@ -2262,8 +2314,7 @@ func TestAutonaming(t *testing.T) {
 				"pulumi:autonaming.providers.testprovider.pattern": "${config.foo}-${name}",
 				"foo": "bar",
 			},
-			experimental: true,
-			autoName:     "bar-test1",
+			autoName: "bar-test1",
 		},
 	}
 
@@ -2274,9 +2325,6 @@ func TestAutonaming(t *testing.T) {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
 		}
 		env := []string{}
-		if tc.experimental {
-			env = append(env, "PULUMI_EXPERIMENTAL=1")
-		}
 		t.Run(tc.name, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:           "autonaming",
@@ -2294,4 +2342,95 @@ func TestAutonaming(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestNodejsSourcemapTest(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("nodejs/sourcemap-in-test")
+	e.RunCommand("yarn", "install")
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommand("yarn", "add", coreSDK)
+
+	_, stderr := e.RunCommandExpectError("yarn", "test")
+
+	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
+
+    this is a test error
+
+      1 | export function willThrow() {
+      2 |     if (true) {
+    > 3 |         throw new Error("this is a test error");
+        |               ^
+      4 |     }
+      5 | }
+      6 |
+
+      at willThrow (index.ts:3:15)
+`
+	require.Contains(t, stripansi.Strip(stderr), expectedTrace)
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsSourcemapProgramTypescript(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsSourcemapProgramJavascript(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+		},
+	})
+}
+
+func TestPackageAddProviderFromRemoteSource(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd-remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
+
+	// The broken provider doesn't succeed in generating the SDK.  We still want to see it installed,
+	// and want to make sure we can still install a different provider from a different subdirectory,
+	// from the same repository and the same revision.
+	e.RunCommandExpectError("pulumi", "package", "add",
+		"github.com/pulumi/component-test-providers/broken-test-provider@d47cf0910e0450400775594609ee82566d1fb355")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+
+	e.RunCommand("pulumi", "package", "add",
+		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
+
+	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
+
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
+	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
+	// above is used.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }

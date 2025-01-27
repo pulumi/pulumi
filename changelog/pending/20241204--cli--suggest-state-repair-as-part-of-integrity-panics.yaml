@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Suggest `state repair` as part of integrity panics

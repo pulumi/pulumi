@@ -18,7 +18,7 @@ import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown, OutputToStringError } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
-import { getAllTransitivelyReferencedResourceURNs } from "./resource";
+import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 import { getStore, getResourcePackages, getResourceModules } from "./state";
 

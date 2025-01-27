@@ -1,10 +1,10 @@
-410430342 2152 proto/build-container/Dockerfile
+812904634 2153 proto/build-container/Dockerfile
 3003861496 625 proto/build-container/scripts/install-go.sh
 853251015 873 proto/build-container/scripts/install-node.sh
 2003827277 549 proto/build-container/scripts/install-packages.sh
 1782845978 1900 proto/build-container/scripts/install-protobuf-tools.sh
 745180271 1066 proto/build-container/scripts/install-python.sh
-2099022623 1282 proto/build-container/scripts/utils.sh
+3756980346 1282 proto/build-container/scripts/utils.sh
 1367258507 6997 proto/generate.sh
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
@@ -18,7 +18,7 @@
 1921230328 1269 proto/pulumi/errors.proto
 2888070731 13849 proto/pulumi/language.proto
 1674803920 2966 proto/pulumi/plugin.proto
-1835085438 56519 proto/pulumi/provider.proto
+1142872678 57051 proto/pulumi/provider.proto
 940215571 17847 proto/pulumi/resource.proto
 607478140 1008 proto/pulumi/source.proto
 3670315643 2603 proto/pulumi/testing/language.proto

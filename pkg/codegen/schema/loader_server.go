@@ -52,7 +52,26 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 		version = &v
 	}
 
-	pkg, err := m.loader.LoadPackage(req.Package, version)
+	descriptor := &PackageDescriptor{
+		Name:        req.Package,
+		Version:     version,
+		DownloadURL: req.DownloadUrl,
+	}
+	if req.Parameterization != nil {
+		descriptor.Parameterization = &ParameterizationDescriptor{
+			Name:  req.Parameterization.Name,
+			Value: req.Parameterization.Value,
+		}
+
+		v, err := semver.ParseTolerant(req.Parameterization.Version)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
+		}
+		descriptor.Parameterization.Version = v
+	}
+
+	pkg, err := m.loader.LoadPackageV2(ctx, descriptor)
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err

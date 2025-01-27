@@ -41,7 +41,7 @@ func newExtractMappingCommand() *cobra.Command {
 				provider = args[2]
 			}
 
-			p, err := providerFromSource(source)
+			p, err := ProviderFromSource(source)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}

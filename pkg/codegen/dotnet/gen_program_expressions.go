@@ -824,14 +824,12 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	switch argType := expr.Type().(type) {
 	case *model.ObjectType:
-		if len(argType.Annotations) > 0 {
-			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
-				fullTypeName := fmt.Sprintf("Components.%sArgs.%s",
-					configMetadata.ComponentName,
-					configMetadata.TypeName)
-				g.genObjectConsExpressionWithTypeName(w, expr, fullTypeName, false, nil)
-				return
-			}
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
+			fullTypeName := fmt.Sprintf("Components.%sArgs.%s",
+				configMetadata.ComponentName,
+				configMetadata.TypeName)
+			g.genObjectConsExpressionWithTypeName(w, expr, fullTypeName, false, nil)
+			return
 		}
 	}
 	g.genObjectConsExpression(w, expr, expr.Type())

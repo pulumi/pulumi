@@ -1,0 +1,5 @@
+name: dynamic-provider-poetry
+runtime:
+  name: python
+  options:
+    toolchain: poetry

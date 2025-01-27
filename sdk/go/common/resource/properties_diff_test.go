@@ -370,3 +370,17 @@ func TestMismatchedPropertyValueDiff(t *testing.T) {
 	assert.True(t, s2.DeepEquals(s1))
 	assert.True(t, s1.DeepEquals(s2))
 }
+
+func TestComputedProperyValueDiff(t *testing.T) {
+	t.Parallel()
+
+	a1 := MakeComputed(NewPropertyValue("a"))
+	a2 := MakeComputed(NewPropertyValue("a"))
+	assert.True(t, a1.DeepEquals(a2))
+
+	a3 := MakeComputed(NewPropertyValue("b"))
+	assert.False(t, a1.DeepEquals(a3))
+
+	a4 := NewPropertyValue("a")
+	assert.False(t, a1.DeepEquals(a4))
+}

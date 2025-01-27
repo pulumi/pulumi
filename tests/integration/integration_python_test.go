@@ -58,7 +58,7 @@ func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "missing-main"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Stdout:        stdout,
 		Stderr:        stderr,
@@ -78,7 +78,7 @@ func TestPrintfPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("printf", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:                  true,
 		ExtraRuntimeValidation: printfTestValidation,
@@ -90,7 +90,7 @@ func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -128,7 +128,7 @@ func TestStackOutputsProgramErrorPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join(d, "step1"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
@@ -167,7 +167,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join(d, "step1"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
@@ -210,7 +210,7 @@ func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -242,7 +242,7 @@ func TestConfigMissingPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_missing", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:         true,
 		ExpectFailure: true,
@@ -274,7 +274,7 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_secrets_warn", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -411,7 +411,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("secret_outputs", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -462,7 +462,7 @@ func TestPython3NotInstalled(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Env: []string{
@@ -487,7 +487,7 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-resource-type-name"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urnOut := stack.Outputs["urn"].(string)
@@ -507,7 +507,7 @@ func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: dir,
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomVal = stack.Outputs["random_val"].(string)
@@ -544,7 +544,7 @@ func TestDynamicProviderSecretsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-secrets"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Secrets: map[string]string{
 			"password": "s3cret",
@@ -582,7 +582,7 @@ func TestDynamicProviderConfig(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join("dynamic", test),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				Secrets: map[string]string{
 					"password":      "s3cret",
@@ -608,7 +608,7 @@ func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		AllowEmptyPreviewChanges: true,
 	})
@@ -621,7 +621,7 @@ func TestLargeResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("large_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 	})
 }
@@ -633,7 +633,7 @@ func TestEnumOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("enums", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
@@ -654,7 +654,7 @@ func TestPythonPylint(t *testing.T) {
 	opts = &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "pylint"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomURN := stack.Outputs["random_urn"].(string)
@@ -708,7 +708,7 @@ func TestPythonResourceArgs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: testdir,
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 			filepath.Join(testdir, "lib"),
 		},
 		Quick:      true,
@@ -733,7 +733,7 @@ func TestPythonStackTruncate(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join("python", "stack_truncate", name),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				Quick: true,
 				// This test should fail because it raises an exception
@@ -793,7 +793,7 @@ func TestConstructSlowPython(t *testing.T) {
 		Env: []string{testYarnLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
@@ -864,7 +864,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: localProviders,
 		Quick:          true,
@@ -878,7 +878,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownPython(t *testing.T) {
 	t.Parallel()
-	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 // Test methods on remote components.
@@ -912,7 +912,7 @@ func TestConstructMethodsPython(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
@@ -946,7 +946,7 @@ func TestConstructComponentWithIdOutputPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
@@ -971,22 +971,22 @@ func TestConstructComponentWithIdOutputPython(t *testing.T) {
 
 func TestConstructMethodsUnknownPython(t *testing.T) {
 	t.Parallel()
-	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructMethodsResourcesPython(t *testing.T) {
 	t.Parallel()
-	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructMethodsErrorsPython(t *testing.T) {
 	t.Parallel()
-	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructMethodsProviderPython(t *testing.T) {
 	t.Parallel()
-	testConstructMethodsProvider(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructMethodsProvider(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructProviderPython(t *testing.T) {
@@ -1019,7 +1019,7 @@ func TestConstructProviderPython(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
@@ -1036,7 +1036,7 @@ func TestGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		AllowEmptyPreviewChanges: true,
 	})
@@ -1050,7 +1050,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "success"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -1073,7 +1073,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "multiple_outputs"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -1107,7 +1107,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "create_inside_apply"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -1130,7 +1130,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "error_handling"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -1155,7 +1155,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -1175,7 +1175,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure_exported_output"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -1214,7 +1214,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure_multiple_unexported_outputs"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -1253,7 +1253,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "asyncio_tasks"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			Quick: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -1278,7 +1278,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "output_leak"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			Quick:   true,
 			Verbose: true,
@@ -1293,7 +1293,7 @@ func TestPythonTranslation(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
@@ -1334,7 +1334,7 @@ func TestAboutPython(t *testing.T) {
 
 func TestConstructOutputValuesPython(t *testing.T) {
 	t.Parallel()
-	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 // TestResourceRefsGetResourcePython tests that invoking the built-in 'pulumi:pulumi:getResource' function
@@ -1345,7 +1345,7 @@ func TestResourceRefsGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("resource_refs_get_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
@@ -1358,7 +1358,7 @@ func TestDeletedWithPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("deleted_with", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
@@ -1371,7 +1371,7 @@ func TestConstructProviderPropagationPython(t *testing.T) {
 	t.Parallel()
 
 	testConstructProviderPropagation(t, "python", []string{
-		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		filepath.Join("..", "..", "sdk", "python"),
 	})
 }
 
@@ -1382,7 +1382,7 @@ func TestDuplicateOutputPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "duplicate-output"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			expected := []interface{}{float64(1), float64(2)}
@@ -1396,7 +1396,7 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 	t.Parallel()
 
 	testConstructProviderExplicit(t, "python", []string{
-		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		filepath.Join("..", "..", "sdk", "python"),
 	})
 }
 
@@ -1410,7 +1410,7 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "implicit-dependency-cycles"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Stdout: stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -1456,7 +1456,7 @@ func TestParameterizedPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "parameterized"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
@@ -1519,6 +1519,48 @@ func TestPackageAddPython(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderPython(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
+
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "sdks/supabase")
+
+	// Check that `supabase` was installed
+	type dependency struct {
+		Name    string
+		Version string
+	}
+	type about struct {
+		Dependencies []dependency
+	}
+	e.CWD = filepath.Join(e.CWD, "pydir")
+	out, _ := e.RunCommand("pulumi", "about", "--json")
+	e.CWD = e.RootPath
+	a := about{}
+	err = json.Unmarshal([]byte(out), &a)
+	assert.NoError(t, err)
+	found := false
+	for _, dep := range a.Dependencies {
+		if dep.Name == "pulumi_supabase" {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "pulumi_subabase should be installed")
+}
+
 func TestConfigGetterOverloads(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
@@ -1535,7 +1577,7 @@ func TestConfigGetterOverloads(t *testing.T) {
 	// handle editable packages well. We have to manually install the SDK without `-e` flag instead.
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python", "env", "src")
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python")
 	pythonBin := "./venv/bin/python"
 	if runtime.GOOS == "windows" {
 		pythonBin = ".\\venv\\Scripts\\python.exe"
@@ -1683,12 +1725,12 @@ outer:
 
 func TestConstructFailuresPython(t *testing.T) {
 	t.Parallel()
-	testConstructFailures(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testConstructFailures(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestCallFailuresPython(t *testing.T) {
 	t.Parallel()
-	testCallFailures(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	testCallFailures(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 // TestLogDebugPython tests that the amount of debug logs is reasonable.
@@ -1698,7 +1740,7 @@ func TestLogDebugPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("log_debug", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -1715,6 +1757,64 @@ func TestLogDebugPython(t *testing.T) {
 
 			// More than 25 debug log events on such a simple program is very likely unintended.
 			assert.LessOrEqual(t, count, 25, "%v is too many debug log events", count)
+		},
+	})
+}
+
+func TestDynamicProviderPython(t *testing.T) {
+	t.Parallel()
+	for _, toolchain := range []string{"pip", "uv", "poetry"} {
+		toolchain := toolchain
+		t.Run(toolchain, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(filepath.Join("python", "dynamic-provider", toolchain))
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+			require.NoError(t, err)
+			if toolchain == "poetry" {
+				e.RunCommand("pulumi", "install")
+				e.RunCommand("poetry", "add", coreSDK)
+			} else {
+				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+				require.NoError(t, err)
+				_, err = fmt.Fprintln(f, coreSDK)
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+				e.RunCommand("pulumi", "install")
+			}
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+			e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
+			e.RunCommand("pulumi", "dn", "--yes", "--skip-preview")
+		})
+	}
+}
+
+// The shutdown of the callback server used for transform would log exceptions
+// to stderr.
+// https://github.com/pulumi/pulumi/issues/18176
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestRegress18176(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
+		Dir: filepath.Join("python", "excepthook"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:      true,
+		SkipUpdate: true,
+		Stdout:     stdout,
+		Stderr:     stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Empty(t, stack.Events)
+			require.NotContains(t, stdout.String(), "Error in sys.excepthook")
+			require.NotContains(t, stderr.String(), "Error in sys.excepthook")
 		},
 	})
 }

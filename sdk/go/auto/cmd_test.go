@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3"
@@ -270,4 +271,51 @@ func TestMinimumVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRunCanceled(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := NewPulumiCommand(nil)
+	require.NoError(t, err)
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("testdata/slow")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		path := filepath.Join(e.RootPath, "ready")
+		for i := 0; i < 100; i++ {
+			if _, err := os.Stat(path); err == nil {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		cancel()
+	}()
+
+	env := []string{
+		"PULUMI_HOME=" + e.HomePath,
+		"PULUMI_BACKEND_URL=" + e.LocalURL(),
+		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
+	}
+	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
+	if runtime.GOOS == "windows" {
+		require.ErrorContains(t, err, "exit status 0xffffffff")
+		require.Contains(t, stdout, "error: preview canceled")
+		require.Equal(t, 4294967295, code)
+	} else {
+		require.ErrorContains(t, err, "exit status 255")
+		require.Contains(t, stdout, "error: preview canceled")
+		require.Equal(t, 255, code)
+	}
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }

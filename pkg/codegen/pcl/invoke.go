@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Invoke is the name of the PCL `invoke` intrinsic, which can be used to invoke provider functions.
 const Invoke = "invoke"
 
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
@@ -64,7 +65,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			}
 
 			// top-level annotation for the type itself
-			arg.Annotations = append(arg.Annotations, schemaType)
+			arg.Annotate(schemaType)
 			// now for each property, annotate it with the associated type from the schema
 			for propertyName, propertyType := range arg.Properties {
 				if associatedType, ok := schemaProperties[propertyName]; ok {

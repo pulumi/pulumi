@@ -181,102 +181,126 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	runTests := func(t *testing.T, snapshotDir string, useToml bool, inputTypes, typechecker string) {
-		cancel := make(chan bool)
-
-		// Run the language plugin
-		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-			Init: func(srv *grpc.Server) error {
-				pythonExec := "../pulumi-language-python-exec"
-				host := newLanguageHost(pythonExec, engineAddress, "", typechecker)
-				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-				return nil
-			},
-			Cancel: cancel,
-		})
-		require.NoError(t, err)
-
-		// Create a temp project dir for the test to run in
-		rootDir := t.TempDir()
-
-		snapshotDir = "./testdata/" + snapshotDir
-
-		var languageInfo string
-		if useToml || inputTypes != "" {
-			var info codegen.PackageInfo
-			info.PyProject.Enabled = useToml
-			info.InputTypes = inputTypes
-
-			json, err := json.Marshal(info)
-			require.NoError(t, err)
-			languageInfo = string(json)
-		}
-
-		// Prepare to run the tests
-		prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
-			LanguagePluginName:   "python",
-			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-			TemporaryDirectory:   rootDir,
-			SnapshotDirectory:    snapshotDir,
-			CoreSdkDirectory:     "../../lib",
-			CoreSdkVersion:       sdk.Version.String(),
-			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-				{
-					Path:        "requirements\\.txt",
-					Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
-					Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
-				},
-				{
-					Path:        "requirements\\.txt",
-					Pattern:     rootDir + "/artifacts",
-					Replacement: "ROOT/artifacts",
-				},
-			},
-			LanguageInfo: languageInfo,
-		})
-		require.NoError(t, err)
-
-		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-		//nolint:paralleltest // These aren't yet safe to run in parallel
-		for _, tt := range tests.Tests {
-			tt := tt
-
-			t.Run(tt, func(t *testing.T) {
-				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
-					Token: prepare.Token,
-					Test:  tt,
-				})
-
-				require.NoError(t, err)
-				for _, msg := range result.Messages {
-					t.Log(msg)
-				}
-				t.Logf("stdout: %s", result.Stdout)
-				t.Logf("stderr: %s", result.Stderr)
-				assert.True(t, result.Success)
-			})
-		}
-
-		close(cancel)
-		assert.NoError(t, <-handle.Done)
-	}
-
 	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
 	// test that explicitly setting the input types works as expected, as well as the default. This shouldn't interact
 	// with the project type so we vary both at once. We also want to test that the typechecker works, that doesn't vary
 	// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
 	// tradeoff here only testing the old classes style with pyright.
+	configs := []struct {
+		name        string
+		snapshotDir string
+		useTOML     bool
+		inputTypes  string
+		typechecker string
+	}{
+		{
+			name:        "default",
+			snapshotDir: "setuppy",
+			useTOML:     false,
+			inputTypes:  "",
+			typechecker: "mypy",
+		},
+		{
+			name:        "toml",
+			snapshotDir: "toml",
+			useTOML:     true,
+			inputTypes:  "classes-and-dicts",
+			typechecker: "pyright",
+		},
+		{
+			name:        "classes",
+			snapshotDir: "classes",
+			useTOML:     false,
+			inputTypes:  "classes",
+			typechecker: "pyright",
+		},
+	}
 
-	//nolint:paralleltest
-	t.Run("default", func(t *testing.T) {
-		runTests(t, "setuppy", false, "", "mypy")
-	})
-	//nolint:paralleltest
-	t.Run("toml", func(t *testing.T) {
-		runTests(t, "toml", true, "classes-and-dicts", "pyright")
-	})
-	//nolint:paralleltest
-	t.Run("classes", func(t *testing.T) {
-		runTests(t, "classes", false, "classes", "pyright")
-	})
+	for _, config := range configs {
+		config := config
+
+		t.Run(config.name, func(t *testing.T) {
+			t.Parallel()
+
+			cancel := make(chan bool)
+
+			// Run the language plugin
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					pythonExec := "../pulumi-language-python-exec"
+					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker)
+					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+					return nil
+				},
+				Cancel: cancel,
+			})
+			require.NoError(t, err)
+
+			// Create a temp project dir for the test to run in
+			rootDir := t.TempDir()
+
+			snapshotDir := "./testdata/" + config.snapshotDir
+
+			var languageInfo string
+			if config.useTOML || config.inputTypes != "" {
+				var info codegen.PackageInfo
+				info.PyProject.Enabled = config.useTOML
+				info.InputTypes = config.inputTypes
+
+				json, err := json.Marshal(info)
+				require.NoError(t, err)
+				languageInfo = string(json)
+			}
+
+			// Prepare to run the tests
+			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+				LanguagePluginName:   "python",
+				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:   rootDir,
+				SnapshotDirectory:    snapshotDir,
+				CoreSdkDirectory:     "../..",
+				CoreSdkVersion:       sdk.Version.String(),
+				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+					{
+						Path:        "requirements\\.txt",
+						Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
+						Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
+					},
+					{
+						Path:        "requirements\\.txt",
+						Pattern:     rootDir + "/artifacts",
+						Replacement: "ROOT/artifacts",
+					},
+				},
+				LanguageInfo: languageInfo,
+			})
+			require.NoError(t, err)
+
+			for _, tt := range tests.Tests {
+				tt := tt
+
+				t.Run(tt, func(t *testing.T) {
+					t.Parallel()
+
+					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+						Token: prepare.Token,
+						Test:  tt,
+					})
+
+					require.NoError(t, err)
+					for _, msg := range result.Messages {
+						t.Log(msg)
+					}
+					t.Logf("stdout: %s", result.Stdout)
+					t.Logf("stderr: %s", result.Stderr)
+					assert.True(t, result.Success)
+				})
+			}
+
+			t.Cleanup(func() {
+				close(cancel)
+				assert.NoError(t, <-handle.Done)
+			})
+		})
+	}
 }

@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -44,9 +45,14 @@ type PathedLiteralValue struct {
 	ExpressionReference *model.ScopeTraversalExpression
 }
 
+// ImportState tracks the state of an import process.
 type ImportState struct {
 	Names               NameTable
 	PathedLiteralValues []PathedLiteralValue
+
+	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
+	// references to packages providers.
+	Snapshot []*resource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -65,6 +71,7 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 	return ImportState{
 		Names:               importState.Names,
 		PathedLiteralValues: withoutDuplicates,
+		Snapshot:            importState.Snapshot,
 	}
 }
 
@@ -73,19 +80,82 @@ func GenerateHCL2Definition(
 	loader schema.Loader,
 	state *resource.State,
 	importState ImportState,
-) (*model.Block, error) {
-	// TODO: pull the package version from the resource's provider
-	pkg, err := schema.LoadPackageReference(loader, string(state.Type.Package()), nil)
+) (*model.Block, *schema.PackageDescriptor, error) {
+	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
+	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
+	// a package descriptor and load the package and its schema.
+	providerRef, err := providers.ParseReference(state.Provider)
 	if err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
 
+	var provider *resource.State
+	for _, s := range importState.Snapshot {
+		if s.URN == providerRef.URN() && s.ID == providerRef.ID() {
+			provider = s
+			break
+		}
+	}
+	if provider == nil {
+		return nil, nil, fmt.Errorf("provider %v not found in snapshot", providerRef)
+	}
+
+	packageName := state.Type.Package()
+	pluginName, err := providers.GetProviderName(packageName, provider.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get provider name: %w", err)
+	}
+	pluginVersion, err := providers.GetProviderVersion(provider.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get provider version: %w", err)
+	}
+	downloadURL, err := providers.GetProviderDownloadURL(provider.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get provider version: %w", err)
+	}
+	var parameterization *schema.ParameterizationDescriptor
+	parameters, err := providers.GetProviderParameterization(packageName, provider.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get provider parameterization: %w", err)
+	}
+	if parameters != nil {
+		parameterization = &schema.ParameterizationDescriptor{
+			Name:    string(parameters.Name),
+			Version: parameters.Version,
+			Value:   parameters.Value,
+		}
+	}
+
+	pkgDesc := &schema.PackageDescriptor{
+		Name:             string(pluginName),
+		Version:          pluginVersion,
+		DownloadURL:      downloadURL,
+		Parameterization: parameterization,
+	}
+
+	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, pkgDesc)
+	if err != nil {
+		// If the version loaded does not match the version requested, we'll continue anyway. This matches behaviour prior
+		// to the introduction of parameterized packages (which confer stricter version checks), and allows some existing
+		// workflows, such as attaching already running instances of providers for debugging, without encountering mismatch
+		// errors.
+		//
+		// https://github.com/pulumi/pulumi/issues/18271 tracks the issue of whether we can do a bit better here (e.g.
+		// allowing semver-compatible version differences but not any others).
+		var versionMismatchErr *schema.PackageReferenceVersionMismatchError
+		if !errors.As(err, &versionMismatchErr) {
+			return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
+		}
+	}
+
+	// With the package loaded, we can get the full resource schema and use that to generate an appropriate HCL2
+	// definition.
 	r, ok, err := pkg.Resources().Get(string(state.Type))
 	if err != nil {
-		return nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
+		return nil, nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
 	}
 	if !ok {
-		return nil, fmt.Errorf("unknown resource type '%v'", r)
+		return nil, nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
 
 	var items []model.BodyItem
@@ -118,7 +188,7 @@ func GenerateHCL2Definition(
 		input := state.Inputs[resource.PropertyKey(p.Name)]
 		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if x != nil {
 			items = append(items, &model.Attribute{
@@ -130,7 +200,7 @@ func GenerateHCL2Definition(
 
 	resourceOptions, err := makeResourceOptions(state, importState.Names, addedReferences)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if resourceOptions != nil {
 		items = append(items, resourceOptions)
@@ -144,7 +214,7 @@ func GenerateHCL2Definition(
 		Body: &model.Body{
 			Items: items,
 		},
-	}, nil
+	}, pkgDesc, nil
 }
 
 func newVariableReference(name string) model.Expression {

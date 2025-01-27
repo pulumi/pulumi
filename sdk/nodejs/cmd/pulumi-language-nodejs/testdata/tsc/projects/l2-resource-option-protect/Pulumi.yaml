@@ -1,0 +1,5 @@
+name: l2-resource-option-protect
+runtime:
+  name: nodejs
+  options:
+    typescript: false

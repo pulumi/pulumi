@@ -16,6 +16,7 @@ package codegen
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
@@ -229,4 +230,55 @@ func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bo
 		}
 	}
 	return false
+}
+
+// PackageReferences returns a list of packages that are referenced by the given package.
+func PackageReferences(pkg *schema.Package) []schema.PackageReference {
+	referencedPackages := map[string]schema.PackageReference{}
+	visitor := func(t schema.Type) {
+		if rt, ok := t.(*schema.ResourceType); ok && rt.Resource != nil {
+			referencedPackageName := rt.Resource.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages[referencedPackageName] = rt.Resource.PackageReference
+			}
+		}
+
+		if objectType, ok := t.(*schema.ObjectType); ok {
+			referencedPackageName := objectType.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages[referencedPackageName] = objectType.PackageReference
+			}
+		}
+
+		if et, ok := t.(*schema.EnumType); ok {
+			referencedPackageName := et.PackageReference.Name()
+			if referencedPackageName != pkg.Name {
+				referencedPackages[referencedPackageName] = et.PackageReference
+			}
+		}
+	}
+
+	for _, resource := range pkg.Resources {
+		VisitTypeClosure(resource.InputProperties, visitor)
+		VisitTypeClosure(resource.Properties, visitor)
+	}
+
+	for _, function := range pkg.Functions {
+		if function.Inputs != nil {
+			VisitTypeClosure(function.Inputs.Properties, visitor)
+		}
+		if function.Outputs != nil {
+			VisitTypeClosure(function.Outputs.Properties, visitor)
+		}
+	}
+
+	for _, t := range pkg.Types {
+		VisitType(t, visitor)
+	}
+
+	output := slice.Prealloc[schema.PackageReference](len(referencedPackages))
+	for _, ref := range referencedPackages {
+		output = append(output, ref)
+	}
+	return output
 }

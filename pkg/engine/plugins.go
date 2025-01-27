@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"slices"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -46,27 +46,23 @@ const (
 // PluginSet represents a set of plugins.
 type PluginSet map[string]workspace.PluginSpec
 
+// NewPluginSet creates a new PluginSet from the specified PluginSpecs.
+func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
+	var s PluginSet = make(map[string]workspace.PluginSpec, len(plugins))
+	for _, p := range plugins {
+		s.Add(p)
+	}
+	return s
+}
+
 // Add adds a plugin to this plugin set.
 func (p PluginSet) Add(plug workspace.PluginSpec) {
 	p[plug.String()] = plug
 }
 
-// Union returns the union of this pluginSet with another pluginSet.
-func (p PluginSet) Union(other PluginSet) PluginSet {
-	newSet := NewPluginSet()
-	for _, value := range p {
-		newSet.Add(value)
-	}
-	for _, value := range other {
-		newSet.Add(value)
-	}
-	return newSet
-}
-
-// Removes less specific entries.
+// Removes less-specific entries.
 //
-// For example, the plugin aws would be removed if there was an already existing plugin
-// aws-5.4.0.
+// For example, the plugin aws would be removed if there was an already existing plugin aws-5.4.0.
 func (p PluginSet) Deduplicate() PluginSet {
 	existing := map[string]workspace.PluginSpec{}
 	newSet := NewPluginSet()
@@ -100,34 +96,6 @@ func (p PluginSet) Deduplicate() PluginSet {
 	return newSet
 }
 
-// A PluginUpdate represents an update from one version of a plugin to another.
-type PluginUpdate struct {
-	// The old plugin version.
-	Old workspace.PluginSpec
-	// The new plugin version.
-	New workspace.PluginSpec
-}
-
-// UpdatesTo returns a list of PluginUpdates that represent the updates to the argument PluginSet present in this
-// PluginSet. For instance, if the argument contains a plugin P at version 3, and this PluginSet contains the same
-// plugin P (as identified by name and kind) at version 5, this method will return an update where the Old field
-// contains the version 3 instance from the argument and the New field contains the version 5 instance from this
-// PluginSet.
-func (p PluginSet) UpdatesTo(old PluginSet) []PluginUpdate {
-	var updates []PluginUpdate
-	for _, value := range p {
-		for _, otherValue := range old {
-			if value.Name == otherValue.Name && value.Kind == otherValue.Kind {
-				if value.Version != nil && otherValue.Version != nil && value.Version.GT(*otherValue.Version) {
-					updates = append(updates, PluginUpdate{Old: otherValue, New: value})
-				}
-			}
-		}
-	}
-
-	return updates
-}
-
 // Values returns a slice of all of the plugins contained within this set.
 func (p PluginSet) Values() []workspace.PluginSpec {
 	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
@@ -137,13 +105,95 @@ func (p PluginSet) Values() []workspace.PluginSpec {
 	return plugins
 }
 
-// NewPluginSet creates a new empty pluginSet.
-func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
-	var s PluginSet = make(map[string]workspace.PluginSpec, len(plugins))
-	for _, p := range plugins {
+// PackageSet represents a set of packages.
+type PackageSet map[string]workspace.PackageDescriptor
+
+// NewPackageSet creates a new PackageSet from the specified PackageDescriptors.
+func NewPackageSet(pkgs ...workspace.PackageDescriptor) PackageSet {
+	var s PackageSet = make(map[string]workspace.PackageDescriptor, len(pkgs))
+	for _, p := range pkgs {
 		s.Add(p)
 	}
 	return s
+}
+
+// Add adds a package to this package set.
+func (p PackageSet) Add(pkg workspace.PackageDescriptor) {
+	p[pkg.String()] = pkg
+}
+
+// Union returns the union of this PackageSet with another PackageSet.
+func (p PackageSet) Union(other PackageSet) PackageSet {
+	newSet := NewPackageSet()
+	for _, value := range p {
+		newSet.Add(value)
+	}
+	for _, value := range other {
+		newSet.Add(value)
+	}
+	return newSet
+}
+
+// ToPluginSet converts this PackageSet to a PluginSet by discarding all parameterization information.
+func (p PackageSet) ToPluginSet() PluginSet {
+	newSet := NewPluginSet()
+	for _, value := range p {
+		newSet.Add(value.PluginSpec)
+	}
+	return newSet
+}
+
+// Values returns a slice of all of the packages contained within this set.
+func (p PackageSet) Values() []workspace.PackageDescriptor {
+	pkgs := slice.Prealloc[workspace.PackageDescriptor](len(p))
+	for _, value := range p {
+		pkgs = append(pkgs, value)
+	}
+	return pkgs
+}
+
+// A PackageUpdate represents an update from one version of a package to another.
+type PackageUpdate struct {
+	// The old package version.
+	Old workspace.PackageDescriptor
+	// The new package version.
+	New workspace.PackageDescriptor
+}
+
+// UpdatesTo returns a list of PackageUpdates that represent the updates to the argument PackageSet present in this
+// PackageSet. For instance, if the argument contains a package P at version 3, and this PackageSet contains the same
+// package P (as identified by name and kind) at version 5, this method will return an update where the Old field
+// contains the version 3 instance from the argument and the New field contains the version 5 instance from this
+// PackageSet. This also considers parameterization information, so a parameterized package P at version 3 will be
+// considered different from a parameterized package P at version 5 even if the base plugin is the same.
+func (p PackageSet) UpdatesTo(old PackageSet) []PackageUpdate {
+	var updates []PackageUpdate
+	for _, value := range p {
+		for _, otherValue := range old {
+			// This is comparing _package_ names. i.e. the plugin name if parameterization is nil, or the parameterization
+			// name if it's present. This means that, if we see a package `aws v1.2.3`, and a parameterized package `aws
+			// v1.2.4 (base: terraform-provider)`, say, we _will_ consider the latter an update of the former, since there can
+			// only really be one instance of a package name in a Pulumi program.
+
+			name := value.PackageName()
+			otherName := otherValue.PackageName()
+
+			namesAndKindsEqual := name == otherName && value.Kind == otherValue.Kind
+
+			if namesAndKindsEqual {
+				version := value.PackageVersion()
+				otherVersion := otherValue.PackageVersion()
+
+				// If both versions have been explicitly specified, we can compare them. If one is missing, we don't have enough
+				// information to work out if one is a later version of the other.
+				if version != nil && otherVersion != nil && version.GT(*otherVersion) {
+					updates = append(updates, PackageUpdate{Old: otherValue, New: value})
+				}
+			}
+		}
+	}
+
+	return updates
 }
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
@@ -192,45 +242,46 @@ func GetRequiredPlugins(
 	return plugins, nil
 }
 
-// gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
+// gatherPackagesFromProgram inspects the given program and returns the set of packages that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
-func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (PluginSet, error) {
-	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
-	set := NewPluginSet()
+func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
+	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
 
-	langhostPlugins, err := GetRequiredPlugins(plugctx.Host, runtime, prog)
-	if err != nil {
-		return set, err
+	lang, err := plugctx.Host.LanguageRuntime(runtime, info)
+	if lang == nil || err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
-	for _, plug := range langhostPlugins {
-		// Ignore language plugins named "client".
-		if plug.Name == clientRuntimeName && plug.Kind == apitype.LanguagePlugin {
-			continue
-		}
 
+	pkgs, err := lang.GetRequiredPackages(info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+	}
+
+	set := NewPackageSet()
+	for _, pkg := range pkgs {
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
-			plug.Name, plug.Version, plug.PluginDownloadURL)
-		set.Add(plug)
+			"gatherPackagesFromProgram(): package %s (%s) is required by language host",
+			pkg.String(), pkg.PluginDownloadURL)
+		set.Add(pkg)
 	}
 	return set, nil
 }
 
-// gatherPluginsFromSnapshot inspects the snapshot associated with the given Target and returns the set of plugins
-// required to operate on the snapshot. The set of plugins is derived from first-class providers saved in the snapshot
+// gatherPackagesFromSnapshot inspects the snapshot associated with the given Target and returns the set of packages
+// required to operate on the snapshot. The set of packages is derived from first-class providers saved in the snapshot
 // and the plugins specified in the deployment manifest.
-func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (PluginSet, error) {
-	logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): gathering plugins from snapshot")
-	set := NewPluginSet()
+func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (PackageSet, error) {
+	logging.V(preparePluginLog).Infof("gatherPackagesFromSnapshot(): gathering plugins from snapshot")
+	set := NewPackageSet()
 	if target == nil || target.Snapshot == nil {
-		logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): no snapshot available, skipping")
+		logging.V(preparePluginLog).Infof("gatherPackagesFromSnapshot(): no snapshot available, skipping")
 		return set, nil
 	}
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
 		if !providers.IsProviderType(urn.Type()) {
 			logging.V(preparePluginVerboseLog).Infof(
-				"gatherPluginsFromSnapshot(): skipping %q, not a provider", urn)
+				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn)
 			continue
 		}
 		pkg := providers.GetProviderPackage(urn.Type())
@@ -251,15 +302,30 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+		parameterization, err := providers.GetProviderParameterization(pkg, res.Inputs)
+		if err != nil {
+			return set, err
+		}
+		var packageParameterization *workspace.Parameterization
+		if parameterization != nil {
+			packageParameterization = &workspace.Parameterization{
+				Name:    string(parameterization.Name),
+				Version: parameterization.Version,
+				Value:   parameterization.Value,
+			}
+		}
 
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", name, version, urn)
-		set.Add(workspace.PluginSpec{
-			Name:              name.String(),
-			Kind:              apitype.ResourcePlugin,
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Checksums:         checksums,
+			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn)
+		set.Add(workspace.PackageDescriptor{
+			PluginSpec: workspace.PluginSpec{
+				Name:              name.String(),
+				Kind:              apitype.ResourcePlugin,
+				Version:           version,
+				PluginDownloadURL: downloadURL,
+				Checksums:         checksums,
+			},
+			Parameterization: packageParameterization,
 		})
 	}
 	return set, nil
@@ -451,41 +517,48 @@ func installPlugin(
 	return nil
 }
 
-// computeDefaultProviderPlugins computes, for every resource plugin, a mapping from packages to semver versions
-// reflecting the version of a provider that should be used as the "default" resource when registering resources. This
-// function takes two sets of plugins: a set of plugins given to us from the language host and the full set of plugins.
-// If the language host has sent us a non-empty set of plugins, we will use those exclusively to service default
-// provider requests. Otherwise, we will use the full set of plugins, which is the existing behavior today.
+// computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
+// version of a provider that should be used as the "default" resource when registering resources. This function takes
+// two sets of packages:
 //
-// The justification for favoring language plugins over all else is that, ultimately, it is the language plugin that
-// produces resource registrations and therefore it is the language plugin that should dictate exactly what plugins to
-// use to satisfy a resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and
-// version) they want to use in RegisterResource. If the plugin is left unspecified, we make a best guess effort to
-// infer the version and url that the language plugin actually wants.
+// - a set given to us from the language host; and
+// - the full set of packages.
+//
+// If the language host has sent us a non-empty set of packages, we will use those exclusively to service default
+// provider requests. Otherwise, we will use the full set of packages, which is the existing behavior today.
+//
+// The justification for favoring the language host is that, ultimately, it is the language host that produces resource
+// registrations and therefore it is the language host that should dictate exactly what package to use to satisfy a
+// resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and version) they want to
+// use in RegisterResource. If the plugin is left unspecified, we make a best-guess effort to infer the version and URL
+// that the language host actually wants.
 //
 // Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
 // injects a "default" provider resource that will serve as that resource's provider. This function computes the map
 // that the engine uses to determine which version of a particular provider to load.
 //
-// it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[tokens.Package]workspace.PluginSpec {
+// Note: it is critical that this function be 100% deterministic.
+func computeDefaultProviderPackages(
+	languagePackages PackageSet,
+	allPackages PackageSet,
+) map[tokens.Package]workspace.PackageDescriptor {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
-	for _, plug := range languagePlugins.Values() {
+	for _, plug := range languagePackages.Values() {
 		if plug.Kind == apitype.ResourcePlugin {
 			languageReportedProviderPlugins = true
 		}
 	}
 
-	sourceSet := languagePlugins
+	sourceSet := languagePackages
 	if !languageReportedProviderPlugins {
 		logging.V(preparePluginLog).Infoln(
 			"computeDefaultProviderPlugins(): language host reported empty set of provider plugins, using all plugins")
-		sourceSet = allPlugins
+		sourceSet = allPackages
 	}
 
-	defaultProviderPlugins := make(map[tokens.Package]workspace.PluginSpec)
+	defaultProviderPlugins := make(map[tokens.Package]workspace.PackageDescriptor)
 
 	// Sort the set of source plugins by version, so that we iterate over the set of plugins in a deterministic order.
 	// Sorting by version gets us two properties:
@@ -496,9 +569,9 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[to
 	//
 	// Despite these properties, the below loop explicitly handles those cases to preserve correct behavior even if the
 	// sort is not functioning properly.
-	sourcePlugins := sourceSet.Values()
-	sort.Sort(workspace.SortedPluginSpec(sourcePlugins))
-	for _, p := range sourcePlugins {
+	sourcePackages := sourceSet.Values()
+	slices.SortFunc(sourcePackages, workspace.SortPackageDescriptors)
+	for _, p := range sourcePackages {
 		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if p.Kind != apitype.ResourcePlugin {
 			// Default providers are only relevant for resource plugins.
@@ -507,12 +580,14 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[to
 			continue
 		}
 
-		if seenPlugin, has := defaultProviderPlugins[tokens.Package(p.Name)]; has {
+		name := tokens.Package(p.PackageName())
+
+		if seenPlugin, has := defaultProviderPlugins[name]; has {
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
 					p, p.Name)
-				defaultProviderPlugins[tokens.Package(p.Name)] = p
+				defaultProviderPlugins[name] = p
 				continue
 			}
 
@@ -521,7 +596,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[to
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
 					p, p.Name, seenPlugin.Version)
-				defaultProviderPlugins[tokens.Package(p.Name)] = p
+				defaultProviderPlugins[name] = p
 				continue
 			}
 
@@ -532,7 +607,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[to
 
 		logging.V(preparePluginLog).Infof(
 			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
-		defaultProviderPlugins[tokens.Package(p.Name)] = p
+		defaultProviderPlugins[name] = p
 	}
 
 	if logging.V(preparePluginLog) {
@@ -542,7 +617,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[to
 		}
 	}
 
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PackageDescriptor)
 	for name, plugin := range defaultProviderPlugins {
 		defaultProviderInfo[name] = plugin
 	}

@@ -251,7 +251,7 @@ async def serialize_properties(
 
 
 async def _add_dependency(
-    deps: Set[str], res: "Resource", from_resource: Optional["Resource"]
+    deps: dict[str, "Resource"], res: "Resource", from_resource: Optional["Resource"]
 ):
     """
     _add_dependency adds a dependency on the given resource to the set of deps.
@@ -325,21 +325,21 @@ async def _add_dependency(
         else:
             urn = await res.urn.future()
             if urn:
-                deps.add(urn)
+                deps[urn] = res
 
 
 async def _expand_dependencies(
     deps: Iterable["Resource"], from_resource: Optional["Resource"]
-) -> Set[str]:
+) -> dict[str, "Resource"]:
     """
-    _expand_dependencies expands the given iterable of Resources into a set of URNs.
+    _expand_dependencies expands the given iterable of Resources into a map of URN -> Resource
     """
 
-    urns: Set[str] = set()
+    expanded_deps: dict[str, "Resource"] = {}
     for d in deps:
-        await _add_dependency(urns, d, from_resource)
+        await _add_dependency(expanded_deps, d, from_resource)
 
-    return urns
+    return expanded_deps
 
 
 async def serialize_property(

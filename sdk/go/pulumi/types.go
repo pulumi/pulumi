@@ -305,6 +305,25 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	return internal.ToOutputWithOutputType(ctx, anyOutputType, v).(AnyOutput)
 }
 
+// DeferredOutput creates an Output whose value can be later resolved from another Output instance.
+func DeferredOutput[T any](ctx context.Context) (pulumix.Output[T], func(Output)) {
+	var zero T
+	rt := reflect.TypeOf(zero)
+	state := internal.NewOutputState(nil, rt)
+	out := pulumix.Output[T]{OutputState: state}
+	resolve := func(o Output) {
+		go func() {
+			v, known, secret, deps, err := internal.AwaitOutput(ctx, o)
+			if err != nil {
+				internal.RejectOutput(state, err)
+				return
+			}
+			internal.ResolveOutput(out, v, known, secret, deps)
+		}()
+	}
+	return out, resolve
+}
+
 type AnyOutput struct{ *OutputState }
 
 var _ pulumix.Input[any] = AnyOutput{}

@@ -183,15 +183,17 @@ func (m Map) Set(k Key, v Value, path bool) error {
 		return err
 	}
 
-	// If we only have a single path segment, set the value and return.
+	var newV object
+	if len(p) > 1 || v.typ != TypeUnknown {
+		newV, err = adjustObjectValue(v)
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(p) == 1 {
 		m[configKey] = v
 		return nil
-	}
-
-	newV, err := adjustObjectValue(v)
-	if err != nil {
-		return err
 	}
 
 	var obj object
@@ -304,6 +306,24 @@ func adjustObjectValue(v Value) (object, error) {
 	// If it's a secure value or an object, return as-is.
 	if v.Secure() || v.Object() {
 		return v.unmarshalObject()
+	}
+
+	if v.typ == TypeString {
+		return newObject(v.value), nil
+	} else if v.typ == TypeInt {
+		i, err := strconv.Atoi(v.value)
+		if err != nil {
+			return object{}, err
+		}
+		return newObject(int64(i)), nil
+	} else if v.typ == TypeBool {
+		return newObject(v.value == "true"), nil
+	} else if v.typ == TypeFloat {
+		f, err := strconv.ParseFloat(v.value, 64)
+		if err != nil {
+			return object{}, err
+		}
+		return newObject(f), nil
 	}
 
 	// If "false" or "true", return the boolean value.

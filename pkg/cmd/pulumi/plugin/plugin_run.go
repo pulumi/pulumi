@@ -78,11 +78,10 @@ func (cmd *pluginRunCmd) run(ctx context.Context, args []string) error {
 			return fmt.Errorf("could not get plugin path: %w", err)
 		}
 
-		pluginSpec := workspace.PluginSpec{
-			Kind:    kind,
-			Name:    name,
-			Version: version,
-			// TODO: Add support for --server and --checksums.
+		// TODO: Add support for --server and --checksums.
+		pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
+		if err != nil {
+			return err
 		}
 
 		log := func(sev diag.Severity, msg string) {

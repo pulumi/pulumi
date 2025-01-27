@@ -33,7 +33,7 @@ func TestPythonTransformations(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: d,
 				Dependencies: []string{
-					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "..", "sdk", "python"),
 				},
 				LocalProviders: []integration.LocalDependency{
 					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},

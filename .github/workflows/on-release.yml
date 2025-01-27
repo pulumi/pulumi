@@ -15,7 +15,7 @@ concurrency: release
 jobs:
   info:
     name: gather
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
     steps:

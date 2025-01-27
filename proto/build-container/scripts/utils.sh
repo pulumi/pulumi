@@ -21,7 +21,7 @@ function ensureSet() {
 }
 
 # verifySHASUM computes the SHA256 of the file at `filepath`, and compares it
-# with the value of `expected`. If they match, 0 is returend. If they do not,
+# with the value of `expected`. If they match, 0 is returned. If they do not,
 # a message detailing the mismatch is printed to stderr, and 1 is returned.
 #
 # Callers determine whether to exit their script as a result of this.

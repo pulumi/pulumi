@@ -1,0 +1,6 @@
+name: l2-resource-option-retain-on-delete
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -237,10 +237,66 @@ func TestBuiltinProvider(t *testing.T) {
 		})
 		t.Run(getResource, func(t *testing.T) {
 			t.Parallel()
+
+			t.Run("ok new", func(t *testing.T) {
+				t.Parallel()
+
+				p := &builtinProvider{
+					news:  &gsync.Map[urn.URN, *resource.State]{},
+					reads: &gsync.Map[urn.URN, *resource.State]{},
+				}
+
+				expected := &resource.State{
+					Outputs: resource.PropertyMap{
+						"foo": resource.NewStringProperty("bar"),
+					},
+				}
+
+				p.news.Store("res-name", expected)
+
+				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+					Tok: getResource,
+					Args: resource.PropertyMap{
+						"urn": resource.NewStringProperty("res-name"),
+					},
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+			})
+
+			t.Run("ok read", func(t *testing.T) {
+				t.Parallel()
+
+				p := &builtinProvider{
+					news:  &gsync.Map[urn.URN, *resource.State]{},
+					reads: &gsync.Map[urn.URN, *resource.State]{},
+				}
+
+				expected := &resource.State{
+					Outputs: resource.PropertyMap{
+						"foo": resource.NewStringProperty("bar"),
+					},
+				}
+
+				p.reads.Store("res-name", expected)
+
+				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+					Tok: getResource,
+					Args: resource.PropertyMap{
+						"urn": resource.NewStringProperty("res-name"),
+					},
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+			})
+
 			t.Run("err", func(t *testing.T) {
 				t.Parallel()
 				p := &builtinProvider{
-					resources: &gsync.Map[urn.URN, *resource.State]{},
+					news:  &gsync.Map[urn.URN, *resource.State]{},
+					reads: &gsync.Map[urn.URN, *resource.State]{},
 				}
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,

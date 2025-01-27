@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 package workspace
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -40,6 +42,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
+	"github.com/go-git/go-git/v5/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -49,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -342,6 +346,104 @@ func (source *gitlabSource) Download(
 
 func (source *gitlabSource) URL() string {
 	return fmt.Sprintf("gitlab://%s/%s", source.host, source.project)
+}
+
+func isPreReleaseVersion(version semver.Version) bool {
+	return version.Major == 0 && version.Minor == 0 && version.Patch == 0 && len(version.Pre) > 0
+}
+
+// gitSource is used to download a plugin from a git repository.
+type gitSource struct {
+	// The git url to clone the plugin from.
+	url string
+	// The path within the repo to the plugin.
+	path string
+
+	// function to clone and checkout the repo.  Used so gitutil.GitCloneAndCheckoutCommit can be mocked in tests.
+	cloneAndCheckoutRevision func(context.Context, string, plumbing.Revision, string) error
+	// function to clone or pull the repo.  Used so gitutil.GitCloneOrPull can be mocked in tests.
+	cloneOrPull func(context.Context, string, plumbing.ReferenceName, string, bool) error
+}
+
+func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
+	url.Scheme = "https"
+	u, path, err := gitutil.ParseGitRepoURL(url.String())
+	if err != nil {
+		return nil, err
+	}
+	return &gitSource{
+		url:                      u,
+		path:                     path,
+		cloneAndCheckoutRevision: gitutil.GitCloneAndCheckoutRevision,
+		cloneOrPull:              gitutil.GitCloneOrPull,
+	}, nil
+}
+
+func (source *gitSource) GetLatestVersion(
+	ctx context.Context, _ func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
+	return gitutil.GetLatestTagOrHash(ctx, source.url)
+}
+
+// Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
+// a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
+// The tag is expected to be prefixed with a 'v' character.
+// If the version is the special sentinel version 0.0.0, we'll use the latest commit on the default branch.
+func (source *gitSource) Download(
+	ctx context.Context, version semver.Version, _ string, _ string,
+	_ func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
+	tmpdir, err := os.MkdirTemp("", "pulumi-plugin")
+	if err != nil {
+		return nil, -1, err
+	}
+	defer os.RemoveAll(tmpdir)
+	if isPreReleaseVersion(version) {
+		if len(version.Pre) != 1 {
+			return nil, -1, fmt.Errorf("invalid version %s", version)
+		}
+		// The version string is prefixed with a 'x' character because Pre-versions can't
+		// start with a 0. Strip that off to get the actual hash.  Note that we allow short
+		// hashes, so we need to create a go-git revision that's then resolved to a full hash.
+		revision := plumbing.Revision(version.Pre[0].VersionStr[1:])
+		err := source.cloneAndCheckoutRevision(ctx, source.url, revision, tmpdir)
+		if err != nil {
+			return nil, -1, err
+		}
+	} else {
+		var ref plumbing.ReferenceName
+		if version.Major == 0 && version.Minor == 0 && version.Patch == 0 {
+			ref = plumbing.HEAD
+		} else {
+			ref = plumbing.ReferenceName("refs/tags/v" + version.String())
+		}
+		err := source.cloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
+		if err != nil {
+			return nil, -1, err
+		}
+	}
+
+	tarbuf := bytes.NewBuffer([]byte{})
+	zip := gzip.NewWriter(tarbuf)
+
+	tw := tar.NewWriter(zip)
+
+	err = tw.AddFS(os.DirFS(tmpdir))
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// These close statements cannot be deferred, because expressions in return statements
+	// are executed before defer statements in Go.  Closing the writers in defer statements
+	// can lead to the tarbuf.Len() return value to be wrong.
+	tw.Close()
+	zip.Close()
+
+	return io.NopCloser(tarbuf), int64(tarbuf.Len()), nil
+}
+
+func (source *gitSource) URL() string {
+	return source.url
 }
 
 // githubSource can download a plugin from github releases
@@ -791,12 +893,8 @@ type ProjectPlugin struct {
 }
 
 // Spec Return a PluginSpec object for this project plugin.
-func (pp ProjectPlugin) Spec() PluginSpec {
-	return PluginSpec{
-		Name:    pp.Name,
-		Kind:    pp.Kind,
-		Version: pp.Version,
-	}
+func (pp ProjectPlugin) Spec() (PluginSpec, error) {
+	return NewPluginSpec(pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -808,6 +906,70 @@ type PackageDescriptor struct {
 	// An optional parameterization to apply to the providing plugin to produce
 	// the package.
 	Parameterization *Parameterization
+}
+
+// PackageName returns the name of the package.
+func (pd PackageDescriptor) PackageName() string {
+	if pd.Parameterization != nil {
+		return pd.Parameterization.Name
+	}
+	return pd.PluginSpec.Name
+}
+
+// PackageVersion returns the version of the package.
+func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Parameterization != nil {
+		return &pd.Parameterization.Version
+	}
+	return pd.PluginSpec.Version
+}
+
+func (pd PackageDescriptor) String() string {
+	name := pd.PluginSpec.Name
+	version := pd.PluginSpec.Version
+	if pd.Parameterization != nil {
+		name = pd.Parameterization.Name
+		version = &pd.Parameterization.Version
+	}
+
+	var v string
+	if version != nil {
+		v = fmt.Sprintf("-%s", version)
+	}
+	return name + v
+}
+
+// SortPackageDescriptors is a comparison function for PackageDescriptors that sorts by version, with version-less
+// package descriptors appearing first. It returns -1 if the first argument should appear before the second, 0 if they
+// are equal, and 1 if the first argument should appear after the second. Designed for use with functions like
+// slices.SortFunc.
+func SortPackageDescriptors(x PackageDescriptor, y PackageDescriptor) int {
+	vx := x.PackageVersion()
+	vy := y.PackageVersion()
+
+	switch {
+	case vx == nil && vy == nil:
+		// Both packages lack any version. Consider them equal.
+		return 0
+	case vx == nil:
+		// x has no version. We want version-less packages to come first, so sort x before y (-1).
+		return -1
+	case vy == nil:
+		// y has no version. We want version-less packages to come first, so sort x after y (1).
+		return 1
+	default:
+		// We have two versions. Compare them using semver.
+		semverComparison := vx.Compare(*vy)
+		switch semverComparison {
+		case 0:
+			// The versions are semantically equal. We'll compare their string representations to break ties (e.g. between 1.0.0
+			// and 1.0.0+meta).
+			return strings.Compare(vx.String(), vy.String())
+		default:
+			// The versions are not equal. Sort them using semver comparison.
+			return semverComparison
+		}
+	}
 }
 
 // A Parameterization may be applied to a supporting plugin to yield a package.
@@ -833,6 +995,94 @@ type PluginSpec struct {
 	Checksums map[string][]byte
 }
 
+func NewPluginSpec(
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginSpec, error) {
+	name := source
+	isGitPlugin := false
+	versionStr := ""
+
+	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
+	if s := strings.SplitN(source, "@", 2); len(s) == 2 {
+		name = s[0]
+		versionStr = s[1]
+	}
+
+	if versionStr != "" && version != nil {
+		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
+	}
+
+	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
+	if urlRegex.MatchString(name) {
+		u, err := url.Parse(name)
+		// If we don't have a URL, we just treat it as a normal plugin name.
+		if err == nil {
+			if pluginDownloadURL != "" {
+				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
+			}
+			url, _, err := gitutil.ParseGitRepoURL("https://" + u.String())
+			if err != nil {
+				return PluginSpec{}, err
+			}
+			name = strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_")
+			// Prefix the url with `git://`, so we can later recognize this as a git URL.
+			pluginDownloadURL = "git://" + u.String()
+			isGitPlugin = true
+		}
+	}
+
+	if versionStr != "" {
+		// Semver versions will have two `.`s.
+		if !isGitPlugin || strings.Count(versionStr, ".") == 2 {
+			v, err := semver.ParseTolerant(versionStr)
+			if err != nil {
+				additionalMsg := ""
+				if isGitPlugin {
+					additionalMsg = " or git commit hash"
+				}
+				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver%s: %w", additionalMsg, err)
+			}
+			version = &v
+		} else {
+			// Allow sha1 and sha256 hashes.
+			gitCommitRegex := regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
+			if !gitCommitRegex.MatchString(versionStr) {
+				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
+			}
+			version = &semver.Version{
+				// VersionStr cannot start with a 0, so we prefix it with an 'x' to avoid this.
+				Pre: []semver.PRVersion{{VersionStr: "x" + versionStr}},
+			}
+		}
+	}
+
+	return PluginSpec{
+		Name:              name,
+		Kind:              kind,
+		Version:           version,
+		PluginDownloadURL: pluginDownloadURL,
+		Checksums:         checksums,
+	}, nil
+}
+
+// LocalName returns the local name of the plugin, which is used in the directory name, and a path
+// within that directory if the plugin is located in a subdirectory.
+func (spec PluginSpec) LocalName() (string, string) {
+	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
+		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
+		if err != nil {
+			return strings.ReplaceAll(trimmed, "/", "_"), ""
+		}
+		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
+	}
+	return spec.Name, ""
+}
+
 // Dir gets the expected plugin directory for this plugin.
 func (spec PluginSpec) Dir() string {
 	dir := fmt.Sprintf("%s-%s", spec.Kind, spec.Name)
@@ -840,6 +1090,12 @@ func (spec PluginSpec) Dir() string {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
 	return dir
+}
+
+// SubDir gets the expected subdirectory for this plugin.
+func (spec PluginSpec) SubDir() string {
+	_, path := spec.LocalName()
+	return path
 }
 
 // File gets the expected filename for this plugin, excluding any platform specific suffixes (e.g. ".exe" on
@@ -984,6 +1240,8 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 		return newGitlabSource(url, name, kind)
 	case "http", "https":
 		return newHTTPSource(name, kind, url), nil
+	case "git":
+		return newGitHTTPSSource(url)
 	default:
 		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}
@@ -1556,8 +1814,24 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	// the progress bar.
 	contract.IgnoreClose(content)
 
+	err = spec.InstallDependencies(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Installation is complete. Remove the partial file.
+	return os.Remove(partialFilePath)
+}
+
+func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
+	dir, err := spec.DirPath()
+	if err != nil {
+		return err
+	}
+	subdir := filepath.Join(dir, spec.SubDir())
+
 	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
+	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 	}
@@ -1570,7 +1844,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, npm.AutoPackageManager, subdir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
@@ -1578,21 +1852,19 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
-				Root:       finalDir,
+				Root:       subdir,
 				Virtualenv: "venv",
 			})
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)
 			}
-			if err := tc.InstallDependencies(ctx, finalDir, false, /*useLanguageVersionTools */
+			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
 				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}
 	}
-
-	// Installation is complete. Remove the partial file.
-	return os.Remove(partialFilePath)
+	return nil
 }
 
 // cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
@@ -1805,7 +2077,14 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, true /* skipMetadata */, projectPlugins)
+	return GetPluginPathWithSubdir(d, kind, name, "", version, projectPlugins)
+}
+
+func GetPluginPathWithSubdir(
+	d diag.Sink, kind apitype.PluginKind, name, subdir string, version *semver.Version,
+	projectPlugins []ProjectPlugin,
+) (string, error) {
+	info, path, err := getPluginInfoAndPath(d, kind, name, subdir, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -1818,7 +2097,7 @@ func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *s
 func GetPluginInfo(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, version, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(d, kind, name, "", version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -1851,7 +2130,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	d diag.Sink,
-	kind apitype.PluginKind, name string, version *semver.Version, skipMetadata bool,
+	kind apitype.PluginKind, name, subdir string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := (&PluginSpec{Kind: kind, Name: name}).File()
@@ -1886,7 +2165,10 @@ func getPluginInfoAndPath(
 			}
 		}
 
-		spec := plugin.Spec()
+		spec, err := plugin.Spec()
+		if err != nil {
+			return nil, "", err
+		}
 		info := &PluginInfo{
 			Name:    spec.Name,
 			Kind:    spec.Kind,
@@ -1990,7 +2272,13 @@ func getPluginInfoAndPath(
 	}
 
 	var match *PluginInfo
-	if !enableLegacyPluginBehavior && version != nil {
+	if !enableLegacyPluginBehavior &&
+		version != nil &&
+		isPreReleaseVersion(*version) {
+		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
+		match = SelectPrereleasePlugin(plugins, kind, name, subdir, version)
+	} else if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 	} else {
@@ -2029,27 +2317,22 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 }
 func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
-// SortedPluginSpec is a wrapper around PluginSpec that allows for sorting by version.
-type SortedPluginSpec []PluginSpec
-
-func (sp SortedPluginSpec) Len() int { return len(sp) }
-func (sp SortedPluginSpec) Less(i, j int) bool {
-	iVersion := sp[i].Version
-	jVersion := sp[j].Version
-	switch {
-	case iVersion == nil && jVersion == nil:
-		return false
-	case iVersion == nil:
-		return true
-	case jVersion == nil:
-		return false
-	case iVersion.EQ(*jVersion):
-		return iVersion.String() < jVersion.String()
-	default:
-		return iVersion.LT(*jVersion)
+// SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
+// are looking for, based on the commit hash.
+func SelectPrereleasePlugin(
+	plugins []PluginInfo, kind apitype.PluginKind, name, subdir string, version *semver.Version,
+) *PluginInfo {
+	for _, cur := range plugins {
+		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+			// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+			if subdir != "" {
+				cur.Path = filepath.Join(cur.Path, subdir)
+			}
+			return &cur
+		}
 	}
+	return nil
 }
-func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
 // LegacySelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that
 // satisfies the requested version. It returns the highest version plugin greater than the requested version,
@@ -2209,7 +2492,7 @@ func getCandidateExtensions() []string {
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
-		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
+		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted

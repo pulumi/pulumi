@@ -108,12 +108,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 
 	"github.com/blang/semver"
-	"github.com/nxadm/tail"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -128,6 +126,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -371,7 +370,6 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	bufferSizeHint := len(upOpts.Replace) + len(upOpts.Target) + len(upOpts.PolicyPacks) + len(upOpts.PolicyPackConfigs)
 	sharedArgs := slice.Prealloc[string](bufferSizeHint)
 
-	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
 	if upOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
 	}
@@ -431,6 +429,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
+	args = debug.AddArgs(&upOpts.DebugLogOpts, args)
+
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -721,8 +721,8 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string {
 	args := slice.Prealloc[string](len(o.Target))
 
-	args = debug.AddArgs(&o.DebugLogOpts, args)
 	args = append(args, "refresh")
+	args = debug.AddArgs(&o.DebugLogOpts, args)
 	if isPreview {
 		args = append(args, "--preview-only")
 	} else {
@@ -733,6 +733,9 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	}
 	if o.ExpectNoChanges {
 		args = append(args, "--expect-no-changes")
+	}
+	if o.ClearPendingCreates {
+		args = append(args, "--clear-pending-creates")
 	}
 	for _, tURN := range o.Target {
 		args = append(args, "--target="+tURN)
@@ -1039,6 +1042,12 @@ func (s *Stack) GetConfigWithOptions(ctx context.Context, key string, opts *Conf
 // GetAllConfig returns the full config map.
 func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
+}
+
+// GetAllConfigWithOptions returns the full config map with optional ConfigAllConfigOptions.
+// Allows using a config file and controlling how secrets are shown
+func (s *Stack) GetAllConfigWithOptions(ctx context.Context, opts *GetAllConfigOptions) (ConfigMap, error) {
+	return s.Workspace().GetAllConfigWithOptions(ctx, s.Name(), opts)
 }
 
 // SetConfig sets the specified config key-value pair.
@@ -1624,7 +1633,7 @@ type fileWatcher struct {
 }
 
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
-	t, err := tail.TailFile(path, tail.Config{
+	t, err := tail.File(path, tail.Config{
 		Follow:        true,
 		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
 		Logger:        tail.DiscardingLogger,
@@ -1688,25 +1697,6 @@ func (fw *fileWatcher) Close() {
 	}
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
-
-	// The tail library we're using is racy when shutting down.
-	// If it gets the shutdown signal before reading the data, it
-	// will just shut down before finding the EoF.  This problem
-	// is exacerbated on Windows, where we use the poller, which
-	// polls for changes every 250ms.  Sleep a little bit longer
-	// than that to ensure the tail library had a chance to read
-	// the whole file.  On OSs that don't use the poller we still
-	// want to try to avoid the problem so we sleep for a short
-	// amount of time.
-	//
-	// TODO: remove this once https://github.com/nxadm/tail/issues/67
-	// is fixed and we can upgrade nxadm/tail.
-	if runtime.GOOS == "windows" {
-		time.Sleep(300 * time.Millisecond)
-	} else {
-		time.Sleep(150 * time.Millisecond)
-	}
-
 	//nolint:errcheck
 	fw.tail.StopAtEOF()
 	<-fw.done

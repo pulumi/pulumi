@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/blang/semver"
@@ -197,28 +198,78 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 }
 
 func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	cmd := exec.CommandContext(ctx, "uv", "pip", "list", "--format", "json")
-	// `uv pip` commands require the virtualenv to be activated.
-	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
-	output, err := cmd.Output()
+	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
+	// `-v` flag, which is required to get the package location.
+	// https://github.com/astral-sh/uv/issues/9838
+	args := []string{"list", "--format", "json", "-v"}
+	if !transitive {
+		args = append(args, "--not-required")
+	}
+	pipCmd, err := u.ModuleCommand(ctx, "pip", args...)
 	if err != nil {
-		return nil, fmt.Errorf("error listing packages: %w", err)
+		return nil, fmt.Errorf("preparing pip list command: %w", err)
+	}
+	// Check if pip is installed, if not, we'll fallback to `uvx pip`, which will install an
+	// isolated pip for us.
+	cmd, err := u.ModuleCommand(ctx, "pip")
+	if err != nil {
+		return nil, fmt.Errorf("preparing check pip command: %w", err)
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), "No module named pip") {
+			// Use the python executable of our virtual environment so that pip will
+			// list the packages from that venv, instead of the isolated venv where
+			// uvx installs pip.
+			_, pythonPath := u.pythonExecutable()
+			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
+			if !transitive {
+				args = append(args, "--not-required")
+			}
+			cmd := exec.CommandContext(ctx, "uvx", args...)
+			cmd.Dir = u.root
+			pipCmd = cmd
+		} else {
+			return nil, errorWithStderr(err, "checking for pip")
+		}
+	}
+
+	output, err := pipCmd.Output()
+	if err != nil {
+		return nil, errorWithStderr(err, "listing packages")
 	}
 
 	var packages []PythonPackage
 	if err := json.Unmarshal(output, &packages); err != nil {
-		return nil, fmt.Errorf("error parsing package list: %w", err)
+		return nil, fmt.Errorf("parsing package list: %w", err)
 	}
 
 	return packages, nil
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
-	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "python"}, args...)...), nil
+	// Note that we do not use `uv run python` here because this results in a
+	// process tree of `python-language-runtime -> uv -> python`. This is
+	// problematic because on error we kill the plugin and its children, but not
+	// the children of the children. On macOS and Linux, when uv is killed, it
+	// kills its children, so we have no problem here. On Windows however, it
+	// does not, and we end up with an orphaned Python process that's
+	// busy-waiting in the eventloop and never exits.
+	var cmd *exec.Cmd
+	name, cmdPath := u.pythonExecutable()
+	if needsPythonShim(cmdPath) {
+		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
+		cmd = exec.CommandContext(ctx, shimCmd, args...)
+	} else {
+		cmd = exec.CommandContext(ctx, cmdPath, args...)
+	}
+	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	cmd.Dir = u.root
+	return cmd, nil
 }
 
 func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
-	return u.uvCommand(ctx, "", false, nil, nil, append([]string{"run", "--module"}, args...)...), nil
+	moduleArgs := append([]string{"-m", module}, args...)
+	return u.Command(ctx, moduleArgs...)
 }
 
 func (u *uv) About(ctx context.Context) (Info, error) {
@@ -281,4 +332,12 @@ func (u *uv) uvVersion(versionString string) (semver.Version, error) {
 			versionString, minUvVersion)
 	}
 	return sem, nil
+}
+
+func (u *uv) pythonExecutable() (string, string) {
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
 }

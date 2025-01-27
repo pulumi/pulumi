@@ -38,7 +38,7 @@ func TestPerfEmptyUpdate(t *testing.T) {
 		NoParallel: true,
 		Dir:        filepath.Join("python", "empty"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,
@@ -58,7 +58,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		NoParallel: true,
 		Dir:        filepath.Join("python", "component"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,
@@ -81,7 +81,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		NoParallel: true,
 		Dir:        filepath.Join("python", "parents"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,

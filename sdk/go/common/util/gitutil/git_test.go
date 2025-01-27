@@ -15,6 +15,7 @@
 package gitutil
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -25,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/assert"
@@ -533,4 +536,100 @@ func TestParseAuthURL(t *testing.T) {
 		assert.ErrorContains(t, err, "SSH_AUTH_SOCK not-specified")
 		assert.Nil(t, auth)
 	})
+}
+
+func TestGitCloneAndCheckoutRevision(t *testing.T) {
+	t.Parallel()
+
+	// Check that we can clone a repository and checkout a
+	// specific revision.  We use a test repository that contains
+	// a single file, "test".  It has two revisions, the initial
+	// commit, where the file contains "initial", and the HEAD
+	// commit, where the file contains "HEAD".  So just cloning
+	// the repo should result in "HEAD", while checking out the
+	// initial commit should result in "initial".
+	cases := []struct {
+		name            string
+		revision        plumbing.Revision
+		expectedContent string
+		expectedError   string
+	}{
+		{
+			name:            "full-hash",
+			revision:        plumbing.Revision("c9bcda983f3078cf622b02acc625f6a2127f4e0a"),
+			expectedContent: "initial\n",
+		},
+		{
+			name:            "short-hash",
+			revision:        plumbing.Revision("c9bcda"),
+			expectedContent: "initial\n",
+		},
+		{
+			name:            "full-hash",
+			revision:        plumbing.Revision("HEAD"),
+			expectedContent: "HEAD\n",
+		},
+		{
+			name:          "unknown-revision",
+			revision:      plumbing.Revision("deadbeef"),
+			expectedError: "reference not found",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir, err := os.MkdirTemp("", "pulumi-git-test")
+			require.NoError(t, err)
+			defer os.RemoveAll(dir)
+
+			err = GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			if c.expectedError != "" {
+				require.ErrorContains(t, err, c.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			content, err := os.ReadFile(filepath.Join(dir, "test"))
+			if err != nil {
+				panic(err)
+			}
+			assert.Equal(t, c.expectedContent, string(content))
+		})
+	}
+}
+
+func TestGetLatestTagOrHash(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		expected semver.Version
+		dataDir  string
+	}{
+		{
+			name:     "no tags",
+			expected: semver.MustParse("0.0.0-x044e5858f018bd6fa666da9adbff645f581fb91b"),
+			dataDir:  "testdata/commit-only.git",
+		},
+		{
+			name:     "tags",
+			expected: semver.MustParse("0.1.1"),
+			dataDir:  "testdata/tags.git",
+		},
+		{
+			name:     "alpha version",
+			expected: semver.MustParse("0.1.0-alpha"),
+			dataDir:  "testdata/alpha-tag.git",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected.String(), v.String())
+		})
+	}
 }

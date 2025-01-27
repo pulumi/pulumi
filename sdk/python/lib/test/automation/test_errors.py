@@ -30,9 +30,6 @@ compilation_error_project = "compilation_error"
 runtime_error_project = "runtime_error"
 
 
-@pytest.mark.skipif(
-    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
-)
 class TestErrors(unittest.TestCase):
     def test_inline_runtime_error_python(self):
         project_name = "inline_runtime_error_python"
@@ -52,7 +49,7 @@ class TestErrors(unittest.TestCase):
                 InlineSourceRuntimeError, inline_error_text, stack.preview
             )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
     def test_runtime_errors(self):
         for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
@@ -78,7 +75,7 @@ class TestErrors(unittest.TestCase):
 
                 # Determine the locally built Pulumi SDK path.
                 script_dir = os.path.dirname(os.path.abspath(__file__))
-                env_src_dir = os.path.join(script_dir, "..", "..", "..", "env", "src")
+                env_src_dir = os.path.join(script_dir, "..", "..", "..")
 
                 # Install the locally built Pulumi SDK in the virtual environment.
                 subprocess.run(
@@ -101,7 +98,7 @@ class TestErrors(unittest.TestCase):
                         RuntimeError, "failed with an unhandled exception", stack.up
                     )
             finally:
-                stack.workspace.remove_stack(stack_name)
+                stack.workspace.remove_stack(stack_name, force=True)
 
     def test_compilation_error_go(self):
         stack_name = stack_namer(compilation_error_project)
@@ -114,7 +111,7 @@ class TestErrors(unittest.TestCase):
                 CompilationError, ": syntax error:|: undefined:", stack.up
             )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
     def test_compilation_error_dotnet(self):
         stack_name = stack_namer(compilation_error_project)
@@ -125,7 +122,7 @@ class TestErrors(unittest.TestCase):
             self.assertRaises(CompilationError, stack.up)
             self.assertRaisesRegex(CompilationError, "Build FAILED.", stack.up)
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
     # This test fails on Windows related to the `subprocess.run` call associated with setting up the environment.
     # Skipping for now.
@@ -144,7 +141,7 @@ class TestErrors(unittest.TestCase):
                 CompilationError, "Unable to compile TypeScript", stack.up
             )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
 
 def failing_program():

@@ -134,7 +134,7 @@ func (p *SimpleProvider) Check(
 			Failures: makeCheckFailure("value", "missing value"),
 		}, nil
 	}
-	if !value.IsBool() {
+	if !value.IsBool() && !value.IsComputed() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil

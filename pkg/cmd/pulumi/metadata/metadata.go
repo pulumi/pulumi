@@ -206,6 +206,10 @@ func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
 	if repo == nil {
+		// If we couldn't find a repository, see if explicit environment variables have been set to provide us with
+		// metadata.
+		addGitMetadataFromEnvironment(m)
+
 		return nil
 	}
 
@@ -218,6 +222,63 @@ func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	}
 
 	return allErrors.ErrorOrNil()
+}
+
+// addGitMetadataFromEnvironment retrieves Git-related metadata from environment variables in the case that a Git
+// repository is not present and adds any available information to the given metadata object.
+func addGitMetadataFromEnvironment(m *backend.UpdateMetadata) {
+	if owner := os.Getenv("PULUMI_VCS_REPO_OWNER"); owner != "" {
+		m.Environment[backend.VCSRepoOwner] = owner
+	}
+	if repo := os.Getenv("PULUMI_VCS_REPO_NAME"); repo != "" {
+		m.Environment[backend.VCSRepoName] = repo
+	}
+	if kind := os.Getenv("PULUMI_VCS_REPO_KIND"); kind != "" {
+		m.Environment[backend.VCSRepoKind] = kind
+	}
+	if root := os.Getenv("PULUMI_VCS_REPO_ROOT"); root != "" {
+		m.Environment[backend.VCSRepoRoot] = root
+	}
+
+	// As in addGitCommitMetadata, which we'd call if we had a Git repository, we'll use any information provided by the
+	// CI system (or appropriate environment variables) to populate remaining Git-related fields that we don't have
+	// explicit values for.
+	vars := ciutil.DetectVars()
+
+	message := os.Getenv("PULUMI_GIT_COMMIT_MESSAGE")
+	if message == "" {
+		message = vars.CommitMessage
+	}
+	if message != "" {
+		m.Message = gitCommitTitle(message)
+	}
+
+	headName := os.Getenv("PULUMI_GIT_HEAD_NAME")
+	if headName == "" {
+		headName = vars.BranchName
+	}
+	if headName != "" {
+		// In the case of GitHeadName, when we auto-detect from a Git repository we do not set the value if it is "HEAD".
+		// However, in the case that a value has been set explicitly, we will use it regardless of its value, since this is
+		// probably what the user expects.
+		m.Environment[backend.GitHeadName] = headName
+	}
+
+	if head := os.Getenv("PULUMI_GIT_HEAD"); head != "" {
+		m.Environment[backend.GitHead] = head
+	}
+	if committer := os.Getenv("PULUMI_GIT_COMMITTER"); committer != "" {
+		m.Environment[backend.GitCommitter] = committer
+	}
+	if committerEmail := os.Getenv("PULUMI_GIT_COMMITTER_EMAIL"); committerEmail != "" {
+		m.Environment[backend.GitCommitterEmail] = committerEmail
+	}
+	if author := os.Getenv("PULUMI_GIT_AUTHOR"); author != "" {
+		m.Environment[backend.GitAuthor] = author
+	}
+	if authorEmail := os.Getenv("PULUMI_GIT_AUTHOR_EMAIL"); authorEmail != "" {
+		m.Environment[backend.GitAuthorEmail] = authorEmail
+	}
 }
 
 // addGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.

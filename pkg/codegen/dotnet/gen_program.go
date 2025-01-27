@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -298,10 +299,14 @@ func GenerateProject(
 	for _, dep := range localDependencies {
 		folders.Add(path.Dir(dep))
 	}
-	if len(folders.ToSlice()) > 0 {
+
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
+
+	if len(restoreSources) > 0 {
 		csproj.WriteString(`	<PropertyGroup>
 		<RestoreSources>`)
-		csproj.WriteString(strings.Join(folders.ToSlice(), ";"))
+		csproj.WriteString(strings.Join(restoreSources, ";"))
 		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
 	</PropertyGroup>
 `)
@@ -605,7 +610,7 @@ type ObjectTypeFromConfigMetadata = struct {
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
-	objectType.Annotations = append(objectType.Annotations, &ObjectTypeFromConfigMetadata{
+	objectType.Annotate(&ObjectTypeFromConfigMetadata{
 		TypeName:      typeName,
 		ComponentName: componentName,
 	})

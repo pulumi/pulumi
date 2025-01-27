@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/dotnet,nodejs,python
-  description: Emit deferred outputs for mutually dependant components

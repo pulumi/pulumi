@@ -211,6 +211,16 @@ func (p *SimpleInvokeProvider) Invoke(
 				Failures: makeCheckFailure("value", "missing value"),
 			}, nil
 		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				// providers should not get computed values (during preview)
+				// since we bail out early in the core SDKs or generated provider SDKs
+				// when we encounter unknowns
+				Failures: makeCheckFailure("value", "value is unknown when calling myInvoke"),
+			}, nil
+		}
+
 		if !value.IsString() {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "is not a string"),
@@ -241,6 +251,13 @@ func (p *SimpleInvokeProvider) Invoke(
 				Failures: makeCheckFailure("value", "missing value"),
 			}, nil
 		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "value is unknown when calling secretInvoke"),
+			}, nil
+		}
+
 		if !value.IsString() {
 			reason := fmt.Sprintf("value is not a string: %v", value)
 			return plugin.InvokeResponse{

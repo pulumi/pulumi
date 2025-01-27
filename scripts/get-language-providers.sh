@@ -5,14 +5,6 @@ set -x
 
 LOCAL="${1:-"false"}"
 
-get_version() {
-  local repo="$1"
-  (
-    cd pkg
-    GOWORK=off go list -m all | grep "${repo}" | cut -d" " -f2
-  )
-}
-
 # Use github credentials for a higher rate limit when possible.
 USE_GH=false
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
@@ -32,14 +24,11 @@ download_release() {
 }
 
 # shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml" "github.com/pulumi/pulumi-dotnet dotnet v3.71.0"; do
+for i in "github.com/pulumi/pulumi-java java v0.21.0" "github.com/pulumi/pulumi-yaml yaml v1.13.0" "github.com/pulumi/pulumi-dotnet dotnet v3.71.1"; do
   set -- $i # treat strings in loop as args
   REPO="$1"
   PULUMI_LANG="$2"
-  TAG="$3" # only dotnet sets this because we don't currently have a go dependency on dotnet (and quite possibly never will)
-  if [ -z "$TAG" ]; then
-    TAG=$(get_version "${REPO}")
-  fi
+  TAG="$3"
 
   LANG_DIST="$(pwd)/bin"
   mkdir -p "${LANG_DIST}"

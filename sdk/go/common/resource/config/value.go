@@ -18,11 +18,22 @@ import (
 	"context"
 )
 
+type Type int
+
+const (
+	TypeUnknown = iota
+	TypeString
+	TypeInt
+	TypeFloat
+	TypeBool
+)
+
 // Value is a single config value.
 type Value struct {
 	value  string
 	secure bool
 	object bool
+	typ    Type
 }
 
 func NewSecureValue(v string) Value {
@@ -31,6 +42,10 @@ func NewSecureValue(v string) Value {
 
 func NewValue(v string) Value {
 	return Value{value: v, secure: false}
+}
+
+func NewTypedValue(v string, t Type) Value {
+	return Value{value: v, secure: false, typ: t}
 }
 
 func NewSecureObjectValue(v string) Value {
@@ -109,8 +124,11 @@ func (c Value) Object() bool {
 
 func (c Value) unmarshalObject() (object, error) {
 	var obj object
-	err := obj.UnmarshalString(c.value, c.secure, c.object)
-	return obj, err
+	if c.object || c.typ == TypeUnknown {
+		err := obj.UnmarshalString(c.value, c.secure, c.object)
+		return obj, err
+	}
+	return adjustObjectValue(c)
 }
 
 // ToObject returns the string value (if not an object), or the unmarshalled JSON object (if an object).

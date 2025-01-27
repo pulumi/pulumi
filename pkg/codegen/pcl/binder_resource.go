@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -363,7 +363,11 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	for _, prop := range properties {
 		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
 	}
-	outputType := model.NewObjectType(outputProperties, &schema.ObjectType{Properties: properties})
+	outputType := model.NewObjectType(
+		outputProperties,
+		&ResourceAnnotation{node},
+		&schema.ObjectType{Properties: properties},
+	)
 
 	node.InputType, node.OutputType = inputType, outputType
 
@@ -380,6 +384,13 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	codegen.VisitTypeClosure(properties, findTransitivePackageReferences)
 
 	return diagnostics
+}
+
+// ResourceAnnotation is a type that can be used to annotate ObjectTypes that represent resources with their
+// corresponding Resource node. We define a wrapper type that does not implement any interfaces so as to reduce the
+// chance of the annotation being plucked out by an interface-type query by accident.
+type ResourceAnnotation struct {
+	Node *Resource
 }
 
 type resourceScopes struct {

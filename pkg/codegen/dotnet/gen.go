@@ -28,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -2270,7 +2271,25 @@ func genPackageMetadata(pkg *schema.Package,
 		files.Add("version.txt", []byte(version))
 	}
 
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
+	localPackages := map[string]string{}
+	if pulumi, ok := localDependencies["pulumi"]; ok {
+		localPackages["pulumi"] = pulumi
+	}
+
+	// compute referenced packages in the schema
+	referencedPackages := codegen.PackageReferences(pkg)
+
+	for pkg, path := range localDependencies {
+		// if a local dependency is package refenced in the schema,
+		// we add it to the local packages
+		for _, referencedPackage := range referencedPackages {
+			if pkg == referencedPackage.Name() {
+				localPackages[pkg] = path
+			}
+		}
+	}
+
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localPackages)
 	if err != nil {
 		return err
 	}
@@ -2325,10 +2344,8 @@ func genProjectFile(pkg *schema.Package,
 	for _, dep := range localDependencies {
 		folders.Add(path.Dir(dep))
 	}
-	restoreSources := ""
-	if len(folders.ToSlice()) > 0 {
-		restoreSources = strings.Join(folders.ToSlice(), ";")
-	}
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
 
 	// Add local package references
 	pkgs := codegen.SortedKeys(localDependencies)
@@ -2355,7 +2372,7 @@ func genProjectFile(pkg *schema.Package,
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = "[3.71.0.0,4)"
+			packageReferences["Pulumi"] = "[3.71.1.0,4)"
 		}
 	}
 
@@ -2366,7 +2383,7 @@ func genProjectFile(pkg *schema.Package,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
 		Version:           version,
-		RestoreSources:    restoreSources,
+		RestoreSources:    strings.Join(restoreSources, ";"),
 	})
 	if err != nil {
 		return nil, err
