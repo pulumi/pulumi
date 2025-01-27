@@ -1807,10 +1807,9 @@ func TestRegress18176(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
-		Quick:      true,
-		SkipUpdate: true,
-		Stdout:     stdout,
-		Stderr:     stderr,
+		Quick:  true,
+		Stdout: stdout,
+		Stderr: stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Empty(t, stack.Events)
 			require.NotContains(t, stdout.String(), "Error in sys.excepthook")

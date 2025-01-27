@@ -27,6 +27,8 @@ dependencies = [
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
     'pip~=24.3.1',
+    # We don't want to include this here, maybe ProgramTest and LangTests can add it to the venv?
+    'coverage>=6.0.2',
 ]
 
 [dependency-groups]
@@ -39,7 +41,6 @@ dev = [
     'types-pyyaml',
     'types-protobuf',
     'pytest-asyncio',
-    'coverage>=6.0.2',
     'wheel',
     'ruff==0.8.0',
     "build>=1.2.2.post1",
