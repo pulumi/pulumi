@@ -175,8 +175,7 @@
         },
         "language": {
             "description": "Additional language-specific data about the package.",
-            "type": "string",
-            "encoding": "base64"
+            "type": "object"
         }
     },
     "additionalProperties": false,
