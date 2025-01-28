@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	LanguageTests["l1-resource-keyword-overlap"] = LanguageTest{
+	LanguageTests["l1-keyword-overlap"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
