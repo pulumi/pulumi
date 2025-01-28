@@ -26,7 +26,7 @@ dependencies = [
     'semver~=2.13',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
-    'pip~=24.3.1',
+    'pip>=24.3.1,<26',
 ]
 
 [dependency-groups]
