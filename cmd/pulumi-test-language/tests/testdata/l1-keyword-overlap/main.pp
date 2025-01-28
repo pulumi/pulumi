@@ -8,34 +8,34 @@ self = "self_output_string"
 this = "this_output_string"
 if = "if_output_string"
 
-output "output_class" {
+output "class" {
   value = class
 }
 
-output "output_export" {
+output "export" {
   value = export
 }
 
-output "output_import" {
+output "import" {
   value = import
 }
 
-output "output_mod" {
+output "mod" {
   value = mod
 }
 
-output "output_object" {
+output "object" {
   value = object
 }
 
-output "output_self" {
+output "self" {
   value = self
 }
 
-output "output_this" {
+output "this" {
   value = this
 }
 
-output "output_if" {
+output "if" {
   value = if
 }

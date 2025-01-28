@@ -11,11 +11,11 @@ object = {
 self = "self_output_string"
 this = "this_output_string"
 if_ = "if_output_string"
-pulumi.export("output_class", class_)
-pulumi.export("output_export", export)
-pulumi.export("output_import", import_)
-pulumi.export("output_mod", mod)
-pulumi.export("output_object", object)
-pulumi.export("output_self", self)
-pulumi.export("output_this", this)
-pulumi.export("output_if", if_)
+pulumi.export("class", class_)
+pulumi.export("export", export)
+pulumi.export("import", import_)
+pulumi.export("mod", mod)
+pulumi.export("object", object)
+pulumi.export("self", self)
+pulumi.export("this", this)
+pulumi.export("if", if_)

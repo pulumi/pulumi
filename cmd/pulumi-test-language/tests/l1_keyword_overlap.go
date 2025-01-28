@@ -37,15 +37,15 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "output_class", resource.NewStringProperty("class_output_string"))
-					AssertPropertyMapMember(l, outputs, "output_export", resource.NewStringProperty("export_output_string"))
-					AssertPropertyMapMember(l, outputs, "output_import", resource.NewStringProperty("import_output_string"))
-					AssertPropertyMapMember(l, outputs, "output_mod", resource.NewStringProperty("mod_output_string"))
-					AssertPropertyMapMember(l, outputs, "output_object",
+					AssertPropertyMapMember(l, outputs, "class", resource.NewStringProperty("class_output_string"))
+					AssertPropertyMapMember(l, outputs, "export", resource.NewStringProperty("export_output_string"))
+					AssertPropertyMapMember(l, outputs, "import", resource.NewStringProperty("import_output_string"))
+					AssertPropertyMapMember(l, outputs, "mod", resource.NewStringProperty("mod_output_string"))
+					AssertPropertyMapMember(l, outputs, "object",
 						resource.NewObjectProperty(resource.PropertyMap{"object": resource.NewStringProperty("object_output_string")}),
 					)
-					AssertPropertyMapMember(l, outputs, "output_self", resource.NewStringProperty("self_output_string"))
-					AssertPropertyMapMember(l, outputs, "output_this", resource.NewStringProperty("this_output_string"))
+					AssertPropertyMapMember(l, outputs, "self", resource.NewStringProperty("self_output_string"))
+					AssertPropertyMapMember(l, outputs, "this", resource.NewStringProperty("this_output_string"))
 				},
 			},
 		},
