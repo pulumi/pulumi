@@ -1166,6 +1166,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
+	// Blockname is not always equal to resourceName or varName, it is often
+	// surrounded by quotes, or obfuscated when there is keyword overlap.
 	instantiate := func(varName, blockName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(blockName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)

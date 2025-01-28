@@ -15,8 +15,6 @@
 package tests
 
 import (
-	"slices"
-
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -38,31 +36,26 @@ func init() {
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 
-					resourceNames := []string{}
-					for _, res := range snap.Resources {
-						resourceNames = append(resourceNames, res.URN.Name())
-					}
+					classRes := RequireSingleNamedResource(l, snap.Resources, "class")
+					assert.Equal(l, "simple:index:Resource", classRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[2].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "class"))
+					exportRes := RequireSingleNamedResource(l, snap.Resources, "export")
+					assert.Equal(l, "simple:index:Resource", exportRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[3].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "export"))
+					modRes := RequireSingleNamedResource(l, snap.Resources, "mod")
+					assert.Equal(l, "simple:index:Resource", modRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[4].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "mod"))
+					importRes := RequireSingleNamedResource(l, snap.Resources, "import")
+					assert.Equal(l, "simple:index:Resource", importRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[5].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "import"))
+					objectRes := RequireSingleNamedResource(l, snap.Resources, "object")
+					assert.Equal(l, "simple:index:Resource", objectRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[6].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "object"))
+					selfRes := RequireSingleNamedResource(l, snap.Resources, "self")
+					assert.Equal(l, "simple:index:Resource", selfRes.Type.String())
 
-					assert.Equal(l, "simple:index:Resource", snap.Resources[7].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "self"))
-
-					assert.Equal(l, "simple:index:Resource", snap.Resources[8].Type.String())
-					assert.True(l, slices.Contains(resourceNames, "this"))
+					thisRes := RequireSingleNamedResource(l, snap.Resources, "this")
+					assert.Equal(l, "simple:index:Resource", thisRes.Type.String())
 				},
 			},
 		},
