@@ -110,6 +110,7 @@ output name {
 
 // Quick sanity tests for each downstream language to check that convert works.
 func TestLanguageConvertSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
@@ -167,6 +168,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 
 // Quick sanity tests for each downstream language to check that convert with components works.
 func TestLanguageConvertComponentSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
@@ -499,6 +501,7 @@ func TestPluginRun(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {

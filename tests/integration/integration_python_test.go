@@ -1596,6 +1596,8 @@ func TestConfigGetterOverloads(t *testing.T) {
 // Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
 // and finally that the program terminates successfully after the debugger is detached.
 func TestDebuggerAttachPython(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)

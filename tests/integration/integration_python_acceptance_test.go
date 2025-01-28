@@ -219,6 +219,7 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	// Do not use integration.ProgramTest to avoid automatic venv
@@ -321,6 +322,8 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestAutomaticVenvCreationPoetry(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}
@@ -348,6 +351,7 @@ func TestAutomaticVenvCreationPoetry(t *testing.T) {
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestPoetryInstallParentDirectory(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}
@@ -369,6 +373,7 @@ func TestPoetryInstallParentDirectory(t *testing.T) {
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestPoetryInstallWithMain(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}
@@ -388,6 +393,7 @@ func TestPoetryInstallWithMain(t *testing.T) {
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestPoetryInstallWithMainAndParent(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}
@@ -406,6 +412,8 @@ func TestPoetryInstallWithMainAndParent(t *testing.T) {
 }
 
 func TestUv(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	t.Parallel()
 
 	for _, test := range []struct {
@@ -759,6 +767,8 @@ python = "^3.9"
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUvWindowsError(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}

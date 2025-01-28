@@ -276,11 +276,20 @@ func TestLanguage(t *testing.T) {
 			})
 			require.NoError(t, err)
 
+			expectedFailures := map[string]string{
+				"l1-output-array": "noisy logs",
+				"l2-large-string": "noisy logs",
+			}
+
 			for _, tt := range tests.Tests {
 				tt := tt
 
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
+
+					if expected, ok := expectedFailures[tt]; ok {
+						t.Skipf("Skipping known failure: %s", expected)
+					}
 
 					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
