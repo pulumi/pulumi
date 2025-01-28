@@ -20,6 +20,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +43,20 @@ func newExtractMappingCommand() *cobra.Command {
 				provider = args[2]
 			}
 
-			p, err := ProviderFromSource(source)
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				contract.IgnoreError(pctx.Close())
+			}()
+
+			p, err := ProviderFromSource(pctx, source)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
