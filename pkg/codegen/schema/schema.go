@@ -1997,8 +1997,6 @@ type BaseProviderSpec struct {
 	Name string `json:"name" yaml:"name"`
 	// The version of the base provider.
 	Version string `json:"version" yaml:"version"`
-	// The URL to use when downloading the provider plugin binary.
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
 }
 
 // ParameterizationSpec is the serializable description of a provider parameterization.

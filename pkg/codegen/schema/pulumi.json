@@ -149,10 +149,6 @@
                             "description": "The version of the package. The version must be valid semver.",
                             "type": "string",
                             "pattern": "^v?(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
-                        },
-                        "pluginDownloadURL": {
-                            "description": "The URL to use when downloading the provider plugin binary.",
-                            "type": "string"
                         }
                     },
                     "required": ["name", "version"],
