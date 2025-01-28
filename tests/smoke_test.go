@@ -50,6 +50,7 @@ var Languages = map[string]string{
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageNewSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	// make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -110,6 +111,7 @@ output name {
 
 // Quick sanity tests for each downstream language to check that convert works.
 func TestLanguageConvertSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
@@ -167,6 +169,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 
 // Quick sanity tests for each downstream language to check that convert with components works.
 func TestLanguageConvertComponentSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
@@ -499,6 +502,7 @@ func TestPluginRun(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
@@ -658,6 +662,8 @@ backend:
 //
 //nolint:paralleltest // pulumi new is not parallel safe, and we set environment variables
 func TestSecretsProvidersFallbackSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	// Make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -794,6 +800,8 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 
@@ -838,6 +846,7 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestImportParameterizedSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 

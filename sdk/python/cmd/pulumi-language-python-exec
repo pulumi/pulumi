@@ -11,6 +11,13 @@ import traceback
 import runpy
 from concurrent.futures import ThreadPoolExecutor
 
+cov = None
+coverage_path = os.environ.get("PULUMI_TEST_COVERAGE_PATH", "")
+if coverage_path:
+    import coverage
+    cov = coverage.Coverage(source=["pulumi"])
+    cov.start()
+
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
     import pulumi
@@ -202,5 +209,12 @@ if __name__ == "__main__":
         loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
+    
+    if cov:
+        cov.stop()
+        cov.save()
+        import uuid
+        u = str(uuid.uuid4()).replace('-', '').lower()
+        cov.xml_report(outfile=f"{coverage_path}/python-exec-{u}.xml")
 
     sys.exit(exit_code)

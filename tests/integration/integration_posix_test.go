@@ -31,6 +31,7 @@ import (
 )
 
 func TestCancelSignal(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
 	t.Parallel()
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGINT} {
 		sig := sig

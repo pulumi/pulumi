@@ -381,6 +381,8 @@ jobs:
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
             go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
           fi
+      - name: DEBUG
+        run: ls -ahl "${PULUMI_TEST_COVERAGE_PATH:-./coverage}"
       - name: Upload code coverage
         uses: actions/upload-artifact@v4
         if: ${{ inputs.enable-coverage }}

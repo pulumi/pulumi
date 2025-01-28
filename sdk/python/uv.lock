@@ -637,6 +637,7 @@ name = "pulumi"
 version = "3.147.1"
 source = { editable = "." }
 dependencies = [
+    { name = "coverage" },
     { name = "debugpy" },
     { name = "dill" },
     { name = "grpcio" },
@@ -650,7 +651,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "build" },
-    { name = "coverage" },
     { name = "mypy" },
     { name = "pyright" },
     { name = "pytest" },
@@ -666,6 +666,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "coverage", specifier = ">=6.0.2" },
     { name = "debugpy", specifier = "~=1.8.7" },
     { name = "dill", specifier = "~=0.3" },
     { name = "grpcio", specifier = "~=1.66.2" },
@@ -679,7 +680,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "build", specifier = ">=1.2.2.post1" },
-    { name = "coverage", specifier = ">=6.0.2" },
     { name = "mypy", specifier = "==1.9.0" },
     { name = "pyright", specifier = "==1.1.375" },
     { name = "pytest", specifier = "~=7.4.4" },

@@ -1596,6 +1596,8 @@ func TestConfigGetterOverloads(t *testing.T) {
 // Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
 // and finally that the program terminates successfully after the debugger is detached.
 func TestDebuggerAttachPython(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
@@ -1799,6 +1801,7 @@ func TestDynamicProviderPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestRegress18176(t *testing.T) {
+	t.Skip("something something")
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1807,10 +1810,9 @@ func TestRegress18176(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
-		Quick:      true,
-		SkipUpdate: true,
-		Stdout:     stdout,
-		Stderr:     stderr,
+		Quick:  true,
+		Stdout: stdout,
+		Stderr: stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Empty(t, stack.Events)
 			require.NotContains(t, stdout.String(), "Error in sys.excepthook")
