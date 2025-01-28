@@ -662,6 +662,8 @@ backend:
 //
 //nolint:paralleltest // pulumi new is not parallel safe, and we set environment variables
 func TestSecretsProvidersFallbackSmoke(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	// Make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
