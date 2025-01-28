@@ -853,12 +853,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 		}
 	}
 
-	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := plugin.NewProviderFromPath(host, pCtx, packageSource)
+	p, err := plugin.NewProviderFromPath(pCtx.Host, pCtx, packageSource)
 	if err != nil {
 		return nil, err
 	}
