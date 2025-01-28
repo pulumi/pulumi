@@ -274,6 +274,8 @@ func TestMinimumVersion(t *testing.T) {
 }
 
 func TestRunCanceled(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	t.Parallel()
 
 	cmd, err := NewPulumiCommand(nil)

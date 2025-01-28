@@ -800,6 +800,8 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
+	t.Skip("installs release version of pulumi -> no coverage")
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 
