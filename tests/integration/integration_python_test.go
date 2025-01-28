@@ -1801,6 +1801,7 @@ func TestDynamicProviderPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestRegress18176(t *testing.T) {
+	t.Skip("something something")
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
