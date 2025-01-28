@@ -168,10 +168,6 @@
             "items": {
                 "type": "string"
             }
-        },
-        "language": {
-            "description": "Additional language-specific data about the package.",
-            "type": "object"
         }
     },
     "additionalProperties": false,
