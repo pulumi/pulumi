@@ -1332,6 +1332,11 @@ func (host *pythonLanguageHost) RunPlugin(
 	args := []string{req.Info.ProgramDirectory}
 	args = append(args, req.Args...)
 
+	// Default the `virtualenv` option to `venv` if not provided. We don't support running
+	// plugins using the global or ambient Python environment.
+	if opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" {
+		opts.Virtualenv = "venv"
+	}
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
