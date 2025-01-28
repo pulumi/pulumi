@@ -564,37 +564,38 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 
 				g.Fgenf(w, "%s", g.Indent)
+				configVarName := makeValidIdentifier(configVar.Name())
 				switch configVarType := configVar.Type().(type) {
 				case *model.ObjectType:
 					// generate {...}
-					g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+					g.Fgenf(w, "%s%s: ", configVarName, optional)
 					g.genObjectTypedConfig(w, configVarType)
 					g.Fgen(w, ",\n")
 				case *model.ListType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate {...}[]
-						g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+						g.Fgenf(w, "%s%s: ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, "[],\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				case *model.MapType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate Record<string, {...}>
-						g.Fgenf(w, "%s%s: Record<string, ", configVar.Name(), optional)
+						g.Fgenf(w, "%s%s: Record<string, ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, ">,\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				default:
 					typeName := componentInputType(configVar.Type())
-					g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+					g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 				}
 			}
 		})
@@ -628,7 +629,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				outputType = componentOutputType(expr.Type())
 			}
 			g.Fgenf(w, "%s", g.Indent)
-			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
+			g.Fgenf(w, "public %s: %s;\n", makeValidIdentifier(output.Name()), outputType)
 		}
 
 		token := "components:index:" + componentName
@@ -658,8 +659,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				if configVar.DefaultValue != nil {
 					g.Fgenf(w, "%sargs.%s = args.%s || %v;\n",
 						g.Indent,
-						configVar.Name(),
-						configVar.Name(),
+						makeValidIdentifier(configVar.Name()),
+						makeValidIdentifier(configVar.Name()),
 						configVar.DefaultValue)
 				}
 			}
@@ -699,7 +700,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			registeredOutputs := &model.ObjectConsExpression{}
 			for _, output := range outputs {
 				// assign the output fields
-				outputProperty := output.Name()
+				outputProperty := makeValidIdentifier(output.Name())
 				switch expr := output.Value.(type) {
 				case *model.ScopeTraversalExpression:
 					_, ok := expr.Parts[0].(*pcl.Resource)
@@ -721,8 +722,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				// add the outputs to abject for registration
 				registeredOutputs.Items = append(registeredOutputs.Items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(output.Name())),
-						Value:  cty.StringVal(output.Name()),
+						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(outputProperty)),
+						Value:  cty.StringVal(outputProperty),
 					},
 					Value: output.Value,
 				})
@@ -1303,7 +1304,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	g.genTrivia(w, v.Definition.Tokens.Name)
-	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
+	vName := makeValidIdentifier(v.Name())
+	vValue := g.lowerExpression(v.Definition.Value, v.Type())
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, vName, vValue)
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {

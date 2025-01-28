@@ -1166,8 +1166,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
-	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
+	// Blockname is not always equal to resourceName or varName, it is often
+	// surrounded by quotes, or obfuscated when there is keyword overlap.
+	instantiate := func(varName, blockName, resourceName string, w io.Writer) {
+		if g.scopeTraversalRoots.Has(blockName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
 			assignment := ":="
@@ -1222,7 +1224,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s-%%v", name, key0)`, resName)
 		}
-		instantiate("__res", resourceName, &buf)
+		instantiate("__res", resourceName, resourceName, &buf)
 		instantiation := buf.String()
 		isValUsed := strings.Contains(instantiation, "val0")
 		valVar := "_"
@@ -1247,7 +1249,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s", name)`, resName)
 		}
-		instantiate(resNameVar, resourceName, w)
+		instantiate(resNameVar, r.Name(), resourceName, w)
 	}
 }
 
