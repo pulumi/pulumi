@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -503,4 +503,86 @@ func TestOpenStackEnvError(t *testing.T) {
 
 	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
 	assert.Error(t, err)
+}
+
+func TestParseConfigKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		input   string
+		path    bool
+		wantKey config.Key
+		wantErr string
+	}{
+		{
+			name:    "namespaced key",
+			input:   "mynamespace:mykey",
+			path:    false,
+			wantKey: config.MustMakeKey("mynamespace", "mykey"),
+		},
+		{
+			name:    "namespaced key old-style",
+			input:   "aws:config:region",
+			path:    false,
+			wantKey: config.MustMakeKey("aws", "region"),
+		},
+		{
+			name:    "path-like key",
+			input:   "mynamespace:mykey.segment1.segment2",
+			path:    false,
+			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
+		},
+		{
+			name:    "path key",
+			input:   "mynamespace:mykey.segment1.segment2",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
+		},
+		{
+			name:    "path segments with colons",
+			input:   "mynamespace:mykey.segment1:suffix",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+		},
+		{
+			name:    "non-path segments with colons fail to parse",
+			input:   "mynamespace:mykey.segment1:suffix",
+			path:    false,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+		{
+			name:    "path with invalid top-level segment",
+			input:   "mynamespace:subnamespace:mykey.segment1.segment2",
+			path:    true,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+		{
+			name:    "key paths",
+			input:   "mynamespace:mykey[\"segment1:suffix\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+		},
+		{
+			name:    "invalid path",
+			input:   "mynamespace:.segment1",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", ".segment1"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ParseConfigKey(tt.input, tt.path)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantKey, got)
+		})
+	}
 }

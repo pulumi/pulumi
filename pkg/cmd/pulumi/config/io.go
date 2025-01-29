@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -246,7 +247,7 @@ func copySingleConfigKey(
 	destinationProjectStack *workspace.ProjectStack,
 ) error {
 	var decrypter config.Decrypter
-	key, err := ParseConfigKey(configKey)
+	key, err := ParseConfigKey(configKey, path)
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
 	}
@@ -290,7 +291,7 @@ func copySingleConfigKey(
 	return cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
 }
 
-func parseKeyValuePair(pair string) (config.Key, string, error) {
+func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {
 	// Split the arg on the first '=' to separate key and value.
 	splitArg := strings.SplitN(pair, "=", 2)
 
@@ -304,7 +305,7 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	if len(splitArg) < 2 {
 		return config.Key{}, "", errors.New("config value must be in the form [key]=[value]")
 	}
-	key, err := ParseConfigKey(splitArg[0])
+	key, err := ParseConfigKey(splitArg[0], path)
 	if err != nil {
 		return config.Key{}, "", fmt.Errorf("invalid configuration key: %w", err)
 	}
@@ -313,7 +314,29 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	return key, value, nil
 }
 
-func ParseConfigKey(key string) (config.Key, error) {
+// ParseConfigKey converts a given key string to a config.Key.
+// Depending on whether the key is a path or not, the same string can either
+// be valid or not, and also parse to different keys. For example:
+// foo.bar:buzz is a (namespace: foo.bar, key: buzz) if not path, and
+// (namespace: <project-name>, key: foo.bar:buzz) if path.
+func ParseConfigKey(key string, path bool) (config.Key, error) {
+	// If the key is a path, the namespacing requirement only applies to the
+	// top-level key, while sub-keys may have arbitrary names. Parse the path
+	// and then calculate the namespace for the top-level segment.
+	if path {
+		path, err := resource.ParsePropertyPathStrict(key)
+		if err != nil {
+			// For backwards compatibility, fallback to non-path parsing when key is not a valid path.
+			return ParseConfigKey(key, false)
+		}
+		topLevelKey, err := ParseConfigKey(path[0].(string), false)
+		if err != nil {
+			return config.Key{}, err
+		}
+		path[0] = topLevelKey.Name()
+		return config.MustMakeKey(topLevelKey.Namespace(), path.String()), nil
+	}
+
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {

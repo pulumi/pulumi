@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ func isPreconfiguredEmptyStack(
 
 	// Can stackConfig satisfy the config requirements of templateConfig?
 	for templateKey, templateVal := range templateConfig {
-		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(templateKey)
+		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(templateKey, false)
 		if parseErr != nil {
 			contract.IgnoreError(parseErr)
 			return false
@@ -187,7 +187,7 @@ func promptForConfig(
 	// the project name will be prepended.
 	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
 	for k, v := range templateConfig {
-		parsedKey, parseErr := cmdConfig.ParseConfigKey(k)
+		parsedKey, parseErr := cmdConfig.ParseConfigKey(k, false)
 		if parseErr != nil {
 			return nil, parseErr
 		}
@@ -310,7 +310,7 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := cmdConfig.ParseConfigKey(kvp[0])
+		key, err := cmdConfig.ParseConfigKey(kvp[0], path)
 		if err != nil {
 			return nil, err
 		}
