@@ -595,6 +595,10 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new https://bitbucket.org/<user>/<repo>`\n" +
 			"* `pulumi new https://github.com/<user>/<repo>`\n" +
 			"\n" +
+			"  Note: If the URL doesn't follow the usual scheme of the given host (e.g. for GitLab subprojects)\n" +
+			"        you can append `.git` to the repository to disambiguate and point to the correct repository.\n" +
+			"        For example `https://gitlab.com/<project>/<subproject>/<repository>.git`.\n" +
+			"\n" +
 			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
 			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
 			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +

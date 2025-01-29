@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Improve docs for disambiguating repositories on hosts where the URL is ambiguous
