@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix some plugin context leaks, which could leave plugin processes running on exit.
+  description: Fix some plugin context leaks, which could leave plugin processes running on exit
