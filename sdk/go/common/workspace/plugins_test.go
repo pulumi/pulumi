@@ -1842,6 +1842,25 @@ func TestNewPluginSpec(t *testing.T) {
 			Error:  errors.New("VERSION must be valid semver or git commit hash: abcdxyz"),
 		},
 		{
+			name:   "https:// prefixed with no . in URL",
+			source: "https://localhost/test/repo",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "localhost_test_repo.git",
+				Kind:              apitype.ResourcePlugin,
+				PluginDownloadURL: "git://localhost/test/repo",
+			},
+		},
+		{
+			name:   "no . in URL gets treated as local path",
+			source: "localhost/test/repo",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name: "localhost/test/repo",
+				Kind: apitype.ResourcePlugin,
+			},
+		},
+		{
 			name:   "local plugin",
 			source: "./test/plugin",
 			kind:   apitype.ResourcePlugin,
