@@ -108,6 +108,14 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 		return "", fmt.Errorf("unable to run `go build`: %w", err)
 	}
 
+	isExecutable, err := executable.IsExecutable(outfile)
+	if err != nil {
+		return "", fmt.Errorf("unable to check if go program is executable: %w", err)
+	}
+	if !isExecutable {
+		return "", errors.New("go program is not executable, does your program have a 'main' package?")
+	}
+
 	return outfile, nil
 }
 

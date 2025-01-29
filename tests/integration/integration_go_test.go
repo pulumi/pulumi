@@ -1528,3 +1528,24 @@ func TestRunPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")
 	e.RunCommand("pulumi", "preview")
 }
+
+// This checks that we provide a useful error message if the user tries to run a
+// program without a main package.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestErrorNoMainPackage(t *testing.T) {
+	stderr := &bytes.Buffer{}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "go-no-main-package"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stderr:        stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Contains(t, stderr.String(), "does your program have a 'main' package?")
+		},
+	})
+}
