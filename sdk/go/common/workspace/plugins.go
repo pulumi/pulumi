@@ -1017,7 +1017,12 @@ func NewPluginSpec(
 	}
 
 	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
-	if urlRegex.MatchString(name) {
+	if strings.HasPrefix(name, "https://") || urlRegex.MatchString(name) {
+		// We support URLs with and without the https:// prefix.  Standardize them here, so we can work with
+		// them uniformly.
+		if strings.HasPrefix(name, "https://") {
+			name = strings.TrimPrefix(name, "https://")
+		}
 		u, err := url.Parse(name)
 		// If we don't have a URL, we just treat it as a normal plugin name.
 		if err == nil {
