@@ -185,8 +185,8 @@ async function runTest(
     let logs = "";
 
     // Install the package manager to test.
-    logs += await exec(`corepack`, ["enable"], { cwd: tmpDir.name });
-    logs += await exec(`corepack`, ["use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir.name });
+    logs += await exec(`yarn`, ["run", "corepack", "enable"], { cwd: tmpDir.name });
+    logs += await exec(`yarn`, ["run", "corepack", "use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir.name });
 
     const env = {
         PULUMI_CONFIG_PASSPHRASE: "test",
