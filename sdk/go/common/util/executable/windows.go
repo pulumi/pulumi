@@ -25,6 +25,11 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+var (
+	kernel32       = windows.NewLazySystemDLL("kernel32.dll")
+	getBinaryTypeW = kernel32.NewProc("GetBinaryTypeW")
+)
+
 func IsExecutable(path string) (bool, error) {
 	// Use GetBinaryTypeW to determine if the file is an executable.
 	// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getbinarytypew
@@ -32,9 +37,7 @@ func IsExecutable(path string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("unable to convert path to UTF16: %s\n", err)
 	}
-	kernel32 := windows.NewLazySystemDLL("kernel32.dll")
-	GetBinaryTypeW := kernel32.NewProc("GetBinaryTypeW")
-	r, _, err := GetBinaryTypeW.Call(uintptr(unsafe.Pointer(pathp)))
+	r, _, err := getBinaryTypeW.Call(uintptr(unsafe.Pointer(pathp)))
 	// On success, err is syscall.Errno(0).
 	if !errors.Is(err, syscall.Errno(0)) {
 		return false, err
