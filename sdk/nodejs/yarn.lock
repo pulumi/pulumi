@@ -1511,6 +1511,11 @@ convert-source-map@^2.0.0:
   resolved "https://registry.yarnpkg.com/convert-source-map/-/convert-source-map-2.0.0.tgz#4b560f649fc4e918dd0ab75cf4961e8bc882d82a"
   integrity sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==
 
+corepack@^0.31.0:
+  version "0.31.0"
+  resolved "https://registry.yarnpkg.com/corepack/-/corepack-0.31.0.tgz#442423d2603403cbf2aa6fde3354e460cb792a25"
+  integrity sha512-PFXOWB1S3gzr8Afuwq1sslrxDzLKsef6bu8NXKPxCBJAy54FXm86NutB/kjiPhwjSwV3hMzKSnLFzxTBlWNUqA==
+
 cross-spawn@^7.0.0, cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   version "7.0.6"
   resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-7.0.6.tgz#8a58fe78f00dcd70c370451759dfbfaf03e8ee9f"
