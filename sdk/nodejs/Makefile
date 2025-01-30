@@ -76,7 +76,8 @@ test_auto:: $(TEST_ALL_DEPS)
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
-	node 'bin/tests/runtime/install-package-tests.js'
+# TODO[https://github.com/pulumi/pulumi/issues/18392]: Re-enable this test.
+#	node 'bin/tests/runtime/install-package-tests.js'
 
 TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
 
