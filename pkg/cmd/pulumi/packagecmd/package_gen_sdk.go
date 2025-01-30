@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -47,8 +48,20 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-			pkg, err := SchemaFromSchemaSource(cmd.Context(), source, args[1:])
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				contract.IgnoreError(pctx.Close())
+			}()
+
+			pkg, err := SchemaFromSchemaSource(pctx, source, args[1:])
 			if err != nil {
 				return err
 			}
@@ -58,7 +71,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 					return fmt.Errorf("invalid version %q: %w", version, err)
 				}
 				if pkg.Version != nil {
-					d.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
+					sink.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
 				}
 				pkg.Version = &pkgVersion
 			}

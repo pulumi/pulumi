@@ -611,7 +611,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []string) (*schema.Package, error) {
+func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
 		pkg, diags, err := schema.BindSpec(spec, nil)
@@ -652,7 +652,7 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 		return bind(spec)
 	}
 
-	p, err := ProviderFromSource(packageSource)
+	p, err := ProviderFromSource(pctx, packageSource)
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +660,7 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeArgs{Args: args},
 		})
 		if err != nil {
@@ -673,7 +673,7 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 		}
 	}
 
-	schema, err := p.GetSchema(ctx, request)
+	schema, err := p.GetSchema(pctx.Request(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -695,7 +695,7 @@ func SchemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 }
 
 func SchemaFromSchemaSourceValueArgs(
-	ctx context.Context,
+	pctx *plugin.Context,
 	packageSource string,
 	parameterizationValue []byte,
 ) (*schema.Package, error) {
@@ -711,7 +711,7 @@ func SchemaFromSchemaSourceValueArgs(
 		return pkg, nil
 	}
 
-	p, err := ProviderFromSource(packageSource)
+	p, err := ProviderFromSource(pctx, packageSource)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +719,7 @@ func SchemaFromSchemaSourceValueArgs(
 
 	var request plugin.GetSchemaRequest
 	if parameterizationValue != nil {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{Value: parameterizationValue},
 		})
 		if err != nil {
@@ -732,7 +732,7 @@ func SchemaFromSchemaSourceValueArgs(
 		}
 	}
 
-	schema, err := p.GetSchema(ctx, request)
+	schema, err := p.GetSchema(pctx.Request(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -746,17 +746,7 @@ func SchemaFromSchemaSourceValueArgs(
 // ProviderFromSource takes a plugin name or path.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func ProviderFromSource(packageSource string) (plugin.Provider, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	sink := cmdutil.Diag()
-	pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
-	if err != nil {
-		return nil, err
-	}
-
+func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
 	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
@@ -778,7 +768,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 	// We also always go here when we have a git URL, so we can download it.
 	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
 		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, "")
+		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err
 		}
@@ -801,7 +791,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 					// we previously installed a plugin in a different subdirectory of the same repository.
 					// This is why the provider might have failed to start up.  Install the dependencies
 					// and try again.
-					depErr := descriptor.PluginSpec.InstallDependencies(pCtx.Base())
+					depErr := descriptor.PluginSpec.InstallDependencies(pctx.Base())
 					if depErr != nil {
 						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
 					}
@@ -819,7 +809,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 				host.Log(sev, "", msg, 0)
 			}
 
-			_, err = pkgWorkspace.InstallPlugin(pCtx.Base(), descriptor.PluginSpec, log)
+			_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
 			if err != nil {
 				return nil, err
 			}
@@ -853,7 +843,7 @@ func ProviderFromSource(packageSource string) (plugin.Provider, error) {
 		}
 	}
 
-	p, err := plugin.NewProviderFromPath(pCtx.Host, pCtx, packageSource)
+	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
 	if err != nil {
 		return nil, err
 	}

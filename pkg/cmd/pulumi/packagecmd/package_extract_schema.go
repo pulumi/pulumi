@@ -20,6 +20,9 @@ import (
 	"os"
 
 	cmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +39,20 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			pkg, err := SchemaFromSchemaSource(cmd.Context(), source, args[1:])
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				contract.IgnoreError(pctx.Close())
+			}()
+
+			pkg, err := SchemaFromSchemaSource(pctx, source, args[1:])
 			if err != nil {
 				return err
 			}

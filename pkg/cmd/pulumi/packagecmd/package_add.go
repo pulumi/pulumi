@@ -22,6 +22,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -70,12 +73,23 @@ extension, Pulumi package schema is read from it directly:
 
 			language := proj.Runtime.Name()
 
-			ctx := cmd.Context()
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				contract.IgnoreError(pctx.Close())
+			}()
 
 			plugin := args[0]
 			parameters := args[1:]
 
-			pkg, err := SchemaFromSchemaSource(ctx, plugin, parameters)
+			pkg, err := SchemaFromSchemaSource(pctx, plugin, parameters)
 			if err != nil {
 				return fmt.Errorf("failed to get schema: %w", err)
 			}

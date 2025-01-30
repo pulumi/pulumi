@@ -293,7 +293,7 @@ func runConvert(
 			}
 
 			err = generateAndLinkSdksForPackages(
-				ctx,
+				pCtx,
 				ws,
 				language,
 				filepath.Join(targetDirectory, "sdks"),
@@ -513,7 +513,7 @@ func getPackagesToGenerateSdks(
 }
 
 func generateAndLinkSdksForPackages(
-	ctx context.Context,
+	pctx *plugin.Context,
 	ws pkgWorkspace.Context,
 	language string,
 	sdkTargetDirectory string,
@@ -532,7 +532,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
-			ctx,
+			pctx,
 			pkg.Name,
 			pkg.Parameterization.Value,
 		)
