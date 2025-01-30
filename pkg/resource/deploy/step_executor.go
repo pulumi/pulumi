@@ -367,9 +367,20 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	if !set {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
 	}
+
+	continueOnError := se.deployment.opts.ContinueOnError
+	// We special case deleteProtectedError to always continue past them, this allows us to report back all
+	// protect delete errors in a single run. We know we didn't attempt to do any actual delete, _and_ as
+	// these are deletes there's nothing replied to the user program, it's safe to continue past them. There
+	// are no observable effects in the user program, its just the CLI will be able to continue past and
+	// report any other issues.
+	if errors.As(err, &deleteProtectedError{}) {
+		continueOnError = true
+	}
+
 	if se.ignoreErrors {
 		// Do nothing.
-	} else if se.deployment.opts.ContinueOnError {
+	} else if continueOnError {
 		step.Fail()
 		// Record the failure, but allow the deployment to continue.
 		se.erroredStepLock.Lock()

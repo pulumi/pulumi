@@ -1,0 +1,8 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resB" cannot be deleted
+because it is protected. To unprotect the resource, either remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resB'`<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test::test::pkgA:m:typA::resA" cannot be deleted
+because it is protected. To unprotect the resource, either remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>post-step event returned an error: failed to verify snapshot: resource urn:pulumi:test::test::pkgA:m:typA::resA refers to unknown provider urn:pulumi:test::test::pulumi:providers:pkgA::default::c80154a0-ae98-4271-b046-d59bda09bc13<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
