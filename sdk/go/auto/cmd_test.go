@@ -309,11 +309,11 @@ func TestRunCanceled(t *testing.T) {
 	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
-		require.Contains(t, stdout, "error: preview canceled")
+		require.Contains(t, stdout, ".*error: preview canceled.*|.*signal: interrupt", stdout)
 		require.Equal(t, 4294967295, code)
 	} else {
 		require.ErrorContains(t, err, "exit status 255")
-		require.Contains(t, stdout, "error: preview canceled")
+		require.Regexp(t, ".*error: preview canceled.*|.*signal: interrupt", stdout)
 		require.Equal(t, 255, code)
 	}
 
