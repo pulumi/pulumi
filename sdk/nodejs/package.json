@@ -76,6 +76,7 @@
             "optional": true
         }
     },
+    "packageManager": "yarn@1.22.22",
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
