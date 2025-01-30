@@ -683,6 +683,7 @@ func (c *testPulumiClient) RotateEnvironment(
 	projectName string,
 	envName string,
 	duration time.Duration,
+	rotationPaths []string,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	return c.OpenEnvironment(ctx, orgName, projectName, envName, "", duration)
 }

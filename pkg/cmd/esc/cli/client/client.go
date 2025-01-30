@@ -156,6 +156,7 @@ type Client interface {
 	) (string, []EnvironmentDiagnostic, error)
 
 	// RotateEnvironment will rotate credentials in an environment.
+	// If rotationPaths is non-empty, will only rotate credentials at those paths.
 	// It also evaluates the environment projectName/envName in org orgName and returns the ID of the opened
 	// environment. The opened environment will be available for the indicated duration, after which it
 	// will expire.
@@ -167,6 +168,7 @@ type Client interface {
 		projectName string,
 		envName string,
 		duration time.Duration,
+		rotationPaths []string,
 	) (string, []EnvironmentDiagnostic, error)
 
 	// CheckYAMLEnvironment checks the given environment YAML for errors within the context of org orgName.
@@ -636,8 +638,15 @@ func (pc *client) RotateEnvironment(
 	projectName string,
 	envName string,
 	duration time.Duration,
+	rotationPaths []string,
 ) (string, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/rotate", orgName, projectName, envName)
+
+	reqObj := struct {
+		Paths []string `url:"paths"`
+	}{
+		Paths: rotationPaths,
+	}
 
 	queryObj := struct {
 		Duration string `url:"duration"`
@@ -648,7 +657,7 @@ func (pc *client) RotateEnvironment(
 		ID string `json:"id"`
 	}
 	var errResp EnvironmentErrorResponse
-	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, reqObj, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
