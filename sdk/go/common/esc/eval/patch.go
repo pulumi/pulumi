@@ -36,7 +36,7 @@ func ApplyValuePatches(source []byte, patches []*Patch) ([]byte, error) {
 	}
 
 	for _, patch := range patches {
-		path, err := resource.ParsePropertyPath("values." + patch.DocPath)
+		path, err := resource.ParsePropertyPath(patch.DocPath)
 		if err != nil {
 			return nil, err
 		}

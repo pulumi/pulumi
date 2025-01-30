@@ -3044,7 +3044,7 @@
     },
     "rotatePatches": [
         {
-            "DocPath": "full[\"fn::rotate\"].state",
+            "DocPath": "values.full[\"fn::rotate\"].state",
             "Replacement": {
                 "value": {
                     "a": {
@@ -3101,7 +3101,7 @@
             }
         },
         {
-            "DocPath": "short[\"fn::rotate::swap\"].state",
+            "DocPath": "values.short[\"fn::rotate::swap\"].state",
             "Replacement": {
                 "value": {
                     "a": {

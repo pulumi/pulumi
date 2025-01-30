@@ -46,7 +46,7 @@ values:
 
 	// rotate the environment
 	execContext, _ := esc.NewExecContext(nil)
-	_, patches, _ := RotateEnvironment(context.Background(), "<stdin>", env, rot128{}, testProviders{}, &testEnvironments{}, execContext)
+	_, patches, _ := RotateEnvironment(context.Background(), "<stdin>", env, rot128{}, testProviders{}, &testEnvironments{}, execContext, nil)
 
 	// writeback state patches
 	updated, _ := ApplyValuePatches([]byte(def), patches)
