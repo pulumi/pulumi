@@ -18,6 +18,7 @@ import * as assert from "assert";
 import {
     all,
     concat,
+    deferredOutput,
     interpolate,
     isSecret,
     jsonParse,
@@ -27,7 +28,6 @@ import {
     secret,
     unknown,
     unsecret,
-    deferredOutput,
 } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
@@ -1500,6 +1500,14 @@ describe("output", () => {
             assert.strictEqual(await output.isSecret, true);
             const resources = await output.allResources!();
             assert.strictEqual(resources.size, 0);
+        });
+    });
+
+    describe("toString", () => {
+        it("toString message", async () => {
+            const x = output([0, 1]);
+            const result = x.toString();
+            assert.match(result, /Calling \[toString\] on an \[Output<T>\] is not supported\./);
         });
     });
 });

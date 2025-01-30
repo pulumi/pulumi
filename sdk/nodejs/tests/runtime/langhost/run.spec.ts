@@ -40,6 +40,7 @@ interface RunCase {
     args?: string[];
     config?: { [key: string]: any };
     expectError?: string;
+    env?: NodeJS.ProcessEnv;
     expectBail?: boolean;
     expectResourceCount?: number;
     expectedLogs?: {
@@ -1643,6 +1644,26 @@ describe("rpc", () => {
                 }
             },
         },
+        // A program that sends an nested output inside a plain array
+        toStringError: {
+            pwd: path.join(base, "077.toStringError"),
+            env: { PULUMI_ERROR_OUTPUT_STRING: "true" },
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.deepStrictEqual(res, {
+                    prop: [1, 2],
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    id: undefined,
+                    props: {
+                        prop: [1, 2],
+                    },
+                };
+            },
+        },
         invoke_output_depends_on_unknown_component: {
             pwd: path.join(base, "077.invoke_output_depends_on_unknown_component"),
             expectResourceCount: 2,
@@ -1908,7 +1929,7 @@ describe("rpc", () => {
                 );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                const langHost = serveLanguageHostProcess(monitor.addr);
+                const langHost = serveLanguageHostProcess(monitor.addr, opts.env);
                 const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
@@ -2126,7 +2147,10 @@ async function createMockEngineAsync(
     return { server: server, addr: `127.0.0.1:${port}` };
 }
 
-function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
+function serveLanguageHostProcess(
+    engineAddr: string,
+    env?: NodeJS.ProcessEnv,
+): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is
@@ -2140,9 +2164,16 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
     //
     // We set this to an absolute path because the runtime will search for the module from the programs
     // directory which is changed by by the pwd option.
+    let childenv = {
+        ...process.env,
+        PULUMI_LANGUAGE_NODEJS_RUN_PATH: path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run")),
+    };
+    // The test may also want to set environment variables, such as PULUMI_ERROR_OUTPUT_STRING
+    if (env) {
+        childenv = { ...childenv, ...env };
+    }
 
-    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run"));
-    const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
+    const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr], { env: childenv });
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

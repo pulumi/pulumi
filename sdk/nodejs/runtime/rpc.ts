@@ -15,7 +15,7 @@
 import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
-import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
+import { getAllResources, Input, Inputs, isUnknown, Output, unknown, OutputToStringError } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
@@ -29,6 +29,20 @@ export type OutputResolvers = Record<
     string,
     (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void
 >;
+
+// Fix to cover cases such as https://github.com/pulumi/pulumi/issues/17736 where an array or other
+// nested object contains an Output, and it's toString method tries to call toString on that output.
+function safeToString(v: any): string {
+    try {
+        return `${v}`;
+    } catch (err) {
+        // We only want to catch our toString errors here. Anything else we should still bubble up to the user.
+        if (OutputToStringError.isInstance(err)) {
+            return "Output<T>";
+        }
+        throw err;
+    }
+}
 
 /**
  * Mutates the `onto` resource so that it has Promise-valued properties for all
@@ -86,7 +100,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             }
         };
 
-        const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
+        const propString = Output.isInstance(props[k]) ? "Output<T>" : safeToString(props[k]);
         (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
