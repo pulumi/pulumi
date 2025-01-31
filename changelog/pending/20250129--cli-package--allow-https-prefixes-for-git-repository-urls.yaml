@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Allow https:// prefixes for Git repository URLs
