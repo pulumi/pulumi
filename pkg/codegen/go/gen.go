@@ -5084,7 +5084,7 @@ func GeneratePackage(tool string,
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"
 		if pkg.Parameterization != nil {
-			pulumiVersion = "v3.133.0"
+			pulumiVersion = "v3.147.0"
 		}
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
 		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
