@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -469,7 +470,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		return err
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
-	var newSteps []Step
+	newSteps := slice.Prealloc[Step](len(steps))
 	skipped := false
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
