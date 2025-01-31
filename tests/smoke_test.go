@@ -789,6 +789,52 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 		"than the specified program version: 4.13.0 < 4.16.7")
 }
 
+// Test that the warning for upgrading and then running a destroy is shown.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestDestroyUpgradeWarning(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// `new` wants to work in an empty directory but our use of local url means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// Use the 4.12 version of the provider
+	replaceStringInFile := func(file, pattern, replacement string) {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		newData := strings.ReplaceAll(string(data), pattern, replacement)
+		err = os.WriteFile(file, []byte(newData), 0o600)
+		require.NoError(t, err)
+	}
+	replaceStringInFile(filepath.Join(projectDir, "package.json"),
+		"\"@pulumi/random\": \"^4.13.0\",",
+		"\"@pulumi/random\": \"4.12.0\",")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.12.0")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Update the provider to a new version
+	replaceStringInFile(filepath.Join(projectDir, "package.json"),
+		"\"@pulumi/random\": \"4.12.0\",",
+		"\"@pulumi/random\": \"4.13.0\",")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+	e.RunCommand("pulumi", "install")
+
+	// Run a destroy and check that the warning is shown
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--yes")
+	assert.Contains(t, stdout, "destroy operation is using an older version of package 'random' "+
+		"than the specified program version: 4.12.0 < 4.13.0")
+}
+
 // Test that the warning for upgrading and then running a destroy is shown, also taking into account changes to
 // parameterized packages.
 //
