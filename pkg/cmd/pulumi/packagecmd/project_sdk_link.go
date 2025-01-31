@@ -451,6 +451,7 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 	}
 
 	fmt.Printf("Go mod file updated to use local sdk for %s\n", pkg.Name)
+	fmt.Printf("To use this package, import %s\n", goInfo.ImportBasePath)
 
 	return nil
 }
