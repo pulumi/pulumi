@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdkgen
-  description: Align pulumi.json and schema.go

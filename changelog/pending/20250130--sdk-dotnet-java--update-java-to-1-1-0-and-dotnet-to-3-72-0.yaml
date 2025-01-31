@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/dotnet,java
-  description: Update Java to 1.1.0 and Dotnet to 3.72.0
