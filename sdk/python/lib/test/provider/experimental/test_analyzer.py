@@ -21,6 +21,7 @@ from pulumi.provider.experimental.component import (
     ComponentDefinition,
     PropertyDefinition,
     PropertyType,
+    TypeDefinition,
 )
 
 metadata = Metadata("my-component", "0.0.1")
@@ -115,6 +116,47 @@ def test_analyze_component_plain_types():
             "output_bool": PropertyDefinition(type=PropertyType.BOOLEAN),
         },
     )
+
+
+def test_analyze_component_complex_type():
+    class ComplexType:
+        value: pulumi.Input[str]
+        optional_value: Optional[pulumi.Input[int]]
+
+    class Args:
+        some_complex_type: pulumi.Input[ComplexType]
+
+    class Component(pulumi.ComponentResource):
+        complex_output: pulumi.Output[ComplexType]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        inputs={
+            "some_complex_type": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType"
+            ),
+        },
+        outputs={
+            "complex_output": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType"
+            )
+        },
+    )
+    assert analyzer.type_definitions == {
+        "ComplexType": TypeDefinition(
+            name="ComplexType",
+            type="object",
+            properties={
+                "value": PropertyDefinition(type=PropertyType.STRING),
+                "optional_value": PropertyDefinition(
+                    type=PropertyType.INTEGER, optional=True
+                ),
+            },
+        )
+    }
 
 
 def test_unwrap_output():

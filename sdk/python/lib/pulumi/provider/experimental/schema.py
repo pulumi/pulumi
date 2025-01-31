@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
 
-from .component import ComponentDefinition, PropertyDefinition
+from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
 from .metadata import Metadata
 
 
@@ -73,6 +73,34 @@ class Property:
 
 
 @dataclass
+class ComplexType(ObjectType):
+    enum: Optional[list[Any]] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "type": self.type.value,
+            "properties": {k: v.to_json() for k, v in self.properties.items()},
+            "required": self.required,
+            "description": self.description,
+            "enum": self.enum,
+        }
+
+    @staticmethod
+    def from_definition(
+        type_def: TypeDefinition,
+    ) -> "ComplexType":
+        type_def.properties
+        return ComplexType(
+            type=BuiltinType.OBJECT,
+            properties={
+                k: Property.from_definition(v) for k, v in type_def.properties.items()
+            },
+            required=[],
+            description=type_def.description,
+        )
+
+
+@dataclass
 class Resource:
     is_component: bool
     input_properties: dict[str, Property]
@@ -121,6 +149,7 @@ class PackageSpec:
     displayName: str
     version: str
     resources: dict[str, Resource]
+    types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
 
     def to_json(self) -> dict[str, Any]:
@@ -129,18 +158,22 @@ class PackageSpec:
             "displayName": self.displayName,
             "version": self.version,
             "resources": {k: v.to_json() for k, v in self.resources.items()},
+            "types": {k: v.to_json() for k, v in self.types.items()},
             "language": self.language,
         }
 
 
 def generate_schema(
-    metadata: Metadata, components: dict[str, ComponentDefinition]
+    metadata: Metadata,
+    components: dict[str, ComponentDefinition],
+    type_definitions: dict[str, TypeDefinition],
 ) -> PackageSpec:
     pkg = PackageSpec(
         name=metadata.name,
         version=metadata.version,
         displayName=metadata.display_name or metadata.name,
         resources={},
+        types={},
         language={
             "nodejs": {
                 "respectSchemaVersion": True,
@@ -162,5 +195,10 @@ def generate_schema(
     for component_name, component in components.items():
         name = f"{metadata.name}:index:{component_name}"
         pkg.resources[name] = Resource.from_definition(component)
+
+    for type_name, type in type_definitions.items():
+        pkg.types[f"{metadata.name}:index:{type_name}"] = ComplexType.from_definition(
+            type
+        )
 
     return pkg
