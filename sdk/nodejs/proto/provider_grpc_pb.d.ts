@@ -7,6 +7,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_provider_pb from "./provider_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
+import * as pulumi_codegen_schema_schema_pb from "./codegen/schema/schema_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
@@ -14,6 +15,7 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     handshake: IResourceProviderService_IHandshake;
     parameterize: IResourceProviderService_IParameterize;
     getSchema: IResourceProviderService_IGetSchema;
+    getPackageInfo: IResourceProviderService_IGetPackageInfo;
     checkConfig: IResourceProviderService_ICheckConfig;
     diffConfig: IResourceProviderService_IDiffConfig;
     configure: IResourceProviderService_IConfigure;
@@ -60,6 +62,15 @@ interface IResourceProviderService_IGetSchema extends grpc.MethodDefinition<pulu
     requestDeserialize: grpc.deserialize<pulumi_provider_pb.GetSchemaRequest>;
     responseSerialize: grpc.serialize<pulumi_provider_pb.GetSchemaResponse>;
     responseDeserialize: grpc.deserialize<pulumi_provider_pb.GetSchemaResponse>;
+}
+interface IResourceProviderService_IGetPackageInfo extends grpc.MethodDefinition<pulumi_provider_pb.GetSchemaRequest, pulumi_codegen_schema_schema_pb.PackageInfo> {
+    path: "/pulumirpc.ResourceProvider/GetPackageInfo";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.GetSchemaRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.GetSchemaRequest>;
+    responseSerialize: grpc.serialize<pulumi_codegen_schema_schema_pb.PackageInfo>;
+    responseDeserialize: grpc.deserialize<pulumi_codegen_schema_schema_pb.PackageInfo>;
 }
 interface IResourceProviderService_ICheckConfig extends grpc.MethodDefinition<pulumi_provider_pb.CheckRequest, pulumi_provider_pb.CheckResponse> {
     path: "/pulumirpc.ResourceProvider/CheckConfig";
@@ -230,6 +241,7 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
     handshake: grpc.handleUnaryCall<pulumi_provider_pb.ProviderHandshakeRequest, pulumi_provider_pb.ProviderHandshakeResponse>;
     parameterize: grpc.handleUnaryCall<pulumi_provider_pb.ParameterizeRequest, pulumi_provider_pb.ParameterizeResponse>;
     getSchema: grpc.handleUnaryCall<pulumi_provider_pb.GetSchemaRequest, pulumi_provider_pb.GetSchemaResponse>;
+    getPackageInfo: grpc.handleUnaryCall<pulumi_provider_pb.GetSchemaRequest, pulumi_codegen_schema_schema_pb.PackageInfo>;
     checkConfig: grpc.handleUnaryCall<pulumi_provider_pb.CheckRequest, pulumi_provider_pb.CheckResponse>;
     diffConfig: grpc.handleUnaryCall<pulumi_provider_pb.DiffRequest, pulumi_provider_pb.DiffResponse>;
     configure: grpc.handleUnaryCall<pulumi_provider_pb.ConfigureRequest, pulumi_provider_pb.ConfigureResponse>;
@@ -260,6 +272,9 @@ export interface IResourceProviderClient {
     getSchema(request: pulumi_provider_pb.GetSchemaRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
     getSchema(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
     getSchema(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
     checkConfig(request: pulumi_provider_pb.CheckRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
@@ -326,6 +341,9 @@ export class ResourceProviderClient extends grpc.Client implements IResourceProv
     public getSchema(request: pulumi_provider_pb.GetSchemaRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
     public getSchema(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
     public getSchema(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetSchemaResponse) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_provider_pb.GetSchemaRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_schema_schema_pb.PackageInfo) => void): grpc.ClientUnaryCall;
     public checkConfig(request: pulumi_provider_pb.CheckRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     public checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     public checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;

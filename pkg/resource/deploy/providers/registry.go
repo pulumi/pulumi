@@ -465,6 +465,13 @@ func (r *Registry) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.G
 	return plugin.GetSchemaResponse{}, errors.New("the provider registry has no schema")
 }
 
+// GetPackageInfo returns the package info for the provider.
+func (r *Registry) GetPackageInfo(context.Context, plugin.GetSchemaRequest) (*schema.PackageInfo, error) {
+	contract.Failf("GetPackageInfo must not be called on the provider registry")
+
+	return &schema.PackageInfo{}, errors.New("the provider registry has no schema")
+}
+
 func (r *Registry) GetMapping(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error) {
 	contract.Failf("GetMapping must not be called on the provider registry")
 

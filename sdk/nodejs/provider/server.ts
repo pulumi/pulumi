@@ -110,6 +110,31 @@ class Server implements grpc.UntypedServiceImplementation {
         }
     }
 
+    public getPackageInfo(call: any, callback: any): void {
+	const req: any = call.request;
+        if (req.getVersion() !== 0) {
+            callback(new Error(`unsupported schema version ${req.getVersion()}`), undefined);
+            return;
+        }
+
+        if (this.provider.getPackageInfo) {
+            this.provider
+                .getPackageInfo()
+                .then((packageInfo: any) => {
+                    callback(undefined, packageInfo);
+                })
+                .catch((err: any) => callback(err, undefined));
+        } else {
+            callback(
+		{
+		    code: grpc.status.UNIMPLEMENTED,
+		    details: "Not yet implemented: GetPackageInfo",
+		},
+		undefined,
+	    );
+        }
+    }
+
     // Config methods
 
     public checkConfig(call: any, callback: any): void {

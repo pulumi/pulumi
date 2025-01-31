@@ -19,6 +19,7 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_provider_pb = require('./provider_pb.js');
 var pulumi_plugin_pb = require('./plugin_pb.js');
+var pulumi_codegen_schema_schema_pb = require('./codegen/schema/schema_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
@@ -374,6 +375,17 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
   return pulumi_provider_pb.UpdateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_codegen_PackageInfo(arg) {
+  if (!(arg instanceof pulumi_codegen_schema_schema_pb.PackageInfo)) {
+    throw new Error('Expected argument of type pulumirpc.codegen.PackageInfo');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_codegen_PackageInfo(buffer_arg) {
+  return pulumi_codegen_schema_schema_pb.PackageInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
 // manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
@@ -445,6 +457,18 @@ getSchema: {
     requestDeserialize: deserialize_pulumirpc_GetSchemaRequest,
     responseSerialize: serialize_pulumirpc_GetSchemaResponse,
     responseDeserialize: deserialize_pulumirpc_GetSchemaResponse,
+  },
+  // GetPackageInfo tries to find the package info for the given package and version.
+getPackageInfo: {
+    path: '/pulumirpc.ResourceProvider/GetPackageInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.GetSchemaRequest,
+    responseType: pulumi_codegen_schema_schema_pb.PackageInfo,
+    requestSerialize: serialize_pulumirpc_GetSchemaRequest,
+    requestDeserialize: deserialize_pulumirpc_GetSchemaRequest,
+    responseSerialize: serialize_pulumirpc_codegen_PackageInfo,
+    responseDeserialize: deserialize_pulumirpc_codegen_PackageInfo,
   },
   // `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
 // `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and

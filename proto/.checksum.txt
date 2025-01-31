@@ -5,7 +5,7 @@
 1782845978 1900 proto/build-container/scripts/install-protobuf-tools.sh
 745180271 1066 proto/build-container/scripts/install-python.sh
 3756980346 1282 proto/build-container/scripts/utils.sh
-1367258507 6997 proto/generate.sh
+3016838215 7146 proto/generate.sh
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
 4283367129 10425 proto/pulumi/analyzer.proto
@@ -13,12 +13,13 @@
 2452746699 3822 proto/pulumi/codegen/hcl.proto
 3175736954 2019 proto/pulumi/codegen/loader.proto
 2331804404 1707 proto/pulumi/codegen/mapper.proto
+2198402836 7741 proto/pulumi/codegen/schema/schema.proto
 1027667133 3164 proto/pulumi/converter.proto
 1998652962 3845 proto/pulumi/engine.proto
 1921230328 1269 proto/pulumi/errors.proto
 2888070731 13849 proto/pulumi/language.proto
 1674803920 2966 proto/pulumi/plugin.proto
-1142872678 57051 proto/pulumi/provider.proto
+1473327833 57268 proto/pulumi/provider.proto
 940215571 17847 proto/pulumi/resource.proto
 607478140 1008 proto/pulumi/source.proto
 3670315643 2603 proto/pulumi/testing/language.proto

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema"
 )
 
 type GetSchemaRequest struct {
@@ -325,6 +326,8 @@ type Provider interface {
 
 	// GetSchema returns the schema for the provider.
 	GetSchema(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
+	// GetPackageInfo returns the schema for the provider.
+	GetPackageInfo(context.Context, GetSchemaRequest) (*schema.PackageInfo, error)
 
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error)

@@ -3,6 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from .codegen.schema import schema_pb2 as pulumi_dot_codegen_dot_schema_dot_schema__pb2
 from . import plugin_pb2 as pulumi_dot_plugin__pb2
 from . import provider_pb2 as pulumi_dot_provider__pb2
 
@@ -34,6 +35,11 @@ class ResourceProviderStub(object):
                 '/pulumirpc.ResourceProvider/GetSchema',
                 request_serializer=pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.GetSchemaResponse.FromString,
+                )
+        self.GetPackageInfo = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/GetPackageInfo',
+                request_serializer=pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_schema_dot_schema__pb2.PackageInfo.FromString,
                 )
         self.CheckConfig = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/CheckConfig',
@@ -180,6 +186,13 @@ class ResourceProviderServicer(object):
 
     def GetSchema(self, request, context):
         """GetSchema fetches the schema for this resource provider.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetPackageInfo(self, request, context):
+        """GetPackageInfo tries to find the package info for the given package and version.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -428,6 +441,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_provider__pb2.GetSchemaRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.GetSchemaResponse.SerializeToString,
             ),
+            'GetPackageInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPackageInfo,
+                    request_deserializer=pulumi_dot_provider__pb2.GetSchemaRequest.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_schema_dot_schema__pb2.PackageInfo.SerializeToString,
+            ),
             'CheckConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.CheckConfig,
                     request_deserializer=pulumi_dot_provider__pb2.CheckRequest.FromString,
@@ -580,6 +598,23 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetSchema',
             pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
             pulumi_dot_provider__pb2.GetSchemaResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetPackageInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetPackageInfo',
+            pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
+            pulumi_dot_codegen_dot_schema_dot_schema__pb2.PackageInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

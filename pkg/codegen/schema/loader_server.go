@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema"
 	"github.com/segmentio/encoding/json"
 )
 
