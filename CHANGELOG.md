@@ -1,5 +1,61 @@
 # Changelog
 
+## 3.148.0 (2025-01-31)
+
+
+### Features
+
+- [cli/config] Introduce `--type` flag for `config set`
+  [#18287](https://github.com/pulumi/pulumi/pull/18287)
+
+- [cli/new] Improve docs for disambiguating repositories on hosts where the URL is ambiguous
+  [#18379](https://github.com/pulumi/pulumi/pull/18379)
+
+- [cli/package] Automatically get latest version for git based plugins if none is specified
+  [#18215](https://github.com/pulumi/pulumi/pull/18215)
+
+- [cli/package] Allow plugins from git sources to live in subdirectories in the repository
+  [#18322](https://github.com/pulumi/pulumi/pull/18322)
+
+- [sdk/python] Support commits in prerelease versions of generated Python SDKs
+  [#18289](https://github.com/pulumi/pulumi/pull/18289)
+
+
+### Bug Fixes
+
+- [cli/config] Fix parsing of config keys with paths and colons in path segments
+  [#18378](https://github.com/pulumi/pulumi/pull/18378)
+
+- [engine] Fix some plugin context leaks, which could leave plugin processes running on exit
+  [#18373](https://github.com/pulumi/pulumi/pull/18373)
+
+- [cli/package] Respect virtualenv option in package add/link
+  [#18319](https://github.com/pulumi/pulumi/pull/18319)
+
+- [programgen/nodejs] Handle keyword overlap of "this" keyword for local variables
+  [#18177](https://github.com/pulumi/pulumi/pull/18177)
+
+- [sdk/nodejs] Fix debug strings triggering the Output toString error
+  [#18016](https://github.com/pulumi/pulumi/pull/18016)
+
+- [sdk/nodejs] Use the corepack executable from dev dependencies
+  [#18393](https://github.com/pulumi/pulumi/pull/18393)
+
+- [sdk/python] Allow Pip 25
+  [#18343](https://github.com/pulumi/pulumi/pull/18343)
+
+- [sdk/python] Make RunPlugin default to using a virtualenv
+  [#18371](https://github.com/pulumi/pulumi/pull/18371)
+
+
+### Miscellaneous
+
+- [sdk/{dotnet,java}] Update Java to 1.1.0 and Dotnet to 3.72.0
+  [#18394](https://github.com/pulumi/pulumi/pull/18394)
+
+- [sdkgen] Align pulumi.json and schema.go
+  [#18334](https://github.com/pulumi/pulumi/pull/18334)
+
 ## 3.147.0 (2025-01-21)
 
 

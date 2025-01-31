@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Automatically get latest version for git based plugins if none is specified

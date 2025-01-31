@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Fix parsing of config keys with paths and colons in path segments
