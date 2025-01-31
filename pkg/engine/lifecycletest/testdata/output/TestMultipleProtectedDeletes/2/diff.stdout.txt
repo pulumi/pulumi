@@ -6,9 +6,6 @@
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete) 🔒
 <{%fg 1%}>    [id=id]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=c80154a0-ae98-4271-b046-d59bda09bc13]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
 
