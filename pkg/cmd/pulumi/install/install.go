@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -104,10 +105,11 @@ func NewInstallCmd() *cobra.Command {
 			}
 
 			if !noDependencies {
-				if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{
+				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
-				}); err != nil {
+				})
+				if err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
 				}
 			}

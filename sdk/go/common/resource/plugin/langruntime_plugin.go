@@ -470,13 +470,18 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(request InstallDependenciesRequest) error {
+func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
+	io.Reader,
+	io.Reader,
+	<-chan error,
+	error,
+) {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) executing",
 		h.runtime, request)
 
 	minfo, err := request.Info.Marshal()
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
 	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
@@ -493,36 +498,70 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) error
 		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
 		// method.  In such cases, we will silently error (with the above log left behind).
 		if rpcError.Code() == codes.Unimplemented {
-			return nil
+			return nil, nil, nil, nil
 		}
 
-		return rpcError
+		return nil, nil, nil, rpcError
 	}
 
-	for {
-		output, err := resp.Recv()
-		if err != nil {
-			if err == io.EOF {
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	done := make(chan error, 1)
+
+	go func() {
+		defer close(done)
+
+		for {
+			logging.V(10).Infof(
+				"langhost[%v].InstallDependencies(%s) waiting for dependency installation messages",
+				h.runtime, request,
+			)
+
+			msg, err := resp.Recv()
+			if err != nil {
+				if err == io.EOF {
+					contract.IgnoreError(outw.Close())
+					contract.IgnoreError(errw.Close())
+
+					done <- nil
+					break
+				}
+
+				rpcError := rpcerror.Convert(err)
+				logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: %v",
+					h.runtime, request, rpcError,
+				)
+
+				contract.IgnoreError(outw.CloseWithError(rpcError))
+				contract.IgnoreError(errw.CloseWithError(rpcError))
+
+				done <- rpcError
 				break
 			}
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-				h.runtime, request, rpcError)
-			return rpcError
-		}
 
-		if len(output.Stdout) != 0 {
-			os.Stdout.Write(output.Stdout)
-		}
+			logging.V(10).Infof(
+				"langhost[%v].InstallDependencies(%s) got dependency installation response: %v",
+				h.runtime, request, msg,
+			)
 
-		if len(output.Stderr) != 0 {
-			os.Stderr.Write(output.Stderr)
-		}
-	}
+			stdoutLen := len(msg.Stdout)
+			if stdoutLen > 0 {
+				n, err := outw.Write(msg.Stdout)
+				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
+				contract.Assertf(n == stdoutLen, "wrote fewer bytes (%d) than expected (%d)", n, stdoutLen)
+			}
 
-	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success",
-		h.runtime, request)
-	return nil
+			stderrLen := len(msg.Stderr)
+			if stderrLen > 0 {
+				n, err := errw.Write(msg.Stderr)
+				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
+				contract.Assertf(n == stderrLen, "wrote fewer bytes (%d) than expected (%d)", n, stderrLen)
+			}
+		}
+	}()
+
+	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success", h.runtime, request)
+	return outr, errr, done, nil
 }
 
 func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {

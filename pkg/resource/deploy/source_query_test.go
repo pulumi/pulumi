@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -760,7 +760,7 @@ type mockLanguageRuntime struct {
 
 	GetPluginInfoF func() (workspace.PluginInfo, error)
 
-	InstallDependenciesF func(options plugin.InstallDependenciesRequest) error
+	InstallDependenciesF func(options plugin.InstallDependenciesRequest) (io.Reader, io.Reader, <-chan error, error)
 
 	RuntimeOptionsPromptsF func(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error)
 
@@ -826,7 +826,9 @@ func (rt *mockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) InstallDependencies(request plugin.InstallDependenciesRequest) error {
+func (rt *mockLanguageRuntime) InstallDependencies(
+	request plugin.InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
 	if rt.InstallDependenciesF != nil {
 		return rt.InstallDependenciesF(request)
 	}

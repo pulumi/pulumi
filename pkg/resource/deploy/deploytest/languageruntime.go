@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -90,11 +91,22 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(plugin.InstallDependenciesRequest) error {
+func (p *languageRuntime) InstallDependencies(
+	plugin.InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
 	if p.closed {
-		return ErrLanguageRuntimeIsClosed
+		return nil, nil, nil, ErrLanguageRuntimeIsClosed
 	}
-	return nil
+
+	// We'll return default readers for stdout and stderr, as well as a closed channel to signal that the installation
+	// is complete and that anyone blocking on it can proceed immediately.
+	stdout := strings.NewReader("")
+	stderr := strings.NewReader("")
+
+	done := make(chan error)
+	close(done)
+
+	return stdout, stderr, done, nil
 }
 
 func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {

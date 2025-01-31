@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -841,12 +841,65 @@ func (eng *languageTestServer) RunLanguageTest(
 			main,
 			project.Runtime.Options())
 
-		// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
-		// plugin, so we can't show it back to the test.
-		err = languageClient.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo})
+		installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
+			plugin.InstallDependenciesRequest{Info: programInfo},
+		)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 		}
+
+		// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
+		// done channel to close (3), before we carry on.
+		var wg sync.WaitGroup
+		wg.Add(3)
+
+		var installStdoutBytes []byte
+		var installStderrBytes []byte
+
+		installErrorChan := make(chan error, 3)
+
+		go func() {
+			defer wg.Done()
+			var err error
+			if installStdoutBytes, err = io.ReadAll(installStdout); err != nil {
+				installErrorChan <- err
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			var err error
+			if installStderrBytes, err = io.ReadAll(installStderr); err != nil {
+				installErrorChan <- err
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			if err := <-installDone; err != nil {
+				installErrorChan <- err
+			}
+		}()
+
+		var installErrs []error
+		wg.Wait()
+		close(installErrorChan)
+		for err := range installErrorChan {
+			if err != nil {
+				installErrs = append(installErrs, err)
+			}
+		}
+
+		err = errors.Join(installErrs...)
+		if err != nil {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  false,
+				Messages: []string{fmt.Sprintf("install dependencies: %v", err)},
+				Stdout:   string(installStdoutBytes),
+				Stderr:   string(installStderrBytes),
+			}, nil
+		}
+
 		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
 
 		// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
