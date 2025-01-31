@@ -38,6 +38,8 @@ class TypeDefinition:
     name: str
     type: str
     properties: dict[str, PropertyDefinition]
+    properties_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
     description: Optional[str] = None
 
 
@@ -45,4 +47,8 @@ class TypeDefinition:
 class ComponentDefinition:
     inputs: dict[str, PropertyDefinition]
     outputs: dict[str, PropertyDefinition]
+    inputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    outputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
     description: Optional[str] = None

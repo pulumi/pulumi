@@ -1840,6 +1840,8 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
 			require.Equal(t, "comp", urn.Name())
+			require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
+			require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
 		},
 	})
 }
@@ -1860,10 +1862,26 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	require.Equal(t, "provider", schema["name"].(string))
 	require.Equal(t, "1.2.3", schema["version"].(string))
 	require.Equal(t, "My Component Provider", schema["displayName"].(string))
-
+	expectedJSON := `{
+		"isComponent": true,
+		"type": "object",
+		"properties": {
+			"optionalIntOutput": { "type": "integer" },
+			"strOutput": { "type": "string" }
+		},
+		"required": ["strOutput"],
+		"inputProperties": {
+			"strInput": { "type": "string" },
+			"optionalIntInput": { "type": "integer" }
+		},
+		"requiredInputs": ["strInput"]
+	}
+	`
+	expected := make(map[string]interface{})
 	resources := schema["resources"].(map[string]interface{})
 	component := resources["provider:index:MyComponent"].(map[string]interface{})
-	require.True(t, component["isComponent"].(bool))
+	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+	require.Equal(t, expected, component)
 }
 
 func installPythonProviderDependencies(t *testing.T, dir string) {
