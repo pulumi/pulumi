@@ -155,7 +155,10 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// We can only do this if the provider is actually a same, not a skipped create.
 	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
 		if s.Deployment() != nil {
-			err := s.Deployment().SameProvider(s.new)
+			// we use the _old_ state here because we want to ensure that the provider is registered under the
+			st := s.new.Copy()
+			st.Inputs = s.old.Inputs
+			err := s.Deployment().SameProvider(st)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
