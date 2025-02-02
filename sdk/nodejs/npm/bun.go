@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -80,6 +81,9 @@ func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) (
 	command := exec.CommandContext(ctx, bun.executable, "pm", "pack")
 	command.Dir = dir
 
+	var stdout bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = stderr
 	err := command.Run()
 	if err != nil {
 		return nil, err
