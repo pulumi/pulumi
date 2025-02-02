@@ -32,6 +32,7 @@ const (
 	NpmPackageManager  PackageManagerType = "npm"
 	YarnPackageManager PackageManagerType = "yarn"
 	PnpmPackageManager PackageManagerType = "pnpm"
+	BunPackageManager  PackageManagerType = "bun"
 )
 
 // A `PackageManager` is responsible for installing dependencies,
@@ -97,7 +98,8 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 // If the packagemanager argument is set, and it is not `AutoPackageManager` then, that package
 // manager is used. Otherwise, if the `PULUMI_PREFER_YARN` environment variable is set, or if
 // a yarn.lock file exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
-// pnpm is used.  Otherwise npm is used. The argument pwd is the directory  we're checking for
+// pnpm is used. If either bun.lockb or bun.lock (for newer versions of bun) then bun is used.
+// Otherwise npm is used. The argument pwd is the directory  we're checking for
 // the presence of a lockfile.
 func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (PackageManager, error) {
 	// If a package manager is explicitly specified, use it.
@@ -112,6 +114,8 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 			return newYarnClassic()
 		case PnpmPackageManager:
 			return newPnpm()
+		case BunPackageManager:
+			return newBun()
 		default:
 			return nil, fmt.Errorf("unknown package manager: %s", packagemanager)
 		}
@@ -135,7 +139,16 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 		if err == nil {
 			return pnpm, nil
 		}
-		logging.Warningf("could not find pnpm on the $PATH, trying npm instead: %v", err)
+		logging.Warningf("could not find pnpm on the $PATH, trying bun instead: %v", err)
+	}
+
+	// Prefer bun if bun.lock (bun >= v1.2) or bun.lockb (bun < 1.2) exists
+	if checkBunLock(pwd) {
+		bun, err := newBun()
+		if err == nil {
+			return bun, nil
+		}
+		logging.Warningf("could not find bun on the $PATH, trying npm instead: %v", err)
 	}
 
 	// Finally, fall back to npm.
