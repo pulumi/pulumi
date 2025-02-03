@@ -40,7 +40,7 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
-    // Registers a package and allocates a packageRef. Te same package can be registered multiple times in Pulumi.
+    // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 }
