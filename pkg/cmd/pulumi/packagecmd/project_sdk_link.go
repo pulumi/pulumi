@@ -451,6 +451,11 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 	}
 
 	fmt.Printf("Go mod file updated to use local sdk for %s\n", pkg.Name)
+	// TODO: Also generate instructions using the default import path in cases where ImportBasePath is empty.
+	// See https://github.com/pulumi/pulumi/issues/18410
+	if goInfo.ImportBasePath != "" {
+		fmt.Printf("To use this package, import %s\n", goInfo.ImportBasePath)
+	}
 
 	return nil
 }
