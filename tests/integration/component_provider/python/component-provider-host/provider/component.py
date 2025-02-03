@@ -18,14 +18,25 @@ from typing import Optional, TypedDict
 import pulumi
 
 
+class Nested(TypedDict):
+    nested_str: str
+
+
+class Complex(TypedDict):
+    complex_str: pulumi.Input[str]
+    nested: pulumi.Input[Nested]
+
+
 class Args(TypedDict):
     str_input: pulumi.Input[str]
     optional_int_input: Optional[pulumi.Input[int]]
+    complex_input: Optional[pulumi.Input[Complex]]
 
 
 class MyComponent(pulumi.ComponentResource):
     str_output: pulumi.Output[str]
     optional_int_output: pulumi.Output[Optional[int]]
+    complex_output: pulumi.Output[Optional[Complex]]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -35,9 +46,14 @@ class MyComponent(pulumi.ComponentResource):
         self.optional_int_output = pulumi.Output.from_input(
             args.get("optional_int_input", None)
         ).apply(lambda x: x * 2 if x else None)
-        self.register_outputs(
+        self.complex_output = pulumi.Output.from_input(
             {
-                "str_output": self.str_output,
-                "optional_int_output": self.optional_int_output,
+                "complex_str": "complex_str_value",
+                "nested": pulumi.Output.from_input(
+                    {
+                        "nested_str": "nested_str_value",
+                    }
+                ),
             }
         )
+        self.register_outputs({})
