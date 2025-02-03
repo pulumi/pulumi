@@ -19,6 +19,7 @@ package ints
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,13 +38,16 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -1817,4 +1821,68 @@ func TestRegress18176(t *testing.T) {
 			require.NotContains(t, stderr.String(), "Error in sys.excepthook")
 		},
 	})
+}
+
+// Tests that we can run a Python component provider using component_provider_host.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "provider"))
+			return nil
+		},
+		Dir: filepath.Join("component_provider", "python", "component-provider-host"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+			require.Equal(t, "comp", urn.Name())
+		},
+	})
+}
+
+// Tests that we can get the schema for a Python component provider using component_provider_host.
+func TestPythonComponentProviderGetSchema(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("component_provider", "python", "component-provider-host", "provider")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	installPythonProviderDependencies(t, e.RootPath)
+
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
+	require.Empty(t, stderr)
+	var schema map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
+	require.Equal(t, "provider", schema["name"].(string))
+	require.Equal(t, "1.2.3", schema["version"].(string))
+	require.Equal(t, "My Component Provider", schema["displayName"].(string))
+
+	resources := schema["resources"].(map[string]interface{})
+	component := resources["provider:index:MyComponent"].(map[string]interface{})
+	require.True(t, component["isComponent"].(bool))
+}
+
+func installPythonProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+	// Add the core SDK to the requirements.txt file.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	f, err := os.OpenFile(filepath.Join(dir, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+	require.NoError(t, err)
+	_, err = fmt.Fprintln(f, coreSDK)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	// Install the provider's dependencies.
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Root:       dir,
+		Virtualenv: "venv",
+		Toolchain:  toolchain.Pip,
+	})
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
+	require.NoError(t, err, "stdout: %s, stderr: %s", stdout.String(), stderr.String())
 }
