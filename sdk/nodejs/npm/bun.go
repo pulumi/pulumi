@@ -77,7 +77,7 @@ type packageDotJSON struct {
 }
 
 func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
+	//nolint:gosec // False positive on tainted command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, bun.executable, "pm", "pack")
 	command.Dir = dir
 
