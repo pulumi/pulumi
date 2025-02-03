@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 )
 
-// NPM is the canonical "Node Package Manager".
 type bunManager struct {
 	executable string
 }
