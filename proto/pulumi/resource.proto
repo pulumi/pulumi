@@ -40,6 +40,8 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
+    // Registers a package and allocates a packageRef. Te same package can be registered multiple times in Pulumi.
+    // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 }
 
@@ -83,7 +85,7 @@ message ReadResourceRequest {
 
     SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
 
-    string packageRef = 16; // a reference from RegisterProviderRequest.
+    string packageRef = 16; // a reference from RegisterPackageRequest.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -148,7 +150,7 @@ message RegisterResourceRequest {
     repeated Callback transforms = 31; // a list of transforms to apply to the resource before registering it.
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
-    string packageRef = 33; // a reference from RegisterProviderRequest.
+    string packageRef = 33; // a reference from RegisterPackageRequest.
 }
 
 enum Result {
@@ -191,7 +193,7 @@ message ResourceInvokeRequest {
 
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
 
-    string packageRef = 9; // a reference from RegisterProviderRequest.
+    string packageRef = 9; // a reference from RegisterPackageRequest.
 }
 
 message ResourceCallRequest {
@@ -215,7 +217,7 @@ message ResourceCallRequest {
     reserved "project", "stack", "config", "configSecretKeys", "dryRun", "parallel", "monitorEndpoint", "organization";
 
     SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
-    string packageRef = 17; // a reference from RegisterProviderRequest.
+    string packageRef = 17; // a reference from RegisterPackageRequest.
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.
@@ -282,6 +284,8 @@ message RegisterPackageRequest {
 
 message RegisterPackageResponse {
     // The UUID package reference for this registered package.
+    //
+    // Lifecycle methods accept this reference in the 'packageRef' field.
     string ref = 1;
 }
 
