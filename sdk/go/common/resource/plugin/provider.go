@@ -326,8 +326,8 @@ type Provider interface {
 
 	// GetSchema returns the schema for the provider.
 	GetSchema(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
-	// GetPackageInfo returns the schema for the provider.
-	GetPackageInfo(context.Context, GetSchemaRequest) (*schema.PackageInfo, error)
+	// GetSchemaPackageInfo returns the schema for the provider.
+	GetSchemaPackageInfo(context.Context, GetSchemaRequest) (*schema.PackageInfo, error)
 
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error)

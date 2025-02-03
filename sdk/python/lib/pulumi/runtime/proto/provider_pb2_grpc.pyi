@@ -80,11 +80,11 @@ class ResourceProviderStub:
         pulumi.provider_pb2.GetSchemaResponse,
     ]
     """GetSchema fetches the schema for this resource provider."""
-    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+    GetSchemaPackageInfo: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.GetSchemaRequest,
         pulumi.codegen.schema.schema_pb2.PackageInfo,
     ]
-    """GetPackageInfo tries to find the package info for the given package and version."""
+    """GetSchemaPackageInfo tries to find the package info for the given package and version."""
     CheckConfig: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CheckRequest,
         pulumi.provider_pb2.CheckResponse,
@@ -349,12 +349,12 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.provider_pb2.GetSchemaResponse:
         """GetSchema fetches the schema for this resource provider."""
     
-    def GetPackageInfo(
+    def GetSchemaPackageInfo(
         self,
         request: pulumi.provider_pb2.GetSchemaRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.codegen.schema.schema_pb2.PackageInfo:
-        """GetPackageInfo tries to find the package info for the given package and version."""
+        """GetSchemaPackageInfo tries to find the package info for the given package and version."""
     
     def CheckConfig(
         self,

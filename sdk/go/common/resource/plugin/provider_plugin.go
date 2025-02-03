@@ -512,8 +512,8 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	return GetSchemaResponse{[]byte(resp.GetSchema())}, nil
 }
 
-func (p *provider) GetPackageInfo(ctx context.Context, req GetSchemaRequest) (*schema.PackageInfo, error) {
-	resp, err := p.clientRaw.GetPackageInfo(p.requestContext(), &pulumirpc.GetSchemaRequest{
+func (p *provider) GetSchemaPackageInfo(ctx context.Context, req GetSchemaRequest) (*schema.PackageInfo, error) {
+	resp, err := p.clientRaw.GetSchemaPackageInfo(p.requestContext(), &pulumirpc.GetSchemaRequest{
 		Version:        req.Version,
 		SubpackageName: req.SubpackageName,
 	})

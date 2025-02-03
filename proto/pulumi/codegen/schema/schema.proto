@@ -57,17 +57,15 @@ message PackageInfo {
 }
 
 message Parameterization {
-  // The definition of the base provider for the package
-  optional BaseProvider base_provider = 1;
+  // The unqualified name of the plugin to be parameterized.
+  string plugin_name = 1;
+  // The version of the plugin to be parameterized. The version must be valid semver
+  string plugin_version = 2;
   // The parameter for the provider
-  optional bytes parameter = 2;
+  bytes parameter = 3;
 }
 
 message BaseProvider {
-  // The unqualified name of the package
-  string name = 1;
-  // The version of the package. The version must be valid semver
-  string version = 2;
 }
 
 message Meta {
@@ -77,13 +75,13 @@ message Meta {
   // the module name, which must be formatted as \"namespace1/namespace2/...namespaceN\"
   optional string module_format = 1;
   // Write the package to support the pack command
-  optional bool support_pack = 2;
+  bool support_pack = 2;
 }
 
 // A reference to the type.
 message TypeSpec {
   // Indicates that when used as an input, this type does not accept eventual values.
-  optional bool plain = 1;
+  bool plain = 1;
   oneof type {
     // A reference to a primitive type.
     string primitive_type = 2;
@@ -92,20 +90,28 @@ message TypeSpec {
     // A reference to a map type.
     TypeMap map_type = 4;
     // A reference to a type by its name.
-    string ref = 5;
+    Ref ref = 5;
     // A reference to a union type.
     UnionType union = 6;
   }
 }
 
+// A referenced type
+message Ref {
+  // The path to the schema file
+  optional string schema_path = 1;
+  // The name of the type
+  optional string type_path = 2;
+}
+
 message TypeList {
   // An array of elements
-  repeated TypeSpec type = 1;
+  TypeSpec type = 1;
 }
 
 message TypeMap {
   // A map of elements
-  map<string, TypeSpec> type = 1;
+ TypeSpec type = 1;
 }
 
 message PropertySpec {
@@ -124,20 +130,11 @@ message PropertySpec {
   // Additional language-specific data about the property
   map<string, string> language = 7;
   // Indicates whether the property is secret.
-  optional bool secret = 8;
+  bool secret = 8;
   // Indicates whether the property should be replaced on changes.
-  optional bool replace_on_changes = 9;
+  bool replace_on_changes = 9;
   // Indicates whether the provider will replace the resource when this property is changed.
-  optional bool will_replace_on_changes = 10;
-}
-
-enum Language {
-  NodeJS = 0;
-  Python = 1;
-  Go = 2;
-  Csharp = 3;
-  Java = 4;
-  Yaml = 5;
+  bool will_replace_on_changes = 10;
 }
 
 // Describes an object type
@@ -153,7 +150,7 @@ message ObjectTypeSpec {
   // Additional language-specific data about the object type
   map<string, string> language = 5;
   // Indicates whether the type is an overlay provided by the package
-  optional bool is_overlay = 6;
+  bool is_overlay = 6;
   // A list of languages that the overlay supports
   repeated string overlay_supported_languages = 7;
 }
@@ -171,7 +168,7 @@ message ResourceSpec {
   // Indicates whether the resource is deprecated
   optional string deprecation_message = 5;
   // Indicates whether the resource is a component.
-  optional bool is_component = 6;
+  bool is_component = 6;
   // A map of method name to function token that describes the resource's method set
   map<string, string> methods = 7;
 }

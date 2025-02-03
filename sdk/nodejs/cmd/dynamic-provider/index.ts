@@ -370,11 +370,11 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         );
     }
 
-    getPackageInfo(call: any, callback: any): void {
+    getSchemaPackageInfo(call: any, callback: any): void {
         callback(
             {
                 code: grpc.status.UNIMPLEMENTED,
-                details: "GetPackageInfo is not implemented by the dynamic provider",
+                details: "GetSchemaPackageInfo is not implemented by the dynamic provider",
             },
             undefined,
         );

@@ -199,7 +199,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 	return &pulumirpc.GetSchemaResponse{Schema: string(schema.Schema)}, nil
 }
 
-func (p *providerServer) GetPackageInfo(ctx context.Context,
+func (p *providerServer) GetSchemaPackageInfo(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*schema.PackageInfo, error) {
 	var subpackageVersion *semver.Version
@@ -211,7 +211,7 @@ func (p *providerServer) GetPackageInfo(ctx context.Context,
 		subpackageVersion = &v
 	}
 
-	packageInfo, err := p.provider.GetPackageInfo(ctx, GetSchemaRequest{
+	packageInfo, err := p.provider.GetSchemaPackageInfo(ctx, GetSchemaRequest{
 		Version:           req.Version,
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,

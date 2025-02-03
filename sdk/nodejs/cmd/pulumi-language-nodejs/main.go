@@ -492,7 +492,7 @@ func getPackagesFromDir(
 				pulumiPackagePathToVersionMap[curr] = version
 			}
 
-			ok, name, version, server, parameterization, err := getPackageInfo(info)
+			ok, name, version, server, parameterization, err := getSchemaPackageInfo(info)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
@@ -519,11 +519,11 @@ type packageJSON struct {
 	DevDependencies map[string]string       `json:"devDependencies"`
 }
 
-// getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
+// getSchemaPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
 // resource provider plugin.  If it does, three strings are returned, the plugin name, and its semantic version and
 // an optional server that can be used to download the plugin (this may be empty, in which case the "default" location
 // should be used).
-func getPackageInfo(info packageJSON) (bool, string, string, string, *pulumirpc.PackageParameterization, error) {
+func getSchemaPackageInfo(info packageJSON) (bool, string, string, string, *pulumirpc.PackageParameterization, error) {
 	if info.Pulumi.Resource {
 		name, err := getPluginName(info)
 		if err != nil {

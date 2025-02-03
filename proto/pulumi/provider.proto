@@ -66,8 +66,8 @@ service ResourceProvider {
 
     // GetSchema fetches the schema for this resource provider.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
-    // GetPackageInfo tries to find the package info for the given package and version.
-    rpc GetPackageInfo(GetSchemaRequest) returns (pulumirpc.codegen.PackageInfo) {}
+    // GetSchemaPackageInfo tries to find the package info for the given package and version.
+    rpc GetSchemaPackageInfo(GetSchemaRequest) returns (pulumirpc.codegen.PackageInfo) {}
 
     // `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
     // `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and

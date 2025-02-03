@@ -458,9 +458,9 @@ getSchema: {
     responseSerialize: serialize_pulumirpc_GetSchemaResponse,
     responseDeserialize: deserialize_pulumirpc_GetSchemaResponse,
   },
-  // GetPackageInfo tries to find the package info for the given package and version.
-getPackageInfo: {
-    path: '/pulumirpc.ResourceProvider/GetPackageInfo',
+  // GetSchemaPackageInfo tries to find the package info for the given package and version.
+getSchemaPackageInfo: {
+    path: '/pulumirpc.ResourceProvider/GetSchemaPackageInfo',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_provider_pb.GetSchemaRequest,

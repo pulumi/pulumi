@@ -91,7 +91,7 @@ func (p *builtinProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (p
 	return plugin.GetSchemaResponse{Schema: []byte("{}")}, nil
 }
 
-func (p *builtinProvider) GetPackageInfo(context.Context, plugin.GetSchemaRequest) (*schema.PackageInfo, error) {
+func (p *builtinProvider) GetSchemaPackageInfo(context.Context, plugin.GetSchemaRequest) (*schema.PackageInfo, error) {
 	return &schema.PackageInfo{}, nil
 }
 

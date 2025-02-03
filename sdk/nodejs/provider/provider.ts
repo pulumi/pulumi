@@ -201,7 +201,7 @@ export interface Provider {
      *
      * @returns A promise that resolves to the package info.
      */
-    getPackageInfo?: () => Promise<schema.PackageInfo>;
+    getSchemaPackageInfo?: () => Promise<schema.PackageInfo>;
 
     /**
      * Validates that the given property bag is valid for a resource of the

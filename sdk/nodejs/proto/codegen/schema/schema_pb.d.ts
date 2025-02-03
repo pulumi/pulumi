@@ -120,14 +120,10 @@ export namespace PackageInfo {
 }
 
 export class Parameterization extends jspb.Message { 
-
-    hasBaseProvider(): boolean;
-    clearBaseProvider(): void;
-    getBaseProvider(): BaseProvider | undefined;
-    setBaseProvider(value?: BaseProvider): Parameterization;
-
-    hasParameter(): boolean;
-    clearParameter(): void;
+    getPluginName(): string;
+    setPluginName(value: string): Parameterization;
+    getPluginVersion(): string;
+    setPluginVersion(value: string): Parameterization;
     getParameter(): Uint8Array | string;
     getParameter_asU8(): Uint8Array;
     getParameter_asB64(): string;
@@ -145,16 +141,13 @@ export class Parameterization extends jspb.Message {
 
 export namespace Parameterization {
     export type AsObject = {
-        baseProvider?: BaseProvider.AsObject,
+        pluginName: string,
+        pluginVersion: string,
         parameter: Uint8Array | string,
     }
 }
 
 export class BaseProvider extends jspb.Message { 
-    getName(): string;
-    setName(value: string): BaseProvider;
-    getVersion(): string;
-    setVersion(value: string): BaseProvider;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): BaseProvider.AsObject;
@@ -168,8 +161,6 @@ export class BaseProvider extends jspb.Message {
 
 export namespace BaseProvider {
     export type AsObject = {
-        name: string,
-        version: string,
     }
 }
 
@@ -179,10 +170,7 @@ export class Meta extends jspb.Message {
     clearModuleFormat(): void;
     getModuleFormat(): string | undefined;
     setModuleFormat(value: string): Meta;
-
-    hasSupportPack(): boolean;
-    clearSupportPack(): void;
-    getSupportPack(): boolean | undefined;
+    getSupportPack(): boolean;
     setSupportPack(value: boolean): Meta;
 
     serializeBinary(): Uint8Array;
@@ -198,15 +186,12 @@ export class Meta extends jspb.Message {
 export namespace Meta {
     export type AsObject = {
         moduleFormat?: string,
-        supportPack?: boolean,
+        supportPack: boolean,
     }
 }
 
 export class TypeSpec extends jspb.Message { 
-
-    hasPlain(): boolean;
-    clearPlain(): void;
-    getPlain(): boolean | undefined;
+    getPlain(): boolean;
     setPlain(value: boolean): TypeSpec;
 
     hasPrimitiveType(): boolean;
@@ -226,8 +211,8 @@ export class TypeSpec extends jspb.Message {
 
     hasRef(): boolean;
     clearRef(): void;
-    getRef(): string;
-    setRef(value: string): TypeSpec;
+    getRef(): Ref | undefined;
+    setRef(value?: Ref): TypeSpec;
 
     hasUnion(): boolean;
     clearUnion(): void;
@@ -248,11 +233,11 @@ export class TypeSpec extends jspb.Message {
 
 export namespace TypeSpec {
     export type AsObject = {
-        plain?: boolean,
+        plain: boolean,
         primitiveType: string,
         arrayType?: TypeList.AsObject,
         mapType?: TypeMap.AsObject,
-        ref: string,
+        ref?: Ref.AsObject,
         union?: UnionType.AsObject,
     }
 
@@ -267,11 +252,41 @@ export namespace TypeSpec {
 
 }
 
+export class Ref extends jspb.Message { 
+
+    hasSchemaPath(): boolean;
+    clearSchemaPath(): void;
+    getSchemaPath(): string | undefined;
+    setSchemaPath(value: string): Ref;
+
+    hasTypePath(): boolean;
+    clearTypePath(): void;
+    getTypePath(): string | undefined;
+    setTypePath(value: string): Ref;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Ref.AsObject;
+    static toObject(includeInstance: boolean, msg: Ref): Ref.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Ref, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Ref;
+    static deserializeBinaryFromReader(message: Ref, reader: jspb.BinaryReader): Ref;
+}
+
+export namespace Ref {
+    export type AsObject = {
+        schemaPath?: string,
+        typePath?: string,
+    }
+}
+
 export class TypeList extends jspb.Message { 
-    clearTypeList(): void;
-    getTypeList(): Array<TypeSpec>;
-    setTypeList(value: Array<TypeSpec>): TypeList;
-    addType(value?: TypeSpec, index?: number): TypeSpec;
+
+    hasType(): boolean;
+    clearType(): void;
+    getType(): TypeSpec | undefined;
+    setType(value?: TypeSpec): TypeList;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TypeList.AsObject;
@@ -285,14 +300,16 @@ export class TypeList extends jspb.Message {
 
 export namespace TypeList {
     export type AsObject = {
-        typeList: Array<TypeSpec.AsObject>,
+        type?: TypeSpec.AsObject,
     }
 }
 
 export class TypeMap extends jspb.Message { 
 
-    getTypeMap(): jspb.Map<string, TypeSpec>;
-    clearTypeMap(): void;
+    hasType(): boolean;
+    clearType(): void;
+    getType(): TypeSpec | undefined;
+    setType(value?: TypeSpec): TypeMap;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TypeMap.AsObject;
@@ -306,8 +323,7 @@ export class TypeMap extends jspb.Message {
 
 export namespace TypeMap {
     export type AsObject = {
-
-        typeMap: Array<[string, TypeSpec.AsObject]>,
+        type?: TypeSpec.AsObject,
     }
 }
 
@@ -345,20 +361,11 @@ export class PropertySpec extends jspb.Message {
 
     getLanguageMap(): jspb.Map<string, string>;
     clearLanguageMap(): void;
-
-    hasSecret(): boolean;
-    clearSecret(): void;
-    getSecret(): boolean | undefined;
+    getSecret(): boolean;
     setSecret(value: boolean): PropertySpec;
-
-    hasReplaceOnChanges(): boolean;
-    clearReplaceOnChanges(): void;
-    getReplaceOnChanges(): boolean | undefined;
+    getReplaceOnChanges(): boolean;
     setReplaceOnChanges(value: boolean): PropertySpec;
-
-    hasWillReplaceOnChanges(): boolean;
-    clearWillReplaceOnChanges(): void;
-    getWillReplaceOnChanges(): boolean | undefined;
+    getWillReplaceOnChanges(): boolean;
     setWillReplaceOnChanges(value: boolean): PropertySpec;
 
     serializeBinary(): Uint8Array;
@@ -381,9 +388,9 @@ export namespace PropertySpec {
         deprecationMessage?: string,
 
         languageMap: Array<[string, string]>,
-        secret?: boolean,
-        replaceOnChanges?: boolean,
-        willReplaceOnChanges?: boolean,
+        secret: boolean,
+        replaceOnChanges: boolean,
+        willReplaceOnChanges: boolean,
     }
 }
 
@@ -408,10 +415,7 @@ export class ObjectTypeSpec extends jspb.Message {
 
     getLanguageMap(): jspb.Map<string, string>;
     clearLanguageMap(): void;
-
-    hasIsOverlay(): boolean;
-    clearIsOverlay(): void;
-    getIsOverlay(): boolean | undefined;
+    getIsOverlay(): boolean;
     setIsOverlay(value: boolean): ObjectTypeSpec;
     clearOverlaySupportedLanguagesList(): void;
     getOverlaySupportedLanguagesList(): Array<string>;
@@ -437,7 +441,7 @@ export namespace ObjectTypeSpec {
         requiredList: Array<string>,
 
         languageMap: Array<[string, string]>,
-        isOverlay?: boolean,
+        isOverlay: boolean,
         overlaySupportedLanguagesList: Array<string>,
     }
 }
@@ -466,10 +470,7 @@ export class ResourceSpec extends jspb.Message {
     clearDeprecationMessage(): void;
     getDeprecationMessage(): string | undefined;
     setDeprecationMessage(value: string): ResourceSpec;
-
-    hasIsComponent(): boolean;
-    clearIsComponent(): void;
-    getIsComponent(): boolean | undefined;
+    getIsComponent(): boolean;
     setIsComponent(value: boolean): ResourceSpec;
 
     getMethodsMap(): jspb.Map<string, string>;
@@ -492,7 +493,7 @@ export namespace ResourceSpec {
         stateInputs?: ObjectTypeSpec.AsObject,
         aliasesList: Array<Alias.AsObject>,
         deprecationMessage?: string,
-        isComponent?: boolean,
+        isComponent: boolean,
 
         methodsMap: Array<[string, string]>,
     }
@@ -656,13 +657,4 @@ export namespace DefaultInfo {
 
         languageMap: Array<[string, string]>,
     }
-}
-
-export enum Language {
-    NODEJS = 0,
-    PYTHON = 1,
-    GO = 2,
-    CSHARP = 3,
-    JAVA = 4,
-    YAML = 5,
 }

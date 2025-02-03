@@ -60,8 +60,8 @@ type ResourceProviderClient interface {
 	Parameterize(ctx context.Context, in *ParameterizeRequest, opts ...grpc.CallOption) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
-	// GetPackageInfo tries to find the package info for the given package and version.
-	GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*schema.PackageInfo, error)
+	// GetSchemaPackageInfo tries to find the package info for the given package and version.
+	GetSchemaPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*schema.PackageInfo, error)
 	// `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
 	// `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
 	// is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
@@ -234,9 +234,9 @@ func (c *resourceProviderClient) GetSchema(ctx context.Context, in *GetSchemaReq
 	return out, nil
 }
 
-func (c *resourceProviderClient) GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*schema.PackageInfo, error) {
+func (c *resourceProviderClient) GetSchemaPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*schema.PackageInfo, error) {
 	out := new(schema.PackageInfo)
-	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetPackageInfo", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetSchemaPackageInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -468,8 +468,8 @@ type ResourceProviderServer interface {
 	Parameterize(context.Context, *ParameterizeRequest) (*ParameterizeResponse, error)
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
-	// GetPackageInfo tries to find the package info for the given package and version.
-	GetPackageInfo(context.Context, *GetSchemaRequest) (*schema.PackageInfo, error)
+	// GetSchemaPackageInfo tries to find the package info for the given package and version.
+	GetSchemaPackageInfo(context.Context, *GetSchemaRequest) (*schema.PackageInfo, error)
 	// `CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
 	// `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
 	// is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
@@ -621,8 +621,8 @@ func (UnimplementedResourceProviderServer) Parameterize(context.Context, *Parame
 func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
 }
-func (UnimplementedResourceProviderServer) GetPackageInfo(context.Context, *GetSchemaRequest) (*schema.PackageInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
+func (UnimplementedResourceProviderServer) GetSchemaPackageInfo(context.Context, *GetSchemaRequest) (*schema.PackageInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSchemaPackageInfo not implemented")
 }
 func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
@@ -745,20 +745,20 @@ func _ResourceProvider_GetSchema_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceProvider_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceProvider_GetSchemaPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSchemaRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceProviderServer).GetPackageInfo(ctx, in)
+		return srv.(ResourceProviderServer).GetSchemaPackageInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pulumirpc.ResourceProvider/GetPackageInfo",
+		FullMethod: "/pulumirpc.ResourceProvider/GetSchemaPackageInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).GetPackageInfo(ctx, req.(*GetSchemaRequest))
+		return srv.(ResourceProviderServer).GetSchemaPackageInfo(ctx, req.(*GetSchemaRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1110,8 +1110,8 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceProvider_GetSchema_Handler,
 		},
 		{
-			MethodName: "GetPackageInfo",
-			Handler:    _ResourceProvider_GetPackageInfo_Handler,
+			MethodName: "GetSchemaPackageInfo",
+			Handler:    _ResourceProvider_GetSchemaPackageInfo_Handler,
 		},
 		{
 			MethodName: "CheckConfig",

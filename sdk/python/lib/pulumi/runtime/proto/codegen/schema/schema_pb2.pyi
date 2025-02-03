@@ -19,40 +19,16 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
-import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import sys
 import typing
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 8):
     import typing as typing_extensions
 else:
     import typing_extensions
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
-
-class _Language:
-    ValueType = typing.NewType("ValueType", builtins.int)
-    V: typing_extensions.TypeAlias = ValueType
-
-class _LanguageEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Language.ValueType], builtins.type):
-    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-    NodeJS: _Language.ValueType  # 0
-    Python: _Language.ValueType  # 1
-    Go: _Language.ValueType  # 2
-    Csharp: _Language.ValueType  # 3
-    Java: _Language.ValueType  # 4
-    Yaml: _Language.ValueType  # 5
-
-class Language(_Language, metaclass=_LanguageEnumTypeWrapper): ...
-
-NodeJS: Language.ValueType  # 0
-Python: Language.ValueType  # 1
-Go: Language.ValueType  # 2
-Csharp: Language.ValueType  # 3
-Java: Language.ValueType  # 4
-Yaml: Language.ValueType  # 5
-global___Language = Language
 
 @typing_extensions.final
 class PackageInfo(google.protobuf.message.Message):
@@ -189,25 +165,23 @@ global___PackageInfo = PackageInfo
 class Parameterization(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    BASE_PROVIDER_FIELD_NUMBER: builtins.int
+    PLUGIN_NAME_FIELD_NUMBER: builtins.int
+    PLUGIN_VERSION_FIELD_NUMBER: builtins.int
     PARAMETER_FIELD_NUMBER: builtins.int
-    @property
-    def base_provider(self) -> global___BaseProvider:
-        """The definition of the base provider for the package"""
+    plugin_name: builtins.str
+    """The unqualified name of the plugin to be parameterized."""
+    plugin_version: builtins.str
+    """The version of the plugin to be parameterized. The version must be valid semver"""
     parameter: builtins.bytes
     """The parameter for the provider"""
     def __init__(
         self,
         *,
-        base_provider: global___BaseProvider | None = ...,
-        parameter: builtins.bytes | None = ...,
+        plugin_name: builtins.str = ...,
+        plugin_version: builtins.str = ...,
+        parameter: builtins.bytes = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_base_provider", b"_base_provider", "_parameter", b"_parameter", "base_provider", b"base_provider", "parameter", b"parameter"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_base_provider", b"_base_provider", "_parameter", b"_parameter", "base_provider", b"base_provider", "parameter", b"parameter"]) -> None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_base_provider", b"_base_provider"]) -> typing_extensions.Literal["base_provider"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_parameter", b"_parameter"]) -> typing_extensions.Literal["parameter"] | None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["parameter", b"parameter", "plugin_name", b"plugin_name", "plugin_version", b"plugin_version"]) -> None: ...
 
 global___Parameterization = Parameterization
 
@@ -215,19 +189,9 @@ global___Parameterization = Parameterization
 class BaseProvider(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    NAME_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
-    name: builtins.str
-    """The unqualified name of the package"""
-    version: builtins.str
-    """The version of the package. The version must be valid semver"""
     def __init__(
         self,
-        *,
-        name: builtins.str = ...,
-        version: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "version", b"version"]) -> None: ...
 
 global___BaseProvider = BaseProvider
 
@@ -249,14 +213,11 @@ class Meta(google.protobuf.message.Message):
         self,
         *,
         module_format: builtins.str | None = ...,
-        support_pack: builtins.bool | None = ...,
+        support_pack: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_module_format", b"_module_format", "_support_pack", b"_support_pack", "module_format", b"module_format", "support_pack", b"support_pack"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_module_format", b"_module_format", "_support_pack", b"_support_pack", "module_format", b"module_format", "support_pack", b"support_pack"]) -> None: ...
-    @typing.overload
+    def HasField(self, field_name: typing_extensions.Literal["_module_format", b"_module_format", "module_format", b"module_format"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_module_format", b"_module_format", "module_format", b"module_format", "support_pack", b"support_pack"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_module_format", b"_module_format"]) -> typing_extensions.Literal["module_format"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_support_pack", b"_support_pack"]) -> typing_extensions.Literal["support_pack"] | None: ...
 
 global___Meta = Meta
 
@@ -282,29 +243,54 @@ class TypeSpec(google.protobuf.message.Message):
     @property
     def map_type(self) -> global___TypeMap:
         """A reference to a map type."""
-    ref: builtins.str
-    """A reference to a type by its name."""
+    @property
+    def ref(self) -> global___Ref:
+        """A reference to a type by its name."""
     @property
     def union(self) -> global___UnionType:
         """A reference to a union type."""
     def __init__(
         self,
         *,
-        plain: builtins.bool | None = ...,
+        plain: builtins.bool = ...,
         primitive_type: builtins.str = ...,
         array_type: global___TypeList | None = ...,
         map_type: global___TypeMap | None = ...,
-        ref: builtins.str = ...,
+        ref: global___Ref | None = ...,
         union: global___UnionType | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_plain", b"_plain", "array_type", b"array_type", "map_type", b"map_type", "plain", b"plain", "primitive_type", b"primitive_type", "ref", b"ref", "type", b"type", "union", b"union"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_plain", b"_plain", "array_type", b"array_type", "map_type", b"map_type", "plain", b"plain", "primitive_type", b"primitive_type", "ref", b"ref", "type", b"type", "union", b"union"]) -> None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_plain", b"_plain"]) -> typing_extensions.Literal["plain"] | None: ...
-    @typing.overload
+    def HasField(self, field_name: typing_extensions.Literal["array_type", b"array_type", "map_type", b"map_type", "primitive_type", b"primitive_type", "ref", b"ref", "type", b"type", "union", b"union"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["array_type", b"array_type", "map_type", b"map_type", "plain", b"plain", "primitive_type", b"primitive_type", "ref", b"ref", "type", b"type", "union", b"union"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions.Literal["type", b"type"]) -> typing_extensions.Literal["primitive_type", "array_type", "map_type", "ref", "union"] | None: ...
 
 global___TypeSpec = TypeSpec
+
+@typing_extensions.final
+class Ref(google.protobuf.message.Message):
+    """A referenced type"""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SCHEMA_PATH_FIELD_NUMBER: builtins.int
+    TYPE_PATH_FIELD_NUMBER: builtins.int
+    schema_path: builtins.str
+    """The path to the schema file"""
+    type_path: builtins.str
+    """The name of the type"""
+    def __init__(
+        self,
+        *,
+        schema_path: builtins.str | None = ...,
+        type_path: builtins.str | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_schema_path", b"_schema_path", "_type_path", b"_type_path", "schema_path", b"schema_path", "type_path", b"type_path"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_schema_path", b"_schema_path", "_type_path", b"_type_path", "schema_path", b"schema_path", "type_path", b"type_path"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_schema_path", b"_schema_path"]) -> typing_extensions.Literal["schema_path"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_type_path", b"_type_path"]) -> typing_extensions.Literal["type_path"] | None: ...
+
+global___Ref = Ref
 
 @typing_extensions.final
 class TypeList(google.protobuf.message.Message):
@@ -312,13 +298,14 @@ class TypeList(google.protobuf.message.Message):
 
     TYPE_FIELD_NUMBER: builtins.int
     @property
-    def type(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___TypeSpec]:
+    def type(self) -> global___TypeSpec:
         """An array of elements"""
     def __init__(
         self,
         *,
-        type: collections.abc.Iterable[global___TypeSpec] | None = ...,
+        type: global___TypeSpec | None = ...,
     ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["type", b"type"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["type", b"type"]) -> None: ...
 
 global___TypeList = TypeList
@@ -327,33 +314,16 @@ global___TypeList = TypeList
 class TypeMap(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
-    class TypeEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        @property
-        def value(self) -> global___TypeSpec: ...
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: global___TypeSpec | None = ...,
-        ) -> None: ...
-        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
     TYPE_FIELD_NUMBER: builtins.int
     @property
-    def type(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___TypeSpec]:
+    def type(self) -> global___TypeSpec:
         """A map of elements"""
     def __init__(
         self,
         *,
-        type: collections.abc.Mapping[builtins.str, global___TypeSpec] | None = ...,
+        type: global___TypeSpec | None = ...,
     ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["type", b"type"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["type", b"type"]) -> None: ...
 
 global___TypeMap = TypeMap
@@ -423,12 +393,12 @@ class PropertySpec(google.protobuf.message.Message):
         default_info: global___DefaultInfo | None = ...,
         deprecation_message: builtins.str | None = ...,
         language: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        secret: builtins.bool | None = ...,
-        replace_on_changes: builtins.bool | None = ...,
-        will_replace_on_changes: builtins.bool | None = ...,
+        secret: builtins.bool = ...,
+        replace_on_changes: builtins.bool = ...,
+        will_replace_on_changes: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_const", b"_const", "_default", b"_default", "_default_info", b"_default_info", "_deprecation_message", b"_deprecation_message", "_description", b"_description", "_replace_on_changes", b"_replace_on_changes", "_secret", b"_secret", "_will_replace_on_changes", b"_will_replace_on_changes", "const", b"const", "default", b"default", "default_info", b"default_info", "deprecation_message", b"deprecation_message", "description", b"description", "replace_on_changes", b"replace_on_changes", "secret", b"secret", "type_spec", b"type_spec", "will_replace_on_changes", b"will_replace_on_changes"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_const", b"_const", "_default", b"_default", "_default_info", b"_default_info", "_deprecation_message", b"_deprecation_message", "_description", b"_description", "_replace_on_changes", b"_replace_on_changes", "_secret", b"_secret", "_will_replace_on_changes", b"_will_replace_on_changes", "const", b"const", "default", b"default", "default_info", b"default_info", "deprecation_message", b"deprecation_message", "description", b"description", "language", b"language", "replace_on_changes", b"replace_on_changes", "secret", b"secret", "type_spec", b"type_spec", "will_replace_on_changes", b"will_replace_on_changes"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_const", b"_const", "_default", b"_default", "_default_info", b"_default_info", "_deprecation_message", b"_deprecation_message", "_description", b"_description", "const", b"const", "default", b"default", "default_info", b"default_info", "deprecation_message", b"deprecation_message", "description", b"description", "type_spec", b"type_spec"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_const", b"_const", "_default", b"_default", "_default_info", b"_default_info", "_deprecation_message", b"_deprecation_message", "_description", b"_description", "const", b"const", "default", b"default", "default_info", b"default_info", "deprecation_message", b"deprecation_message", "description", b"description", "language", b"language", "replace_on_changes", b"replace_on_changes", "secret", b"secret", "type_spec", b"type_spec", "will_replace_on_changes", b"will_replace_on_changes"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_const", b"_const"]) -> typing_extensions.Literal["const"] | None: ...
     @typing.overload
@@ -439,12 +409,6 @@ class PropertySpec(google.protobuf.message.Message):
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_deprecation_message", b"_deprecation_message"]) -> typing_extensions.Literal["deprecation_message"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_description", b"_description"]) -> typing_extensions.Literal["description"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_replace_on_changes", b"_replace_on_changes"]) -> typing_extensions.Literal["replace_on_changes"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_secret", b"_secret"]) -> typing_extensions.Literal["secret"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_will_replace_on_changes", b"_will_replace_on_changes"]) -> typing_extensions.Literal["will_replace_on_changes"] | None: ...
 
 global___PropertySpec = PropertySpec
 
@@ -521,15 +485,13 @@ class ObjectTypeSpec(google.protobuf.message.Message):
         type: builtins.str | None = ...,
         required: collections.abc.Iterable[builtins.str] | None = ...,
         language: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        is_overlay: builtins.bool | None = ...,
+        is_overlay: builtins.bool = ...,
         overlay_supported_languages: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_description", b"_description", "_is_overlay", b"_is_overlay", "_type", b"_type", "description", b"description", "is_overlay", b"is_overlay", "type", b"type"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_description", b"_description", "_is_overlay", b"_is_overlay", "_type", b"_type", "description", b"description", "is_overlay", b"is_overlay", "language", b"language", "overlay_supported_languages", b"overlay_supported_languages", "properties", b"properties", "required", b"required", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_description", b"_description", "_type", b"_type", "description", b"description", "type", b"type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_description", b"_description", "_type", b"_type", "description", b"description", "is_overlay", b"is_overlay", "language", b"language", "overlay_supported_languages", b"overlay_supported_languages", "properties", b"properties", "required", b"required", "type", b"type"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_description", b"_description"]) -> typing_extensions.Literal["description"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_is_overlay", b"_is_overlay"]) -> typing_extensions.Literal["is_overlay"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_type", b"_type"]) -> typing_extensions.Literal["type"] | None: ...
 
@@ -591,15 +553,13 @@ class ResourceSpec(google.protobuf.message.Message):
         state_inputs: global___ObjectTypeSpec | None = ...,
         aliases: collections.abc.Iterable[global___Alias] | None = ...,
         deprecation_message: builtins.str | None = ...,
-        is_component: builtins.bool | None = ...,
+        is_component: builtins.bool = ...,
         methods: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_deprecation_message", b"_deprecation_message", "_is_component", b"_is_component", "_state_inputs", b"_state_inputs", "deprecation_message", b"deprecation_message", "is_component", b"is_component", "object_type_spec", b"object_type_spec", "state_inputs", b"state_inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_deprecation_message", b"_deprecation_message", "_is_component", b"_is_component", "_state_inputs", b"_state_inputs", "aliases", b"aliases", "deprecation_message", b"deprecation_message", "is_component", b"is_component", "methods", b"methods", "object_type_spec", b"object_type_spec", "required_inputs", b"required_inputs", "state_inputs", b"state_inputs"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_deprecation_message", b"_deprecation_message", "_state_inputs", b"_state_inputs", "deprecation_message", b"deprecation_message", "object_type_spec", b"object_type_spec", "state_inputs", b"state_inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_deprecation_message", b"_deprecation_message", "_state_inputs", b"_state_inputs", "aliases", b"aliases", "deprecation_message", b"deprecation_message", "is_component", b"is_component", "methods", b"methods", "object_type_spec", b"object_type_spec", "required_inputs", b"required_inputs", "state_inputs", b"state_inputs"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_deprecation_message", b"_deprecation_message"]) -> typing_extensions.Literal["deprecation_message"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_is_component", b"_is_component"]) -> typing_extensions.Literal["is_component"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_state_inputs", b"_state_inputs"]) -> typing_extensions.Literal["state_inputs"] | None: ...
 
