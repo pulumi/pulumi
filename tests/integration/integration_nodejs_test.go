@@ -2222,6 +2222,22 @@ func TestPackageAddNode(t *testing.T) {
 	}
 }
 
+func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packageadd-publisher")
+	e.CWD = filepath.Join(e.RootPath, "nodejs")
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+	require.Contains(t, stdout,
+		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@example/mypkg\";")
+
+	// Make sure the SDK was generated in the expected directory
+	packageJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
+	require.NoError(t, err)
+	require.Contains(t, string(packageJSONBytes), `"@example/mypkg": "file:sdks/mypkg"`)
+}
+
 //nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)

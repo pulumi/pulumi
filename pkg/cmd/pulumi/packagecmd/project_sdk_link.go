@@ -207,7 +207,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("@pulumi/%s@file:%s", pkg.Name, relOut)
+	packageSpecifier := fmt.Sprintf("@%s/%s@file:%s", pkg.Publisher, pkg.Name, relOut)
 	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
@@ -258,11 +258,11 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 	if useTypescript {
 		fmt.Fprintln(w, "You can then import the SDK in your TypeScript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  import * as %s from \"@pulumi/%s\";\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  import * as %s from \"@%s/%s\";\n", importName, pkg.Publisher, pkg.Name)
 	} else {
 		fmt.Fprintln(w, "You can then import the SDK in your Javascript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  const %s = require(\"@pulumi/%s\");\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  const %s = require(\"@%s/%s\");\n", importName, pkg.Publisher, pkg.Name)
 	}
 	fmt.Fprintln(w)
 	return nil

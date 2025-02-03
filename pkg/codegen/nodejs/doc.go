@@ -151,9 +151,9 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	var displayName string
 	var link string
 	if modName == "" {
-		displayName = "@pulumi/" + pkg.Name
+		displayName = "@" + pkg.Publisher + "/" + pkg.Name
 	} else {
-		displayName = fmt.Sprintf("@pulumi/%s/%s", pkg.Name, strings.ToLower(modName))
+		displayName = fmt.Sprintf("@%s/%s/%s", pkg.Publisher, pkg.Name, strings.ToLower(modName))
 	}
 	link = d.GetDocLinkForResourceType(pkg, modName, "")
 	return displayName, link

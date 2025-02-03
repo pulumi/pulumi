@@ -1485,11 +1485,12 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		nodePackageInfo = languageInfo.(NodePackageInfo)
 	}
 
-	writeImports := func(pkg string) {
+	writeImports := func(publisher, pkg string) {
 		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 			externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", externalModuleName(pkg), imp))
 		} else {
-			externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", externalModuleName(pkg), pkg))
+			externalImports.Add(fmt.Sprintf("import * as %s from \"@%s/%s\";", externalModuleName(pkg),
+				publisher, pkg))
 		}
 	}
 
@@ -1505,16 +1506,18 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.EnumType:
 		// If the enum is from another package, add an import for the external package.
 		if t.PackageReference != nil && !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+			publisher := t.PackageReference.Publisher()
 			pkg := t.PackageReference.Name()
-			writeImports(pkg)
+			writeImports(publisher, pkg)
 			return false
 		}
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
 		if t.PackageReference != nil && !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+			publisher := t.PackageReference.Publisher()
 			pkg := t.PackageReference.Name()
-			writeImports(pkg)
+			writeImports(publisher, pkg)
 			return false
 		}
 
@@ -1525,8 +1528,9 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.ResourceType:
 		// If it's from another package, add an import for the external package.
 		if t.Resource != nil && !codegen.PkgEquals(t.Resource.PackageReference, mod.pkg) {
+			publisher := t.Resource.PackageReference.Publisher()
 			pkg := t.Resource.PackageReference.Name()
-			writeImports(pkg)
+			writeImports(publisher, pkg)
 			return false
 		}
 
@@ -2395,7 +2399,7 @@ type npmPackage struct {
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
-		packageName = "@pulumi/" + pkg.Name
+		packageName = "@" + pkg.Publisher + "/" + pkg.Name
 	}
 
 	devDependencies := map[string]string{}
