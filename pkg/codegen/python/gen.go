@@ -2682,7 +2682,7 @@ func pyPack(publisher, name string) string {
 	if publisher == "" {
 		publisher = "pulumi"
 	} else {
-		publisher = strings.ReplaceAll(publisher, "-", "_")
+		publisher = strings.ToLower(strings.ReplaceAll(publisher, "-", "_"))
 	}
 	return publisher + "_" + strings.ReplaceAll(name, "-", "_")
 }

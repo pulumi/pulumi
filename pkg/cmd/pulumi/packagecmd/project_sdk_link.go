@@ -371,7 +371,7 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		importName = strings.ReplaceAll(pkg.Name, "-", "_")
 	}
 
-	publisher := "pulumi_"
+	publisher := "pulumi"
 	if pkg.Publisher != "" {
 		publisher = strings.ReplaceAll(pkg.Publisher, "-", "_")
 	}
