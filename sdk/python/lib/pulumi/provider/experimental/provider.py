@@ -50,8 +50,25 @@ class ComponentProvider(Provider):
         inputs: Inputs,
         options: Optional[ResourceOptions] = None,
     ) -> ConstructResult:
+        self.validate_resource_type(self.metadata.name, resource_type)
         component_name = resource_type.split(":")[-1]
         comp = self.analyzer.find_component(self.path, component_name)
         # ComponentResource's init signature is different from the derived class signature.
         comp_instance = comp(name, {}, options)  # type: ignore
         return ConstructResult(comp_instance.urn, {})
+
+    @staticmethod
+    def validate_resource_type(pkg_name: str, resource_type: str) -> None:
+        parts = resource_type.split(":")
+        if len(parts) != 3:
+            raise ValueError(f"invalid resource type: {resource_type}")
+        if parts[0] != pkg_name:
+            raise ValueError(f"invalid provider: {parts[0]}, expected {pkg_name}")
+        # We might want to relax this limitation, but for now we only support the "index" module.
+        if parts[1] not in ["index", ""]:
+            raise ValueError(
+                f"invalid modle '{parts[1]}' in resource type: {resource_type}, expected index or empty string"
+            )
+        component_name = parts[2]
+        if len(component_name) == 0:
+            raise ValueError(f"empty component name in resource type: {resource_type}")
