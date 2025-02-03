@@ -1,0 +1,12 @@
+name: python-component-provider
+description: Using a component provider written in Python
+runtime: yaml
+plugins:
+  providers:
+    - name: provider
+      path: ./provider
+resources:
+  comp:
+    type: provider:index:MyComponent
+outputs:
+  urn: ${comp.urn}
