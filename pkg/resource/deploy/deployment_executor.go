@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -399,34 +400,33 @@ func (ex *deploymentExecutor) performDeletes(
 	erroredDeps := mapset.NewSet[*resource.State]()
 	seenErrors := mapset.NewSet[Step]()
 	for _, antichain := range deleteChains {
-		if ex.deployment.opts.ContinueOnError {
-			erroredSteps := ex.stepExec.GetErroredSteps()
-			for _, step := range erroredSteps {
-				// If we've already seen this error or the step isn't in the graph we can skip it.
-				//
-				// We also skip checking for dependencies of the error if it is not in the dependency graph.
-				// This can happen if an earlier create failed, thus the resource wouldn't have been added
-				// to the graph.  Since the resource was just tried to be  created it couldn't have any dependencies
-				// that should be deleted either.
-				if seenErrors.Contains(step) {
-					continue
-				}
-				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					if r != nil && ex.deployment.depGraph.Contains(r) {
-						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
-						erroredDeps = erroredDeps.Union(deps)
-					}
+		erroredSteps := ex.stepExec.GetErroredSteps()
+		for _, step := range erroredSteps {
+			// If we've already seen this error or the step isn't in the graph we can skip it.
+			//
+			// We also skip checking for dependencies of the error if it is not in the dependency graph.
+			// This can happen if an earlier create failed, thus the resource wouldn't have been added
+			// to the graph.  Since the resource was just tried to be  created it couldn't have any dependencies
+			// that should be deleted either.
+			if seenErrors.Contains(step) {
+				continue
+			}
+			for _, r := range []*resource.State{step.Res(), step.Old()} {
+				if r != nil && ex.deployment.depGraph.Contains(r) {
+					deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+					erroredDeps = erroredDeps.Union(deps)
 				}
 			}
-			seenErrors.Append(erroredSteps...)
-			newChain := make([]Step, 0, len(antichain))
-			for _, step := range antichain {
-				if !erroredDeps.Contains(step.Res()) {
-					newChain = append(newChain, step)
-				}
-			}
-			antichain = newChain
 		}
+		seenErrors.Append(erroredSteps...)
+		newChain := make([]Step, 0, len(antichain))
+		for _, step := range antichain {
+			if !erroredDeps.Contains(step.Res()) {
+				newChain = append(newChain, step)
+			}
+		}
+		antichain = newChain
+
 		logging.V(4).Infof("deploymentExecutor.Execute(...): beginning delete antichain")
 		tok := ex.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)
@@ -470,23 +470,19 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		return err
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
-	var newSteps []Step
+	newSteps := slice.Prealloc[Step](len(steps))
 	skipped := false
-	if ex.deployment.opts.ContinueOnError {
-		for _, errored := range ex.stepExec.GetErroredSteps() {
-			ex.skipped.Add(errored.Res().URN)
+	for _, errored := range ex.stepExec.GetErroredSteps() {
+		ex.skipped.Add(errored.Res().URN)
+	}
+	for _, step := range steps {
+		if doesStepDependOn(step, ex.skipped) {
+			step.Skip()
+			ex.skipped.Add(step.Res().URN)
+			skipped = true
+			continue
 		}
-		for _, step := range steps {
-			if doesStepDependOn(step, ex.skipped) {
-				step.Skip()
-				ex.skipped.Add(step.Res().URN)
-				skipped = true
-				continue
-			}
-			newSteps = append(newSteps, step)
-		}
-	} else {
-		newSteps = steps
+		newSteps = append(newSteps, step)
 	}
 
 	// If we pass an empty chain to the step executors the workers will shut down.  However we don't want that
