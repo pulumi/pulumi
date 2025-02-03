@@ -119,10 +119,6 @@ async function main() {
                 name: "pnpm",
                 version: "*", // Latest version.
             },
-            {
-                name: "bun",
-                version: "*", // Latest version
-            },
         ];
 
         // Dependencies to add to package.json.
