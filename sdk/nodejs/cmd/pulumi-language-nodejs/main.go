@@ -1131,7 +1131,7 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			Key:         "packagemanager",
 			Description: "The package manager to use for installing dependencies",
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices:     plugin.MakeExecutablePromptChoices("bun", "npm", "pnpm", "yarn"),
+			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
 			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 				StringValue: "npm",
