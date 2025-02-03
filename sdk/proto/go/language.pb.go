@@ -37,11 +37,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// `RuntimeOptionType` is an enum that captures the type of a runtime option.
 type RuntimeOptionPrompt_RuntimeOptionType int32
 
 const (
+	// A string value.
 	RuntimeOptionPrompt_STRING RuntimeOptionPrompt_RuntimeOptionType = 0
-	RuntimeOptionPrompt_INT32  RuntimeOptionPrompt_RuntimeOptionType = 1
+	// A 32-bit integer value.
+	RuntimeOptionPrompt_INT32 RuntimeOptionPrompt_RuntimeOptionType = 1
 )
 
 // Enum value maps for RuntimeOptionPrompt_RuntimeOptionType.
@@ -83,24 +86,28 @@ func (RuntimeOptionPrompt_RuntimeOptionType) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_language_proto_rawDescGZIP(), []int{15, 0}
 }
 
-// ProgramInfo are the common set of options that a language runtime needs to execute or query a program. This
-// is filled in by the engine based on where the `Pulumi.yaml` file was, the `runtime.options` property, and
-// the `main` property.
+// A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
+// file and the `runtime`, `main` and other properties within that file.
 type ProgramInfo struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the root of the project, where the `Pulumi.yaml` file is located.
+	// The root of the project containing the program, where the `Pulumi.yaml` file is located. This should be an
+	// absolute path on the filesystem that is accessible to the language host.
 	RootDirectory string `protobuf:"bytes,1,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
-	// the absolute path to the directory of the program to execute. Generally, but not required to be,
-	// underneath the root directory.
+	// The directory containing the program to execute (e.g. the location of the `index.ts` for a TypeScript NodeJS
+	// program). This should be an absolute path on the filesystem that is accessible to the language host. If
+	// `ProgramInfo` is being built from a `Pulumi.yaml`, this will typically be the directory portion of the `main`
+	// property in that file.
 	ProgramDirectory string `protobuf:"bytes,2,opt,name=program_directory,json=programDirectory,proto3" json:"program_directory,omitempty"`
-	// the entry point of the program, normally '.' meaning to just use the program directory, but can also be
-	// a filename inside the program directory. How that filename is interpreted, if at all, is language
-	// specific.
+	// The entry point of the program to execute. This should be a relative path from the `program_directory`, and is
+	// often just `.` to indicate the program directory itself, but it can also be a filename inside the directory.. If
+	// `ProgramInfo` is being built from a `Pulumi.yaml`, this will typically be the filename specified `main` property
+	// in that file if it is present, or the aforementioned `.` if not.
 	EntryPoint string `protobuf:"bytes,3,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
-	// JSON style options from the `Pulumi.yaml` runtime options section.
+	// A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
+	// contain the `runtime.options` property from that file.
 	Options *structpb.Struct `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
 }
 
@@ -164,12 +171,14 @@ func (x *ProgramInfo) GetOptions() *structpb.Struct {
 	return nil
 }
 
+// `AboutRequest` is the type of requests sent as part of an [](pulumirpc.LanguageRuntime.About) call.
 type AboutRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"` // the program info to use.
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *AboutRequest) Reset() {
@@ -211,15 +220,21 @@ func (x *AboutRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
-// AboutResponse returns runtime information about the language.
+// `AboutResponse` is the type of responses sent by an [](pulumirpc.LanguageRuntime.About) call. It contains information
+// about the language runtime being used.
 type AboutResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Executable string            `protobuf:"bytes,1,opt,name=executable,proto3" json:"executable,omitempty"`                                                                                     // the primary executable for the runtime of this language.
-	Version    string            `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`                                                                                           // the version of the runtime for this language.
-	Metadata   map[string]string `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // other information about this language.
+	// The primary executable for the runtime of this language. This should be an absolute path. E.g. for NodeJS on a
+	// POSIX system, this might be something like `/usr/bin/node`.
+	Executable string `protobuf:"bytes,1,opt,name=executable,proto3" json:"executable,omitempty"`
+	// The version of the runtime underpinning the language host. E.g. for a NodeJS host, this might be the version of
+	// `node` being used.
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// Other host-specific metadata about the runtime underpinning the language host.
+	Metadata map[string]string `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *AboutResponse) Reset() {
@@ -275,19 +290,44 @@ func (x *AboutResponse) GetMetadata() map[string]string {
 	return nil
 }
 
+// `GetProgramDependenciesRequest` is the type of requests sent as part of a
+// [](pulumirpc.LanguageRuntime.GetProgramDependencies) call.
 type GetProgramDependenciesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The project name.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field. Newer
+	// versions of the engine will always set this field to the string `"deprecated"`.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	// The program's working directory.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `program_directory` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory. Deprecated, use info.program_directory instead.
+	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	// The path to the program.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `entry_point` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Program                string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`                                // the path to the program. Deprecated, use info.entry_point instead.
-	TransitiveDependencies bool         `protobuf:"varint,4,opt,name=transitiveDependencies,proto3" json:"transitiveDependencies,omitempty"` // if transitive dependencies should be included in the result.
-	Info                   *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`                                      // the program info to use to calculate dependencies.
+	Program string `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
+	// True if transitive dependencies should be included in the response.
+	TransitiveDependencies bool `protobuf:"varint,4,opt,name=transitiveDependencies,proto3" json:"transitiveDependencies,omitempty"`
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *GetProgramDependenciesRequest) Reset() {
@@ -360,13 +400,18 @@ func (x *GetProgramDependenciesRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
+// `DependencyInfo` is a struct that captures information about a language-specific dependency required by a program
+// (e.g. an NPM package for NodeJS, or a Maven library for Java). It is returned as part of a
+// [](pulumirpc.LanguageRuntime.GetProgramDependenciesResponse).
 type DependencyInfo struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // The name of the dependency.
-	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"` // The version of the dependency.
+	// The name of the dependency.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The version of the dependency.
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 }
 
 func (x *DependencyInfo) Reset() {
@@ -415,12 +460,16 @@ func (x *DependencyInfo) GetVersion() string {
 	return ""
 }
 
+// `GetProgramDependenciesResponse` is the type of responses sent by a
+// [](pulumirpc.LanguageRuntime.GetProgramDependencies) call. It contains information about the dependencies of a
+// program.
 type GetProgramDependenciesResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dependencies []*DependencyInfo `protobuf:"bytes,1,rep,name=dependencies,proto3" json:"dependencies,omitempty"` // the dependencies of this program
+	// The dependencies of the program specified by the request.
+	Dependencies []*DependencyInfo `protobuf:"bytes,1,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
 }
 
 func (x *GetProgramDependenciesResponse) Reset() {
@@ -462,18 +511,42 @@ func (x *GetProgramDependenciesResponse) GetDependencies() []*DependencyInfo {
 	return nil
 }
 
+// `GetRequiredPluginsRequest` is the type of requests sent as part of a
+// [](pulumirpc.LanguageRuntime.GetRequiredPlugins) call.
 type GetRequiredPluginsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The project name.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field. Newer
+	// versions of the engine will always set this field to the string `"deprecated"`.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	// The program's working directory.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `program_directory` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory. Deprecated, use info.program_directory instead.
+	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	// The path to the program.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `entry_point` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Program string       `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"` // the path to the program. Deprecated, use info.entry_point instead.
-	Info    *ProgramInfo `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`       // the program info to use to calculate plugins.
+	Program string `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *GetRequiredPluginsRequest) Reset() {
@@ -539,12 +612,15 @@ func (x *GetRequiredPluginsRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
+// `GetRequiredPluginsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPlugins)
+// call. It contains information about the plugins required by a program.
 type GetRequiredPluginsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Plugins []*PluginDependency `protobuf:"bytes,1,rep,name=plugins,proto3" json:"plugins,omitempty"` // a list of plugins required by this program.
+	// The plugins required by the program specified by the request.
+	Plugins []*PluginDependency `protobuf:"bytes,1,rep,name=plugins,proto3" json:"plugins,omitempty"`
 }
 
 func (x *GetRequiredPluginsResponse) Reset() {
@@ -586,12 +662,15 @@ func (x *GetRequiredPluginsResponse) GetPlugins() []*PluginDependency {
 	return nil
 }
 
+// `GetRequiredPackagesRequest` is the type of requests sent as part of a
+// [](pulumirpc.LanguageRuntime.GetRequiredPackages) call.
 type GetRequiredPackagesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"` // the program info to use to calculate packages.
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *GetRequiredPackagesRequest) Reset() {
@@ -633,12 +712,15 @@ func (x *GetRequiredPackagesRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
+// `GetRequiredPackagesResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPackages)
+// call. It contains information about the packages required by a program.
 type GetRequiredPackagesResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Packages []*PackageDependency `protobuf:"bytes,1,rep,name=packages,proto3" json:"packages,omitempty"` // a list of packages required by this program.
+	// The packages required by the program specified by the request.
+	Packages []*PackageDependency `protobuf:"bytes,1,rep,name=packages,proto3" json:"packages,omitempty"`
 }
 
 func (x *GetRequiredPackagesResponse) Reset() {
@@ -680,30 +762,53 @@ func (x *GetRequiredPackagesResponse) GetPackages() []*PackageDependency {
 	return nil
 }
 
-// RunRequest asks the interpreter to execute a program.
+// `RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
 type RunRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name.
-	Stack   string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`     // the name of the stack being deployed into.
-	Pwd     string `protobuf:"bytes,3,opt,name=pwd,proto3" json:"pwd,omitempty"`         // the program's working directory.
+	// The project name.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	// The name of the stack being deployed into.
+	Stack string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
+	// The program's working directory.
+	Pwd string `protobuf:"bytes,3,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	// The path to the program.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `entry_point` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Program           string            `protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`                                                                                       // the path to the program to execute. Deprecated, use info.entry_point instead.
-	Args              []string          `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`                                                                                             // any arguments to pass to the program.
-	Config            map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // the configuration variables to apply before running.
-	DryRun            bool              `protobuf:"varint,7,opt,name=dryRun,proto3" json:"dryRun,omitempty"`                                                                                        // true if we're only doing a dryrun (preview).
-	Parallel          int32             `protobuf:"varint,8,opt,name=parallel,proto3" json:"parallel,omitempty"`                                                                                    // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorAddress    string            `protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress,proto3" json:"monitor_address,omitempty"`                                                   // the address for communicating back to the resource monitor.
-	QueryMode         bool              `protobuf:"varint,10,opt,name=queryMode,proto3" json:"queryMode,omitempty"`                                                                                 // true if we're only doing a query.
-	ConfigSecretKeys  []string          `protobuf:"bytes,11,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`                                                                    // the configuration keys that have secret values.
-	Organization      string            `protobuf:"bytes,12,opt,name=organization,proto3" json:"organization,omitempty"`                                                                            // the organization of the stack being deployed into.
-	ConfigPropertyMap *structpb.Struct  `protobuf:"bytes,13,opt,name=configPropertyMap,proto3" json:"configPropertyMap,omitempty"`                                                                  // the configuration variables to apply before running.
-	Info              *ProgramInfo      `protobuf:"bytes,14,opt,name=info,proto3" json:"info,omitempty"`                                                                                            // the program info to use to execute the program.
+	Program string `protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`
+	// Any arguments to pass to the program.
+	Args []string `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
+	// Configuration variables to apply before running the program.
+	Config map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// True if we are only doing a dry run (preview).
+	DryRun bool `protobuf:"varint,7,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
+	// The degree of parallelism that should be used for resource operations. A value less than or equal to 1 indicates
+	// serial execution.
+	Parallel int32 `protobuf:"varint,8,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	// The address of the [](pulumirpc.ResourceMonitor) that the program should connect to send [resource
+	// registrations](resource-registration) and other calls to.
+	MonitorAddress string `protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress,proto3" json:"monitor_address,omitempty"`
+	// True if and only if we are only performing a query.
+	QueryMode bool `protobuf:"varint,10,opt,name=queryMode,proto3" json:"queryMode,omitempty"`
+	// A list of configuration keys whose values should be treated as secrets.
+	ConfigSecretKeys []string `protobuf:"bytes,11,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
+	// The organization of the stack being deployed into.
+	Organization string `protobuf:"bytes,12,opt,name=organization,proto3" json:"organization,omitempty"`
+	// Configuration variables to apply before running the program.
+	ConfigPropertyMap *structpb.Struct `protobuf:"bytes,13,opt,name=configPropertyMap,proto3" json:"configPropertyMap,omitempty"`
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,14,opt,name=info,proto3" json:"info,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget   string `protobuf:"bytes,15,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
-	AttachDebugger bool   `protobuf:"varint,16,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"` // true if the language host is supposed to start the program under a debugger.
+	LoaderTarget string `protobuf:"bytes,15,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	// True if and only if the host should start the program under a debugger.
+	AttachDebugger bool `protobuf:"varint,16,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
 }
 
 func (x *RunRequest) Reset() {
@@ -851,17 +956,17 @@ func (x *RunRequest) GetAttachDebugger() bool {
 	return false
 }
 
-// RunResponse is the response back from the interpreter/source back to the monitor.
+// `RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call.
 type RunResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// An unhandled error if any occurred.
+	// Information about any unhandled error that occurred during the run.
 	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	// An error happened.  And it was reported to the user.  Work should stop immediately
-	// with nothing further to print to the user.  This corresponds to a "result.Bail()"
-	// value in the 'go' layer.
+	// True if an error happened, but it was reported to the user. Work should halt immediately, reporting nothing
+	// further to the user (since this reporting has already happened). This corresponds to a `result.Bail()` value
+	// being raised in the Go application layer.
 	Bail bool `protobuf:"varint,2,opt,name=bail,proto3" json:"bail,omitempty"`
 }
 
@@ -911,16 +1016,30 @@ func (x *RunResponse) GetBail() bool {
 	return false
 }
 
+// `InstallDependenciesRequest` is the type of requests sent as part of an
+// [](pulumirpc.LanguageRuntime.InstallDependencies) call.
 type InstallDependenciesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The program's working directory.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `program_directory` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Directory               string       `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`                                                                 // the program's working directory. Deprecated, use info.program_directory instead.
-	IsTerminal              bool         `protobuf:"varint,2,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`                                            // if we are running in a terminal and should use ANSI codes
-	Info                    *ProgramInfo `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`                                                                           // the program info to use to execute the plugin.
-	UseLanguageVersionTools bool         `protobuf:"varint,4,opt,name=use_language_version_tools,json=useLanguageVersionTools,proto3" json:"use_language_version_tools,omitempty"` // if we should use language version tools like pyenv or
+	Directory string `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
+	// True if we are running in a terminal and may use [ANSI escape
+	// codes](https://en.wikipedia.org/wiki/ANSI_escape_code) in our output.
+	IsTerminal bool `protobuf:"varint,2,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	// True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
+	// of the language toolchain used.
+	UseLanguageVersionTools bool `protobuf:"varint,4,opt,name=use_language_version_tools,json=useLanguageVersionTools,proto3" json:"use_language_version_tools,omitempty"`
 }
 
 func (x *InstallDependenciesRequest) Reset() {
@@ -984,13 +1103,17 @@ func (x *InstallDependenciesRequest) GetUseLanguageVersionTools() bool {
 	return false
 }
 
+// `InstallDependenciesResponse` is the type of responses streamed by an
+// [](pulumirpc.LanguageRuntime.InstallDependencies) call.
 type InstallDependenciesResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"` // a line of stdout text.
-	Stderr []byte `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"` // a line of stderr text.
+	// A line of standard output.
+	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	// A line of standard error.
+	Stderr []byte `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
 }
 
 func (x *InstallDependenciesResponse) Reset() {
@@ -1039,12 +1162,15 @@ func (x *InstallDependenciesResponse) GetStderr() []byte {
 	return nil
 }
 
+// `RuntimeOptionsRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts)
+// call.
 type RuntimeOptionsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"` // The current program info used to evaluate which prompts should be asked.
+	// The program to use.
+	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *RuntimeOptionsRequest) Reset() {
@@ -1086,16 +1212,23 @@ func (x *RuntimeOptionsRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
+// `RuntimeOptionPrompt` is a struct that captures information about a runtime option that should be prompted for during
+// `pulumi new`.
 type RuntimeOptionPrompt struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Key         string                                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Description string                                    `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	PromptType  RuntimeOptionPrompt_RuntimeOptionType     `protobuf:"varint,3,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
-	Choices     []*RuntimeOptionPrompt_RuntimeOptionValue `protobuf:"bytes,4,rep,name=choices,proto3" json:"choices,omitempty"`
-	Default     *RuntimeOptionPrompt_RuntimeOptionValue   `protobuf:"bytes,5,opt,name=default,proto3" json:"default,omitempty"`
+	// A unique key that identifies the runtime option.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// A human-readable description of the runtime option.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// The type of the runtime option.
+	PromptType RuntimeOptionPrompt_RuntimeOptionType `protobuf:"varint,3,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
+	// A set of choices for the runtime option that may be displayed as part of the prompting process.
+	Choices []*RuntimeOptionPrompt_RuntimeOptionValue `protobuf:"bytes,4,rep,name=choices,proto3" json:"choices,omitempty"`
+	// The default value of the runtime option.
+	Default *RuntimeOptionPrompt_RuntimeOptionValue `protobuf:"bytes,5,opt,name=default,proto3" json:"default,omitempty"`
 }
 
 func (x *RuntimeOptionPrompt) Reset() {
@@ -1165,12 +1298,15 @@ func (x *RuntimeOptionPrompt) GetDefault() *RuntimeOptionPrompt_RuntimeOptionVal
 	return nil
 }
 
+// `RuntimeOptionsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts) call.
+// It contains information about additional prompts to ask during `pulumi new`.
 type RuntimeOptionsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Prompts []*RuntimeOptionPrompt `protobuf:"bytes,1,rep,name=prompts,proto3" json:"prompts,omitempty"` // additional prompts to ask the user
+	// Prompts to ask the user.
+	Prompts []*RuntimeOptionPrompt `protobuf:"bytes,1,rep,name=prompts,proto3" json:"prompts,omitempty"`
 }
 
 func (x *RuntimeOptionsResponse) Reset() {
@@ -1212,17 +1348,29 @@ func (x *RuntimeOptionsResponse) GetPrompts() []*RuntimeOptionPrompt {
 	return nil
 }
 
+// `RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 type RunPluginRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Pwd string `protobuf:"bytes,1,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
+	// The plugin program's working directory.
+	Pwd string `protobuf:"bytes,1,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	// The path to the plugin program.
+	//
+	// :::{important}
+	// This is deprecated in favour of passing a [program info](pulumirpc.ProgramInfo) struct as the `info` field, with
+	// the `entry_point` field set to this value.
+	// :::
+	//
 	// Deprecated: Do not use.
-	Program string       `protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"` // the path to the program to execute. Deprecated, use info.entry_point instead.
-	Args    []string     `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`       // any arguments to pass to the program.
-	Env     []string     `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`         // any environment variables to set as part of the program.
-	Info    *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`       // the program info to use to execute the plugin.
+	Program string `protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"`
+	// Any arguments to pass to the plugin program.
+	Args []string `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
+	// Any environment variables to set prior to executing the plugin program.
+	Env []string `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`
+	// The [plugin program](pulumirpc.ProgramInfo) to use.
+	Info *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
 }
 
 func (x *RunPluginRequest) Reset() {
@@ -1293,6 +1441,7 @@ func (x *RunPluginRequest) GetInfo() *ProgramInfo {
 	return nil
 }
 
+// `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 type RunPluginResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1370,15 +1519,18 @@ type isRunPluginResponse_Output interface {
 }
 
 type RunPluginResponse_Stdout struct {
-	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3,oneof"` // a line of stdout text.
+	// A line of standard output.
+	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3,oneof"`
 }
 
 type RunPluginResponse_Stderr struct {
-	Stderr []byte `protobuf:"bytes,2,opt,name=stderr,proto3,oneof"` // a line of stderr text.
+	// A line of standard error.
+	Stderr []byte `protobuf:"bytes,2,opt,name=stderr,proto3,oneof"`
 }
 
 type RunPluginResponse_Exitcode struct {
-	Exitcode int32 `protobuf:"varint,3,opt,name=exitcode,proto3,oneof"` // the exit code of the provider.
+	// An exit code that the plugin program has terminated with. This should be the last message sent by the host.
+	Exitcode int32 `protobuf:"varint,3,opt,name=exitcode,proto3,oneof"`
 }
 
 func (*RunPluginResponse_Stdout) isRunPluginResponse_Output() {}
@@ -1387,16 +1539,18 @@ func (*RunPluginResponse_Stderr) isRunPluginResponse_Output() {}
 
 func (*RunPluginResponse_Exitcode) isRunPluginResponse_Output() {}
 
+// `GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
+// call.
 type GenerateProgramRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the PCL source of the project.
+	// The source of the project, represented as a map of file names to [PCL](pcl) source code.
 	Source map[string]string `protobuf:"bytes,1,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
-	// if PCL binding should be strict or not.
+	// True if [PCL binding](pcl-binding) should be strict.
 	Strict bool `protobuf:"varint,3,opt,name=strict,proto3" json:"strict,omitempty"`
 }
 
@@ -1453,14 +1607,15 @@ func (x *GenerateProgramRequest) GetStrict() bool {
 	return false
 }
 
+// `GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call.
 type GenerateProgramResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// any diagnostics from code generation.
+	// Any diagnostics raised by code generation.
 	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	// the generated program source code.
+	// The generated program source code, represented as a map of file names to byte contents.
 	Source map[string][]byte `protobuf:"bytes,2,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
@@ -1510,23 +1665,28 @@ func (x *GenerateProgramResponse) GetSource() map[string][]byte {
 	return nil
 }
 
+// `GenerateProjectRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProject) call.
 type GenerateProjectRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the directory to generate the project from.
+	// The directory containing [PCL](pcl) source code, from which the project should be generated.
 	SourceDirectory string `protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
-	// the directory to generate the project in.
+	// The directory in which generated project files should be written. This should be an absolute path on the
+	// filesystem that is accessible to the language host.
 	TargetDirectory string `protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
-	// the JSON-encoded pulumi project file.
+	// A string containing JSON to be used as the Pulumi project file (that is, as the contents of `Pulumi.yaml`).
 	Project string `protobuf:"bytes,3,opt,name=project,proto3" json:"project,omitempty"`
-	// if PCL binding should be strict or not.
+	// True if [PCL binding](pcl-binding) should be strict.
 	Strict bool `protobuf:"varint,4,opt,name=strict,proto3" json:"strict,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,5,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
-	// local dependencies to use instead of using the package system. This is a map of package name to a local
-	// path of a language specific artifact to use for the SDK for that package.
+	// Local dependencies that the generated project should reference explicitly, instead of e.g. using the language's
+	// package system. This is a map of package names to local paths of language-specific artifacts that should be used.
+	// For instance, in the case of a NodeJS project, this might be a map of NPM package names to local paths to be
+	// used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
+	// published `@pulumi/aws` package.
 	LocalDependencies map[string]string `protobuf:"bytes,6,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
@@ -1604,12 +1764,13 @@ func (x *GenerateProjectRequest) GetLocalDependencies() map[string]string {
 	return nil
 }
 
+// `GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call.
 type GenerateProjectResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// any diagnostics from code generation.
+	// Any diagnostics raised by code generation.
 	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 }
 
@@ -1652,24 +1813,30 @@ func (x *GenerateProjectResponse) GetDiagnostics() []*codegen.Diagnostic {
 	return nil
 }
 
+// `GeneratePackageRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GeneratePackage) call.
 type GeneratePackageRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the directory to generate the package in.
+	// The directory to generate the package in. This should be an absolute path on the filesystem that is accessible to
+	// the language host.
 	Directory string `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
-	// the JSON-encoded schema.
+	// A JSON-encoded string containing the schema from which the SDK package should be generated.
 	Schema string `protobuf:"bytes,2,opt,name=schema,proto3" json:"schema,omitempty"`
-	// extra files to copy to the package output.
+	// Extra files that should be copied as-is to the generated output.
 	ExtraFiles map[string][]byte `protobuf:"bytes,3,rep,name=extra_files,json=extraFiles,proto3" json:"extra_files,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
-	// local dependencies to use instead of using the package system. This is a map of package name to a local
-	// path of a language specific artifact to use for the SDK for that package.
+	// Local dependencies that the generated package should reference explicitly, instead of e.g. using the language's
+	// package system. This is a map of package names to local paths of language-specific artifacts that should be used.
+	// For instance, in the case of a NodeJS package, this might be a map of NPM package names to local paths to be
+	// used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
+	// published `@pulumi/aws` package.
 	LocalDependencies map[string]string `protobuf:"bytes,5,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// if true generates an SDK appropriate for local usage, this may differ from a standard publishable SDK depending
-	// on the language.
+	// If true, generates an SDK appropriate for local usage. This may differ from a standard publishable SDK depending
+	// on the language (e.g. for a NodeJS package that is intended to be imported locally, the language host may choose
+	// not to generate a `package.json`).
 	Local bool `protobuf:"varint,6,opt,name=local,proto3" json:"local,omitempty"`
 }
 
@@ -1747,12 +1914,13 @@ func (x *GeneratePackageRequest) GetLocal() bool {
 	return false
 }
 
+// `GeneratePackageResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GeneratePackage) call.
 type GeneratePackageResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// any diagnostics from code generation.
+	// Any diagnostics raised by code generation.
 	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 }
 
@@ -1795,14 +1963,17 @@ func (x *GeneratePackageResponse) GetDiagnostics() []*codegen.Diagnostic {
 	return nil
 }
 
+// `PackRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Pack) call.
 type PackRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the directory of a package to pack.
+	// The directory containing the package to pack. This should be an absolute path on the filesystem that is accessible
+	// to the language host.
 	PackageDirectory string `protobuf:"bytes,1,opt,name=package_directory,json=packageDirectory,proto3" json:"package_directory,omitempty"`
-	// the directory to write the packed artifact to.
+	// The directory to write the packed artifact to. This should be an absolute path on the filesystem that is
+	// accessible to the language host.
 	DestinationDirectory string `protobuf:"bytes,2,opt,name=destination_directory,json=destinationDirectory,proto3" json:"destination_directory,omitempty"`
 }
 
@@ -1852,12 +2023,14 @@ func (x *PackRequest) GetDestinationDirectory() string {
 	return ""
 }
 
+// `PackResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Pack) call.
 type PackResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the full path of the packed artifact.
+	// The path to the packed artifact. This should be an absolute path on the filesystem that is accessible to the
+	// language host.
 	ArtifactPath string `protobuf:"bytes,1,opt,name=artifact_path,json=artifactPath,proto3" json:"artifact_path,omitempty"`
 }
 
@@ -1900,19 +2073,20 @@ func (x *PackResponse) GetArtifactPath() string {
 	return ""
 }
 
+// `LanguageHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Handshake) call.
 type LanguageHandshakeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The grpc address for the engine.
+	// The gRPC address of the engine calling the language host.
 	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
-	// The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located.
-	// This can't be sent when the engine is attaching to a language via a port number.
+	// The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located. This can't be sent
+	// when the engine is attaching to a language via a port number.
 	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
-	// The optional absolute path to the directory of the language program to execute. Generally, but not
-	// required to be, underneath the root directory. This can't be sent when the engine is attaching to a
-	// language via a port number.
+	// The optional absolute path to the directory of the language program to execute. Generally, but not required to
+	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via a port
+	// number.
 	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
 }
 
@@ -1969,6 +2143,7 @@ func (x *LanguageHandshakeRequest) GetProgramDirectory() string {
 	return ""
 }
 
+// `LanguageHandshakeResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Handshake) call.
 type LanguageHandshakeResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2007,15 +2182,20 @@ func (*LanguageHandshakeResponse) Descriptor() ([]byte, []int) {
 	return file_pulumi_language_proto_rawDescGZIP(), []int{28}
 }
 
+// `RuntimeOptionValue` is a struct that captures the value of a runtime option.
 type RuntimeOptionPrompt_RuntimeOptionValue struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PromptType  RuntimeOptionPrompt_RuntimeOptionType `protobuf:"varint,1,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
-	StringValue string                                `protobuf:"bytes,2,opt,name=stringValue,proto3" json:"stringValue,omitempty"`
-	Int32Value  int32                                 `protobuf:"varint,3,opt,name=int32Value,proto3" json:"int32Value,omitempty"`
-	DisplayName string                                `protobuf:"bytes,4,opt,name=displayName,proto3" json:"displayName,omitempty"`
+	// The type of the runtime option.
+	PromptType RuntimeOptionPrompt_RuntimeOptionType `protobuf:"varint,1,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
+	// The string value of the runtime option, if and only if the type is `STRING`.
+	StringValue string `protobuf:"bytes,2,opt,name=stringValue,proto3" json:"stringValue,omitempty"`
+	// The 32-bit integer value of the runtime option, if and only if the type is `INT32`.
+	Int32Value int32 `protobuf:"varint,3,opt,name=int32Value,proto3" json:"int32Value,omitempty"`
+	// The display name of the runtime option, to be used in prompts.
+	DisplayName string `protobuf:"bytes,4,opt,name=displayName,proto3" json:"displayName,omitempty"`
 }
 
 func (x *RuntimeOptionPrompt_RuntimeOptionValue) Reset() {
