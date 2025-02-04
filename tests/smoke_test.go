@@ -890,11 +890,7 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 		"than the specified program version: 3.6.0 < 3.6.3")
 }
 
-// Quick sanity tests to check that import for a parameterized package works. This uses python as the language choice
-// shouldn't matter for the test. Regression test for https://github.com/pulumi/pulumi/issues/17289.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
-func TestImportParameterizedSmoke(t *testing.T) {
+func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 
@@ -923,7 +919,9 @@ func TestImportParameterizedSmoke(t *testing.T) {
 	replaceStringInFile(filepath.Join(projectDir, "__main__.py"), "RandomPet", "Pet")
 	e.RunCommand("pulumi", "install")
 
-	e.RunCommand("pulumi", "up", "--yes")
+	if withUp {
+		e.RunCommand("pulumi", "up", "--yes")
+	}
 
 	// Now try and import a random resource. This should use the project's currently known packages to help choose the
 	// right provider. "random" alone isn't enough to know to use the parameterized provider -- normally, it would use the
@@ -963,4 +961,21 @@ func TestImportParameterizedSmoke(t *testing.T) {
 
 	assert.Equal(t, "p-9hUg", resource["id"])
 	assert.Equal(t, ref, resource["provider"])
+}
+
+// Quick sanity tests to check that import for a parameterized package works. This uses python as the language choice
+// shouldn't matter for the test. Regression test for https://github.com/pulumi/pulumi/issues/17289.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestImportParameterizedSmoke(t *testing.T) {
+	testImportParameterizedSmoke(t, true)
+}
+
+// Quick sanity tests to check that import for a parameterized package works when there's no existing state. This uses
+// python as the language choice shouldn't matter for the test. Regression test for
+// https://github.com/pulumi/pulumi/issues/18449.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestImportParameterizedSmokeFreshState(t *testing.T) {
+	testImportParameterizedSmoke(t, false)
 }

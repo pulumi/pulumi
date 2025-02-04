@@ -30,22 +30,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type Parameterization struct {
+	// The base plugin name to use for this parameterization.
+	PluginName tokens.Package
+	// The version of the plugin to use for this parameterization.
+	PluginVersion semver.Version
+	// The value to use for this parameterization.
+	Value []byte
+}
+
+// ToProviderParameterization converts a workspace parameterization to a provider parameterization.
+func (p *Parameterization) ToProviderParameterization(
+	typ tokens.Type, version *semver.Version,
+) (tokens.Package, *semver.Version, *providers.ProviderParameterization, error) {
+	if p == nil {
+		return typ.Package(), version, nil, nil
+	}
+
+	if version == nil {
+		return "", nil, nil, errors.New("version must be provided")
+	}
+
+	return p.PluginName, &p.PluginVersion, providers.NewProviderParameterization(typ.Package(), *version, p.Value), nil
+}
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type              tokens.Type                 // The type token for the resource. Required.
-	Name              string                      // The name of the resource. Required.
-	ID                resource.ID                 // The ID of the resource. Required.
-	Parent            resource.URN                // The parent of the resource, if any.
-	Provider          resource.URN                // The specific provider to use for the resource, if any.
-	Version           *semver.Version             // The provider version to use for the resource, if any.
-	PluginDownloadURL string                      // The provider PluginDownloadURL to use for the resource, if any.
-	PluginChecksums   map[string][]byte           // The provider checksums to use for the resource, if any.
-	Protect           bool                        // Whether to mark the resource as protected after import
-	Properties        []string                    // Which properties to include (Defaults to required properties)
-	Parameterization  *workspace.Parameterization // The parameterization to use for the resource, if any.
+	Type              tokens.Type       // The type token for the resource. Required.
+	Name              string            // The name of the resource. Required.
+	ID                resource.ID       // The ID of the resource. Required.
+	Parent            resource.URN      // The parent of the resource, if any.
+	Provider          resource.URN      // The specific provider to use for the resource, if any.
+	Version           *semver.Version   // The provider version to use for the resource, if any.
+	PluginDownloadURL string            // The provider PluginDownloadURL to use for the resource, if any.
+	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
+	Protect           bool              // Whether to mark the resource as protected after import
+	Properties        []string          // Which properties to include (Defaults to required properties)
+	Parameterization  *Parameterization // The parameterization to use for the resource, if any.
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -233,9 +256,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		parameterization := providers.ToProviderParameterization(imp.Parameterization)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		if err != nil {
+			return nil, false, err
+		}
 		req := providers.NewProviderRequest(
-			imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -283,6 +309,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
+		}
+		if parameterization := req.Parameterization(); parameterization != nil {
+			providers.SetProviderName(inputs, req.Name())
+			providers.SetProviderParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:  urn,
@@ -396,9 +426,12 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			parameterization := providers.ToProviderParameterization(imp.Parameterization)
+			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+			if err != nil {
+				return err
+			}
 			req := providers.NewProviderRequest(
-				imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}

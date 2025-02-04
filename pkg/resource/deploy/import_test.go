@@ -211,3 +211,73 @@ func TestImporter(t *testing.T) {
 		})
 	})
 }
+
+func TestImporterParameterizedProvider(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	version := semver.MustParse("1.2.3")
+	mockProvider := plugin.MockProvider{
+		ParameterizeF: func(ctx context.Context, paramReq plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			pValue, ok := paramReq.Parameters.(*plugin.ParameterizeValue)
+			assert.True(t, ok)
+			assert.Equal(t, pValue, &plugin.ParameterizeValue{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+				Value:   []byte("parameterization-value"),
+			})
+			return plugin.ParameterizeResponse{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+			}, nil
+		},
+		CloseF: func() error {
+			return nil
+		},
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{}, nil
+		},
+	}
+	i := &importer{
+		executor: &stepExecutor{
+			ctx: ctx,
+		},
+		deployment: &Deployment{
+			goals: &gsync.Map[urn.URN, *resource.Goal]{},
+			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+			target: &Target{
+				Name: tokens.MustParseStackName("stack-name"),
+			},
+			source: &nullSource{},
+			providers: providers.NewRegistry(&mockHost{
+				ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+					assert.Equal(t, "foo", descriptor.Name)
+					assert.Equal(t, "1.0.0", descriptor.Version.String())
+					return &mockProvider, nil
+				},
+				CloseProviderF: func(provider plugin.Provider) error {
+					return nil
+				},
+			}, true, nil),
+			imports: []Import{
+				{
+					Version:           &version,
+					PluginDownloadURL: "download-url",
+					PluginChecksums: map[string][]byte{
+						"a": {},
+						"b": {},
+						"c": {},
+					},
+					Type: "ParameterizationName:bar:Bar",
+					Parameterization: &Parameterization{
+						PluginName:    "foo",
+						PluginVersion: semver.MustParse("1.0.0"),
+						Value:         []byte("parameterization-value"),
+					},
+				},
+			},
+		},
+	}
+	_, _, err := i.registerProviders(context.Background())
+	assert.NoError(t, err)
+}

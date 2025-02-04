@@ -273,7 +273,11 @@ func newDeployment(
 
 			if imp.Provider == "" && (!imp.Component || imp.Remote) {
 				if imp.Version == nil {
-					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
+					dpi := defaultProviderInfo[imp.Type.Package()]
+					imp.Version = dpi.Version
+					if dpi.Parameterization != nil {
+						imp.Version = &dpi.Parameterization.Version
+					}
 				}
 				if imp.PluginDownloadURL == "" {
 					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
@@ -282,7 +286,19 @@ func newDeployment(
 					imp.PluginChecksums = defaultProviderInfo[imp.Type.Package()].Checksums
 				}
 				if imp.Parameterization == nil {
-					imp.Parameterization = defaultProviderInfo[imp.Type.Package()].Parameterization
+					dpi := defaultProviderInfo[imp.Type.Package()]
+
+					if dpi.Parameterization != nil {
+						if dpi.Version == nil {
+							return nil, fmt.Errorf("no version specified for provider %q", dpi.Name)
+						}
+
+						imp.Parameterization = &deploy.Parameterization{
+							PluginName:    tokens.Package(dpi.Name),
+							PluginVersion: *dpi.Version,
+							Value:         dpi.Parameterization.Value,
+						}
+					}
 				}
 			}
 		}
