@@ -66,11 +66,12 @@ test_auto:: $(TEST_ALL_DEPS)
 test_all:: test_fast test_auto test_go
 
 dist::
+	export GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 	go install -C cmd/pulumi-language-python \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
-	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
+	cp ./cmd/pulumi-language-python-exec "$GOBIN"
+	cp ./dist/pulumi-resource-pulumi-python "$GOBIN"
+	cp ./dist/pulumi-analyzer-policy-python "$GOBIN"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
