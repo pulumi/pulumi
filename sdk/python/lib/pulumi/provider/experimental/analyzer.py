@@ -102,7 +102,7 @@ class Analyzer:
 
     def analyze_type(self, typ: type) -> dict[str, PropertyDefinition]:
         """
-        analyze_types returns a dictionary of the properties of a type based on
+        analyze_type returns a dictionary of the properties of a type based on
         its annotations.
 
         For example for the class
@@ -126,12 +126,13 @@ class Analyzer:
         self, arg: type, optional: Optional[bool] = None
     ) -> PropertyDefinition:
         """
-        analyze_arg analyzes a single annotation and turns it into a SchemaProperty.
+        analyze_property analyzes a single annotation and turns it into a SchemaProperty.
         """
         optional = optional if optional is not None else is_optional(arg)
         unwrapped = None
         ref = None
         if is_plain(arg):
+            # TODO: handle plain types
             unwrapped = arg
         elif is_input(arg):
             return self.analyze_property(unwrap_input(arg), optional=optional)
