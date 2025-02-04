@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/python
-  description: "[Experimental] Analyze ComponentResource properties"
+  description: "[Experimental/Components] Analyze ComponentResource properties"
