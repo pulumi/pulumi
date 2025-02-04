@@ -39,8 +39,13 @@ class ComponentProvider(Provider):
         self.path = path
         self.metadata = metadata
         self.analyzer = Analyzer(self.metadata)
-        self.components = self.analyzer.analyze(self.path)
-        schema = generate_schema(metadata, self.components)
+        (components, type_definitions) = self.analyzer.analyze(self.path)
+        self.components = components
+        schema = generate_schema(
+            metadata,
+            self.components,
+            type_definitions,
+        )
         super().__init__(metadata.version, json.dumps(schema.to_json()))
 
     def construct(
