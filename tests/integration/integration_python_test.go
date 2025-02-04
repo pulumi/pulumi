@@ -1556,13 +1556,15 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	err = json.Unmarshal([]byte(out), &a)
 	assert.NoError(t, err)
 	found := false
+	depList := []string{}
 	for _, dep := range a.Dependencies {
 		if dep.Name == "pulumi_supabase" {
 			found = true
 			break
 		}
+		depList = append(depList, dep.Name)
 	}
-	require.True(t, found, "pulumi_subabase should be installed")
+	require.True(t, found, fmt.Sprintf("pulumi_supabase not found in dependencies.  Full list: %v", depList))
 }
 
 func TestConfigGetterOverloads(t *testing.T) {
