@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -246,7 +247,7 @@ func copySingleConfigKey(
 	destinationProjectStack *workspace.ProjectStack,
 ) error {
 	var decrypter config.Decrypter
-	key, err := ParseConfigKey(configKey, path)
+	key, err := ParseConfigKey(pkgWorkspace.Instance, configKey, path)
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
 	}
@@ -304,7 +305,7 @@ func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {
 	if len(splitArg) < 2 {
 		return config.Key{}, "", errors.New("config value must be in the form [key]=[value]")
 	}
-	key, err := ParseConfigKey(splitArg[0], path)
+	key, err := ParseConfigKey(pkgWorkspace.Instance, splitArg[0], path)
 	if err != nil {
 		return config.Key{}, "", fmt.Errorf("invalid configuration key: %w", err)
 	}
@@ -318,7 +319,7 @@ func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {
 // be valid or not, and also parse to different keys. For example:
 // foo.bar:buzz is a (namespace: foo.bar, key: buzz) if not path, and
 // (namespace: <project-name>, key: foo.bar:buzz) if path.
-func ParseConfigKey(key string, path bool) (config.Key, error) {
+func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key, error) {
 	// If the key is a path, the namespacing requirement only applies to the
 	// top-level key, while sub-keys may have arbitrary names.
 	if path {
@@ -328,7 +329,7 @@ func ParseConfigKey(key string, path bool) (config.Key, error) {
 		bracketOrDotIndex := strings.IndexAny(key, "[.")
 		if bracketOrDotIndex > 0 {
 			topSegment := key[:bracketOrDotIndex]
-			topKey, err := config.ParseKey(topSegment)
+			topKey, err := ParseConfigKey(ws, topSegment, false)
 			if err != nil {
 				return config.Key{}, err
 			}
@@ -339,7 +340,7 @@ func ParseConfigKey(key string, path bool) (config.Key, error) {
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		proj, err := workspace.ReadProject()
+		proj, _, err := ws.ReadProject()
 		if err != nil {
 			return config.Key{}, err
 		}

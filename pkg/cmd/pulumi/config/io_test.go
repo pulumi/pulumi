@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -599,13 +600,51 @@ func TestParseConfigKey(t *testing.T) {
 			path:    false,
 			wantKey: config.MustMakeKey("aws", "region.value"),
 		},
+		{
+			name:    "no namespace uses project name",
+			input:   "mykey",
+			path:    false,
+			wantKey: config.MustMakeKey("test-project", "mykey"),
+		},
+		{
+			name:    "no namespace with path segments",
+			input:   "mykey.segment1.segment2",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey.segment1.segment2"),
+		},
+		{
+			name:    "no namespace with brackets",
+			input:   "mykey[\"segment1\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey[\"segment1\"]"),
+		},
+		{
+			name:    "no namespace with colon in path segment",
+			input:   "mykey.segment:with:colons",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey.segment:with:colons"),
+		},
+		{
+			name:    "no namespace with colon in non-path fails",
+			input:   "mykey:with:colons",
+			path:    false,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+	}
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "test-project",
+			}, "/test/path", nil
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := ParseConfigKey(tt.input, tt.path)
+			got, err := ParseConfigKey(ws, tt.input, tt.path)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
