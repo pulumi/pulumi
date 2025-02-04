@@ -23,6 +23,7 @@ concurrency:
 jobs:
   info:
     name: info
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     uses: ./.github/workflows/ci-info.yml
     permissions:
       contents: read
@@ -58,6 +59,7 @@ jobs:
 
   ci:
     name: CI
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
     uses: ./.github/workflows/ci.yml
     permissions:
@@ -89,6 +91,7 @@ jobs:
 
   performance-gate:
     name: Performance Gate
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
     uses: ./.github/workflows/ci-performance-gate.yml
     permissions:
@@ -113,7 +116,7 @@ jobs:
       # job for community PRs. We detect community contributions by checking if
       # the head repository is different to the base repository.
       - name: CI failed
-        if: ${{ needs.ci.result != 'success' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.ci.result != 'success' }}
         run: exit 1
       - name: CI succeeded
         run: exit 0
