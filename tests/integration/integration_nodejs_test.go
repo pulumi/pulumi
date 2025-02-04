@@ -2465,7 +2465,7 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
 
-	// TODO: Run this test on windows
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on windows")
 	}
