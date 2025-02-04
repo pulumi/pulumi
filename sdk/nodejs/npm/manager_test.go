@@ -186,7 +186,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"npm", "Invalid package, must have name and version"},
 		{"yarn", "Package doesn't have a version"},
 		{"pnpm", "Package version is not defined in the package.json"},
-		{"bun", "error: failed to parse lockfile: InvalidLockfileVersion"},
+		{"bun", "error: failed to parse lockfile: UnknownLockfileVersion"},
 	} {
 		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
@@ -198,11 +198,10 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			stderr := new(bytes.Buffer)
 
 			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
-			stdErrStr := stderr.String()
 			exitErr := new(exec.ExitError)
 			require.ErrorAs(t, err, &exitErr)
 			assert.NotZero(t, exitErr.ExitCode())
-			require.Contains(t, stdErrStr, tt.expectedErrorMessage)
+			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
 		})
 	}
 }
