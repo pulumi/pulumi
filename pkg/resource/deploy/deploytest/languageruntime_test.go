@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
+			_, _, _, err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
@@ -99,7 +99,8 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			assert.NoError(t, p.InstallDependencies(plugin.InstallDependenciesRequest{}))
+			_, _, _, err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
+			assert.NoError(t, err)
 		})
 		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
 			t.Parallel()

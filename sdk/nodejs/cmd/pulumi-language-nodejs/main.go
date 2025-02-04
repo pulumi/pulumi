@@ -1017,7 +1017,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// in here works well enough for conformance testing.
 		tscCmd := exec.Command("npx", "tsc")
 		tscCmd.Dir = req.Info.ProgramDirectory
-		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
+		if err := runWithOutput(tscCmd, stdout, stderr); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
 		}
 	}

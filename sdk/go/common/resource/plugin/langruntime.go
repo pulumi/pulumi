@@ -130,7 +130,10 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(request InstallDependenciesRequest) error
+	// It returns io.Readers for stdout and stderr as well as a channel that will be closed when the operation is
+	// complete, producing an error if one occurred. Callers *must* drain the stdout and stderr readers if they await the
+	// done channel to avoid deadlocks.
+	InstallDependencies(request InstallDependenciesRequest) (io.Reader, io.Reader, <-chan error, error)
 
 	// RuntimeOptions returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)

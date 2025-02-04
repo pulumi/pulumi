@@ -21,6 +21,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -76,7 +77,8 @@ func InstallPolicyPackDependencies(ctx context.Context, root string, proj *works
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo}); err != nil {
+	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{Info: programInfo})
+	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}
 

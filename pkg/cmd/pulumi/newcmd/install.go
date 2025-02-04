@@ -17,6 +17,7 @@ package newcmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -31,8 +32,9 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo}); err != nil {
-		//revive:disable:error-strings // This error message is user facing.
+	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{Info: programInfo})
+	if err != nil {
+		//revive:disable-next-line:error-strings // This error message is user facing.
 		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)
 	}
 
