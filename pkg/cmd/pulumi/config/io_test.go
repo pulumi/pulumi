@@ -543,7 +543,7 @@ func TestParseConfigKey(t *testing.T) {
 			name:    "path segments with colons",
 			input:   "mynamespace:mykey.segment1:suffix",
 			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1:suffix"),
 		},
 		{
 			name:    "non-path segments with colons fail to parse",
@@ -558,16 +558,46 @@ func TestParseConfigKey(t *testing.T) {
 			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
 		},
 		{
+			name:    "invalid path with colon before bracket",
+			input:   "mynamespace:my:key[\"segment\"]",
+			path:    true,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+		{
 			name:    "key paths",
 			input:   "mynamespace:mykey[\"segment1:suffix\"]",
 			path:    true,
 			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
 		},
 		{
+			name:    "bracket as top-level path segment",
+			input:   "mynamespace:[\"foo\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "[\"foo\"]"),
+		},
+		{
 			name:    "invalid path",
 			input:   "mynamespace:.segment1",
 			path:    true,
 			wantKey: config.MustMakeKey("mynamespace", ".segment1"),
+		},
+		{
+			name:    "path with multiple brackets",
+			input:   "mynamespace:mykey[\"segment1\"][\"segment2\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1\"][\"segment2\"]"),
+		},
+		{
+			name:    "empty segment in path",
+			input:   "mynamespace:mykey..segment",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey..segment"),
+		},
+		{
+			name:    "old-style key as non-path",
+			input:   "aws:config:region.value",
+			path:    false,
+			wantKey: config.MustMakeKey("aws", "region.value"),
 		},
 	}
 
