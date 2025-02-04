@@ -11,9 +11,9 @@ following kinds of plugins:
   [providers](providers) for more) expose a [standardized gRPC
   interface](pulumirpc.ResourceProvider) for managing resources (such as those
   in an AWS or GCP cloud).
-* *Language plugins* host programs written in a particular language, allowing
-  the engine to invoke Pulumi programs without having to understand the
-  specifics of their implementation.
+* [*Language plugins*](languages) host programs written in a particular
+  language, allowing the engine to invoke Pulumi programs without having to
+  understand the specifics of their implementation.
 * *Analyzer plugins* are used to analyze Pulumi programs for potential issues
   before they are executed. Analyzers underpin [CrossGuard, Pulumi's Policy as
   Code](https://www.pulumi.com/docs/using-pulumi/crossguard/) product.
