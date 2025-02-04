@@ -55,6 +55,9 @@ rm dotnet-sdk.rb
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
+> [!NOTE] There are multiple binaries contained in this repository, specifically the Pulumi CLI (under `./pkg/cmd`), and the language plugins (under `./sdk/<language>` ).
+Each binary must be built separately via its own Make targets, but the targets follow the regular set described below.
+
 We build Pulumi in `$PULUMI_ROOT`, which defaults to `$HOME/.pulumi-dev`. If you would like to build Pulumi in another location, you do so by setting `$PULUMI_ROOT`.
 
 ```bash
@@ -71,9 +74,12 @@ ulimit -n 5000
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
 1. `make ensure`, which restores/installs any build dependencies
-1. `make dist`, which just builds and installs the Pulumi CLI
+1. `make build install`, which builds and installs the specified binary at the specified `PULUMI_ROOT`'s `bin` folder
+1. `make dist`, which just builds and installs the specified binary
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
+
+
 
 We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
