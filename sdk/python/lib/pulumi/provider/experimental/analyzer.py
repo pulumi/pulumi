@@ -86,10 +86,25 @@ class Analyzer:
         spec.loader.exec_module(module_type)
         return module_type
 
+    def get_annotations(self, o: Any) -> dict[str, Any]:
+        if sys.version_info >= (3, 10):
+            # Only available in 3.10 and later
+            return inspect.get_annotations(o)
+        else:
+            # On Python 3.9 and older, __annotations__ is not guaranteed to be
+            # present. Additionally, if the class has no annotations, and it is
+            # a subclass, it will return the annotations of the parent
+            # https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+            if isinstance(o, type):
+                return o.__dict__.get("__annotations__", {})
+            else:
+                return getattr(o, "__annotations__", {})
+
     def analyze_component(
         self, component: type[ComponentResource]
     ) -> ComponentDefinition:
-        args = component.__init__.__annotations__.get("args", None)
+        ann = self.get_annotations(component.__init__)
+        args = ann.get("args", None)
         if not args:
             raise Exception(
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
@@ -118,9 +133,9 @@ class Analyzer:
                 "bits": SchemaProperty(type=PropertyType.INTEGER, optional=True)
             }
         """
-        if not hasattr(typ, "__annotations__"):
-            return {}
-        return {k: self.analyze_property(v) for k, v in typ.__annotations__.items()}
+        return {
+            k: self.analyze_property(v) for k, v in self.get_annotations(typ).items()
+        }
 
     def analyze_property(
         self, arg: type, optional: Optional[bool] = None
