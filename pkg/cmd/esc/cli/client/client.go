@@ -157,19 +157,13 @@ type Client interface {
 
 	// RotateEnvironment will rotate credentials in an environment.
 	// If rotationPaths is non-empty, will only rotate credentials at those paths.
-	// It also evaluates the environment projectName/envName in org orgName and returns the ID of the opened
-	// environment. The opened environment will be available for the indicated duration, after which it
-	// will expire.
-	//
-	// If the environment contains errors, the open will fail with diagnostics.
 	RotateEnvironment(
 		ctx context.Context,
 		orgName string,
 		projectName string,
 		envName string,
-		duration time.Duration,
 		rotationPaths []string,
-	) (string, []EnvironmentDiagnostic, error)
+	) ([]EnvironmentDiagnostic, error)
 
 	// CheckYAMLEnvironment checks the given environment YAML for errors within the context of org orgName.
 	//
@@ -637,9 +631,8 @@ func (pc *client) RotateEnvironment(
 	orgName string,
 	projectName string,
 	envName string,
-	duration time.Duration,
 	rotationPaths []string,
-) (string, []EnvironmentDiagnostic, error) {
+) ([]EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/rotate", orgName, projectName, envName)
 
 	reqObj := struct {
@@ -648,26 +641,21 @@ func (pc *client) RotateEnvironment(
 		Paths: rotationPaths,
 	}
 
-	queryObj := struct {
-		Duration string `url:"duration"`
-	}{
-		Duration: duration.String(),
-	}
 	var resp struct {
 		ID string `json:"id"`
 	}
 	var errResp EnvironmentErrorResponse
-	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, reqObj, &resp, httpCallOptions{
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, reqObj, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
 		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
-			return "", diags.Diagnostics, nil
+			return diags.Diagnostics, nil
 		}
-		return "", nil, err
+		return nil, err
 	}
-	return resp.ID, nil, nil
+	return nil, nil
 }
 
 func (pc *client) CheckYAMLEnvironment(

@@ -507,24 +507,19 @@ func TestOpenEnvironment(t *testing.T) {
 func TestRotateEnvironment(t *testing.T) {
 	rotationPaths := []string{"a.b", "c"}
 	t.Run("OK", func(t *testing.T) {
-		const expectedID = "open-id"
-		duration := 2 * time.Hour
 		expectedBody := "{\"Paths\":[\"a.b\",\"c\"]}"
 
 		client := newTestClient(t, http.MethodPost, "/api/esc/environments/test-org/test-project/test-env/rotate", func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
-
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			assert.Equal(t, expectedBody, string(body))
 
-			err = json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
+			err = json.NewEncoder(w).Encode(map[string]any{})
 			require.NoError(t, err)
 		})
 
-		id, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", duration, rotationPaths)
+		diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		require.NoError(t, err)
-		assert.Equal(t, expectedID, id)
 		assert.Empty(t, diags)
 	})
 
@@ -559,7 +554,7 @@ func TestRotateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", 2*time.Hour, rotationPaths)
+		diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		require.NoError(t, err)
 		assert.Equal(t, expected, diags)
 	})
@@ -575,7 +570,7 @@ func TestRotateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", 2*time.Hour, rotationPaths)
+		_, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		assert.ErrorContains(t, err, "not found")
 	})
 }
