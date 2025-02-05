@@ -89,13 +89,14 @@ class ComplexType(ObjectType):
     def from_definition(
         type_def: TypeDefinition,
     ) -> "ComplexType":
-        type_def.properties
         return ComplexType(
             type=BuiltinType.OBJECT,
             properties={
                 k: Property.from_definition(v) for k, v in type_def.properties.items()
             },
-            required=[],
+            required=[
+                k for k, prop in type_def.properties.items() if not prop.optional
+            ],
             description=type_def.description,
         )
 

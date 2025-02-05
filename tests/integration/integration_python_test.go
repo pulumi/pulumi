@@ -1894,24 +1894,26 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	// Check the complex types
 	expectedTypesJSON := `{
 		"provider:index:Complex": {
-	      "properties": {
-	        "complexStr": {
-	          "type": "string"
-	        },
-	        "nested": {
-	          "$ref": "#/types/provider:index:Nested"
-	        }
-	      },
-	      "type": "object"
-	    },
-	    "provider:index:Nested": {
-	      "properties": {
-	        "nestedStr": {
-	          "type": "string"
-	        }
-	      },
-	      "type": "object"
-	    }
+			"properties": {
+				"complexStr": {
+					"type": "string"
+				},
+				"nested": {
+					"$ref": "#/types/provider:index:Nested"
+				}
+			},
+			"type": "object",
+			"required": ["complexStr", "nested"]
+		},
+		"provider:index:Nested": {
+			"properties": {
+				"nestedStr": {
+					"type": "string"
+				}
+			},
+			"type": "object",
+			"required": ["nestedStr"]
+		}
 	}`
 	expectedTypes := make(map[string]interface{})
 	types := schema["types"].(map[string]interface{})
