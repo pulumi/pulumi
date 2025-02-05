@@ -146,7 +146,7 @@ func isPreconfiguredEmptyStack(
 
 	// Can stackConfig satisfy the config requirements of templateConfig?
 	for templateKey, templateVal := range templateConfig {
-		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(templateKey, false)
+		parsedTemplateKey, parseErr := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, templateKey, false)
 		if parseErr != nil {
 			contract.IgnoreError(parseErr)
 			return false
@@ -187,7 +187,7 @@ func promptForConfig(
 	// the project name will be prepended.
 	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
 	for k, v := range templateConfig {
-		parsedKey, parseErr := cmdConfig.ParseConfigKey(k, false)
+		parsedKey, parseErr := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, k, false)
 		if parseErr != nil {
 			return nil, parseErr
 		}
@@ -310,7 +310,7 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := cmdConfig.ParseConfigKey(kvp[0], path)
+		key, err := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, kvp[0], path)
 		if err != nil {
 			return nil, err
 		}

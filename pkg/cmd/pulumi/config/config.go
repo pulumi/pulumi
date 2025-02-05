@@ -290,7 +290,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			key, err := ParseConfigKey(args[0], path)
+			key, err := ParseConfigKey(ws, args[0], path)
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
@@ -349,7 +349,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			key, err := ParseConfigKey(args[0], path)
+			key, err := ParseConfigKey(ws, args[0], path)
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
@@ -417,7 +417,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			}
 
 			for _, arg := range args {
-				key, err := ParseConfigKey(arg, path)
+				key, err := ParseConfigKey(ws, arg, path)
 				if err != nil {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
@@ -636,7 +636,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 	if loadProjectStack == nil {
 		loadProjectStack = cmdStack.LoadProjectStack
 	}
-	key, err := ParseConfigKey(args[0], c.Path)
+	key, err := ParseConfigKey(pkgWorkspace.Instance, args[0], c.Path)
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
 	}
