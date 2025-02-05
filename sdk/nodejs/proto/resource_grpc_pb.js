@@ -294,7 +294,9 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
-  registerPackage: {
+  // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+// Multiple requests are idempotent and guaranteed to return the same result.
+registerPackage: {
     path: '/pulumirpc.ResourceMonitor/RegisterPackage',
     requestStream: false,
     responseStream: false,

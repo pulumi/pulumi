@@ -34,6 +34,8 @@ type ResourceMonitorClient interface {
 	RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(ctx context.Context, in *RegisterPackageRequest, opts ...grpc.CallOption) (*RegisterPackageResponse, error)
 }
 
@@ -173,6 +175,8 @@ type ResourceMonitorServer interface {
 	RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(context.Context, *Callback) (*emptypb.Empty, error)
+	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error)
 	mustEmbedUnimplementedResourceMonitorServer()
 }

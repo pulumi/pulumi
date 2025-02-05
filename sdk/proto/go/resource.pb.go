@@ -201,7 +201,7 @@ type ReadResourceRequest struct {
 	PluginDownloadURL       string            `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                                     // the server url of the provider to use when servicing this request.
 	PluginChecksums         map[string][]byte `protobuf:"bytes,15,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map of checksums of the provider to use when servicing this request.
 	SourcePosition          *SourcePosition   `protobuf:"bytes,14,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                                           // the optional source position of the user code that initiated the read.
-	PackageRef              string            `protobuf:"bytes,16,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterProviderRequest.
+	PackageRef              string            `protobuf:"bytes,16,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterPackageRequest.
 }
 
 func (x *ReadResourceRequest) Reset() {
@@ -442,7 +442,7 @@ type RegisterResourceRequest struct {
 	SourcePosition          *SourcePosition `protobuf:"bytes,29,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                    // the optional source position of the user code that initiated the register.
 	Transforms              []*Callback     `protobuf:"bytes,31,rep,name=transforms,proto3" json:"transforms,omitempty"`                            // a list of transforms to apply to the resource before registering it.
 	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
-	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterProviderRequest.
+	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -874,7 +874,7 @@ type ResourceInvokeRequest struct {
 	PluginDownloadURL string            `protobuf:"bytes,6,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                                     // an optional reference to the provider url to use for this invoke.
 	PluginChecksums   map[string][]byte `protobuf:"bytes,8,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map of checksums expected for the provider plugin.
 	SourcePosition    *SourcePosition   `protobuf:"bytes,7,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                                           // the optional source position of the user code that initiated the invoke.
-	PackageRef        string            `protobuf:"bytes,9,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterProviderRequest.
+	PackageRef        string            `protobuf:"bytes,9,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterPackageRequest.
 }
 
 func (x *ResourceInvokeRequest) Reset() {
@@ -985,7 +985,7 @@ type ResourceCallRequest struct {
 	PluginDownloadURL string                                               `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                                     // the pluginDownloadURL of the provider to use when servicing this request.
 	PluginChecksums   map[string][]byte                                    `protobuf:"bytes,16,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map of checksums of the provider to use when servicing this request.
 	SourcePosition    *SourcePosition                                      `protobuf:"bytes,15,opt,name=sourcePosition,proto3" json:"sourcePosition,omitempty"`                                                                                           // the optional source position of the user code that initiated the call.
-	PackageRef        string                                               `protobuf:"bytes,17,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterProviderRequest.
+	PackageRef        string                                               `protobuf:"bytes,17,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                                   // a reference from RegisterPackageRequest.
 }
 
 func (x *ResourceCallRequest) Reset() {
@@ -1662,6 +1662,8 @@ type RegisterPackageResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The UUID package reference for this registered package.
+	//
+	// Lifecycle methods accept this reference in the 'packageRef' field.
 	Ref string `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
 }
 
