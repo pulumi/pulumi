@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -68,6 +69,11 @@ func TestGetPermalink(t *testing.T) {
 
 func TestUpdatePlans(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18459]: This test should be reenabled on windows once we fix the flakyness
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on Windows due to flakiness")
+	}
 
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
