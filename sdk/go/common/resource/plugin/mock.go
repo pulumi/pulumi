@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema"
 )
 
 type MockHost struct {
@@ -159,6 +160,7 @@ type MockProvider struct {
 	HandshakeF          func(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 	ParameterizeF       func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
 	GetSchemaF          func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
+	GetSchemaPackageInfoF     func(context.Context, GetSchemaRequest) (*schema.PackageInfo, error)
 	CheckConfigF        func(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
 	DiffConfigF         func(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
 	ConfigureF          func(context.Context, ConfigureRequest) (ConfigureResponse, error)
@@ -215,6 +217,13 @@ func (m *MockProvider) GetSchema(ctx context.Context, req GetSchemaRequest) (Get
 		return m.GetSchemaF(ctx, req)
 	}
 	return GetSchemaResponse{}, errors.New("GetSchema not implemented")
+}
+
+func (m *MockProvider) GetSchemaPackageInfo(ctx context.Context, req GetSchemaRequest) (*schema.PackageInfo, error) {
+	if m.GetSchemaPackageInfoF != nil {
+		return m.GetSchemaPackageInfoF(ctx, req)
+	}
+	return nil, errors.New("GetSchemaPackageInfo not implemented")
 }
 
 func (m *MockProvider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {

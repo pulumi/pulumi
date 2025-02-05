@@ -14,6 +14,8 @@
 
 import { Input, Inputs } from "../output";
 import * as resource from "../resource";
+import * as schema from "../proto/codegen/schema/schema_pb";
+
 
 /**
  * {@link CheckResult} represents the results of a call to
@@ -193,6 +195,13 @@ export interface Provider {
      * @returns A promise that resolves to the JSON-encoded schema string.
      */
     getSchema?: () => Promise<string>;
+
+    /**
+     * Gets the package info for this provider's package.
+     *
+     * @returns A promise that resolves to the package info.
+     */
+    getSchemaPackageInfo?: () => Promise<schema.PackageInfo>;
 
     /**
      * Validates that the given property bag is valid for a resource of the

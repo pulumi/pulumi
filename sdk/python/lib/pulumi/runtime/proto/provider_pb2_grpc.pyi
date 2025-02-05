@@ -21,6 +21,7 @@ import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
+import pulumi.codegen.schema.schema_pb2
 import pulumi.plugin_pb2
 import pulumi.provider_pb2
 
@@ -79,6 +80,11 @@ class ResourceProviderStub:
         pulumi.provider_pb2.GetSchemaResponse,
     ]
     """GetSchema fetches the schema for this resource provider."""
+    GetSchemaPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.GetSchemaRequest,
+        pulumi.codegen.schema.schema_pb2.PackageInfo,
+    ]
+    """GetSchemaPackageInfo tries to find the package info for the given package and version."""
     CheckConfig: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CheckRequest,
         pulumi.provider_pb2.CheckResponse,
@@ -342,6 +348,13 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.GetSchemaResponse:
         """GetSchema fetches the schema for this resource provider."""
+    
+    def GetSchemaPackageInfo(
+        self,
+        request: pulumi.provider_pb2.GetSchemaRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.codegen.schema.schema_pb2.PackageInfo:
+        """GetSchemaPackageInfo tries to find the package info for the given package and version."""
     
     def CheckConfig(
         self,

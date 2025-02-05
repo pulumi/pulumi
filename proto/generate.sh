@@ -108,6 +108,7 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     python3 -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --mypy_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" --mypy_grpc_out="$TEMP_DIR" $PROTO_FILES && \
     sed -i "s/^from pulumi import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$TEMP_DIR"/pulumi/*.py && \
     sed -i "s/^from pulumi.codegen import \([^ ]*\)_pb2 as \([^ ]*\)$/from .codegen import \1_pb2 as \2/" "$TEMP_DIR"/pulumi/*.py && \
+    sed -i "s/^from pulumi.codegen.schema import \([^ ]*\)_pb2 as \([^ ]*\)$/from .codegen.schema import \1_pb2 as \2/" "$TEMP_DIR"/pulumi/*.py && \
     sed -i "s/^import grpc$/import grpc\nimport grpc.aio\nimport typing/" "$TEMP_DIR"/pulumi/*.pyi && \
     sed -i "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$TEMP_DIR"/pulumi/*.pyi && \
     sed -i "s/@abc.abstractmethod//" "$TEMP_DIR"/pulumi/*.pyi && \

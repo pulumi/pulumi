@@ -1,0 +1,212 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package pulumirpc.codegen;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema";
+
+// PackageInfo is a descripition of a Pulumi Package
+message PackageInfo {
+  // The unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
+  string name = 1;
+  // The human-friendly display name of the package
+  optional string display_name = 2;
+  // The version of the package. The version must be valid semver
+  optional string version = 3;
+  // The description of the package. Descriptions are interpreted as Markdown
+  optional string description = 4;
+  // The list of keywords associated with the package if any
+  repeated string keywords = 5;
+  // The URL to the package's homepage
+  optional string homepage = 6;
+  // The license under which the package is distributed
+  optional string license = 7;
+  // Freeform text attribution of derived work, if required
+  optional string attribution = 8;
+  // The URL to the package's repository
+  optional string repository = 9;
+  // The URL to the package's logo
+  optional string logo_url = 10;
+  // The URL to use when downloading the provider plugin binary
+  optional string plugin_download_url = 11;
+  // The name of the person or organization that published the package
+  optional string publisher = 12;
+  // Format metadata about this package
+  optional Meta meta = 13;
+  // The provider type for this package
+  optional ResourceSpec provider = 14;
+  // Additional language-specific data about the package
+  map<string, bytes> language = 15;
+  // AN optional object to define parameterization for the package
+  optional Parameterization parameterization = 16;
+  // A list of allowed package names in addition to the name property
+  repeated string allowed_package_names = 17;
+}
+
+message Parameterization {
+  // The unqualified name of the plugin to be parameterized.
+  string plugin_name = 1;
+  // The version of the plugin to be parameterized. The version must be valid semver
+  string plugin_version = 2;
+  // The parameter for the provider
+  bytes parameter = 3;
+}
+
+message BaseProvider {
+}
+
+message Meta {
+  // A regex that is used by the importer to extract a module name from the module portion of
+  // a type token. Packages that use the module format \"namespace1/namespace2/.../namespaceN\"
+  // do not need to specify a format. The regex must define one capturing group that contains
+  // the module name, which must be formatted as \"namespace1/namespace2/...namespaceN\"
+  optional string module_format = 1;
+  // Write the package to support the pack command
+  bool support_pack = 2;
+}
+
+// A reference to the type.
+message TypeSpec {
+  // Indicates that when used as an input, this type does not accept eventual values.
+  bool plain = 1;
+  oneof type {
+    // A reference to a primitive type.
+    string primitive_type = 2;
+    // A reference to an array type.
+    TypeList array_type = 3;
+    // A reference to a map type.
+    TypeMap map_type = 4;
+    // A reference to a type by its name.
+    Ref ref = 5;
+    // A reference to a union type.
+    UnionType union = 6;
+  }
+}
+
+// A referenced type
+message Ref {
+  // The path to the schema file
+  optional string schema_path = 1;
+  // The name of the type
+  optional string type_path = 2;
+}
+
+message TypeList {
+  // An array of elements
+  TypeSpec type = 1;
+}
+
+message TypeMap {
+  // A map of elements
+ TypeSpec type = 1;
+}
+
+message PropertySpec {
+  // The typespec of the property
+  TypeSpec type_spec = 1;
+  // The description of the property if any. Interpreted as Markdown
+  optional string description = 2;
+  // The constant value for the property. Must be assignable to the type of the property.
+  optional Value const = 3;
+  // The default value for the property if any.  Must by assignable to the type of the property.
+  optional Value default = 4;
+  // Additional information about the property's default value if any.
+  optional DefaultInfo default_info = 5;
+  // Indicates whether a property is deprecated.
+  optional string deprecation_message = 6;
+  // Additional language-specific data about the property
+  map<string, string> language = 7;
+  // Indicates whether the property is secret.
+  bool secret = 8;
+  // Indicates whether the property should be replaced on changes.
+  bool replace_on_changes = 9;
+  // Indicates whether the provider will replace the resource when this property is changed.
+  bool will_replace_on_changes = 10;
+}
+
+// Describes an object type
+message ObjectTypeSpec {
+  // The description of the type if any
+  optional string description = 1;
+  // A map of property name to property spec that describes the objects properties
+  map<string, PropertySpec> properties = 2;
+  // The type of the object
+  optional string type = 3;
+  // A list of names of an object typ's required properties. These properties must be set for inputs and will always be set for outputs.
+  repeated string required = 4;
+  // Additional language-specific data about the object type
+  map<string, string> language = 5;
+  // Indicates whether the type is an overlay provided by the package
+  bool is_overlay = 6;
+  // A list of languages that the overlay supports
+  repeated string overlay_supported_languages = 7;
+}
+
+message ResourceSpec {
+  // The object type spec that describes the resource
+  ObjectTypeSpec object_type_spec = 1;
+  // A list of the names of the resource's required input properties.
+  repeated string required_inputs = 2;
+  // An optional object type spec that describes additional inputs that may be necessary to get an existing resource.
+  // If this is unset only an ID is necessary
+  optional ObjectTypeSpec state_inputs = 3;
+  // The list of aliases for the resource
+  repeated Alias aliases = 4;
+  // Indicates whether the resource is deprecated
+  optional string deprecation_message = 5;
+  // Indicates whether the resource is a component.
+  bool is_component = 6;
+  // A map of method name to function token that describes the resource's method set
+  map<string, string> methods = 7;
+}
+
+message Alias {
+  // The name of the alias
+  optional string name = 1;
+  // The project portion of the alias
+  optional string project = 2;
+  // The type portion of the alias
+  optional string type = 3;
+}
+
+message Value {
+  oneof kind {
+    double number_value = 1;
+    string string_value = 2;
+    bool bool_value = 3;
+  }
+}
+
+message UnionType {
+  // Indicates that the value may be one of the listed types
+  repeated TypeSpec one_of = 1;
+  // Informs the consumer of an alternative schema based on the value associated with it
+  optional Discriminator discriminator = 2;
+}
+
+message Discriminator {
+  // The name of the property in the payload that will hold the discriminator value
+  string property_name = 1;
+  // An optional object to hold mappings between payload values and schema names or references
+  map<string, string> mapping = 2;
+}
+
+message DefaultInfo {
+  // A set of environment variables to probe for a default value
+  repeated string environment = 1;
+  // Additional language-specific data about the default value
+  map<string, string> language = 2;
+}

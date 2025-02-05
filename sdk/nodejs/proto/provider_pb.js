@@ -17,6 +17,8 @@ var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var pulumi_plugin_pb = require('./plugin_pb.js');
 goog.object.extend(proto, pulumi_plugin_pb);
+var pulumi_codegen_schema_schema_pb = require('./codegen/schema/schema_pb.js');
+goog.object.extend(proto, pulumi_codegen_schema_schema_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');

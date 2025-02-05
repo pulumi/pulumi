@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema"
 )
 
 // The package name for the NodeJS dynamic provider.
@@ -509,6 +510,18 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 		return GetSchemaResponse{}, err
 	}
 	return GetSchemaResponse{[]byte(resp.GetSchema())}, nil
+}
+
+func (p *provider) GetSchemaPackageInfo(ctx context.Context, req GetSchemaRequest) (*schema.PackageInfo, error) {
+	resp, err := p.clientRaw.GetSchemaPackageInfo(p.requestContext(), &pulumirpc.GetSchemaRequest{
+		Version:        req.Version,
+		SubpackageName: req.SubpackageName,
+	})
+	if err != nil {
+		return &schema.PackageInfo{}, err
+	}
+
+	return resp, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.

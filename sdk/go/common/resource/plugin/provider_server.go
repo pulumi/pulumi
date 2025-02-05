@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen/schema"
 )
 
 type providerServer struct {
@@ -196,6 +197,29 @@ func (p *providerServer) GetSchema(ctx context.Context,
 		return nil, err
 	}
 	return &pulumirpc.GetSchemaResponse{Schema: string(schema.Schema)}, nil
+}
+
+func (p *providerServer) GetSchemaPackageInfo(ctx context.Context,
+	req *pulumirpc.GetSchemaRequest,
+) (*schema.PackageInfo, error) {
+	var subpackageVersion *semver.Version
+	if req.SubpackageVersion != "" {
+		v, err := semver.ParseTolerant(req.SubpackageVersion)
+		if err != nil {
+			return nil, err
+		}
+		subpackageVersion = &v
+	}
+
+	packageInfo, err := p.provider.GetSchemaPackageInfo(ctx, GetSchemaRequest{
+		Version:           req.Version,
+		SubpackageName:    req.SubpackageName,
+		SubpackageVersion: subpackageVersion,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return packageInfo, nil
 }
 
 func (p *providerServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
