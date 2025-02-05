@@ -99,7 +99,7 @@ def test_analyze_component_empty():
 
 
 def test_analyze_component_plain_types():
-    class Args:
+    class Args(TypedDict):
         input_int: int
         input_str: str
         input_float: float
@@ -144,11 +144,11 @@ def test_analyze_component_plain_types():
 
 
 def test_analyze_component_complex_type():
-    class ComplexType:
+    class ComplexType(TypedDict):
         value: pulumi.Input[str]
         optional_value: Optional[pulumi.Input[int]]
 
-    class Args:
+    class Args(TypedDict):
         some_complex_type: pulumi.Input[ComplexType]
 
     class Component(pulumi.ComponentResource):
@@ -191,10 +191,10 @@ def test_analyze_component_complex_type():
 
 
 def test_analyze_component_self_recursive_complex_type():
-    class RecursiveType:
+    class RecursiveType(TypedDict):
         rec: Optional[pulumi.Input["RecursiveType"]]
 
-    class Args:
+    class Args(TypedDict):
         rec: pulumi.Input[RecursiveType]
 
     class Component(pulumi.ComponentResource):
@@ -230,13 +230,13 @@ def test_analyze_component_self_recursive_complex_type():
 
 
 def test_analyze_component_mutually_recursive_complex_types_inline():
-    class RecursiveTypeA:
+    class RecursiveTypeA(TypedDict):
         b: Optional[pulumi.Input["RecursiveTypeB"]]
 
-    class RecursiveTypeB:
+    class RecursiveTypeB(TypedDict):
         a: Optional[pulumi.Input[RecursiveTypeA]]
 
-    class Args:
+    class Args(TypedDict):
         rec: pulumi.Input[RecursiveTypeA]
 
     class Component(pulumi.ComponentResource):
