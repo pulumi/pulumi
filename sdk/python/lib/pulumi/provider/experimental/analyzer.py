@@ -28,7 +28,6 @@ from typing import (
     get_origin,
 )
 
-from ... import log
 from ...output import Output
 from ...resource import ComponentResource
 from .component import (
@@ -46,7 +45,10 @@ _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
 class TypeNotFoundError(Exception):
     def __init__(self, name: str):
         self.name = name
-        super().__init__(f"Type '{name}' not found")
+        super().__init__(
+            f"Could not find the type '{name}'. "
+            + "Ensure it is defined in your source code or is imported."
+        )
 
 
 class Analyzer:
@@ -67,20 +69,16 @@ class Analyzer:
             components.update(self.analyze_file(file_path))
 
         # Look for any forward references we could not resolve in the first
-        # pass. This can happen when using mutually recursive types.
-        # With https://peps.python.org/pep-0649/ we should be able to let
+        # pass. This happens for types that are only ever referenced in
+        # ForwardRefs.
+        # With https://peps.python.org/pep-0649/ we might be able to let
         # Python handle this for us.
-        # This is a best effort attempt that handles common cases, but it is
-        # possible to construct types we can't resolve.
         for name, type_def in [*self.unresolved_forward_refs.items()]:
-            try:
-                a = self.find_type(path, type_def.name)
-                (properties, properties_mapping) = self.analyze_type(a)
-                type_def.properties = properties
-                type_def.properties_mapping = properties_mapping
-                del self.unresolved_forward_refs[name]
-            except TypeNotFoundError as e:
-                log.warn(f"Could not resolve forward reference {name}: {e}")
+            a = self.find_type(path, type_def.name)
+            (properties, properties_mapping) = self.analyze_type(a)
+            type_def.properties = properties
+            type_def.properties_mapping = properties_mapping
+            del self.unresolved_forward_refs[name]
 
         return (components, self.type_definitions)
 
@@ -229,7 +227,7 @@ class Analyzer:
                 # TypeDefiniton for it, and a return a PropertyDefinition that
                 # references it. We also add it to the list of unresolved
                 # forward references, so that we can come back to it after the
-                # full analysis is done.
+                # analysis is done.
                 type_def = TypeDefinition(
                     name=name,
                     type="object",

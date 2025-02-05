@@ -230,15 +230,6 @@ def test_analyze_component_self_recursive_complex_type():
 
 
 def test_analyze_component_mutually_recursive_complex_types_inline():
-    # We are somewhat limited in the forward references that we can resolve.
-    # This test works becuase `RecursiveTypeB` is referenced in the Component's
-    # outputs. If it was only referenced using forward references, we would not
-    # be able to analyse it's types.
-    #
-    # Part of the problem is that this test uses inline types. We do a slightly
-    # better job in test_analyze_component_mutually_recursive_complex_types_file
-    # where we load the component from disk and can do a 2nd pass to attempt
-    # to find the referenced types.
     class RecursiveTypeA:
         b: Optional[pulumi.Input["RecursiveTypeB"]]
 
@@ -250,8 +241,13 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
 
     class Component(pulumi.ComponentResource):
         rec: pulumi.Output[RecursiveTypeB]
-        # Using a forward ref instead here causes the test to fail.
         # rec: pulumi.Output["RecursiveTypeB"]
+        # Using a forward ref instead here causes the test to fail because we
+        # would never encounter the type as we walk the tree of types that
+        # starts with the Component.
+        # When doing full analysis via Analyser.analyze, we can handle this case.
+        # See test_analyze_component_mutually_recursive_complex_types_file for
+        # an example of this.
 
         def __init__(self, args: Args): ...
 
