@@ -112,10 +112,15 @@ output name {
 func TestLanguageConvertSmoke(t *testing.T) {
 	t.Parallel()
 
-	for _, runtime := range Runtimes {
-		runtime := runtime
-		t.Run(runtime, func(t *testing.T) {
+	for _, rt := range Runtimes {
+		rt := rt
+		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
+
+			// TODO[pulumi/pulumi#18451]: Reenable this test
+			if rt == "java" && runtime.GOOS == "windows" {
+				t.Skip("the java test is very flaky on windows")
+			}
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
@@ -128,7 +133,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
 				"pulumi", "convert", "--strict",
-				"--language", Languages[runtime], "--from", "pcl", "--out", "out")
+				"--language", Languages[rt], "--from", "pcl", "--out", "out")
 			e.CWD = filepath.Join(e.RootPath, "out")
 			e.RunCommand("pulumi", "stack", "init", "test")
 
@@ -143,10 +148,15 @@ func TestLanguageConvertSmoke(t *testing.T) {
 func TestLanguageConvertLenientSmoke(t *testing.T) {
 	t.Parallel()
 
-	for _, runtime := range Runtimes {
-		runtime := runtime
-		t.Run(runtime, func(t *testing.T) {
+	for _, rt := range Runtimes {
+		rt := rt
+		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
+
+			// TODO[pulumi/pulumi#18451]: Reenable this test
+			if rt == "java" && runtime.GOOS == "windows" {
+				t.Skip("the java test is very flaky on windows")
+			}
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
@@ -159,7 +169,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
 				"pulumi", "convert", "--generate-only",
-				"--language", Languages[runtime], "--from", "pcl", "--out", "out")
+				"--language", Languages[rt], "--from", "pcl", "--out", "out")
 			// We don't want care about running this program because it _will_ be incorrect.
 		})
 	}
