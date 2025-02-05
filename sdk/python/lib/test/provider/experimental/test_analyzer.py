@@ -17,7 +17,12 @@ from typing import Any, Optional, TypedDict, Union
 
 import pulumi
 from pulumi.provider.experimental.metadata import Metadata
-from pulumi.provider.experimental.analyzer import Analyzer, unwrap_input, unwrap_output
+from pulumi.provider.experimental.analyzer import (
+    Analyzer,
+    TypeNotFoundError,
+    unwrap_input,
+    unwrap_output,
+)
 from pulumi.provider.experimental.component import (
     ComponentDefinition,
     PropertyDefinition,
@@ -188,6 +193,19 @@ def test_analyze_component_complex_type():
             },
         )
     }
+
+
+def test_analyze_bad_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(Path(Path(__file__).parent, "testdata", "bad-type"))
+        assert False, "expected an exception"
+    except TypeNotFoundError as e:
+        assert (
+            str(e)
+            == "Could not find the type 'DoesntExist'. Ensure it is defined in your source code or is imported."
+        )
 
 
 def test_analyze_component_self_recursive_complex_type():
