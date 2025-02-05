@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Filter __internal keys when calling providers DiffConfig

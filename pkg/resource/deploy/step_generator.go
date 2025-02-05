@@ -1776,9 +1776,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 	diff, err := newProv.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
 		URN:           newRef.URN(),
-		OldInputs:     oldRes.Inputs,
+		OldInputs:     providers.FilterProviderConfig(oldRes.Inputs),
 		OldOutputs:    oldRes.Outputs,
-		NewInputs:     newRes.Inputs,
+		NewInputs:     providers.FilterProviderConfig(newRes.Inputs),
 		AllowUnknowns: true,
 	})
 	if err != nil {
