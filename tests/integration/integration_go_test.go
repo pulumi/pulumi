@@ -1264,14 +1264,15 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
-	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random")
+	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
 
-	assert.True(t, e.PathExists("sdks/random/go.mod"))
-	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/random/go.mod"))
+	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
+	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/netapp-cloudmanager/go.mod"))
 	assert.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3", packageMod.Module.Mod.Path)
+	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25",
+		packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
 	assert.NoError(t, err)
@@ -1279,13 +1280,17 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	assert.NoError(t, err)
 
 	containsRename := false
+	containedRenames := make([]string, len(gomod.Replace))
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3" {
+		if r.New.Path == "./sdks/netapp-cloudmanager" &&
+			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {
 			containsRename = true
 		}
+		containedRenames = append(containedRenames, r.Old.Path+" => "+r.New.Path)
 	}
 
-	assert.True(t, containsRename)
+	assert.True(t, containsRename,
+		fmt.Sprintf("expected go.mod to contain a replace for the package.  Contains: %v", containedRenames))
 }
 
 //nolint:paralleltest // mutates environment
