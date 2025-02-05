@@ -48,13 +48,23 @@ def test_analyze_component():
         description="Component doc string",
         inputs={
             "algorithm": PropertyDefinition(type=PropertyType.STRING),
-            "ecdsa_curve": PropertyDefinition(type=PropertyType.STRING, optional=True),
+            "ecdsaCurve": PropertyDefinition(type=PropertyType.STRING, optional=True),
             "bits": PropertyDefinition(type=PropertyType.INTEGER, optional=True),
+        },
+        inputs_mapping={
+            "algorithm": "algorithm",
+            "ecdsaCurve": "ecdsa_curve",
+            "bits": "bits",
         },
         outputs={
             "pem": PropertyDefinition(type=PropertyType.STRING),
-            "private_key": PropertyDefinition(type=PropertyType.STRING),
-            "ca_cert": PropertyDefinition(type=PropertyType.STRING),
+            "privateKey": PropertyDefinition(type=PropertyType.STRING),
+            "caCert": PropertyDefinition(type=PropertyType.STRING),
+        },
+        outputs_mapping={
+            "pem": "pem",
+            "privateKey": "private_key",
+            "caCert": "ca_cert",
         },
     )
 
@@ -81,7 +91,9 @@ def test_analyze_component_empty():
     component = analyzer.analyze_component(Empty)
     assert component == ComponentDefinition(
         inputs={},
+        inputs_mapping={},
         outputs={},
+        outputs_mapping={},
     )
 
 
@@ -104,16 +116,28 @@ def test_analyze_component_plain_types():
     component = analyzer.analyze_component(Empty)
     assert component == ComponentDefinition(
         inputs={
-            "input_int": PropertyDefinition(type=PropertyType.INTEGER),
-            "input_str": PropertyDefinition(type=PropertyType.STRING),
-            "input_float": PropertyDefinition(type=PropertyType.NUMBER),
-            "input_bool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "inputInt": PropertyDefinition(type=PropertyType.INTEGER),
+            "inputStr": PropertyDefinition(type=PropertyType.STRING),
+            "inputFloat": PropertyDefinition(type=PropertyType.NUMBER),
+            "inputBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+        },
+        inputs_mapping={
+            "inputInt": "input_int",
+            "inputStr": "input_str",
+            "inputFloat": "input_float",
+            "inputBool": "input_bool",
         },
         outputs={
-            "output_int": PropertyDefinition(type=PropertyType.INTEGER),
-            "output_str": PropertyDefinition(type=PropertyType.STRING),
-            "output_float": PropertyDefinition(type=PropertyType.NUMBER),
-            "output_bool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "outputInt": PropertyDefinition(type=PropertyType.INTEGER),
+            "outputStr": PropertyDefinition(type=PropertyType.STRING),
+            "outputFloat": PropertyDefinition(type=PropertyType.NUMBER),
+            "outputBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+        },
+        outputs_mapping={
+            "outputInt": "output_int",
+            "outputStr": "output_str",
+            "outputFloat": "output_float",
+            "outputBool": "output_bool",
         },
     )
 
@@ -135,15 +159,17 @@ def test_analyze_component_complex_type():
     component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         inputs={
-            "some_complex_type": PropertyDefinition(
+            "someComplexType": PropertyDefinition(
                 ref="#/types/my-component:index:ComplexType"
             ),
         },
+        inputs_mapping={"someComplexType": "some_complex_type"},
         outputs={
-            "complex_output": PropertyDefinition(
+            "complexOutput": PropertyDefinition(
                 ref="#/types/my-component:index:ComplexType"
             )
         },
+        outputs_mapping={"complexOutput": "complex_output"},
     )
     assert analyzer.type_definitions == {
         "ComplexType": TypeDefinition(
@@ -151,9 +177,13 @@ def test_analyze_component_complex_type():
             type="object",
             properties={
                 "value": PropertyDefinition(type=PropertyType.STRING),
-                "optional_value": PropertyDefinition(
+                "optionalValue": PropertyDefinition(
                     type=PropertyType.INTEGER, optional=True
                 ),
+            },
+            properties_mapping={
+                "value": "value",
+                "optionalValue": "optional_value",
             },
         )
     }

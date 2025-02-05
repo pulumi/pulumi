@@ -29,6 +29,7 @@ from .component import (
     TypeDefinition,
 )
 from .metadata import Metadata
+from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
 
@@ -113,33 +114,49 @@ class Analyzer:
             raise Exception(
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
             )
+
+        (inputs, inputs_mapping) = self.analyze_type(args)
+        (outputs, outputs_mapping) = self.analyze_type(component)
         return ComponentDefinition(
             description=component.__doc__.strip() if component.__doc__ else None,
-            inputs=self.analyze_type(args),
-            outputs=self.analyze_type(component),
+            inputs=inputs,
+            inputs_mapping=inputs_mapping,
+            outputs=outputs,
+            outputs_mapping=outputs_mapping,
         )
 
-    def analyze_type(self, typ: type) -> dict[str, PropertyDefinition]:
+    def analyze_type(
+        self, typ: type
+    ) -> tuple[dict[str, PropertyDefinition], dict[str, str]]:
         """
         analyze_type returns a dictionary of the properties of a type based on
-        its annotations.
+        its annotations, as well as a mapping from the schema property name
+        (camel cased) to the Python property name.
 
         For example for the class
 
             class SelfSignedCertificateArgs:
                 algorithm: pulumi.Output[str]
-                bits: Optional[pulumi.Output[int]]
+                rsa_bits: Optional[pulumi.Output[int]]
 
-        we get the following properties:
+        we get the following properties and mapping:
 
-            {
-                "algorithm": SchemaProperty(type=PropertyType.STRING, optional=False),
-                "bits": SchemaProperty(type=PropertyType.INTEGER, optional=True)
-            }
+            (
+                {
+                    "algorithm": SchemaProperty(type=PropertyType.STRING, optional=False),
+                    "rsaBits": SchemaProperty(type=PropertyType.INTEGER, optional=True)
+                },
+                {
+                    "algorithm": "algorithm",
+                    "rsaBits": "rsa_bits"
+                }
+            )
         """
+        ann = self.get_annotations(typ)
+        mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            k: self.analyze_property(v) for k, v in self.get_annotations(typ).items()
-        }
+            camel_case(k): self.analyze_property(v) for k, v in ann.items()
+        }, mapping
 
     def analyze_property(
         self, arg: type, optional: Optional[bool] = None
@@ -164,10 +181,12 @@ class Analyzer:
         elif isinstance(arg, dict):
             raise ValueError("dict types not yet implemented")
         elif not is_builtin(arg):
+            (properties, properties_mapping) = self.analyze_type(arg)
             type_def = TypeDefinition(
                 name=arg.__name__,
                 type="object",
-                properties=self.analyze_type(arg),
+                properties=properties,
+                properties_mapping=properties_mapping,
                 description=arg.__doc__,
             )
             self.type_definitions[type_def.name] = type_def

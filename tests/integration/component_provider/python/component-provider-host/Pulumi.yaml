@@ -8,5 +8,10 @@ plugins:
 resources:
   comp:
     type: provider:index:MyComponent
+    properties:
+      strInput: hello
+      optionalIntInput: 42
 outputs:
   urn: ${comp.urn}
+  strOutput: ${comp.strOutput}
+  optionalIntOutput: ${comp.optionalIntOutput}

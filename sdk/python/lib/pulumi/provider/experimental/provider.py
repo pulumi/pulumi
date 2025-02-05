@@ -14,12 +14,13 @@
 
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from ...output import Inputs
-from ...resource import ResourceOptions
+from ...output import Input, Inputs
+from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
 from .analyzer import Analyzer
+from .component import ComponentDefinition, TypeDefinition
 from .metadata import Metadata
 from .schema import generate_schema
 
@@ -35,16 +36,20 @@ class ComponentProvider(Provider):
     metadata: Metadata
     """The metadata for the provider, such as the name and version."""
 
+    _type_defs: dict[str, TypeDefinition]
+    _component_defs: dict[str, ComponentDefinition]
+
     def __init__(self, metadata: Metadata, path: Path) -> None:
         self.path = path
         self.metadata = metadata
         self.analyzer = Analyzer(self.metadata)
         (components, type_definitions) = self.analyzer.analyze(self.path)
-        self.components = components
+        self._component_defs = components
+        self._type_defs = type_definitions
         schema = generate_schema(
             metadata,
-            self.components,
-            type_definitions,
+            self._component_defs,
+            self._type_defs,
         )
         super().__init__(metadata.version, json.dumps(schema.to_json()))
 
@@ -58,9 +63,31 @@ class ComponentProvider(Provider):
         self.validate_resource_type(self.metadata.name, resource_type)
         component_name = resource_type.split(":")[-1]
         comp = self.analyzer.find_component(self.path, component_name)
+        # Use the component definitions to map the schema names to the Python
+        # names.
+        # TODO: Handle complex types, including multiple levels of nesting.
+        component_def = self._component_defs[component_name]
+        mapped_args = self.map_input_names(inputs, component_def.inputs_mapping)
         # ComponentResource's init signature is different from the derived class signature.
-        comp_instance = comp(name, {}, options)  # type: ignore
-        return ConstructResult(comp_instance.urn, {})
+        comp_instance = comp(name, mapped_args, options)  # type: ignore
+        return ConstructResult(
+            comp_instance.urn,
+            self.get_state(comp_instance, component_def.outputs_mapping),
+        )
+
+    def map_input_names(self, inputs: Inputs, mapping: dict[str, str]) -> Inputs:
+        r: dict[str, Input[Any]] = {}
+        for k, v in inputs.items():
+            r[mapping[k]] = v
+        return r
+
+    def get_state(
+        self, instance: ComponentResource, mapping: dict[str, str]
+    ) -> dict[str, Any]:
+        state: dict[str, Any] = {}
+        for k, v in mapping.items():
+            state[k] = getattr(instance, v, None)
+        return state
 
     @staticmethod
     def validate_resource_type(pkg_name: str, resource_type: str) -> None:
