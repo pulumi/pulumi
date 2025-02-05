@@ -61,6 +61,28 @@ To update the snapshots for generated code, run the tests with the `PULUMI_ACCEP
 PULUMI_ACCEPT=1 go test github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 -count 1
 ```
 
+## Assertions in Language Conformance Tests
+
+Each language conformance TestRun Assert (l[123]-some-test-name) will take in the following arguments:
+
+    - projectDirectory string
+    - err error, any errors that occurred during the test run.
+    - snap *deploy.Snapshot, the [snapshot](state-snapshots) of a run.
+    - changes display.ResourceChanges, any resource changes as a result of the run
+
+### Stack Resource
+
+The stack of the test run itself will have the URN `pulumi:pulumi:Stack`, and
+outputs of this resource are the outputs of the pulumi program written.
+
+You can get this resource specifically (it is **not* always the first
+Resource!) by requring a single resource with the helper function
+[](tests.RequireSingleResource) like so:
+
+```
+r := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+```
+
 ## Architecture
 
 Test providers are defined in

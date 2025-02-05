@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -543,7 +544,7 @@ func TestParseConfigKey(t *testing.T) {
 			name:    "path segments with colons",
 			input:   "mynamespace:mykey.segment1:suffix",
 			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1:suffix"),
 		},
 		{
 			name:    "non-path segments with colons fail to parse",
@@ -558,10 +559,22 @@ func TestParseConfigKey(t *testing.T) {
 			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
 		},
 		{
+			name:    "invalid path with colon before bracket",
+			input:   "mynamespace:my:key[\"segment\"]",
+			path:    true,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+		{
 			name:    "key paths",
 			input:   "mynamespace:mykey[\"segment1:suffix\"]",
 			path:    true,
 			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+		},
+		{
+			name:    "bracket as top-level path segment",
+			input:   "mynamespace:[\"foo\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "[\"foo\"]"),
 		},
 		{
 			name:    "invalid path",
@@ -569,13 +582,69 @@ func TestParseConfigKey(t *testing.T) {
 			path:    true,
 			wantKey: config.MustMakeKey("mynamespace", ".segment1"),
 		},
+		{
+			name:    "path with multiple brackets",
+			input:   "mynamespace:mykey[\"segment1\"][\"segment2\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1\"][\"segment2\"]"),
+		},
+		{
+			name:    "empty segment in path",
+			input:   "mynamespace:mykey..segment",
+			path:    true,
+			wantKey: config.MustMakeKey("mynamespace", "mykey..segment"),
+		},
+		{
+			name:    "old-style key as non-path",
+			input:   "aws:config:region.value",
+			path:    false,
+			wantKey: config.MustMakeKey("aws", "region.value"),
+		},
+		{
+			name:    "no namespace uses project name",
+			input:   "mykey",
+			path:    false,
+			wantKey: config.MustMakeKey("test-project", "mykey"),
+		},
+		{
+			name:    "no namespace with path segments",
+			input:   "mykey.segment1.segment2",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey.segment1.segment2"),
+		},
+		{
+			name:    "no namespace with brackets",
+			input:   "mykey[\"segment1\"]",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey[\"segment1\"]"),
+		},
+		{
+			name:    "no namespace with colon in path segment",
+			input:   "mykey.segment:with:colons",
+			path:    true,
+			wantKey: config.MustMakeKey("test-project", "mykey.segment:with:colons"),
+		},
+		{
+			name:    "no namespace with colon in non-path fails",
+			input:   "mykey:with:colons",
+			path:    false,
+			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+		},
+	}
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "test-project",
+			}, "/test/path", nil
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := ParseConfigKey(tt.input, tt.path)
+			got, err := ParseConfigKey(ws, tt.input, tt.path)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)

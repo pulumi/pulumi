@@ -1804,6 +1804,98 @@ func TestRefreshLegacyState(t *testing.T) {
 	assert.Equal(t, "http://example.com", prov.Inputs["pluginDownloadURL"].StringValue())
 }
 
+// This tests that we don't send __internal through to the provider instance itself
+func TestInternalFiltered(t *testing.T) {
+	t.Parallel()
+
+	internalKey := resource.PropertyKey("__internal")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					assert.NotContains(t, req.NewInputs, internalKey)
+					assert.NotContains(t, req.OldInputs, internalKey)
+					assert.NotContains(t, req.OldOutputs, internalKey)
+					return plugin.DiffResult{}, nil
+				},
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					assert.NotContains(t, req.News, internalKey)
+					assert.NotContains(t, req.Olds, internalKey)
+					return plugin.CheckConfigResponse{}, nil
+				},
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					assert.NotContains(t, req.Inputs, internalKey)
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.1.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					assert.NotContains(t, req.NewInputs, internalKey)
+					assert.NotContains(t, req.OldInputs, internalKey)
+					assert.NotContains(t, req.OldOutputs, internalKey)
+					return plugin.DiffResult{}, nil
+				},
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					assert.NotContains(t, req.News, internalKey)
+					assert.NotContains(t, req.Olds, internalKey)
+					return plugin.CheckConfigResponse{}, nil
+				},
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					assert.NotContains(t, req.Inputs, internalKey)
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	pkgAType := providers.MakeProviderType("pkgA")
+	providerVersion := "1.0.0"
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(pkgAType, "provA", true, deploytest.ResourceOptions{
+			Version: providerVersion,
+		})
+		assert.NoError(t, err)
+
+		provID := resp.ID
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(resp.URN, provID)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Version: providerVersion,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Change the version to trigger diffs and check we still don't get __internal keys
+	providerVersion = "1.1.0"
+	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+}
+
 // TestProviderSameStep tests that if we same step a provider it uses the old inputs from state, not the
 // inputs from the program.
 // https://github.com/pulumi/pulumi/pull/18411
@@ -1837,7 +1929,6 @@ func TestProviderSameStep(t *testing.T) {
 
 		return nil
 	})
-
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{

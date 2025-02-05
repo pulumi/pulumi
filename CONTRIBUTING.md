@@ -53,7 +53,7 @@ rm dotnet-sdk.rb
 
 ### Make build system
 
-We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
+We use `make` as our build system, so you'll want to install that as well, if you don't have it already. If you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
 
 > [!NOTE] There are multiple binaries contained in this repository, specifically the Pulumi CLI (under `./pkg/cmd`), and the language plugins (under `./sdk/<language>` ).
 Each binary must be built separately via its own Make targets, but the targets follow the regular set described below.
