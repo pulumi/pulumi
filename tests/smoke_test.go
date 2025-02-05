@@ -113,7 +113,6 @@ func TestLanguageConvertSmoke(t *testing.T) {
 	t.Parallel()
 
 	for _, rt := range Runtimes {
-		rt := rt
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
 
@@ -149,7 +148,6 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 	t.Parallel()
 
 	for _, rt := range Runtimes {
-		rt := rt
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
 
