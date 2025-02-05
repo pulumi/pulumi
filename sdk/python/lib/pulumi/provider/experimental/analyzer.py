@@ -28,6 +28,7 @@ from typing import (
     get_origin,
 )
 
+from ... import log
 from ...output import Output
 from ...resource import ComponentResource
 from .component import (
@@ -40,6 +41,12 @@ from .metadata import Metadata
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
+
+
+class TypeNotFoundError(Exception):
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(f"Type '{name}' not found")
 
 
 class Analyzer:
@@ -72,8 +79,8 @@ class Analyzer:
                 type_def.properties = properties
                 type_def.properties_mapping = properties_mapping
                 del self.unresolved_forward_refs[name]
-            except Exception:
-                pass
+            except TypeNotFoundError as e:
+                log.warn(f"Could not resolve forward reference {name}: {e}")
 
         return (components, self.type_definitions)
 
@@ -103,7 +110,7 @@ class Analyzer:
             comp = getattr(mod, name, None)
             if comp:
                 return comp
-        raise Exception(f"Could not find type {name}")
+        raise TypeNotFoundError(name)
 
     def load_module(self, file_path: Path) -> ModuleType:
         name = file_path.name.replace(".py", "")
