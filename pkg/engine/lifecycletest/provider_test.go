@@ -1860,4 +1860,5 @@ func TestProviderSameStep(t *testing.T) {
 	// in the presence of changed values but same_diff results.
 	prov := snap.Resources[0]
 	assert.Equal(t, "200", prov.Inputs["value"].StringValue())
+	assert.Equal(t, "100", prov.Outputs["value"].StringValue())
 }

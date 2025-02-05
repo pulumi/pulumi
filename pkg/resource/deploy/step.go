@@ -155,7 +155,9 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// We can only do this if the provider is actually a same, not a skipped create.
 	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
 		if s.Deployment() != nil {
-			// we use the _old_ state here because we want to ensure that the provider is registered under the
+			// We need to use the new state here (so that URN and ID are correct), but we want to use the old
+			// inputs. This ensures that providers that report changed inputs as NO_DIFF consistently see the
+			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
 			err := s.Deployment().SameProvider(st)
