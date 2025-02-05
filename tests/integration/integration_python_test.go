@@ -1919,6 +1919,34 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	require.Equal(t, expectedTypes, types)
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "provider"))
+			return nil
+		},
+		Dir: filepath.Join("component_provider", "python", "recursive-types"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+			require.Equal(t, "comp", urn.Name())
+			// map[rec:map[a:map[b:map[a:map[b:map[]]]]]
+			rec := stack.Outputs["rec"].(map[string]interface{})
+			rec, ok := rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			require.Equal(t, map[string]interface{}{}, rec)
+		},
+	})
+}
+
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 	// Add the core SDK to the requirements.txt file.

@@ -62,7 +62,7 @@ class ComponentProvider(Provider):
     ) -> ConstructResult:
         self.validate_resource_type(self.metadata.name, resource_type)
         component_name = resource_type.split(":")[-1]
-        comp = self.analyzer.find_component(self.path, component_name)
+        comp = self.analyzer.find_type(self.path, component_name)
         component_def = self._component_defs[component_name]
         mapped_args = self.map_inputs(inputs, component_def)
         # ComponentResource's init signature is different from the derived class signature.

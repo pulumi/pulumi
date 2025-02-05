@@ -18,7 +18,15 @@ import sys
 from collections.abc import Awaitable
 from pathlib import Path
 from types import ModuleType
-from typing import Any, ForwardRef, Optional, Union, get_args, get_origin
+from typing import (
+    Any,
+    ForwardRef,
+    Optional,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from ...output import Output
 from ...resource import ComponentResource
@@ -38,6 +46,7 @@ class Analyzer:
     def __init__(self, metadata: Metadata):
         self.metadata = metadata
         self.type_definitions: dict[str, TypeDefinition] = {}
+        self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
 
     def analyze(
         self, path: Path
@@ -49,6 +58,23 @@ class Analyzer:
         components: dict[str, ComponentDefinition] = {}
         for file_path in self.iter(path):
             components.update(self.analyze_file(file_path))
+
+        # Look for any forward references we could not resolve in the first
+        # pass. This can happen when using mutually recursive types.
+        # With https://peps.python.org/pep-0649/ we should be able to let
+        # Python handle this for us.
+        # This is a best effort attempt that handles common cases, but it is
+        # possible to construct types we can't resolve.
+        for name, type_def in [*self.unresolved_forward_refs.items()]:
+            try:
+                a = self.find_type(path, type_def.name)
+                (properties, properties_mapping) = self.analyze_type(a)
+                type_def.properties = properties
+                type_def.properties_mapping = properties_mapping
+                del self.unresolved_forward_refs[name]
+            except Exception:
+                pass
+
         return (components, self.type_definitions)
 
     def iter(self, path: Path):
@@ -66,7 +92,7 @@ class Analyzer:
                 components[name] = self.analyze_component(obj)
         return components
 
-    def find_component(self, path: Path, name: str) -> type[ComponentResource]:
+    def find_type(self, path: Path, name: str) -> type:
         """
         Find a component by name in the directory at `self.path`.
 
@@ -77,7 +103,7 @@ class Analyzer:
             comp = getattr(mod, name, None)
             if comp:
                 return comp
-        raise Exception(f"Could not find component {name}")
+        raise Exception(f"Could not find type {name}")
 
     def load_module(self, file_path: Path) -> ModuleType:
         name = file_path.name.replace(".py", "")
@@ -165,11 +191,12 @@ class Analyzer:
         analyze_property analyzes a single annotation and turns it into a SchemaProperty.
         """
         optional = optional if optional is not None else is_optional(arg)
-        unwrapped = None
-        ref = None
         if is_plain(arg):
             # TODO: handle plain types
-            unwrapped = arg
+            return PropertyDefinition(
+                type=py_type_to_property_type(arg),
+                optional=optional,
+            )
         elif is_input(arg):
             return self.analyze_property(unwrap_input(arg), optional=optional)
         elif is_output(arg):
@@ -180,16 +207,55 @@ class Analyzer:
             raise ValueError("list types not yet implemented")
         elif isinstance(arg, dict):
             raise ValueError("dict types not yet implemented")
+        elif is_forward_ref(arg):
+            name = cast(ForwardRef, arg).__forward_arg__
+            type_def = self.type_definitions.get(name)
+            if type_def:
+                # Forward ref to a type we saw before, return a reference to it.
+                ref = f"#/types/{self.metadata.name}:index:{name}"
+                return PropertyDefinition(
+                    ref=ref,
+                    optional=optional,
+                )
+            else:
+                # Forward ref to a type we haven't seen yet. We create an empty
+                # TypeDefiniton for it, and a return a PropertyDefinition that
+                # references it. We also add it to the list of unresolved
+                # forward references, so that we can come back to it after the
+                # full analysis is done.
+                type_def = TypeDefinition(
+                    name=name,
+                    type="object",
+                    properties={},
+                    properties_mapping={},
+                )
+                self.unresolved_forward_refs[name] = type_def
+                self.type_definitions[type_def.name] = type_def
+                ref = f"#/types/{self.metadata.name}:index:{type_def.name}"
+                return PropertyDefinition(
+                    ref=ref,
+                    optional=optional,
+                )
         elif not is_builtin(arg):
+            # We have a custom type, analyze it recursively. Immediately add the
+            # type definition to the list of type definitions, before calling
+            # `analyze_type`, so we can resolve recursive forward references.
+            name = arg.__name__
+            type_def = self.type_definitions.get(name)
+            if not type_def:
+                type_def = TypeDefinition(
+                    name=name,
+                    type="object",
+                    properties={},
+                    properties_mapping={},
+                    description=arg.__doc__,
+                )
+                self.type_definitions[type_def.name] = type_def
             (properties, properties_mapping) = self.analyze_type(arg)
-            type_def = TypeDefinition(
-                name=arg.__name__,
-                type="object",
-                properties=properties,
-                properties_mapping=properties_mapping,
-                description=arg.__doc__,
-            )
-            self.type_definitions[type_def.name] = type_def
+            type_def.properties = properties
+            type_def.properties_mapping = properties_mapping
+            if type_def.name in self.unresolved_forward_refs:
+                del self.unresolved_forward_refs[type_def.name]
             ref = f"#/types/{self.metadata.name}:index:{type_def.name}"
             return PropertyDefinition(
                 ref=ref,
@@ -197,12 +263,6 @@ class Analyzer:
             )
         else:
             raise ValueError(f"unsupported type {arg}")
-
-        return PropertyDefinition(
-            type=py_type_to_property_type(unwrapped),
-            ref=ref,
-            optional=optional,
-        )
 
 
 def is_in_venv(path: Path):

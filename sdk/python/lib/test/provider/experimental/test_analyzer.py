@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from typing import Any, Optional, TypedDict, Union
 
 import pulumi
@@ -185,6 +186,157 @@ def test_analyze_component_complex_type():
                 "value": "value",
                 "optionalValue": "optional_value",
             },
+        )
+    }
+
+
+def test_analyze_component_self_recursive_complex_type():
+    class RecursiveType:
+        rec: Optional[pulumi.Input["RecursiveType"]]
+
+    class Args:
+        rec: pulumi.Input[RecursiveType]
+
+    class Component(pulumi.ComponentResource):
+        rec: pulumi.Output[RecursiveType]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert analyzer.type_definitions == {
+        "RecursiveType": TypeDefinition(
+            name="RecursiveType",
+            type="object",
+            properties={
+                "rec": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveType",
+                )
+            },
+            properties_mapping={"rec": "rec"},
+        ),
+    }
+    assert component == ComponentDefinition(
+        inputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
+        },
+        inputs_mapping={"rec": "rec"},
+        outputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
+        },
+        outputs_mapping={"rec": "rec"},
+    )
+
+
+def test_analyze_component_mutually_recursive_complex_types_inline():
+    # We are somewhat limited in the forward references that we can resolve.
+    # This test works becuase `RecursiveTypeB` is referenced in the Component's
+    # outputs. If it was only referenced using forward references, we would not
+    # be able to analyse it's types.
+    #
+    # Part of the problem is that this test uses inline types. We do a slightly
+    # better job in test_analyze_component_mutually_recursive_complex_types_file
+    # where we load the component from disk and can do a 2nd pass to attempt
+    # to find the referenced types.
+    class RecursiveTypeA:
+        b: Optional[pulumi.Input["RecursiveTypeB"]]
+
+    class RecursiveTypeB:
+        a: Optional[pulumi.Input[RecursiveTypeA]]
+
+    class Args:
+        rec: pulumi.Input[RecursiveTypeA]
+
+    class Component(pulumi.ComponentResource):
+        rec: pulumi.Output[RecursiveTypeB]
+        # Using a forward ref instead here causes the test to fail.
+        # rec: pulumi.Output["RecursiveTypeB"]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert analyzer.type_definitions == {
+        "RecursiveTypeA": TypeDefinition(
+            name="RecursiveTypeA",
+            type="object",
+            properties={
+                "b": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeB",
+                )
+            },
+            properties_mapping={"b": "b"},
+        ),
+        "RecursiveTypeB": TypeDefinition(
+            name="RecursiveTypeB",
+            type="object",
+            properties={
+                "a": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeA",
+                )
+            },
+            properties_mapping={"a": "a"},
+        ),
+    }
+    assert component == ComponentDefinition(
+        inputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeA")
+        },
+        inputs_mapping={"rec": "rec"},
+        outputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeB")
+        },
+        outputs_mapping={"rec": "rec"},
+    )
+
+
+def test_analyze_component_mutually_recursive_complex_types_file():
+    analyzer = Analyzer(metadata)
+
+    (components, type_definitions) = analyzer.analyze(
+        Path(Path(__file__).parent, "testdata", "mutually-recursive")
+    )
+    assert type_definitions == {
+        "RecursiveTypeA": TypeDefinition(
+            name="RecursiveTypeA",
+            type="object",
+            properties={
+                "b": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeB",
+                )
+            },
+            properties_mapping={"b": "b"},
+        ),
+        "RecursiveTypeB": TypeDefinition(
+            name="RecursiveTypeB",
+            type="object",
+            properties={
+                "a": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeA",
+                )
+            },
+            properties_mapping={"a": "a"},
+        ),
+    }
+    assert components == {
+        "Component": ComponentDefinition(
+            inputs={
+                "rec": PropertyDefinition(
+                    ref="#/types/my-component:index:RecursiveTypeA"
+                )
+            },
+            inputs_mapping={"rec": "rec"},
+            outputs={
+                "rec": PropertyDefinition(
+                    ref="#/types/my-component:index:RecursiveTypeA"
+                )
+            },
+            outputs_mapping={"rec": "rec"},
         )
     }
 
