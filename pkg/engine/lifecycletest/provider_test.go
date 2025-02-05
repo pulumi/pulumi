@@ -1895,3 +1895,61 @@ func TestInternalFiltered(t *testing.T) {
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 }
+
+// TestProviderSameStep tests that if we same step a provider it uses the old inputs from state, not the
+// inputs from the program.
+// https://github.com/pulumi/pulumi/pull/18411
+func TestProviderSameStep(t *testing.T) {
+	t.Parallel()
+
+	providerConfigValue := resource.NewStringProperty("100")
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					assert.Equal(t, "100", req.OldInputs["value"].StringValue())
+					assert.Equal(t, "200", req.NewInputs["value"].StringValue())
+					return plugin.DiffConfigResponse{Changes: plugin.DiffNone}, nil
+				},
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					assert.Equal(t, "100", req.Inputs["value"].StringValue())
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:providers:pkg", "provA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"value": providerConfigValue,
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+
+	// Run the first update to create the base state
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Run another update where we send a new value for the provider config, but diff reports no diff so we
+	// should same step
+	providerConfigValue = resource.NewStringProperty("200")
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// But we should still save the new inputs, this is odd but consistent with same steps for other resources
+	// in the presence of changed values but same_diff results.
+	prov := snap.Resources[0]
+	assert.Equal(t, "200", prov.Inputs["value"].StringValue())
+	assert.Equal(t, "100", prov.Outputs["value"].StringValue())
+}
