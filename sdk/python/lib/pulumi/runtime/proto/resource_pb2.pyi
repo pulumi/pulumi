@@ -166,7 +166,7 @@ class ReadResourceRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the read."""
     packageRef: builtins.str
-    """a reference from RegisterProviderRequest."""
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -430,7 +430,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     supportsResultReporting: builtins.bool
     """true if the request is from an SDK that supports the result field in the response."""
     packageRef: builtins.str
-    """a reference from RegisterProviderRequest."""
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -629,7 +629,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the invoke."""
     packageRef: builtins.str
-    """a reference from RegisterProviderRequest."""
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -733,7 +733,7 @@ class ResourceCallRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the call."""
     packageRef: builtins.str
-    """a reference from RegisterProviderRequest."""
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -1069,7 +1069,10 @@ class RegisterPackageResponse(google.protobuf.message.Message):
 
     REF_FIELD_NUMBER: builtins.int
     ref: builtins.str
-    """The UUID package reference for this registered package."""
+    """The UUID package reference for this registered package.
+
+    Lifecycle methods accept this reference in the 'packageRef' field.
+    """
     def __init__(
         self,
         *,

@@ -131,7 +131,9 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def RegisterPackage(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+        Multiple requests are idempotent and guaranteed to return the same result.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')

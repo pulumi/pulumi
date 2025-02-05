@@ -71,6 +71,9 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
     ]
+    """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+    Multiple requests are idempotent and guaranteed to return the same result.
+    """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
@@ -136,6 +139,9 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.resource_pb2.RegisterPackageRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.RegisterPackageResponse: ...
+    ) -> pulumi.resource_pb2.RegisterPackageResponse:
+        """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+        Multiple requests are idempotent and guaranteed to return the same result.
+        """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
