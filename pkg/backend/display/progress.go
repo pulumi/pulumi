@@ -579,7 +579,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteMandatoryPolicyViolations := display.printPolicies()
 
 	// Render the actual diagnostics streams (warnings, errors, etc).
-	hasError := display.printDiagnostics()
+	display.printDiagnostics()
 
 	// Print output variables; this comes last, prior to the summary, since these are the final
 	// outputs after having run all of the above.
@@ -588,7 +588,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Print a summary of resource operations unless there were mandatory policy violations.
 	// In that case, we want to abruptly terminate the display so as not to confuse.
 	if !wroteMandatoryPolicyViolations {
-		display.printSummary(hasError)
+		display.printSummary()
 	}
 }
 
@@ -646,9 +646,7 @@ func (display *ProgressDisplay) printResourceDiffs() {
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
 // resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
-func (display *ProgressDisplay) printDiagnostics() bool {
-	hasError := false
-
+func (display *ProgressDisplay) printDiagnostics() {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
@@ -678,11 +676,6 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			for _, v := range payloads {
 				if v.Ephemeral {
 					continue
-				}
-
-				if v.Severity == diag.Error {
-					// An error occurred and the display should consider this a failure.
-					hasError = true
 				}
 
 				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
@@ -728,8 +721,6 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
 	}
-
-	return hasError
 }
 
 type policyPackSummary struct {
@@ -922,13 +913,13 @@ func (display *ProgressDisplay) printOutputs() {
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
-func (display *ProgressDisplay) printSummary(hasError bool) {
+func (display *ProgressDisplay) printSummary() {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
 	if display.summaryEventPayload == nil {
 		return
 	}
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, hasError, false, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
 	display.println(msg)
 }
 
