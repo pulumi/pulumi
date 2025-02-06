@@ -4647,7 +4647,7 @@ func packageName(pkg *schema.Package) string {
 		info = goInfo
 	}
 	if info.RootPackageName != "" {
-		return strings.ReplaceAll(info.RootPackageName, "-", "")
+		return goPackage(info.RootPackageName)
 	}
 	root, err := packageRoot(pkg.Reference())
 	contract.AssertNoErrorf(err, "We generated the ref from a pkg, so we know its a valid ref")
