@@ -132,7 +132,7 @@ class Analyzer:
 
     def load_module(self, file_path: Path) -> ModuleType:
         name = file_path.name.replace(".py", "")
-        rel_path = file_path.relative_to(Path.cwd())
+        rel_path = file_path.resolve().relative_to(Path.cwd().resolve())
         spec = importlib.util.spec_from_file_location(str(rel_path), file_path)
         if not spec:
             raise Exception(f"Could not load module spec at {file_path}")
