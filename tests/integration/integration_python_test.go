@@ -1865,6 +1865,9 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	e.ImportDirectory(dir)
 	installPythonProviderDependencies(t, e.RootPath)
 
+	// Run the command from a different, sibling, directory. This ensures that
+	// get-package does not rely on the current working directory.
+	e.CWD = t.TempDir()
 	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
 	var schema map[string]interface{}
