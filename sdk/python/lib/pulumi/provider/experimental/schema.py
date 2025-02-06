@@ -44,6 +44,7 @@ class Property:
     type: Optional[PropertyType]
     will_replace_on_changes: Optional[bool]
     items: Optional["Property"]
+    additional_properties: Optional["Property"]
     ref: Optional[str]
     description: Optional[str] = None
 
@@ -53,6 +54,9 @@ class Property:
             "type": self.type.value if self.type else None,
             "willReplaceOnChanges": self.will_replace_on_changes,
             "items": self.items.to_json() if self.items else None,
+            "additionalProperties": self.additional_properties.to_json()
+            if self.additional_properties
+            else None,
             "$ref": self.ref,
         }
 
@@ -63,6 +67,11 @@ class Property:
             type=property.type,
             will_replace_on_changes=False,
             items=Property.from_definition(property.items) if property.items else None,
+            additional_properties=Property.from_definition(
+                property.additional_properties
+            )
+            if property.additional_properties
+            else None,
             ref=property.ref,
         )
 

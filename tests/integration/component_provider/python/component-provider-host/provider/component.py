@@ -32,6 +32,7 @@ class Args(TypedDict):
     optional_int_input: Optional[pulumi.Input[int]]
     complex_input: Optional[pulumi.Input[Complex]]
     list_input: pulumi.Input[list[str]]
+    dict_input: pulumi.Input[dict[str, int]]
 
 
 class MyComponent(pulumi.ComponentResource):
@@ -39,6 +40,7 @@ class MyComponent(pulumi.ComponentResource):
     optional_int_output: pulumi.Output[Optional[int]]
     complex_output: pulumi.Output[Optional[Complex]]
     list_output: pulumi.Output[list[str]]
+    dict_output: pulumi.Output[dict[str, int]]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -60,5 +62,8 @@ class MyComponent(pulumi.ComponentResource):
         )
         self.list_output = pulumi.Output.from_input(args.get("list_input")).apply(
             lambda x: [y.upper() for y in x]
+        )
+        self.dict_output = pulumi.Output.from_input(args.get("dict_input")).apply(
+            lambda x: {k: v * 2 for k, v in x.items()}
         )
         self.register_outputs({})

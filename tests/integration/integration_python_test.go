@@ -1847,6 +1847,11 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			nested := complexOutput["nested"].(map[string]interface{})
 			require.Equal(t, "nested_str_value", nested["nestedStr"].(string))
 			require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
+			require.Equal(t, map[string]interface{}{
+				"a": float64(2),
+				"b": float64(4),
+				"c": float64(6),
+			}, stack.Outputs["dictOutput"])
 		},
 	})
 }
@@ -1881,9 +1886,15 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				"items": {
 					"type": "string"
 				}
+			},
+			"dictOutput": {
+				"type": "object",
+				"additionalProperties": {
+					"type": "integer"
+				}
 			}
 		},
-		"required": ["listOutput", "strOutput"],
+		"required": ["dictOutput", "listOutput", "strOutput"],
 		"inputProperties": {
 			"strInput": { "type": "string" },
 			"optionalIntInput": { "type": "integer" },
@@ -1893,9 +1904,15 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				"items": {
 					"type": "string"
 				}
+			},
+			"dictInput": {
+				"type": "object",
+				"additionalProperties": {
+					"type": "integer"
+				}
 			}
 		},
-		"requiredInputs": ["listInput", "strInput"]
+		"requiredInputs": ["dictInput", "listInput", "strInput"]
 	}
 	`
 	expected := make(map[string]interface{})
