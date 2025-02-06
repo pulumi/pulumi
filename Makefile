@@ -34,12 +34,12 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 # pkg/engine/lifecycletest for more information.
 LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
 
-ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
-.ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
+ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
+.make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
 	cd pkg && go mod download
 	cd tests && go mod download
-	@touch .ensure.phony
+	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
@@ -70,13 +70,13 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: build_proto build_display_wasm go.ensure
+build:: build_proto build_display_wasm .make/ensure/go
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
-build_display_wasm:: go.ensure
+build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
 
-install:: .ensure.phony go.ensure
+install:: .make/ensure/phony .make/ensure/go
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 build_debug::
@@ -104,7 +104,7 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_golang
+lint:: .make/ensure/golangci-lint lint_golang
 
 lint_fix:: lint_golang_fix
 
@@ -196,7 +196,7 @@ validate_codecov_yaml::
 name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
 # Here we take the second word, just the version
 version=$(word 2,$(subst !, ,$@))
-schema-%: curl.ensure jq.ensure
+schema-%: .make/ensure/curl .make/ensure/jq
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
 	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
