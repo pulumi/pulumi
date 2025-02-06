@@ -15,6 +15,10 @@ resources:
         - a
         - b
         - c
+      dictInput:
+        a: 1
+        b: 2
+        c: 3
       complexInput:
         complexStr: world
         nested:
@@ -25,3 +29,4 @@ outputs:
   optionalIntOutput: ${comp.optionalIntOutput}
   complexOutput: ${comp.complexOutput}
   listOutput: ${comp.listOutput}
+  dictOutput: ${comp.dictOutput}

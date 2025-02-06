@@ -20,6 +20,7 @@ from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.analyzer import (
     Analyzer,
     DuplicateTypeError,
+    InvalidMapKeyError,
     TypeNotFoundError,
     unwrap_input,
     unwrap_output,
@@ -155,7 +156,7 @@ def test_analyze_component_plain_types():
     )
 
 
-def test_analyze_list_plain():
+def test_analyze_list_simple():
     class Args(TypedDict):
         list_input: pulumi.Input[list[str]]
 
@@ -228,6 +229,110 @@ def test_analyze_list_complex():
                 "name": PropertyDefinition(
                     type=PropertyType.ARRAY,
                     items=PropertyDefinition(type=PropertyType.STRING),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+        )
+    }
+
+
+def test_analyze_dict_non_str_key():
+    class Args(TypedDict):
+        bad_dict: pulumi.Input[dict[int, str]]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    try:
+        analyzer.analyze_component(Component)
+    except InvalidMapKeyError as e:
+        assert str(e) == "map keys must be strings, got 'int' for 'Args.bad_dict'"
+
+
+def test_analyze_dict_simple():
+    class Args(TypedDict):
+        dict_input: pulumi.Input[dict[str, int]]
+
+    class Component(pulumi.ComponentResource):
+        dict_output: Optional[pulumi.Output[dict[str, Optional[int]]]]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "dictInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
+            )
+        },
+        inputs_mapping={"dictInput": "dict_input"},
+        outputs={
+            "dictOutput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, optional=True
+                ),
+                optional=True,
+            )
+        },
+        outputs_mapping={"dictOutput": "dict_output"},
+    )
+
+
+def test_analyze_dict_complex():
+    class ComplexType(TypedDict):
+        name: Optional[pulumi.Input[dict[str, int]]]
+
+    class Args(TypedDict):
+        dict_input: pulumi.Input[dict[str, ComplexType]]
+
+    class Component(pulumi.ComponentResource):
+        dict_output: Optional[pulumi.Output[dict[str, Optional[ComplexType]]]]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "dictInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    ref="#/types/my-component:index:ComplexType"
+                ),
+            )
+        },
+        inputs_mapping={"dictInput": "dict_input"},
+        outputs={
+            "dictOutput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    ref="#/types/my-component:index:ComplexType", optional=True
+                ),
+                optional=True,
+            )
+        },
+        outputs_mapping={"dictOutput": "dict_output"},
+    )
+    assert analyzer.type_definitions == {
+        "ComplexType": TypeDefinition(
+            name="ComplexType",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.OBJECT,
+                    additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
                     optional=True,
                 ),
             },

@@ -62,6 +62,16 @@ class DuplicateTypeError(Exception):
         )
 
 
+class InvalidMapKeyError(Exception):
+    def __init__(self, key_type: type, typ: type, property_name: str):
+        self.key = key_type
+        self.property = property_name
+        self.typ = typ
+        super().__init__(
+            f"map keys must be strings, got '{key_type.__name__}' for '{typ.__name__}.{property_name}'"
+        )
+
+
 class Analyzer:
     """
     Analyzer searches a directory for subclasses of `ComponentResource` and
@@ -242,13 +252,14 @@ class Analyzer:
         ann = self.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            camel_case(k): self.analyze_property(v, typ) for k, v in ann.items()
+            camel_case(k): self.analyze_property(v, typ, k) for k, v in ann.items()
         }, mapping
 
     def analyze_property(
         self,
         arg: type,
         typ: type,
+        name: str,
         optional: Optional[bool] = None,
     ) -> PropertyDefinition:
         """
@@ -256,6 +267,7 @@ class Analyzer:
 
         :param arg: the type of the property we are analyzing
         :param typ: the type this property belongs to
+        :param name: the name of the property
         :param optional: whether the property is optional or not
         """
         optional = optional if optional is not None else is_optional(arg)
@@ -266,19 +278,30 @@ class Analyzer:
                 optional=optional,
             )
         elif is_input(arg):
-            return self.analyze_property(unwrap_input(arg), typ, optional=optional)
+            return self.analyze_property(
+                unwrap_input(arg), typ, name, optional=optional
+            )
         elif is_output(arg):
-            return self.analyze_property(unwrap_output(arg), typ, optional=optional)
+            return self.analyze_property(
+                unwrap_output(arg), typ, name, optional=optional
+            )
         elif is_optional(arg):
-            return self.analyze_property(unwrap_optional(arg), typ, optional=True)
+            return self.analyze_property(unwrap_optional(arg), typ, name, optional=True)
         elif is_list(arg):
             args = get_args(arg)
-            items = self.analyze_property(args[0], typ)
+            items = self.analyze_property(args[0], typ, name)
             return PropertyDefinition(
                 type=PropertyType.ARRAY, optional=optional, items=items
             )
-        elif isinstance(arg, dict):
-            raise ValueError("dict types not yet implemented")
+        elif is_dict(arg):
+            args = get_args(arg)
+            if args[0] is not str:
+                raise InvalidMapKeyError(args[0], typ, name)
+            return PropertyDefinition(
+                type=PropertyType.OBJECT,
+                optional=optional,
+                additional_properties=self.analyze_property(args[1], typ, name),
+            )
         elif is_forward_ref(arg):
             name = cast(ForwardRef, arg).__forward_arg__
             type_def = self.type_definitions.get(name)
@@ -460,3 +483,9 @@ def is_list(typ: type) -> bool:
     if isinstance(typ, GenericAlias):
         typ = get_origin(typ)
     return typ is list
+
+
+def is_dict(typ: type) -> bool:
+    if isinstance(typ, GenericAlias):
+        typ = get_origin(typ)
+    return typ is dict

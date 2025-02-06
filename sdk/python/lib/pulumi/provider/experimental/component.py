@@ -33,6 +33,7 @@ class PropertyDefinition:
     ref: Optional[str] = None
     description: Optional[str] = None
     items: Optional["PropertyDefinition"] = None
+    additional_properties: Optional["PropertyDefinition"] = None
 
 
 @dataclass
