@@ -1,5 +1,1 @@
-runtime:
-  name: python
-  options:
-    toolchain: pip
-    virtualenv: venv
+runtime: python
