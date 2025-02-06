@@ -1,0 +1,4338 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "missing required properties: current",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected null, got object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "exactly one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "full-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 15,
+                        "column": 5,
+                        "byte": 227
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 26,
+                        "byte": 348
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 21,
+                            "byte": 243
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 267
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 22,
+                                        "byte": 280
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 17,
+                                            "column": 9,
+                                            "byte": 267
+                                        },
+                                        "end": {
+                                            "line": 17,
+                                            "column": 13,
+                                            "byte": 271
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 15,
+                                                "byte": 273
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 22,
+                                                "byte": 280
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        },
+                                        "literal": "update3"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 9,
+                                        "byte": 304
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 26,
+                                        "byte": 348
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current",
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 19,
+                                            "column": 9,
+                                            "byte": 304
+                                        },
+                                        "end": {
+                                            "line": 19,
+                                            "column": 16,
+                                            "byte": 311
+                                        }
+                                    },
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 9,
+                                            "byte": 331
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 17,
+                                            "byte": 339
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 19,
+                                                "column": 18,
+                                                "byte": 313
+                                            },
+                                            "end": {
+                                                "line": 19,
+                                                "column": 25,
+                                                "byte": 320
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    },
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 20,
+                                                "column": 19,
+                                                "byte": 341
+                                            },
+                                            "end": {
+                                                "line": 20,
+                                                "column": 26,
+                                                "byte": 348
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 23,
+                        "column": 5,
+                        "byte": 373
+                    },
+                    "end": {
+                        "line": 27,
+                        "column": 35,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 21,
+                            "byte": 389
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 9,
+                                        "byte": 413
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 19,
+                                        "byte": 423
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 25,
+                                            "column": 9,
+                                            "byte": 413
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 13,
+                                            "byte": 417
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 25,
+                                                "column": 15,
+                                                "byte": 419
+                                            },
+                                            "end": {
+                                                "line": 25,
+                                                "column": 19,
+                                                "byte": 423
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        },
+                                        "literal": "beep"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 27,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 35,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 27,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 17,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 27,
+                                                "column": 19,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 27,
+                                                "column": 35,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        },
+                                        "literal": "missing current!"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 30
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 26,
+                        "byte": 87
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 46
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 70
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 26,
+                                        "byte": 87
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 9,
+                                            "byte": 70
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 13,
+                                            "byte": 74
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 15,
+                                                "byte": 76
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 26,
+                                                "byte": 87
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        },
+                                        "literal": "hello world"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 112
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 25,
+                        "byte": 205
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 21,
+                            "byte": 128
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 9,
+                                        "byte": 152
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 22,
+                                        "byte": 165
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 9,
+                                            "byte": 152
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 13,
+                                            "byte": 156
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 15,
+                                                "byte": 158
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 22,
+                                                "byte": 165
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 189
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 25,
+                                        "byte": 205
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 9,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 16,
+                                            "byte": 196
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 18,
+                                                "byte": 198
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 25,
+                                                "byte": 205
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "full-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 26,
+                            "byte": 348
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 35,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 26,
+                            "byte": 87
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 25,
+                            "byte": 205
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "full-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "invalid-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "optional-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "partial-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "full-state",
+                "invalid-state",
+                "optional-state",
+                "partial-state"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "full-state": "[unknown]",
+        "invalid-state": "[unknown]",
+        "optional-state": "[unknown]",
+        "partial-state": "[unknown]"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "missing required properties: current",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected null, got object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "exactly one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "full-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 15,
+                        "column": 5,
+                        "byte": 227
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 26,
+                        "byte": 348
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update2"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 21,
+                            "byte": 243
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 267
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 22,
+                                        "byte": 280
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 17,
+                                            "column": 9,
+                                            "byte": 267
+                                        },
+                                        "end": {
+                                            "line": 17,
+                                            "column": 13,
+                                            "byte": 271
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 15,
+                                                "byte": 273
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 22,
+                                                "byte": 280
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        },
+                                        "literal": "update3"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 9,
+                                        "byte": 304
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 26,
+                                        "byte": 348
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current",
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 19,
+                                            "column": 9,
+                                            "byte": 304
+                                        },
+                                        "end": {
+                                            "line": 19,
+                                            "column": 16,
+                                            "byte": 311
+                                        }
+                                    },
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 9,
+                                            "byte": 331
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 17,
+                                            "byte": 339
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 19,
+                                                "column": 18,
+                                                "byte": 313
+                                            },
+                                            "end": {
+                                                "line": 19,
+                                                "column": 25,
+                                                "byte": 320
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    },
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 20,
+                                                "column": 19,
+                                                "byte": 341
+                                            },
+                                            "end": {
+                                                "line": 20,
+                                                "column": 26,
+                                                "byte": 348
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 23,
+                        "column": 5,
+                        "byte": 373
+                    },
+                    "end": {
+                        "line": 27,
+                        "column": 35,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 21,
+                            "byte": 389
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 9,
+                                        "byte": 413
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 19,
+                                        "byte": 423
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 25,
+                                            "column": 9,
+                                            "byte": 413
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 13,
+                                            "byte": 417
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 25,
+                                                "column": 15,
+                                                "byte": 419
+                                            },
+                                            "end": {
+                                                "line": 25,
+                                                "column": 19,
+                                                "byte": 423
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        },
+                                        "literal": "beep"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 27,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 35,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 27,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 17,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 27,
+                                                "column": 19,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 27,
+                                                "column": 35,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        },
+                                        "literal": "missing current!"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 30
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 26,
+                        "byte": 87
+                    }
+                },
+                "schema": {
+                    "type": "object"
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 46
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 70
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 26,
+                                        "byte": 87
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 9,
+                                            "byte": 70
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 13,
+                                            "byte": 74
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 15,
+                                                "byte": 76
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 26,
+                                                "byte": 87
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        },
+                                        "literal": "hello world"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 112
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 25,
+                        "byte": 205
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 21,
+                            "byte": 128
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 9,
+                                        "byte": 152
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 22,
+                                        "byte": 165
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 9,
+                                            "byte": 152
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 13,
+                                            "byte": 156
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 15,
+                                                "byte": 158
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 22,
+                                                "byte": 165
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 189
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 25,
+                                        "byte": 205
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 9,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 16,
+                                            "byte": 196
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 18,
+                                                "byte": 198
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 25,
+                                                "byte": 205
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "full-state": {
+                "value": {
+                    "current": {
+                        "value": "update2",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 5,
+                                    "byte": 227
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 26,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "value": "update1",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 5,
+                                    "byte": 227
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 26,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 26,
+                            "byte": 348
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 35,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "value": {},
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 26,
+                            "byte": 87
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "value": {
+                    "current": {
+                        "value": "update1",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 5,
+                                    "byte": 112
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 25,
+                            "byte": 205
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "full-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update2"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "invalid-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "optional-state": {
+                    "type": "object"
+                },
+                "partial-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "full-state",
+                "invalid-state",
+                "optional-state",
+                "partial-state"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "full-state": {
+            "current": "update2",
+            "previous": "update1"
+        },
+        "invalid-state": "[unknown]",
+        "optional-state": {},
+        "partial-state": {
+            "current": "update1"
+        }
+    },
+    "evalJSONRevealed": {
+        "full-state": {
+            "current": "update2",
+            "previous": "update1"
+        },
+        "invalid-state": "[unknown]",
+        "optional-state": {},
+        "partial-state": {
+            "current": "update1"
+        }
+    },
+    "rotateDiags": [
+        {
+            "Severity": 1,
+            "Summary": "missing required properties: current",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected null, got object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        },
+        {
+            "Severity": 1,
+            "Summary": "exactly one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "rotate-state",
+                "Start": {
+                    "Line": 27,
+                    "Column": 9,
+                    "Byte": 0
+                },
+                "End": {
+                    "Line": 27,
+                    "Column": 35,
+                    "Byte": 0
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-state\"][\"fn::rotate::echo\"].state"
+        }
+    ],
+    "rotate": {
+        "exprs": {
+            "full-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 15,
+                        "column": 5,
+                        "byte": 227
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 26,
+                        "byte": 348
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update3"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 21,
+                            "byte": 243
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 267
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 22,
+                                        "byte": 280
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 17,
+                                            "column": 9,
+                                            "byte": 267
+                                        },
+                                        "end": {
+                                            "line": 17,
+                                            "column": 13,
+                                            "byte": 271
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 15,
+                                                "byte": 273
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 22,
+                                                "byte": 280
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update3"
+                                        },
+                                        "literal": "update3"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 9,
+                                        "byte": 304
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 26,
+                                        "byte": 348
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current",
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 19,
+                                            "column": 9,
+                                            "byte": 304
+                                        },
+                                        "end": {
+                                            "line": 19,
+                                            "column": 16,
+                                            "byte": 311
+                                        }
+                                    },
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 9,
+                                            "byte": 331
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 17,
+                                            "byte": 339
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 19,
+                                                "column": 18,
+                                                "byte": 313
+                                            },
+                                            "end": {
+                                                "line": 19,
+                                                "column": 25,
+                                                "byte": 320
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    },
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 20,
+                                                "column": 19,
+                                                "byte": 341
+                                            },
+                                            "end": {
+                                                "line": 20,
+                                                "column": 26,
+                                                "byte": 348
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 23,
+                        "column": 5,
+                        "byte": 373
+                    },
+                    "end": {
+                        "line": 27,
+                        "column": 35,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 21,
+                            "byte": 389
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 9,
+                                        "byte": 413
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 19,
+                                        "byte": 423
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 25,
+                                            "column": 9,
+                                            "byte": 413
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 13,
+                                            "byte": 417
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 25,
+                                                "column": 15,
+                                                "byte": 419
+                                            },
+                                            "end": {
+                                                "line": 25,
+                                                "column": 19,
+                                                "byte": 423
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "beep"
+                                        },
+                                        "literal": "beep"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 27,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 35,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "previous": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "previous"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "previous": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 27,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 17,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "previous": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 27,
+                                                "column": 19,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 27,
+                                                "column": 35,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "missing current!"
+                                        },
+                                        "literal": "missing current!"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 30
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 26,
+                        "byte": 87
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "hello world"
+                        },
+                        "previous": {
+                            "type": "null"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 46
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 70
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 26,
+                                        "byte": 87
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 9,
+                                            "byte": 70
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 13,
+                                            "byte": 74
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 15,
+                                                "byte": 76
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 26,
+                                                "byte": 87
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello world"
+                                        },
+                                        "literal": "hello world"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "range": {
+                    "environment": "rotate-state",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 112
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 25,
+                        "byte": 205
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update2"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 21,
+                            "byte": 128
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 9,
+                                        "byte": 152
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 22,
+                                        "byte": 165
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 9,
+                                            "byte": 152
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 13,
+                                            "byte": 156
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 15,
+                                                "byte": 158
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 22,
+                                                "byte": 165
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update2"
+                                        },
+                                        "literal": "update2"
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 189
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 25,
+                                        "byte": 205
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "rotate-state",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 9,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 16,
+                                            "byte": 196
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 18,
+                                                "byte": 198
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 25,
+                                                "byte": 205
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "update1"
+                                        },
+                                        "literal": "update1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "full-state": {
+                "value": {
+                    "current": {
+                        "value": "update3",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 5,
+                                    "byte": 227
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 26,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "value": "update2",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 5,
+                                    "byte": 227
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 26,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 227
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 26,
+                            "byte": 348
+                        }
+                    }
+                }
+            },
+            "invalid-state": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 373
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 35,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "optional-state": {
+                "value": {
+                    "current": {
+                        "value": "hello world",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 30
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 26,
+                                    "byte": 87
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 30
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 26,
+                                    "byte": 87
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 30
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 26,
+                            "byte": 87
+                        }
+                    }
+                }
+            },
+            "partial-state": {
+                "value": {
+                    "current": {
+                        "value": "update2",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 5,
+                                    "byte": 112
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "value": "update1",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 5,
+                                    "byte": 112
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "rotate-state",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 112
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 25,
+                            "byte": 205
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "full-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update3"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "invalid-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "optional-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "hello world"
+                        },
+                        "previous": {
+                            "type": "null"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                },
+                "partial-state": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "update2"
+                        },
+                        "previous": {
+                            "type": "string",
+                            "const": "update1"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "full-state",
+                "invalid-state",
+                "optional-state",
+                "partial-state"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "rotate-state",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "rotate-state",
+                            "trace": {
+                                "def": {
+                                    "environment": "rotate-state",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "rotate-state",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "rotate-state"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "rotateJson": {
+        "full-state": {
+            "current": "update3",
+            "previous": "update2"
+        },
+        "invalid-state": "[unknown]",
+        "optional-state": {
+            "current": "hello world",
+            "previous": null
+        },
+        "partial-state": {
+            "current": "update2",
+            "previous": "update1"
+        }
+    },
+    "rotatePatches": [
+        {
+            "DocPath": "values[\"full-state\"][\"fn::rotate::echo\"].state",
+            "Replacement": {
+                "value": {
+                    "current": {
+                        "value": "update3",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 15,
+                                    "byte": 273
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 22,
+                                    "byte": 280
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "value": "update2",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 19,
+                                    "column": 18,
+                                    "byte": 313
+                                },
+                                "end": {
+                                    "line": 19,
+                                    "column": 25,
+                                    "byte": 320
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "DocPath": "values[\"optional-state\"][\"fn::rotate::echo\"].state",
+            "Replacement": {
+                "value": {
+                    "current": {
+                        "value": "hello world",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 15,
+                                    "byte": 76
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 26,
+                                    "byte": 87
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "trace": {
+                            "def": {
+                                "begin": {
+                                    "line": 0,
+                                    "column": 0,
+                                    "byte": 0
+                                },
+                                "end": {
+                                    "line": 0,
+                                    "column": 0,
+                                    "byte": 0
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "DocPath": "values[\"partial-state\"][\"fn::rotate::echo\"].state",
+            "Replacement": {
+                "value": {
+                    "current": {
+                        "value": "update2",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 15,
+                                    "byte": 158
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 22,
+                                    "byte": 165
+                                }
+                            }
+                        }
+                    },
+                    "previous": {
+                        "value": "update1",
+                        "trace": {
+                            "def": {
+                                "environment": "rotate-state",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 18,
+                                    "byte": 198
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

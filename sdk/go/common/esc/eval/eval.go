@@ -995,6 +995,7 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		e.errorf(repr.syntax(), "%v", err)
 	} else {
 		inputSchema, stateSchema, outputSchema := rotator.Schema()
+		stateSchema = schema.OneOf(stateSchema, schema.Null())
 		if err := inputSchema.Compile(); err != nil {
 			e.errorf(repr.syntax(), "internal error: invalid input schema (%v)", err)
 		} else {
@@ -1026,7 +1027,7 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		newState, err := rotator.Rotate(
 			e.ctx,
 			inputs.export("").Value.(map[string]esc.Value),
-			state.export("").Value.(map[string]esc.Value),
+			asObjectOrNil(state.export("").Value),
 			e.execContext,
 		)
 		if err != nil {
@@ -1050,7 +1051,7 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 	output, err := rotator.Open(
 		e.ctx,
 		inputs.export("").Value.(map[string]esc.Value),
-		state.export("").Value.(map[string]esc.Value),
+		asObjectOrNil(state.export("").Value),
 		e.execContext,
 	)
 	if err != nil {
@@ -1071,6 +1072,12 @@ func (e *evalContext) shouldRotate(docPath string) bool {
 		return true
 	}
 	return e.rotateDocPaths[docPath]
+}
+
+// cast to map[string]esc.Value, or nil
+func asObjectOrNil(v any) map[string]esc.Value {
+	cast, _ := v.(map[string]esc.Value)
+	return cast
 }
 
 // evaluateBuiltinJoin evaluates a call to the fn::join builtin.

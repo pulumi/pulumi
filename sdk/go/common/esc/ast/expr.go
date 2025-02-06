@@ -440,10 +440,10 @@ type RotateExpr struct {
 
 	Provider *StringExpr
 	Inputs   Expr
-	State    *ObjectExpr
+	State    Expr
 }
 
-func RotateSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr, provider *StringExpr, inputs Expr, state *ObjectExpr) *RotateExpr {
+func RotateSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr, provider *StringExpr, inputs Expr, state Expr) *RotateExpr {
 	return &RotateExpr{
 		builtinNode: builtin(node, name, args),
 		Provider:    provider,
@@ -452,7 +452,7 @@ func RotateSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr, provider
 	}
 }
 
-func Rotate(provider string, inputs, state *ObjectExpr) *RotateExpr {
+func Rotate(provider string, inputs, state Expr) *RotateExpr {
 	name, providerX := String("fn::rotate"), String(provider)
 
 	entries := []ObjectProperty{
@@ -744,7 +744,7 @@ func parseRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, sy
 		return RotateSyntax(node, name, args, nil, nil, nil), diags
 	}
 
-	var providerExpr, inputs, stateExpr Expr
+	var providerExpr, inputs, state Expr
 	var diags syntax.Diagnostics
 
 	for i := 0; i < len(obj.Entries); i++ {
@@ -756,7 +756,7 @@ func parseRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, sy
 		case "inputs":
 			inputs = kvp.Value
 		case "state":
-			stateExpr = kvp.Value
+			state = kvp.Value
 		}
 	}
 
@@ -773,9 +773,10 @@ func parseRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, sy
 		diags.Extend(ExprError(obj, "missing provider inputs ('inputs')"))
 	}
 
-	state, ok := stateExpr.(*ObjectExpr)
-	if !ok && state != nil {
-		diags.Extend(ExprError(stateExpr, "rotation state must be an object literal"))
+	if state == nil {
+		state = Null()
+	} else if _, ok := state.(*ObjectExpr); !ok {
+		diags.Extend(ExprError(state, "rotation state must be an object literal"))
 	}
 
 	return RotateSyntax(node, name, obj, provider, inputs, state), diags
@@ -791,7 +792,7 @@ func parseShortRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Exp
 		return RotateSyntax(node, name, args, nil, nil, nil), diags
 	}
 
-	var inputs, stateExpr Expr
+	var inputs, state Expr
 	var diags syntax.Diagnostics
 
 	for i := 0; i < len(obj.Entries); i++ {
@@ -801,7 +802,7 @@ func parseShortRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Exp
 		case "inputs":
 			inputs = kvp.Value
 		case "state":
-			stateExpr = kvp.Value
+			state = kvp.Value
 		}
 	}
 
@@ -809,12 +810,13 @@ func parseShortRotate(node *syntax.ObjectNode, name *StringExpr, args Expr) (Exp
 		diags.Extend(ExprError(obj, "missing provider inputs ('inputs')"))
 	}
 
-	state, ok := stateExpr.(*ObjectExpr)
-	if !ok && state != nil {
-		diags.Extend(ExprError(stateExpr, "rotation state must be an object literal"))
+	if state == nil {
+		state = Null()
+	} else if _, ok := state.(*ObjectExpr); !ok {
+		diags.Extend(ExprError(state, "rotation state must be an object literal"))
 	}
 
-	return RotateSyntax(node, name, args, provider, inputs, state), nil
+	return RotateSyntax(node, name, args, provider, inputs, state), diags
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {

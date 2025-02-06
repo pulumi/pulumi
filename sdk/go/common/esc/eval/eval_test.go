@@ -165,6 +165,38 @@ func (swapRotator) Rotate(ctx context.Context, inputs, state map[string]esc.Valu
 	return newState, nil
 }
 
+type echoRotator struct{}
+
+func (echoRotator) Schema() (*schema.Schema, *schema.Schema, *schema.Schema) {
+	inputSchema := schema.Record(schema.BuilderMap{
+		"next": schema.String(),
+	}).Schema()
+	stateSchema := schema.Object().Properties(schema.BuilderMap{
+		"current":  schema.String(),
+		"previous": schema.String(),
+	}).Required("current").Schema()
+	outputSchema := stateSchema
+	return inputSchema, stateSchema, outputSchema
+}
+
+func (echoRotator) Open(ctx context.Context, inputs, state map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	return esc.NewValue(state), nil
+}
+
+func (echoRotator) Rotate(ctx context.Context, inputs, state map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	if state == nil {
+		state = map[string]esc.Value{}
+	}
+
+	next := inputs["next"]
+	current := state["current"]
+
+	return esc.NewValue(map[string]esc.Value{
+		"current":  next,
+		"previous": current,
+	}), nil
+}
+
 type testProviders struct {
 	benchDelay time.Duration
 }
@@ -187,6 +219,8 @@ func (testProviders) LoadRotator(ctx context.Context, name string) (esc.Rotator,
 	switch name {
 	case "swap":
 		return swapRotator{}, nil
+	case "echo":
+		return echoRotator{}, nil
 	}
 	return nil, fmt.Errorf("unknown rotator %q", name)
 }
