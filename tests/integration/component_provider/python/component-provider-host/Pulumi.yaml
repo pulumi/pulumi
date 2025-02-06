@@ -11,6 +11,10 @@ resources:
     properties:
       strInput: hello
       optionalIntInput: 42
+      listInput:
+        - a
+        - b
+        - c
       complexInput:
         complexStr: world
         nested:
@@ -20,3 +24,4 @@ outputs:
   strOutput: ${comp.strOutput}
   optionalIntOutput: ${comp.optionalIntOutput}
   complexOutput: ${comp.complexOutput}
+  listOutput: ${comp.listOutput}
