@@ -14,13 +14,13 @@
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
-from ...output import Input, Inputs
+from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
 from .analyzer import Analyzer
-from .component import ComponentDefinition, TypeDefinition
+from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
 from .metadata import Metadata
 from .schema import generate_schema
 
@@ -62,32 +62,94 @@ class ComponentProvider(Provider):
     ) -> ConstructResult:
         self.validate_resource_type(self.metadata.name, resource_type)
         component_name = resource_type.split(":")[-1]
-        comp = self.analyzer.find_component(self.path, component_name)
-        # Use the component definitions to map the schema names to the Python
-        # names.
-        # TODO: Handle complex types, including multiple levels of nesting.
+        comp = self.analyzer.find_type(self.path, component_name)
         component_def = self._component_defs[component_name]
-        mapped_args = self.map_input_names(inputs, component_def.inputs_mapping)
+        mapped_args = self.map_inputs(inputs, component_def)
         # ComponentResource's init signature is different from the derived class signature.
         comp_instance = comp(name, mapped_args, options)  # type: ignore
-        return ConstructResult(
-            comp_instance.urn,
-            self.get_state(comp_instance, component_def.outputs_mapping),
-        )
+        state = self.get_state(comp_instance, component_def)
+        return ConstructResult(comp_instance.urn, state)
 
-    def map_input_names(self, inputs: Inputs, mapping: dict[str, str]) -> Inputs:
-        r: dict[str, Input[Any]] = {}
-        for k, v in inputs.items():
-            r[mapping[k]] = v
-        return r
+    def get_type_definition(self, prop: PropertyDefinition) -> TypeDefinition:
+        """Gets the type definition for a property with a type reference."""
+        if not prop.ref:
+            raise ValueError(f"property {prop} is not a complex type")
+        name = prop.ref.split(":")[-1]
+        return self._type_defs[name]
+
+    def map_inputs(self, inputs: Inputs, component_def: ComponentDefinition) -> Inputs:
+        """Maps the input's names from the schema into Python names."""
+        mapped_input: dict[str, Input[Any]] = {}
+        for schema_name, prop in component_def.inputs.items():
+            input_val = inputs.get(schema_name, None)
+            if input_val is None:
+                continue
+            py_name = component_def.inputs_mapping[schema_name]
+            if prop.ref:
+                type_def = self.get_type_definition(prop)
+                mapped_input[py_name] = self.map_complex_input(input_val, type_def)  # type: ignore
+            else:
+                mapped_input[py_name] = input_val
+        return mapped_input
+
+    def map_complex_input(self, inputs: Inputs, type_def: TypeDefinition) -> Inputs:
+        mapped_value: dict[str, Input[Any]] = {}
+        for schema_name, prop in type_def.properties.items():
+            input_val = inputs.get(schema_name, None)
+            if input_val is None:
+                continue
+            py_name = type_def.properties_mapping[schema_name]
+            if prop.ref:
+                # A nested complex type, get the type definition and recursively map it.
+                nested_type_def = self.get_type_definition(prop)
+                mapped_value[py_name] = self.map_complex_input(
+                    input_val,  # type: ignore
+                    nested_type_def,
+                )
+            else:
+                mapped_value[py_name] = input_val
+        return mapped_value
 
     def get_state(
-        self, instance: ComponentResource, mapping: dict[str, str]
+        self, instance: ComponentResource, component_def: ComponentDefinition
     ) -> dict[str, Any]:
         state: dict[str, Any] = {}
-        for k, v in mapping.items():
-            state[k] = getattr(instance, v, None)
+        for k, prop in component_def.outputs.items():
+            py_name = component_def.outputs_mapping[k]
+            instance_val = getattr(instance, py_name, None)
+            if instance_val is None:
+                continue
+            if prop.ref:
+                # It's a complex type, get the type definition and map it
+                type_def = self.get_type_definition(prop)
+                state[k] = self.map_complex_output(instance_val, type_def)  # type: ignore
+            else:
+                state[k] = instance_val
         return state
+
+    def map_complex_output(
+        self,
+        instance_val: Union[dict[str, Any], Output[dict[str, Any]]],
+        type_def: TypeDefinition,
+    ) -> Union[dict[str, Any], Output[dict[str, Any]]]:
+        """Recursively maps the names of a complex type from Python to schema names."""
+        # The complex type might be an Output. If so, we call the mapping
+        # function in an apply.
+        if isinstance(instance_val, Output):
+            return instance_val.apply(lambda v: self.map_complex_output(v, type_def))
+
+        r: dict[str, Any] = {}
+        for schema_name, prop in type_def.properties.items():
+            py_name = type_def.properties_mapping[schema_name]
+            val = instance_val.get(py_name, None)
+            if val is None:
+                continue
+            if prop.ref:
+                nested_type_def = self.get_type_definition(prop)
+                r[schema_name] = self.map_complex_output(val, nested_type_def)
+            else:
+                r[schema_name] = val
+        return r
 
     @staticmethod
     def validate_resource_type(pkg_name: str, resource_type: str) -> None:

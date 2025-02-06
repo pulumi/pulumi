@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from typing import Any, Optional, TypedDict, Union
 
 import pulumi
 from pulumi.provider.experimental.metadata import Metadata
-from pulumi.provider.experimental.analyzer import Analyzer, unwrap_input, unwrap_output
+from pulumi.provider.experimental.analyzer import (
+    Analyzer,
+    DuplicateTypeError,
+    TypeNotFoundError,
+    unwrap_input,
+    unwrap_output,
+)
 from pulumi.provider.experimental.component import (
     ComponentDefinition,
     PropertyDefinition,
@@ -45,6 +52,8 @@ def test_analyze_component():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(SelfSignedCertificate)
     assert component == ComponentDefinition(
+        name="SelfSignedCertificate",
+        module="test_analyzer",
         description="Component doc string",
         inputs={
             "algorithm": PropertyDefinition(type=PropertyType.STRING),
@@ -90,6 +99,8 @@ def test_analyze_component_empty():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(Empty)
     assert component == ComponentDefinition(
+        name="Empty",
+        module="test_analyzer",
         inputs={},
         inputs_mapping={},
         outputs={},
@@ -98,13 +109,13 @@ def test_analyze_component_empty():
 
 
 def test_analyze_component_plain_types():
-    class Args:
+    class Args(TypedDict):
         input_int: int
         input_str: str
         input_float: float
         input_bool: bool
 
-    class Empty(pulumi.ComponentResource):
+    class Component(pulumi.ComponentResource):
         output_int: pulumi.Output[int]
         output_str: pulumi.Output[str]
         output_float: pulumi.Output[float]
@@ -113,8 +124,10 @@ def test_analyze_component_plain_types():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Empty)
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "inputInt": PropertyDefinition(type=PropertyType.INTEGER),
             "inputStr": PropertyDefinition(type=PropertyType.STRING),
@@ -143,11 +156,11 @@ def test_analyze_component_plain_types():
 
 
 def test_analyze_component_complex_type():
-    class ComplexType:
+    class ComplexType(TypedDict):
         value: pulumi.Input[str]
         optional_value: Optional[pulumi.Input[int]]
 
-    class Args:
+    class Args(TypedDict):
         some_complex_type: pulumi.Input[ComplexType]
 
     class Component(pulumi.ComponentResource):
@@ -158,6 +171,8 @@ def test_analyze_component_complex_type():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "someComplexType": PropertyDefinition(
                 ref="#/types/my-component:index:ComplexType"
@@ -174,6 +189,7 @@ def test_analyze_component_complex_type():
     assert analyzer.type_definitions == {
         "ComplexType": TypeDefinition(
             name="ComplexType",
+            module="test_analyzer",
             type="object",
             properties={
                 "value": PropertyDefinition(type=PropertyType.STRING),
@@ -185,6 +201,209 @@ def test_analyze_component_complex_type():
                 "value": "value",
                 "optionalValue": "optional_value",
             },
+        )
+    }
+
+
+def test_analyze_bad_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(Path(Path(__file__).parent, "testdata", "bad-type"))
+        assert False, "expected an exception"
+    except TypeNotFoundError as e:
+        assert (
+            str(e)
+            == "Could not find the type 'DoesntExist'. Ensure it is defined in your source code or is imported."
+        )
+
+
+def test_analyze_duplicate_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(Path(Path(__file__).parent, "testdata", "duplicate-type"))
+        assert False, "expected an exception"
+    except DuplicateTypeError as e:
+        assert (
+            str(e)
+            == "Duplicate type 'MyDuplicateType': "
+            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-type/component_a.py', "
+            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-type/component_b.py'"
+        )
+
+
+def test_analyze_duplicate_components():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "duplicate-components")
+        )
+        assert False, "expected an exception"
+    except DuplicateTypeError as e:
+        assert (
+            str(e)
+            == "Duplicate type 'MyComponent': "
+            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-components/component_a.py', "
+            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-components/component_b.py'"
+        )
+
+
+def test_analyze_component_self_recursive_complex_type():
+    class RecursiveType(TypedDict):
+        rec: Optional[pulumi.Input["RecursiveType"]]
+
+    class Args(TypedDict):
+        rec: pulumi.Input[RecursiveType]
+
+    class Component(pulumi.ComponentResource):
+        rec: pulumi.Output[RecursiveType]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert analyzer.type_definitions == {
+        "RecursiveType": TypeDefinition(
+            name="RecursiveType",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "rec": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveType",
+                )
+            },
+            properties_mapping={"rec": "rec"},
+        ),
+    }
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
+        },
+        inputs_mapping={"rec": "rec"},
+        outputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
+        },
+        outputs_mapping={"rec": "rec"},
+    )
+
+
+def test_analyze_component_mutually_recursive_complex_types_inline():
+    class RecursiveTypeA(TypedDict):
+        b: Optional[pulumi.Input["RecursiveTypeB"]]
+
+    class RecursiveTypeB(TypedDict):
+        a: Optional[pulumi.Input[RecursiveTypeA]]
+
+    class Args(TypedDict):
+        rec: pulumi.Input[RecursiveTypeA]
+
+    class Component(pulumi.ComponentResource):
+        rec: pulumi.Output[RecursiveTypeB]
+        # rec: pulumi.Output["RecursiveTypeB"]
+        # Using a forward ref instead here causes the test to fail because we
+        # would never encounter the type as we walk the tree of types that
+        # starts with the Component.
+        # When doing full analysis via Analyser.analyze, we can handle this case.
+        # See test_analyze_component_mutually_recursive_complex_types_file for
+        # an example of this.
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert analyzer.type_definitions == {
+        "RecursiveTypeA": TypeDefinition(
+            name="RecursiveTypeA",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "b": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeB",
+                )
+            },
+            properties_mapping={"b": "b"},
+        ),
+        "RecursiveTypeB": TypeDefinition(
+            name="RecursiveTypeB",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "a": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeA",
+                )
+            },
+            properties_mapping={"a": "a"},
+        ),
+    }
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeA")
+        },
+        inputs_mapping={"rec": "rec"},
+        outputs={
+            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeB")
+        },
+        outputs_mapping={"rec": "rec"},
+    )
+
+
+def test_analyze_component_mutually_recursive_complex_types_file():
+    analyzer = Analyzer(metadata)
+
+    (components, type_definitions) = analyzer.analyze(
+        Path(Path(__file__).parent, "testdata", "mutually-recursive")
+    )
+    assert type_definitions == {
+        "RecursiveTypeA": TypeDefinition(
+            name="RecursiveTypeA",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            type="object",
+            properties={
+                "b": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeB",
+                )
+            },
+            properties_mapping={"b": "b"},
+        ),
+        "RecursiveTypeB": TypeDefinition(
+            name="RecursiveTypeB",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            type="object",
+            properties={
+                "a": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/my-component:index:RecursiveTypeA",
+                )
+            },
+            properties_mapping={"a": "a"},
+        ),
+    }
+    assert components == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            inputs={
+                "rec": PropertyDefinition(
+                    ref="#/types/my-component:index:RecursiveTypeA"
+                )
+            },
+            inputs_mapping={"rec": "rec"},
+            outputs={
+                "rec": PropertyDefinition(
+                    ref="#/types/my-component:index:RecursiveTypeA"
+                )
+            },
+            outputs_mapping={"rec": "rec"},
         )
     }
 

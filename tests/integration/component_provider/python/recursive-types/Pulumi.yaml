@@ -9,14 +9,10 @@ resources:
   comp:
     type: provider:index:MyComponent
     properties:
-      strInput: hello
-      optionalIntInput: 42
-      complexInput:
-        complexStr: world
-        nested:
-          nestedStr: this is nested
+      rec:
+        b:
+          a:
+            b: {}
 outputs:
   urn: ${comp.urn}
-  strOutput: ${comp.strOutput}
-  optionalIntOutput: ${comp.optionalIntOutput}
-  complexOutput: ${comp.complexOutput}
+  rec: ${comp.rec}

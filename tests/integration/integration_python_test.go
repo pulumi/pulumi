@@ -1842,6 +1842,10 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			require.Equal(t, "comp", urn.Name())
 			require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
 			require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
+			complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
+			require.Equal(t, "complex_str_value", complexOutput["complexStr"].(string))
+			nested := complexOutput["nested"].(map[string]interface{})
+			require.Equal(t, "nested_str_value", nested["nestedStr"].(string))
 		},
 	})
 }
@@ -1862,17 +1866,21 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	require.Equal(t, "provider", schema["name"].(string))
 	require.Equal(t, "1.2.3", schema["version"].(string))
 	require.Equal(t, "My Component Provider", schema["displayName"].(string))
+
+	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
 		"properties": {
 			"optionalIntOutput": { "type": "integer" },
-			"strOutput": { "type": "string" }
+			"strOutput": { "type": "string" },
+			"complexOutput": { "$ref": "#/types/provider:index:Complex" }
 		},
 		"required": ["strOutput"],
 		"inputProperties": {
 			"strInput": { "type": "string" },
-			"optionalIntInput": { "type": "integer" }
+			"optionalIntInput": { "type": "integer" },
+			"complexInput": { "$ref": "#/types/provider:index:Complex" }
 		},
 		"requiredInputs": ["strInput"]
 	}
@@ -1882,6 +1890,63 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	component := resources["provider:index:MyComponent"].(map[string]interface{})
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	require.Equal(t, expected, component)
+
+	// Check the complex types
+	expectedTypesJSON := `{
+		"provider:index:Complex": {
+			"properties": {
+				"complexStr": {
+					"type": "string"
+				},
+				"nested": {
+					"$ref": "#/types/provider:index:Nested"
+				}
+			},
+			"type": "object",
+			"required": ["complexStr", "nested"]
+		},
+		"provider:index:Nested": {
+			"properties": {
+				"nestedStr": {
+					"type": "string"
+				}
+			},
+			"type": "object",
+			"required": ["nestedStr"]
+		}
+	}`
+	expectedTypes := make(map[string]interface{})
+	types := schema["types"].(map[string]interface{})
+	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
+	require.Equal(t, expectedTypes, types)
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "provider"))
+			return nil
+		},
+		Dir: filepath.Join("component_provider", "python", "recursive-types"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+			require.Equal(t, "comp", urn.Name())
+			// map[rec:map[a:map[b:map[a:map[b:map[]]]]]
+			rec := stack.Outputs["rec"].(map[string]interface{})
+			rec, ok := rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			require.Equal(t, map[string]interface{}{}, rec)
+		},
+	})
 }
 
 func installPythonProviderDependencies(t *testing.T, dir string) {
