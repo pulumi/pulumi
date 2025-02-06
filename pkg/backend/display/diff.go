@@ -111,8 +111,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -220,14 +219,8 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffStyleSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
-
-	// If this is a failed preview, do not render anything. It could be surprising/misleading as it doesn't
-	// describe the totality of the proposed changes (for instance, could be missing resources if it errored early).
-	if event.IsPreview && hasError {
-		return ""
-	}
 
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
