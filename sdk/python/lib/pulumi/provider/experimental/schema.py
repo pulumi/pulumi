@@ -13,51 +13,46 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Optional
 
-from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
+from .component import (
+    ComponentDefinition,
+    PropertyDefinition,
+    PropertyType,
+    TypeDefinition,
+)
 from .metadata import Metadata
-
-
-class BuiltinType(Enum):
-    STRING = "string"
-    INTEGER = "integer"
-    NUMBER = "number"
-    BOOLEAN = "boolean"
-    OBJECT = "object"
 
 
 @dataclass
 class ObjectType:
-    type: BuiltinType
+    """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#objecttype"""
+
+    type: PropertyType
     properties: dict[str, "Property"]
     required: list[str]
-    description: Optional[str] = None
-
-
-@dataclass
-class ItemType:
-    type: BuiltinType
-
-    def to_json(self) -> dict[str, str]:
-        return {"type": str(self.type)}
+    # This has an optional description. However dataclasses dont't let us have
+    # optional fields before non-optional fields, and since we inherit from this
+    # class, we can't have this field here. Instead, the subclasses manually add
+    # the description themselves.
 
 
 @dataclass
 class Property:
-    description: Optional[str]
-    type: Optional[BuiltinType]
+    """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#property"""
+
+    type: Optional[PropertyType]
     will_replace_on_changes: Optional[bool]
-    items: Optional[ItemType]
+    items: Optional["Property"]
     ref: Optional[str]
+    description: Optional[str] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
             "description": self.description,
             "type": self.type.value if self.type else None,
             "willReplaceOnChanges": self.will_replace_on_changes,
-            "items": self.items,
+            "items": self.items.to_json() if self.items else None,
             "$ref": self.ref,
         }
 
@@ -65,15 +60,18 @@ class Property:
     def from_definition(property: PropertyDefinition) -> "Property":
         return Property(
             description=property.description,
-            type=BuiltinType(property.type.value) if property.type else None,
+            type=property.type,
             will_replace_on_changes=False,
-            items=None,
+            items=Property.from_definition(property.items) if property.items else None,
             ref=property.ref,
         )
 
 
 @dataclass
 class ComplexType(ObjectType):
+    """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype"""
+
+    description: Optional[str] = None
     enum: Optional[list[Any]] = None
 
     def to_json(self) -> dict[str, Any]:
@@ -90,32 +88,31 @@ class ComplexType(ObjectType):
         type_def: TypeDefinition,
     ) -> "ComplexType":
         return ComplexType(
-            type=BuiltinType.OBJECT,
+            type=PropertyType.OBJECT,
             properties={
                 k: Property.from_definition(v) for k, v in type_def.properties.items()
             },
-            required=[
-                k for k, prop in type_def.properties.items() if not prop.optional
-            ],
+            required=sorted(
+                [k for k, prop in type_def.properties.items() if not prop.optional]
+            ),
             description=type_def.description,
         )
 
 
 @dataclass
-class Resource:
+class Resource(ObjectType):
+    """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#resource"""
+
     is_component: bool
     input_properties: dict[str, Property]
     required_inputs: list[str]
-    type_: BuiltinType
-    properties: dict[str, Property]
-    required: list[str]
     description: Optional[str] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
             "isComponent": self.is_component,
             "description": self.description,
-            "type": self.type_.value,
+            "type": self.type.value,
             "inputProperties": {
                 k: v.to_json() for k, v in self.input_properties.items()
             },
@@ -128,24 +125,28 @@ class Resource:
     def from_definition(component: ComponentDefinition) -> "Resource":
         return Resource(
             is_component=True,
-            type_=BuiltinType.OBJECT,
+            type=PropertyType.OBJECT,
             input_properties={
                 k: Property.from_definition(property)
                 for k, property in component.inputs.items()
             },
-            required_inputs=[
-                k for k, prop in component.inputs.items() if not prop.optional
-            ],
+            required_inputs=sorted(
+                [k for k, prop in component.inputs.items() if not prop.optional]
+            ),
             properties={
                 k: Property.from_definition(property)
                 for k, property in component.outputs.items()
             },
-            required=[k for k, prop in component.outputs.items() if not prop.optional],
+            required=sorted(
+                [k for k, prop in component.outputs.items() if not prop.optional]
+            ),
         )
 
 
 @dataclass
 class PackageSpec:
+    """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package"""
+
     name: str
     displayName: str
     version: str

@@ -31,12 +31,14 @@ class Args(TypedDict):
     str_input: pulumi.Input[str]
     optional_int_input: Optional[pulumi.Input[int]]
     complex_input: Optional[pulumi.Input[Complex]]
+    list_input: pulumi.Input[list[str]]
 
 
 class MyComponent(pulumi.ComponentResource):
     str_output: pulumi.Output[str]
     optional_int_output: pulumi.Output[Optional[int]]
     complex_output: pulumi.Output[Optional[Complex]]
+    list_output: pulumi.Output[list[str]]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -55,5 +57,8 @@ class MyComponent(pulumi.ComponentResource):
                     }
                 ),
             }
+        )
+        self.list_output = pulumi.Output.from_input(args.get("list_input")).apply(
+            lambda x: [y.upper() for y in x]
         )
         self.register_outputs({})
