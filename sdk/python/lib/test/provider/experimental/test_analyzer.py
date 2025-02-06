@@ -155,6 +155,89 @@ def test_analyze_component_plain_types():
     )
 
 
+def test_analyze_list_plain():
+    class Args(TypedDict):
+        list_input: pulumi.Input[list[str]]
+
+    class Component(pulumi.ComponentResource):
+        list_output: Optional[pulumi.Output[list[Optional[str]]]]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "listInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING),
+            )
+        },
+        inputs_mapping={"listInput": "list_input"},
+        outputs={
+            "listOutput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, optional=True),
+                optional=True,
+            )
+        },
+        outputs_mapping={"listOutput": "list_output"},
+    )
+
+
+def test_analyze_list_complex():
+    class ComplexType(TypedDict):
+        name: Optional[pulumi.Input[list[str]]]
+
+    class Args(TypedDict):
+        list_input: pulumi.Input[list[ComplexType]]
+
+    class Component(pulumi.ComponentResource):
+        list_output: pulumi.Output[list[ComplexType]]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "listInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(ref="#/types/my-component:index:ComplexType"),
+            )
+        },
+        inputs_mapping={"listInput": "list_input"},
+        outputs={
+            "listOutput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(ref="#/types/my-component:index:ComplexType"),
+            )
+        },
+        outputs_mapping={"listOutput": "list_output"},
+    )
+    assert analyzer.type_definitions == {
+        "ComplexType": TypeDefinition(
+            name="ComplexType",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+        )
+    }
+
+
 def test_analyze_component_complex_type():
     class ComplexType(TypedDict):
         value: pulumi.Input[str]

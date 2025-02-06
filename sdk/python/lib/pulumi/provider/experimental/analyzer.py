@@ -17,7 +17,7 @@ import inspect
 import sys
 from collections.abc import Awaitable
 from pathlib import Path
-from types import ModuleType
+from types import GenericAlias, ModuleType
 from typing import (
     Any,
     ForwardRef,
@@ -152,9 +152,9 @@ class Analyzer:
 
     def find_type(self, path: Path, name: str) -> type:
         """
-        Find a component by name in the directory at `self.path`.
+        Find a type by name in the directory at `self.path`.
 
-        :param name: The name of the component to find.
+        :param name: The name of the type to find.
         """
         for file_path in self.iter(path):
             mod = self.load_module(file_path)
@@ -271,8 +271,12 @@ class Analyzer:
             return self.analyze_property(unwrap_output(arg), typ, optional=optional)
         elif is_optional(arg):
             return self.analyze_property(unwrap_optional(arg), typ, optional=True)
-        elif isinstance(arg, list):
-            raise ValueError("list types not yet implemented")
+        elif is_list(arg):
+            args = get_args(arg)
+            items = self.analyze_property(args[0], typ)
+            return PropertyDefinition(
+                type=PropertyType.ARRAY, optional=optional, items=items
+            )
         elif isinstance(arg, dict):
             raise ValueError("dict types not yet implemented")
         elif is_forward_ref(arg):
@@ -450,3 +454,9 @@ def is_forward_ref(typ: Any) -> bool:
 
 def is_builtin(typ: type) -> bool:
     return typ.__module__ == "builtins"
+
+
+def is_list(typ: type) -> bool:
+    if isinstance(typ, GenericAlias):
+        typ = get_origin(typ)
+    return typ is list

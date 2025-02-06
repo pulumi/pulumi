@@ -23,6 +23,7 @@ class PropertyType(Enum):
     NUMBER = "number"
     BOOLEAN = "boolean"
     OBJECT = "object"
+    ARRAY = "array"
 
 
 @dataclass
@@ -31,6 +32,7 @@ class PropertyDefinition:
     type: Optional[PropertyType] = None
     ref: Optional[str] = None
     description: Optional[str] = None
+    items: Optional["PropertyDefinition"] = None
 
 
 @dataclass
