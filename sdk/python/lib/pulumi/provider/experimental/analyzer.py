@@ -51,6 +51,17 @@ class TypeNotFoundError(Exception):
         )
 
 
+class DuplicateTypeError(Exception):
+    def __init__(
+        self, new_module: str, existing: Union[TypeDefinition, ComponentDefinition]
+    ):
+        self.new_module = new_module
+        self.existing = existing
+        super().__init__(
+            f"Duplicate type '{existing.name}': orginally defined in '{existing.module}', but also found in '{new_module}'"
+        )
+
+
 class Analyzer:
     def __init__(self, metadata: Metadata):
         self.metadata = metadata
@@ -66,7 +77,16 @@ class Analyzer:
         """
         components: dict[str, ComponentDefinition] = {}
         for file_path in self.iter(path):
-            components.update(self.analyze_file(file_path))
+            new_components = self.analyze_file(file_path)
+            new_names = set(new_components.keys())
+            old_names = set(components.keys())
+            duplicates = old_names.intersection(new_names)
+            if len(duplicates) > 0:
+                name = duplicates.pop()
+                duplicate = new_components[name]
+                original = components[name]
+                raise DuplicateTypeError(cast(str, duplicate.module), original)
+            components.update(new_components)
 
         # Look for any forward references we could not resolve in the first
         # pass. This happens for types that are only ever referenced in
@@ -83,7 +103,7 @@ class Analyzer:
         return (components, self.type_definitions)
 
     def iter(self, path: Path):
-        for file_path in path.glob("**/*.py"):
+        for file_path in sorted(path.glob("**/*.py")):
             if is_in_venv(file_path):
                 continue
             yield file_path
@@ -112,7 +132,8 @@ class Analyzer:
 
     def load_module(self, file_path: Path) -> ModuleType:
         name = file_path.name.replace(".py", "")
-        spec = importlib.util.spec_from_file_location("component_file", file_path)
+        rel_path = file_path.relative_to(Path.cwd())
+        spec = importlib.util.spec_from_file_location(str(rel_path), file_path)
         if not spec:
             raise Exception(f"Could not load module spec at {file_path}")
         module_type = importlib.util.module_from_spec(spec)
@@ -149,11 +170,13 @@ class Analyzer:
         (inputs, inputs_mapping) = self.analyze_type(args)
         (outputs, outputs_mapping) = self.analyze_type(component)
         return ComponentDefinition(
+            name=component.__name__,
             description=component.__doc__.strip() if component.__doc__ else None,
             inputs=inputs,
             inputs_mapping=inputs_mapping,
             outputs=outputs,
             outputs_mapping=outputs_mapping,
+            module=component.__module__,
         )
 
     def analyze_type(
@@ -186,14 +209,21 @@ class Analyzer:
         ann = self.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            camel_case(k): self.analyze_property(v) for k, v in ann.items()
+            camel_case(k): self.analyze_property(v, typ) for k, v in ann.items()
         }, mapping
 
     def analyze_property(
-        self, arg: type, optional: Optional[bool] = None
+        self,
+        arg: type,
+        typ: type,
+        optional: Optional[bool] = None,
     ) -> PropertyDefinition:
         """
         analyze_property analyzes a single annotation and turns it into a SchemaProperty.
+
+        :param arg: the type of the property we are analyzing
+        :param typ: the type this property belongs to
+        :param optional: whether the property is optional or not
         """
         optional = optional if optional is not None else is_optional(arg)
         if is_plain(arg):
@@ -203,11 +233,11 @@ class Analyzer:
                 optional=optional,
             )
         elif is_input(arg):
-            return self.analyze_property(unwrap_input(arg), optional=optional)
+            return self.analyze_property(unwrap_input(arg), typ, optional=optional)
         elif is_output(arg):
-            return self.analyze_property(unwrap_output(arg), optional=optional)
+            return self.analyze_property(unwrap_output(arg), typ, optional=optional)
         elif is_optional(arg):
-            return self.analyze_property(unwrap_optional(arg), optional=True)
+            return self.analyze_property(unwrap_optional(arg), typ, optional=True)
         elif isinstance(arg, list):
             raise ValueError("list types not yet implemented")
         elif isinstance(arg, dict):
@@ -215,7 +245,11 @@ class Analyzer:
         elif is_forward_ref(arg):
             name = cast(ForwardRef, arg).__forward_arg__
             type_def = self.type_definitions.get(name)
+            # Forward references are assumed to be in the type's module.
+            module = typ.__module__
             if type_def:
+                if type_def.module != module:
+                    raise DuplicateTypeError(module, type_def)
                 # Forward ref to a type we saw before, return a reference to it.
                 ref = f"#/types/{self.metadata.name}:index:{name}"
                 return PropertyDefinition(
@@ -233,6 +267,7 @@ class Analyzer:
                     type="object",
                     properties={},
                     properties_mapping={},
+                    module=module,
                 )
                 self.unresolved_forward_refs[name] = type_def
                 self.type_definitions[type_def.name] = type_def
@@ -254,8 +289,12 @@ class Analyzer:
                     properties={},
                     properties_mapping={},
                     description=arg.__doc__,
+                    module=arg.__module__,
                 )
                 self.type_definitions[type_def.name] = type_def
+            else:
+                if type_def.module and type_def.module != arg.__module__:
+                    raise DuplicateTypeError(arg.__module__, type_def)
             (properties, properties_mapping) = self.analyze_type(arg)
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping

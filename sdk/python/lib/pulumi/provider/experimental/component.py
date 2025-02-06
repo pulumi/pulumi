@@ -40,15 +40,20 @@ class TypeDefinition:
     properties: dict[str, PropertyDefinition]
     properties_mapping: dict[str, str]
     """Mapping from the schema name to the Python name."""
+    module: str
+    """The Python module where this type is defined."""
     description: Optional[str] = None
 
 
 @dataclass
 class ComponentDefinition:
+    name: str
     inputs: dict[str, PropertyDefinition]
     outputs: dict[str, PropertyDefinition]
     inputs_mapping: dict[str, str]
     """Mapping from the schema name to the Python name."""
     outputs_mapping: dict[str, str]
     """Mapping from the schema name to the Python name."""
+    module: Optional[str]
+    """The Python module where this component is defined."""
     description: Optional[str] = None

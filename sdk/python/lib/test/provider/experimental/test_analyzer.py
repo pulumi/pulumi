@@ -19,6 +19,7 @@ import pulumi
 from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.analyzer import (
     Analyzer,
+    DuplicateTypeError,
     TypeNotFoundError,
     unwrap_input,
     unwrap_output,
@@ -51,6 +52,8 @@ def test_analyze_component():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(SelfSignedCertificate)
     assert component == ComponentDefinition(
+        name="SelfSignedCertificate",
+        module="test_analyzer",
         description="Component doc string",
         inputs={
             "algorithm": PropertyDefinition(type=PropertyType.STRING),
@@ -96,6 +99,8 @@ def test_analyze_component_empty():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(Empty)
     assert component == ComponentDefinition(
+        name="Empty",
+        module="test_analyzer",
         inputs={},
         inputs_mapping={},
         outputs={},
@@ -110,7 +115,7 @@ def test_analyze_component_plain_types():
         input_float: float
         input_bool: bool
 
-    class Empty(pulumi.ComponentResource):
+    class Component(pulumi.ComponentResource):
         output_int: pulumi.Output[int]
         output_str: pulumi.Output[str]
         output_float: pulumi.Output[float]
@@ -119,8 +124,10 @@ def test_analyze_component_plain_types():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Empty)
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "inputInt": PropertyDefinition(type=PropertyType.INTEGER),
             "inputStr": PropertyDefinition(type=PropertyType.STRING),
@@ -164,6 +171,8 @@ def test_analyze_component_complex_type():
     analyzer = Analyzer(metadata)
     component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "someComplexType": PropertyDefinition(
                 ref="#/types/my-component:index:ComplexType"
@@ -180,6 +189,7 @@ def test_analyze_component_complex_type():
     assert analyzer.type_definitions == {
         "ComplexType": TypeDefinition(
             name="ComplexType",
+            module="test_analyzer",
             type="object",
             properties={
                 "value": PropertyDefinition(type=PropertyType.STRING),
@@ -208,6 +218,38 @@ def test_analyze_bad_type():
         )
 
 
+def test_analyze_duplicate_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(Path(Path(__file__).parent, "testdata", "duplicate-type"))
+        assert False, "expected an exception"
+    except DuplicateTypeError as e:
+        assert (
+            str(e)
+            == "Duplicate type 'MyDuplicateType': "
+            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-type/component_a.py', "
+            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-type/component_b.py'"
+        )
+
+
+def test_analyze_duplicate_components():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "duplicate-components")
+        )
+        assert False, "expected an exception"
+    except DuplicateTypeError as e:
+        assert (
+            str(e)
+            == "Duplicate type 'MyComponent': "
+            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-components/component_a.py', "
+            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-components/component_b.py'"
+        )
+
+
 def test_analyze_component_self_recursive_complex_type():
     class RecursiveType(TypedDict):
         rec: Optional[pulumi.Input["RecursiveType"]]
@@ -225,6 +267,7 @@ def test_analyze_component_self_recursive_complex_type():
     assert analyzer.type_definitions == {
         "RecursiveType": TypeDefinition(
             name="RecursiveType",
+            module="test_analyzer",
             type="object",
             properties={
                 "rec": PropertyDefinition(
@@ -236,6 +279,8 @@ def test_analyze_component_self_recursive_complex_type():
         ),
     }
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
         },
@@ -274,6 +319,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
     assert analyzer.type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
+            module="test_analyzer",
             type="object",
             properties={
                 "b": PropertyDefinition(
@@ -285,6 +331,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
+            module="test_analyzer",
             type="object",
             properties={
                 "a": PropertyDefinition(
@@ -296,6 +343,8 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
         ),
     }
     assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
         inputs={
             "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeA")
         },
@@ -316,6 +365,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     assert type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
             type="object",
             properties={
                 "b": PropertyDefinition(
@@ -327,6 +377,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
             type="object",
             properties={
                 "a": PropertyDefinition(
@@ -339,6 +390,8 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     }
     assert components == {
         "Component": ComponentDefinition(
+            name="Component",
+            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
             inputs={
                 "rec": PropertyDefinition(
                     ref="#/types/my-component:index:RecursiveTypeA"
