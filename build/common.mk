@@ -239,8 +239,8 @@ $(SUB_PROJECTS:%=%_brew):
 	@$(MAKE) -C ./$(@:%_brew=%) brew
 endif
 
-# As a convinece, we provide a format target that folks can build to
-# run go fmt over all the go code in their tree.
+# As a convenience, we provide a format target that folks can build to run go fmt over all
+# the go code in their tree.
 .PHONY: format
 format::
 	$(call STEP_MESSAGE)
