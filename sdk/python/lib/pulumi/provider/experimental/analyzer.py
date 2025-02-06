@@ -63,6 +63,39 @@ class DuplicateTypeError(Exception):
 
 
 class Analyzer:
+    """
+    Analyzer searches a directory for subclasses of `ComponentResource` and
+    infers a Pulumi Schema for these components based on type annotations.
+
+    The entrypoint for this is `Analyzer.analyze`, which returns a dictionary of
+    `ComponentDefinition`, which represent components, and a dictionary of
+    `TypeDefinition`, which represent complex types, aka user defined types,
+    used in the components inputs and/or outputs. This relies on a couple of
+    assumptions:
+
+    * Components are defined at the top level of the Python modules. Classes
+      defined in a nested scope, such as a function, are not discovered.
+      Essentially the analyser iterates over each element in `dir(module)` and
+      looks for the subclasses at that level.
+    * The names used in `ForwardRef`s can be resolved similarly.
+    * The `__init__` method for each component has a typed argument named `args`
+      which represent the inputs the component takes.
+    * The types are put in a single Pulumi module, `index`. That is, all the Pulumi
+      types have the typestring `<provider>:index:<type>`. This means that it is
+      possible to have duplicate types, which raises an error durign analysis.
+
+    To infer the schema, the analyzer follows the graph of types rooted at each
+    component. From the component, it follows the `args` argument, and then
+    follows each property of the args type. To implement recursive complex
+    types, you have to use `ForwardRef`s
+    https://docs.python.org/3/library/typing.html#typing.ForwardRef. The type a
+    ForwardRef references is a string, which prevents us from following the
+    "type pointer" to analyze it. If at the end of the analysis of a component
+    we have unresolved forward references, the analyser resolves these by
+    iterating over the Python modules in the same manner as it does to find the
+    components.
+    """
+
     def __init__(self, metadata: Metadata):
         self.metadata = metadata
         self.type_definitions: dict[str, TypeDefinition] = {}
