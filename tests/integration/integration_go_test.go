@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (go || all) && !xplatform_acceptance
+//go:build go || all
 
 package ints
 
@@ -1280,7 +1280,8 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/random" && r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3" {
+		if r.New.Path == filepath.ToSlash("./sdks/random") &&
+			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3" {
 			containsRename = true
 		}
 	}
@@ -1312,7 +1313,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/supabase" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRename = true
 		}
@@ -1502,6 +1503,11 @@ func TestLogDebugGo(t *testing.T) {
 // variables set.
 func TestRunPlugin(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18436]: enable this test on windows
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skipping test on Windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()

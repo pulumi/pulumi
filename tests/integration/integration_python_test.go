@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (python || all) && !xplatform_acceptance
+//go:build python || all
 
 package ints
 
@@ -1517,7 +1517,7 @@ func TestPackageAddPython(t *testing.T) {
 			} else {
 				b, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
-				assert.Contains(t, string(b), "sdks/random")
+				assert.Contains(t, string(b), filepath.Join("sdks", "random"))
 			}
 		})
 	}
@@ -1537,9 +1537,9 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
-	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
 	assert.NoError(t, err)
-	assert.Contains(t, string(b), "sdks/supabase")
+	assert.Contains(t, string(b), filepath.Join("sdks", "supabase"))
 
 	// Check that `supabase` was installed
 	type dependency struct {
@@ -1769,6 +1769,12 @@ func TestLogDebugPython(t *testing.T) {
 
 func TestDynamicProviderPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18439]: Unskip this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
+
 	for _, toolchain := range []string{"pip", "uv", "poetry"} {
 		toolchain := toolchain
 		t.Run(toolchain, func(t *testing.T) {
@@ -1780,7 +1786,15 @@ func TestDynamicProviderPython(t *testing.T) {
 			require.NoError(t, err)
 			if toolchain == "poetry" {
 				e.RunCommand("pulumi", "install")
-				e.RunCommand("poetry", "add", coreSDK)
+				if runtime.GOOS == "windows" {
+					// Poetry requires the sdk to be on the same device as the project on windows.  Since the
+					// tmpdir is not guaranteed to be on the same device as the project, we need to copy the
+					// sdk to the project directory.
+					e.RunCommand("cp", "-R", coreSDK, "coresdk")
+					e.RunCommand("poetry", "add", "coresdk")
+				} else {
+					e.RunCommand("poetry", "add", coreSDK)
+				}
 			} else {
 				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 				require.NoError(t, err)

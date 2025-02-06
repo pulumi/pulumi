@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (nodejs || all) && !xplatform_acceptance
+//go:build nodejs || all
 
 package ints
 
@@ -2202,7 +2202,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
-			assert.True(t, e.PathExists("sdks/random"))
+			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
 			assert.NoError(t, err)
@@ -2217,7 +2217,7 @@ func TestPackageAddNode(t *testing.T) {
 			cf, ok = cf.(string)
 			assert.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", cf)
+			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 		})
 	}
 }
@@ -2236,7 +2236,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
-	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
 	assert.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
@@ -2249,7 +2249,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
 }
 
 func TestConstructFailuresNode(t *testing.T) {
@@ -2403,6 +2403,12 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")
