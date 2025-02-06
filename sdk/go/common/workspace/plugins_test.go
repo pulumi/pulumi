@@ -1547,6 +1547,47 @@ func TestAmbientPluginsWarn(t *testing.T) {
 }
 
 //nolint:paralleltest // modifies environment variables
+func TestAmbientBundledPluginsWarn(t *testing.T) {
+	// Get the path of this executable
+	exe, err := os.Executable()
+	require.NoError(t, err)
+
+	// Create a fake side-by-side plugin next to this executable, it must match one of our bundled names
+	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-nodejs")
+	err = os.WriteFile(bundledPath, []byte{}, 0o700) //nolint: gosec // we intended to write an executable file here
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Remove(bundledPath)
+		require.NoError(t, err)
+	})
+
+	// Create a copy of the fake plugin in the path
+	pathDir := t.TempDir()
+	t.Setenv("PATH", pathDir)
+	ambientPath := filepath.Join(pathDir, "pulumi-language-nodejs")
+	err = os.WriteFile(ambientPath, []byte{}, 0o700) //nolint: gosec
+	require.NoError(t, err)
+
+	var stderr bytes.Buffer
+	d := diag.DefaultSink(
+		iotest.LogWriter(t), // stdout
+		&stderr,
+		diag.FormatOptions{Color: "never"},
+	)
+
+	// Lookup the plugin with ambient search turned on
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, ambientPath, path)
+
+	// Check we get a warning about loading this plugin
+	expectedMessage := fmt.Sprintf("warning: using pulumi-language-nodejs from $PATH at %s expected %s\n",
+		ambientPath, filepath.Join(filepath.Dir(exe), "pulumi-language-nodejs"))
+	assert.Equal(t, expectedMessage, stderr.String())
+}
+
+//nolint:paralleltest // modifies environment variables
 func TestBundledPluginsDoNotWarn(t *testing.T) {
 	// Get the path of this executable
 	exe, err := os.Executable()

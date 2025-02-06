@@ -2241,7 +2241,11 @@ func getPluginInfoAndPath(
 			// hits any errors then we just skip this warning, better to not warn than to error in a new way.
 			if err == nil {
 				if fullAmbientPath != bundledPath {
-					d.Warningf(diag.Message("", "using %s from $PATH at %s"), filename, ambientPath)
+					var expected string
+					if bundledPath != "" {
+						expected = " expected %s" + bundledPath
+					}
+					d.Warningf(diag.Message("", "using %s from $PATH at %s%s"), filename, ambientPath, expected)
 				}
 			}
 		}
