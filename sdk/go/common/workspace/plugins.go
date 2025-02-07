@@ -2243,7 +2243,7 @@ func getPluginInfoAndPath(
 				if fullAmbientPath != bundledPath {
 					var expected string
 					if bundledPath != "" {
-						expected = " expected %s" + bundledPath
+						expected = " expected " + bundledPath
 					}
 					d.Warningf(diag.Message("", "using %s from $PATH at %s%s"), filename, ambientPath, expected)
 				}
