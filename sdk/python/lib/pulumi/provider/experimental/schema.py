@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from .component import (
     ComponentDefinition,
@@ -46,17 +46,21 @@ class Property:
     items: Optional["Property"]
     additional_properties: Optional["Property"]
     ref: Optional[str]
+    plain: Optional[bool]
     description: Optional[str] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
             "description": self.description,
             "type": self.type.value if self.type else None,
-            "willReplaceOnChanges": self.will_replace_on_changes,
+            "willReplaceOnChanges": self.will_replace_on_changes
+            if self.will_replace_on_changes
+            else None,
             "items": self.items.to_json() if self.items else None,
             "additionalProperties": self.additional_properties.to_json()
             if self.additional_properties
             else None,
+            "plain": self.plain if self.plain else None,
             "$ref": self.ref,
         }
 
@@ -73,6 +77,7 @@ class Property:
             if property.additional_properties
             else None,
             ref=property.ref,
+            plain=property.plain,
         )
 
 
@@ -164,14 +169,16 @@ class PackageSpec:
     language: dict[str, dict[str, Any]]
 
     def to_json(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "displayName": self.displayName,
-            "version": self.version,
-            "resources": {k: v.to_json() for k, v in self.resources.items()},
-            "types": {k: v.to_json() for k, v in self.types.items()},
-            "language": self.language,
-        }
+        return remove_none(
+            {
+                "name": self.name,
+                "displayName": self.displayName,
+                "version": self.version,
+                "resources": {k: v.to_json() for k, v in self.resources.items()},
+                "types": {k: v.to_json() for k, v in self.types.items()},
+                "language": self.language,
+            }
+        )
 
 
 def generate_schema(
@@ -213,3 +220,9 @@ def generate_schema(
         )
 
     return pkg
+
+
+def remove_none(d: Union[dict[str, Any], Any]) -> dict[str, Any]:
+    if not isinstance(d, dict):
+        return d
+    return dict((k, remove_none(v)) for k, v in d.items() if v is not None)  # type: ignore

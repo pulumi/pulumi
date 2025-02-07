@@ -34,6 +34,7 @@ class PropertyDefinition:
     description: Optional[str] = None
     items: Optional["PropertyDefinition"] = None
     additional_properties: Optional["PropertyDefinition"] = None
+    plain: bool = False
 
 
 @dataclass

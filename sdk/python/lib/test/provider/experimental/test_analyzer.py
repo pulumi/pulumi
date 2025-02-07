@@ -110,17 +110,35 @@ def test_analyze_component_empty():
 
 
 def test_analyze_component_plain_types():
+    class ComplexType(TypedDict):
+        name: Optional[pulumi.Input[list[str]]]
+
     class Args(TypedDict):
-        input_int: int
-        input_str: str
-        input_float: float
-        input_bool: bool
+        a_int: int
+        a_str: str
+        a_float: float
+        a_bool: bool
+        a_optional: Optional[str]
+        a_list: list[str]
+        a_input_list: pulumi.Input[list[str]]
+        a_list_input: list[pulumi.Input[str]]
+        a_input_list_input: pulumi.Input[list[pulumi.Input[str]]]
+        a_dict: dict[str, int]
+        a_dict_input: dict[str, pulumi.Input[int]]
+        a_input_dict: pulumi.Input[dict[str, int]]
+        a_input_dict_input: pulumi.Input[dict[str, pulumi.Input[int]]]
+        a_complex_type: ComplexType
+        a_input_complex_type: pulumi.Input[ComplexType]
 
     class Component(pulumi.ComponentResource):
-        output_int: pulumi.Output[int]
-        output_str: pulumi.Output[str]
-        output_float: pulumi.Output[float]
-        output_bool: pulumi.Output[bool]
+        a_int: int
+        a_str: str
+        a_float: float
+        a_bool: bool
+        a_optional: Optional[str]
+        a_output_list: pulumi.Output[list[str]]
+        a_output_complex: pulumi.Output[ComplexType]
+        a_optional_output_complex: Optional[pulumi.Output[ComplexType]]
 
         def __init__(self, args: Args): ...
 
@@ -130,28 +148,116 @@ def test_analyze_component_plain_types():
         name="Component",
         module="test_analyzer",
         inputs={
-            "inputInt": PropertyDefinition(type=PropertyType.INTEGER),
-            "inputStr": PropertyDefinition(type=PropertyType.STRING),
-            "inputFloat": PropertyDefinition(type=PropertyType.NUMBER),
-            "inputBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "aInt": PropertyDefinition(type=PropertyType.INTEGER, plain=True),
+            "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "aFloat": PropertyDefinition(type=PropertyType.NUMBER, plain=True),
+            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN, plain=True),
+            "aOptional": PropertyDefinition(
+                type=PropertyType.STRING, optional=True, plain=True
+            ),
+            "aList": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                plain=True,
+            ),
+            "aInputList": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                plain=False,
+            ),
+            "aListInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
+                plain=True,
+            ),
+            "aInputListInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
+                plain=False,
+            ),
+            "aDict": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+                plain=True,
+            ),
+            "aDictInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=False
+                ),
+                plain=True,
+            ),
+            "aInputDict": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+                plain=False,
+            ),
+            "aInputDictInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=False
+                ),
+                plain=False,
+            ),
+            "aComplexType": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType",
+                plain=True,
+            ),
+            "aInputComplexType": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType",
+                plain=False,
+            ),
         },
         inputs_mapping={
-            "inputInt": "input_int",
-            "inputStr": "input_str",
-            "inputFloat": "input_float",
-            "inputBool": "input_bool",
+            "aInt": "a_int",
+            "aStr": "a_str",
+            "aFloat": "a_float",
+            "aBool": "a_bool",
+            "aOptional": "a_optional",
+            "aList": "a_list",
+            "aInputList": "a_input_list",
+            "aInputListInput": "a_input_list_input",
+            "aListInput": "a_list_input",
+            "aDict": "a_dict",
+            "aDictInput": "a_dict_input",
+            "aInputDict": "a_input_dict",
+            "aInputDictInput": "a_input_dict_input",
+            "aComplexType": "a_complex_type",
+            "aInputComplexType": "a_input_complex_type",
         },
         outputs={
-            "outputInt": PropertyDefinition(type=PropertyType.INTEGER),
-            "outputStr": PropertyDefinition(type=PropertyType.STRING),
-            "outputFloat": PropertyDefinition(type=PropertyType.NUMBER),
-            "outputBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "aInt": PropertyDefinition(type=PropertyType.INTEGER, plain=False),
+            "aStr": PropertyDefinition(type=PropertyType.STRING, plain=False),
+            "aFloat": PropertyDefinition(type=PropertyType.NUMBER, plain=False),
+            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN, plain=False),
+            "aOptional": PropertyDefinition(
+                type=PropertyType.STRING, plain=True, optional=True
+            ),
+            "aOutputList": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                plain=False,
+            ),
+            "aOutputComplex": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType", plain=False
+            ),
+            "aOptionalOutputComplex": PropertyDefinition(
+                ref="#/types/my-component:index:ComplexType", plain=False, optional=True
+            ),
         },
         outputs_mapping={
-            "outputInt": "output_int",
-            "outputStr": "output_str",
-            "outputFloat": "output_float",
-            "outputBool": "output_bool",
+            "aInt": "a_int",
+            "aStr": "a_str",
+            "aFloat": "a_float",
+            "aBool": "a_bool",
+            "aOptional": "a_optional",
+            "aOutputList": "a_output_list",
+            "aOutputComplex": "a_output_complex",
+            "aOptionalOutputComplex": "a_optional_output_complex",
         },
     )
 
@@ -173,14 +279,16 @@ def test_analyze_list_simple():
         inputs={
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING),
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
             )
         },
         inputs_mapping={"listInput": "list_input"},
         outputs={
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, optional=True),
+                items=PropertyDefinition(
+                    type=PropertyType.STRING, optional=True, plain=True
+                ),
                 optional=True,
             )
         },
@@ -208,14 +316,18 @@ def test_analyze_list_complex():
         inputs={
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(ref="#/types/my-component:index:ComplexType"),
+                items=PropertyDefinition(
+                    ref="#/types/my-component:index:ComplexType", plain=True
+                ),
             )
         },
         inputs_mapping={"listInput": "list_input"},
         outputs={
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(ref="#/types/my-component:index:ComplexType"),
+                items=PropertyDefinition(
+                    ref="#/types/my-component:index:ComplexType", plain=True
+                ),
             )
         },
         outputs_mapping={"listOutput": "list_output"},
@@ -228,7 +340,7 @@ def test_analyze_list_complex():
             properties={
                 "name": PropertyDefinition(
                     type=PropertyType.ARRAY,
-                    items=PropertyDefinition(type=PropertyType.STRING),
+                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
                     optional=True,
                 ),
             },
@@ -270,7 +382,9 @@ def test_analyze_dict_simple():
         inputs={
             "dictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
             )
         },
         inputs_mapping={"dictInput": "dict_input"},
@@ -278,7 +392,7 @@ def test_analyze_dict_simple():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, optional=True
+                    type=PropertyType.INTEGER, optional=True, plain=True
                 ),
                 optional=True,
             )
@@ -308,7 +422,7 @@ def test_analyze_dict_complex():
             "dictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType"
+                    ref="#/types/my-component:index:ComplexType", plain=True
                 ),
             )
         },
@@ -317,7 +431,9 @@ def test_analyze_dict_complex():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType", optional=True
+                    ref="#/types/my-component:index:ComplexType",
+                    optional=True,
+                    plain=True,
                 ),
                 optional=True,
             )
@@ -332,7 +448,10 @@ def test_analyze_dict_complex():
             properties={
                 "name": PropertyDefinition(
                     type=PropertyType.OBJECT,
-                    additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
+                    additional_properties=PropertyDefinition(
+                        type=PropertyType.INTEGER,
+                        plain=True,
+                    ),
                     optional=True,
                 ),
             },

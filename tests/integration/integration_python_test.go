@@ -1901,17 +1901,19 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"inputProperties": {
 			"strInput": { "type": "string" },
 			"optionalIntInput": { "type": "integer" },
-			"complexInput": { "$ref": "#/types/provider:index:Complex" },
+			"complexInput": { "$ref": "#/types/provider:index:Complex"},
 			"listInput": {
 				"type": "array",
 				"items": {
-					"type": "string"
+					"type": "string",
+					"plain": true
 				}
 			},
 			"dictInput": {
 				"type": "object",
 				"additionalProperties": {
-					"type": "integer"
+					"type": "integer",
+					"plain": true
 				}
 			}
 		},
@@ -1922,6 +1924,11 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	resources := schema["resources"].(map[string]interface{})
 	component := resources["provider:index:MyComponent"].(map[string]interface{})
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+	// TODO https://github.com/pulumi/pulumi/issues/18481
+	// properties.dictOutput.additionalProperties.plain and
+	// properties.listOutput.items.plain should be true, but they are not. The
+	// actual JSON the provider returns has these fields set to true, however
+	// somehwere in `package get-schema`, this information is lost.
 	require.Equal(t, expected, component)
 
 	// Check the complex types
@@ -1929,7 +1936,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"provider:index:Complex": {
 			"properties": {
 				"complexStr": {
-					"type": "string"
+					"type": "string", "plain": true
 				},
 				"nested": {
 					"$ref": "#/types/provider:index:Nested"
@@ -1941,7 +1948,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"provider:index:Nested": {
 			"properties": {
 				"nestedStr": {
-					"type": "string"
+					"type": "string", "plain": true
 				}
 			},
 			"type": "object",
