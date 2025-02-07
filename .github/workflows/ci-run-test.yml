@@ -389,6 +389,14 @@ jobs:
           path: |
             coverage/*
             !coverage/.gitkeep
+      - name: Upload codecov test results
+        uses: codecov/test-results-action@v1
+        with:
+          directory: junit/
+          files: "*,!.gitkeep"
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:
