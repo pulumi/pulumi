@@ -12,6 +12,7 @@ coverage.cov
 *.cov
 **/obj/
 coverage/
+junit/
 venv/
 .envrc
 # Ignore VSCode created solution file
