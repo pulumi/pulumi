@@ -16,8 +16,7 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
 
-ensure::
-	@command -v uv > /dev/null || { echo "uv command not found. Please install it first." && exit 1; }
+ensure:: .make/ensure/uv
 	uv venv --allow-existing
 	uv sync --dev
 

@@ -18,10 +18,10 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-ensure:: yarn.ensure node.ensure .ensure.phony
-.ensure.phony: package.json
+ensure:: .make/ensure/yarn .make/ensure/node .make/ensure/phony
+.make/ensure/phony: package.json
 	yarn install --frozen-lockfile
-	@touch .ensure.phony
+	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 format:: ensure
 	yarn biome format --write .

@@ -239,8 +239,8 @@ $(SUB_PROJECTS:%=%_brew):
 	@$(MAKE) -C ./$(@:%_brew=%) brew
 endif
 
-# As a convinece, we provide a format target that folks can build to
-# run go fmt over all the go code in their tree.
+# As a convenience, we provide a format target that folks can build to run go fmt over all
+# the go code in their tree.
 .PHONY: format
 format::
 	$(call STEP_MESSAGE)
@@ -252,16 +252,78 @@ format::
 		-path "./*/testdata/*" \
 	\) | xargs gofumpt -w
 
-# Defines the target `%.ensure` where `%` is an executable to check for. For
-# example, the target `ensure.foo` will check that `foo` is available on the
-# user's path.
-%.ensure:
-	@pad=$$(printf '%0.1s' "."{1..20});                                        \
-	exec=$$(echo $@ | sed 's/\.ensure//');                                     \
-	printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
-	if command -v $${exec} > /dev/null ; then                                  \
-	    echo "\033[0;32m✓\033[0m";                                             \
-	else                                                                       \
-	    echo "\033[0;31mX\033[0m";                                             \
-	    exit 1;                                                                \
-	fi                                                                         \
+.SECONDEXPANSION: # Needed by .make/ensure/% and .make/ensure/__%.
+
+# Defines the target `.make/ensure/%` where `%` is an executable to check for. For
+# example, the target `.make/ensure/foo` will check that `foo` is available on the user's
+# path.
+#
+# .make/ensure/% does not imply that a target is phony. To guarantee that, you should use
+# `.PHONY`.
+.make/ensure/%: .make/ensure/__$$*
+	@mkdir -p .make/ensure && touch $@
+
+# How .make/ensure/% works:
+#
+# When a target depends on .make/ensure/node, it is caught by the .make/ensure/%
+# target. With secondary-expansion set, this expands to:
+#
+#	.make/ensure/node: .make/ensure/__node
+#		@mkdir -p .make/ensure && touch .make/ensure/node
+#
+# This is a simple expansion, but the indirection ensures that .make/ensure/__node is only
+# depended on once. The real "work" is done during the *expansion* of .make/ensure/__%
+# into .make/ensure/__node. .make/ensure/__% initially expands into:
+#
+#	.make/ensure/__node: $(if                                                                  \
+#		$(shell if ! command -v "node" > /dev/null; then echo "missing"; fi),              \
+#		$(error Missing binary dependency "node"),                                         \
+#		$(info $(shell                                                                     \
+#			pad="$$(printf '%0.1s' "."{1..20})";                                       \
+#			exec="node";                                                               \
+#			printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
+#			echo "\033[0;32m✓\033[0m"                                                 \
+#		))                                                                                 \
+#	)
+#		@mkdir -p .make/ensure && touch .make/ensure/__node
+#
+# Now the check makes more sense: If `command -v "node"` errors, the first `$(shell ...)`
+# call returns a non-empty string, and the `$(if ...)` expands to `$(error Missing binary
+# dependency "node")`. `$(error ...)` stops execution and displays to the user. If not,
+# then `$(info ...)` is used to print a "found it" message to the user and the target
+# dependency list expands successfully:
+#
+#	.make/ensure/__node:
+#		@mkdir -p .make/ensure && touch $@
+#
+# This target is then executed as normal.
+#
+# ---
+#
+# OK, but why do it this way?
+#
+# By doing the check entirely within dependency expansion, we keep all targets as pure
+# file dependencies. In effect, this means that make considers .make/ensure/% to be built
+# on repeated runs, and listing an .make/ensure dependency does not require perpetual
+# rebuilds.
+
+# .make/ensure/__% is the inner target for .make/ensure/%.
+.make/ensure/__%: $$(call __ensure_dependency,$$*)
+	@mkdir -p .make/ensure && touch $@
+
+# __ensure_dependency checks that it's first argument is on PATH. If not it errors
+#
+# __ensure_dependency is an implementation detail of `.make/ensure/%`, and need not be
+# called directly.
+define __ensure_dependency #$(1): the executable to check for: "go", "node", ...
+	$(if                                                                                       \
+		$(shell if ! command -v "$(1)" > /dev/null; then echo "missing"; fi),              \
+		$(error Missing binary dependency "$(1)"),                                         \
+		$(info $(shell                                                                     \
+			pad="$$(printf '%0.1s' "."{1..20})";                                       \
+			exec="$(1)";                                                               \
+			printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
+			echo "\033[0;32m✓\033[0m"                                                 \
+		))                                                                                 \
+	)
+endef

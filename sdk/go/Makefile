@@ -17,7 +17,7 @@ TEST_ALL_DEPS ?= install
 gen::
 	go generate ./pulumi/...
 
-ensure: go.ensure
+ensure: .make/ensure/go
 
 build:: gen
 	go install -C pulumi-language-go \
@@ -49,7 +49,7 @@ brew::
 	go install -C pulumi-language-go \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
-lint:: golangci-lint.ensure
+lint:: .make/ensure/golangci-lint
 	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m --path-prefix ..
 
 	cd pulumi-language-go && \

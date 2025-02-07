@@ -82,7 +82,7 @@ __pycache__
 .pytest_cache
 
 # File targets for make
-*.phony
+.make
 
 # Temporary files
 *.tmp
