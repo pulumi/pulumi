@@ -17,6 +17,7 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -151,7 +152,7 @@ func (c *cachingCrypter) DecryptValue(ctx context.Context, ciphertext string) (s
 	return c.decrypter.DecryptValue(ctx, ciphertext)
 }
 
-func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return c.decrypter.BulkDecrypt(ctx, ciphertexts)
 }
 
@@ -215,22 +216,26 @@ func (c *mapDecrypter) DecryptValue(ctx context.Context, ciphertext string) (str
 	return plaintext, nil
 }
 
-func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	// Loop and find the entries that are already cached, then BulkDecrypt the rest
-	secretMap := map[string]string{}
+	decryptedResult := make([]string, len(ciphertexts))
 	var toDecrypt []string
 	if c.cache == nil {
 		// Don't bother searching for the cached subset if the cache is nil
 		toDecrypt = ciphertexts
 	} else {
-		toDecrypt = make([]string, 0)
-		for _, ct := range ciphertexts {
+		toDecrypt = make([]string, 0, len(ciphertexts))
+		for i, ct := range ciphertexts {
 			if plaintext, ok := c.cache[ct]; ok {
-				secretMap[ct] = plaintext
+				decryptedResult[i] = plaintext
 			} else {
 				toDecrypt = append(toDecrypt, ct)
 			}
 		}
+	}
+
+	if len(toDecrypt) == 0 {
+		return decryptedResult, nil
 	}
 
 	// try and bulk decrypt the rest
@@ -243,11 +248,19 @@ func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (m
 	if c.cache == nil {
 		c.cache = make(map[string]string)
 	}
-
-	for ct, pt := range decrypted {
-		secretMap[ct] = pt
+	for i, ct := range toDecrypt {
+		pt := decrypted[i]
 		c.cache[ct] = pt
 	}
 
-	return secretMap, nil
+	// Re-populate results
+	for i, ct := range ciphertexts {
+		if plaintext, ok := c.cache[ct]; ok {
+			decryptedResult[i] = plaintext
+		} else {
+			return nil, errors.New("decrypted value not found in bulk response")
+		}
+	}
+
+	return decryptedResult, nil
 }

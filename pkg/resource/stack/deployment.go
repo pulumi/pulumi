@@ -276,9 +276,16 @@ func DeserializeDeploymentV3(
 		}
 
 		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
-		cache, err := d.BulkDecrypt(ctx, ciphertexts)
+		decrypted, err := d.BulkDecrypt(ctx, ciphertexts)
 		if err != nil {
 			return nil, err
+		}
+		if len(decrypted) != len(ciphertexts) {
+			return nil, errors.New("decrypted secrets count does not match ciphertexts count")
+		}
+		cache := make(map[string]string)
+		for i, ciphertext := range ciphertexts {
+			cache[ciphertext] = decrypted[i]
 		}
 		dec = newMapDecrypter(d, cache)
 

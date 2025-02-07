@@ -302,9 +302,9 @@ func TestStackEnvConfig(t *testing.T) {
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() map[string]string {
-					return map[string]string{
-						"idontknow": "whatiamdoing",
+				BulkDecryptF: func() []string {
+					return []string{
+						"whatiamdoing",
 					}
 				},
 			}
@@ -387,9 +387,9 @@ func TestCopyConfig(t *testing.T) {
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() map[string]string {
-					return map[string]string{
-						"idontknow": "whatiamdoing",
+				BulkDecryptF: func() []string {
+					return []string{
+						"whatiamdoing",
 					}
 				},
 			}

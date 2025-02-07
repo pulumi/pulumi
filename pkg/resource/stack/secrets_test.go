@@ -69,7 +69,7 @@ func (t *testSecretsManager) DecryptValue(
 
 func (t *testSecretsManager) BulkDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	return config.DefaultBulkDecrypt(ctx, t, ciphertexts)
 }
 
@@ -258,7 +258,7 @@ func (t *mapTestDecrypter) DecryptValue(
 
 func (t *mapTestDecrypter) BulkDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	t.bulkDecryptCalls++
 	return config.DefaultBulkDecrypt(ctx, t.d, ciphertexts)
 }

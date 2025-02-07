@@ -78,7 +78,7 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 
 type MockDecrypter struct {
 	DecryptValueF func() string
-	BulkDecryptF  func() map[string]string
+	BulkDecryptF  func() []string
 }
 
 func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
@@ -89,7 +89,7 @@ func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (s
 	return "", errors.New("mock value not provided")
 }
 
-func (md *MockDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (md *MockDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	if md.BulkDecryptF != nil {
 		return md.BulkDecryptF(), nil
 	}

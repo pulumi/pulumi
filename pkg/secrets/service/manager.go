@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -66,7 +67,7 @@ func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) 
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
+func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) ([]string, error) {
 	secretsToDecrypt := slice.Prealloc[[]byte](len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
@@ -81,9 +82,13 @@ func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map
 		return nil, err
 	}
 
-	decryptedSecrets := make(map[string]string)
-	for name, val := range decryptedList {
-		decryptedSecrets[name] = string(val)
+	decryptedSecrets := make([]string, len(secrets))
+	for i, cyphertext := range secrets {
+		decrypted, ok := decryptedList[cyphertext]
+		if !ok {
+			return nil, errors.New("decrypted value not found in bulk response")
+		}
+		decryptedSecrets[i] = string(decrypted)
 	}
 
 	return decryptedSecrets, nil

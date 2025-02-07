@@ -427,7 +427,7 @@ func (ec *errorCrypter) DecryptValue(ctx context.Context, _ string) (string, err
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) (map[string]string, error) {
+func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) ([]string, error) {
 	return nil, errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
