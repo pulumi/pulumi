@@ -393,7 +393,6 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           directory: junit/
-          files: "*,!.gitkeep"
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
