@@ -342,6 +342,10 @@ type ProgramTestOptions struct {
 
 	// Array of provider plugin dependencies which come from local packages.
 	LocalProviders []LocalDependency
+
+	// The directory to use for PULUMI_HOME. Useful for benchmarks where you want to run a warmup run of `ProgramTest`
+	// to download plugins before running the timed run of `ProgramTest`.
+	PulumiHomeDir string
 }
 
 func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
@@ -669,6 +673,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.LocalProviders != nil {
 		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
+	if overrides.PulumiHomeDir != "" {
+		opts.PulumiHomeDir = overrides.PulumiHomeDir
+	}
 	return opts
 }
 
@@ -888,8 +895,14 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
-	home, err := os.MkdirTemp("", "test-env-home")
-	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+	var home string
+	if opts.PulumiHomeDir != "" {
+		home = opts.PulumiHomeDir
+	} else {
+		var err error
+		home, err = os.MkdirTemp("", "test-env-home")
+		assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+	}
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
@@ -1254,9 +1267,12 @@ func (pt *ProgramTester) TestCleanUp() {
 		}
 	}
 
-	// Clean up the temporary PULUMI_HOME directory we created. This is necessary to reclaim the disk space
-	// of the plugins that were downloaded during the test.
-	contract.IgnoreError(os.RemoveAll(pt.pulumiHome))
+	// Clean up the temporary PULUMI_HOME directory we created. This is necessary to reclaim the disk space of the
+	// plugins that were downloaded during the test. We only created this if `opts.PulumiHomeDir` is empty, otherwise we
+	// will have used the provided directory and should leave it alone.
+	if pt.opts.PulumiHomeDir == "" {
+		contract.IgnoreError(os.RemoveAll(pt.pulumiHome))
+	}
 }
 
 // TestLifeCycleInitAndDestroy executes the test and cleans up
