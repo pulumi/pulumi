@@ -112,15 +112,15 @@ class Analyzer:
         self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
 
     def analyze(
-        self, path: Path
+        self, module_path: Path
     ) -> tuple[dict[str, ComponentDefinition], dict[str, TypeDefinition]]:
         """
         Analyze walks the directory at `path` and searches for
         ComponentResources in Python files.
         """
         components: dict[str, ComponentDefinition] = {}
-        for file_path in self.iter(path):
-            new_components = self.analyze_file(file_path)
+        for file_path in self.iter(module_path):
+            new_components = self.analyze_file(file_path, module_path)
             new_names = set(new_components.keys())
             old_names = set(components.keys())
             duplicates = old_names.intersection(new_names)
@@ -137,7 +137,7 @@ class Analyzer:
         # With https://peps.python.org/pep-0649/ we might be able to let
         # Python handle this for us.
         for name, type_def in [*self.unresolved_forward_refs.items()]:
-            a = self.find_type(path, type_def.name)
+            a = self.find_type(module_path, type_def.name)
             (properties, properties_mapping) = self.analyze_type(a)
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
@@ -151,13 +151,15 @@ class Analyzer:
                 continue
             yield file_path
 
-    def analyze_file(self, file_path: Path) -> dict[str, ComponentDefinition]:
+    def analyze_file(
+        self, file_path: Path, module_path: Path
+    ) -> dict[str, ComponentDefinition]:
         components: dict[str, ComponentDefinition] = {}
-        module_type = self.load_module(file_path)
+        module_type = self.load_module(file_path, module_path)
         for name in dir(module_type):
             obj = getattr(module_type, name)
             if inspect.isclass(obj) and ComponentResource in obj.__bases__:
-                components[name] = self.analyze_component(obj)
+                components[name] = self.analyze_component(obj, module_path)
         return components
 
     def find_type(self, path: Path, name: str) -> type:
@@ -167,15 +169,15 @@ class Analyzer:
         :param name: The name of the type to find.
         """
         for file_path in self.iter(path):
-            mod = self.load_module(file_path)
+            mod = self.load_module(file_path, path)
             comp = getattr(mod, name, None)
             if comp:
                 return comp
         raise TypeNotFoundError(name)
 
-    def load_module(self, file_path: Path) -> ModuleType:
+    def load_module(self, file_path: Path, module_path: Path) -> ModuleType:
         name = file_path.name.replace(".py", "")
-        rel_path = file_path.resolve().relative_to(Path.cwd().resolve())
+        rel_path = file_path.resolve().relative_to(module_path.resolve())
         spec = importlib.util.spec_from_file_location(str(rel_path), file_path)
         if not spec:
             raise Exception(f"Could not load module spec at {file_path}")
@@ -201,7 +203,7 @@ class Analyzer:
                 return getattr(o, "__annotations__", {})
 
     def analyze_component(
-        self, component: type[ComponentResource]
+        self, component: type[ComponentResource], module_path: Path
     ) -> ComponentDefinition:
         ann = self.get_annotations(component.__init__)
         args = ann.get("args", None)

@@ -51,7 +51,7 @@ def test_analyze_component():
         def __init__(self, args: SelfSignedCertificateArgs): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(SelfSignedCertificate)
+    component = analyzer.analyze_component(SelfSignedCertificate, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="SelfSignedCertificate",
         module="test_analyzer",
@@ -84,7 +84,7 @@ def test_analyze_component_no_args():
 
     analyzer = Analyzer(metadata)
     try:
-        component = analyzer.analyze_component(NoArgs)
+        component = analyzer.analyze_component(NoArgs, Path("test_analyzer"))
         assert False, f"expected an exception, got {component}"
     except Exception as e:
         assert (
@@ -98,7 +98,7 @@ def test_analyze_component_empty():
         def __init__(self, args: dict[str, Any]): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Empty)
+    component = analyzer.analyze_component(Empty, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Empty",
         module="test_analyzer",
@@ -125,7 +125,7 @@ def test_analyze_component_plain_types():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -166,7 +166,7 @@ def test_analyze_list_simple():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -201,7 +201,7 @@ def test_analyze_list_complex():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -248,7 +248,7 @@ def test_analyze_dict_non_str_key():
 
     analyzer = Analyzer(metadata)
     try:
-        analyzer.analyze_component(Component)
+        analyzer.analyze_component(Component, Path("test_analyzer"))
     except InvalidMapKeyError as e:
         assert str(e) == "map keys must be strings, got 'int' for 'Args.bad_dict'"
 
@@ -263,7 +263,7 @@ def test_analyze_dict_simple():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -300,7 +300,7 @@ def test_analyze_dict_complex():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -357,7 +357,7 @@ def test_analyze_component_complex_type():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -416,8 +416,8 @@ def test_analyze_duplicate_type():
         assert (
             str(e)
             == "Duplicate type 'MyDuplicateType': "
-            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-type/component_a.py', "
-            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-type/component_b.py'"
+            + "orginally defined in 'component_a.py', "
+            + "but also found in 'component_b.py'"
         )
 
 
@@ -433,8 +433,8 @@ def test_analyze_duplicate_components():
         assert (
             str(e)
             == "Duplicate type 'MyComponent': "
-            + "orginally defined in 'lib/test/provider/experimental/testdata/duplicate-components/component_a.py', "
-            + "but also found in 'lib/test/provider/experimental/testdata/duplicate-components/component_b.py'"
+            + "orginally defined in 'component_a.py', "
+            + "but also found in 'component_b.py'"
         )
 
 
@@ -451,7 +451,7 @@ def test_analyze_component_self_recursive_complex_type():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert analyzer.type_definitions == {
         "RecursiveType": TypeDefinition(
             name="RecursiveType",
@@ -503,7 +503,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert analyzer.type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
@@ -553,7 +553,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     assert type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
-            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            module="component.py",
             type="object",
             properties={
                 "b": PropertyDefinition(
@@ -565,7 +565,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
-            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            module="component.py",
             type="object",
             properties={
                 "a": PropertyDefinition(
@@ -579,7 +579,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     assert components == {
         "Component": ComponentDefinition(
             name="Component",
-            module="lib/test/provider/experimental/testdata/mutually-recursive/component.py",
+            module="component.py",
             inputs={
                 "rec": PropertyDefinition(
                     ref="#/types/my-component:index:RecursiveTypeA"
