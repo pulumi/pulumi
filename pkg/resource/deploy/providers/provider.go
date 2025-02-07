@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ProviderParameterization struct {
@@ -42,15 +41,6 @@ func NewProviderParameterization(name tokens.Package, version semver.Version, va
 		Version: version,
 		Value:   value,
 	}
-}
-
-// ToProviderParameterization converts a workspace parameterization to a provider parameterization.
-func ToProviderParameterization(parameterization *workspace.Parameterization) *ProviderParameterization {
-	if parameterization == nil {
-		return nil
-	}
-	return NewProviderParameterization(
-		tokens.Package(parameterization.Name), parameterization.Version, parameterization.Value)
 }
 
 // A ProviderRequest is a tuple of an optional semantic version, download server url, parameter, and a package name.
