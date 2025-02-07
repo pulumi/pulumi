@@ -673,6 +673,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.LocalProviders != nil {
 		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
+	if overrides.PulumiHomeDir != "" {
+		opts.PulumiHomeDir = overrides.PulumiHomeDir
+	}
 	return opts
 }
 
