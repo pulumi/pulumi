@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Update `pulumi-java` to 1.2.0
