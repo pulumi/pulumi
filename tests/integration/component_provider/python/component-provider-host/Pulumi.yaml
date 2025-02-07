@@ -20,9 +20,9 @@ resources:
         b: 2
         c: 3
       complexInput:
-        complexStr: world
-        nested:
-          nestedStr: this is nested
+        strInput: world
+        nestedInput:
+          strPlain: this is nested
 outputs:
   urn: ${comp.urn}
   strOutput: ${comp.strOutput}

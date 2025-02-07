@@ -111,7 +111,8 @@ def test_analyze_component_empty():
 
 def test_analyze_component_plain_types():
     class ComplexType(TypedDict):
-        name: Optional[pulumi.Input[list[str]]]
+        a_input_list_str: Optional[pulumi.Input[list[str]]]
+        a_str: str
 
     class Args(TypedDict):
         a_int: int
@@ -260,6 +261,22 @@ def test_analyze_component_plain_types():
             "aOptionalOutputComplex": "a_optional_output_complex",
         },
     )
+    assert analyzer.type_definitions == {
+        "ComplexType": TypeDefinition(
+            name="ComplexType",
+            module="test_analyzer",
+            type="object",
+            properties={
+                "aInputListStr": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                    optional=True,
+                ),
+                "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            },
+            properties_mapping={"aInputListStr": "a_input_list_str", "aStr": "a_str"},
+        )
+    }
 
 
 def test_analyze_list_simple():

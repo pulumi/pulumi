@@ -375,7 +375,7 @@ class Analyzer:
             else:
                 if type_def.module and type_def.module != arg.__module__:
                     raise DuplicateTypeError(arg.__module__, type_def)
-            (properties, properties_mapping) = self.analyze_type(arg, plain)
+            (properties, properties_mapping) = self.analyze_type(arg, can_be_plain=True)
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:

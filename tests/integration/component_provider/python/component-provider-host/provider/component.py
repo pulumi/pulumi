@@ -19,12 +19,12 @@ import pulumi
 
 
 class Nested(TypedDict):
-    nested_str: str
+    str_plain: str
 
 
 class Complex(TypedDict):
-    complex_str: pulumi.Input[str]
-    nested: pulumi.Input[Nested]
+    str_input: pulumi.Input[str]
+    nested_input: pulumi.Input[Nested]
 
 
 class Args(TypedDict):
@@ -52,10 +52,10 @@ class MyComponent(pulumi.ComponentResource):
         ).apply(lambda x: x * 2 if x else 7)
         self.complex_output = pulumi.Output.from_input(
             {
-                "complex_str": "complex_str_value",
-                "nested": pulumi.Output.from_input(
+                "str_input": "complex_str_input_value",
+                "nested_input": pulumi.Output.from_input(
                     {
-                        "nested_str": "nested_str_value",
+                        "str_plain": "nested_str_plain_value",
                     }
                 ),
             }

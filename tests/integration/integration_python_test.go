@@ -1843,9 +1843,9 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
 			require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
 			complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
-			require.Equal(t, "complex_str_value", complexOutput["complexStr"].(string))
-			nested := complexOutput["nested"].(map[string]interface{})
-			require.Equal(t, "nested_str_value", nested["nestedStr"].(string))
+			require.Equal(t, "complex_str_input_value", complexOutput["strInput"].(string))
+			nested := complexOutput["nestedInput"].(map[string]interface{})
+			require.Equal(t, "nested_str_plain_value", nested["strPlain"].(string))
 			require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
 			require.Equal(t, map[string]interface{}{
 				"a": float64(2),
@@ -1935,24 +1935,24 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	expectedTypesJSON := `{
 		"provider:index:Complex": {
 			"properties": {
-				"complexStr": {
-					"type": "string", "plain": true
+				"strInput": {
+					"type": "string"
 				},
-				"nested": {
+				"nestedInput": {
 					"$ref": "#/types/provider:index:Nested"
 				}
 			},
 			"type": "object",
-			"required": ["complexStr", "nested"]
+			"required": ["nestedInput", "strInput"]
 		},
 		"provider:index:Nested": {
 			"properties": {
-				"nestedStr": {
+				"strPlain": {
 					"type": "string", "plain": true
 				}
 			},
 			"type": "object",
-			"required": ["nestedStr"]
+			"required": ["strPlain"]
 		}
 	}`
 	expectedTypes := make(map[string]interface{})
