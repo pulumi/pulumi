@@ -393,7 +393,6 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           directory: junit/
-          files: "*,!.gitkeep"
           fail_ci_if_error: false
           override_branch: ${{ startsWith(github.head_ref, 'gh-readonly-queue/master') && 'master' || github.head_ref }}
           verbose: true
