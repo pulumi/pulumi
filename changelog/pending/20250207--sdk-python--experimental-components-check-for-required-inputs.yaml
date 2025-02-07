@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: "[Experimental/Components] Check for required inputs"

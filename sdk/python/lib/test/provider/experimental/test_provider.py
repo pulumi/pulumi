@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.provider.experimental.provider import ComponentProvider
+from pathlib import Path
+from pulumi.provider.experimental.metadata import Metadata
+from pulumi.provider.experimental.provider import (
+    ComponentProvider,
+    MissingPropertyError,
+)
 
 
 def test_validate_resource_type_invalid():
@@ -27,3 +32,35 @@ def test_validate_resource_type_invalid():
 def test_validate_resource_type_valid():
     for rt in ["pkg:index:type", "pkg::type", "pkg:index:Type123"]:
         ComponentProvider.validate_resource_type("pkg", rt)
+
+
+def test_map_inputs():
+    provider = ComponentProvider(
+        Metadata("test-provider", "0.0.1"),
+        Path(Path(__file__).parent, "testdata", "missing-input"),
+    )
+    component_def = provider._component_defs["MyComponent"]  # type: ignore
+
+    try:
+        provider.map_inputs({}, component_def)
+        assert False, "expected an error"
+    except MissingPropertyError as e:
+        assert str(e) == "Missing required input 'MyComponent.a'"
+
+    try:
+        provider.map_inputs({"a": {}}, component_def)
+        assert False, "expected an error"
+    except MissingPropertyError as e:
+        assert (
+            str(e)
+            == "Missing required input 'RequiredType.b' for input 'MyComponent.a'"
+        )
+
+    try:
+        provider.map_inputs({"a": {"b": {}}}, component_def)
+        assert False, "expected an error"
+    except MissingPropertyError as e:
+        assert (
+            str(e)
+            == "Missing required input 'RequiredTypeNested.c' for input 'MyComponent.a.b'"
+        )
