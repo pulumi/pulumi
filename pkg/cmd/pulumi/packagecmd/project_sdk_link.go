@@ -394,7 +394,9 @@ func linkGoPackage(root string, pkg *schema.Package, out string) error {
 		return err
 	}
 	if pkg.Parameterization == nil {
-		relOut = filepath.Join(relOut, pkg.Name)
+		// Go SDK Gen replaces all "-" in the name.  See pkg/codegen/gen.go:goPackage
+		name := strings.ReplaceAll(pkg.Name, "-", "")
+		relOut = filepath.Join(relOut, name)
 	}
 	if runtime.GOOS == "windows" {
 		relOut = ".\\" + relOut
