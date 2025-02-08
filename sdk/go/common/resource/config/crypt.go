@@ -155,12 +155,26 @@ func (s symmetricCrypter) DecryptValue(ctx context.Context, value string) (strin
 		return "", fmt.Errorf("bad value: %w", err)
 	}
 
-	enc, err := base64.StdEncoding.DecodeString(vals[2])
+	ciphertext, err := base64.StdEncoding.DecodeString(vals[2])
 	if err != nil {
 		return "", fmt.Errorf("bad value: %w", err)
 	}
 
-	return decryptAES256GCM(enc, s.key, nonce)
+	contract.Requiref(len(s.key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
+
+	block, err := aes.NewCipher(s.key)
+	contract.AssertNoErrorf(err, "error creating AES cipher")
+
+	aesgcm, err := cipher.NewGCM(block)
+	contract.AssertNoErrorf(err, "error creating AES-GCM cipher")
+
+	if len(nonce) != aesgcm.NonceSize() {
+		return "", errors.New("bad value: nonce size is incorrect")
+	}
+
+	msg, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+
+	return string(msg), err
 }
 
 func (s symmetricCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
@@ -185,20 +199,6 @@ func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 	msg := aesgcm.Seal(nil, nonce, []byte(plaintext), nil)
 
 	return msg, nonce
-}
-
-func decryptAES256GCM(ciphertext []byte, key []byte, nonce []byte) (string, error) {
-	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
-
-	block, err := aes.NewCipher(key)
-	contract.AssertNoErrorf(err, "error creating AES cipher")
-
-	aesgcm, err := cipher.NewGCM(block)
-	contract.AssertNoErrorf(err, "error creating AES-GCM cipher")
-
-	msg, err := aesgcm.Open(nil, nonce, ciphertext, nil)
-
-	return string(msg), err
 }
 
 // Crypter that just adds a prefix to the plaintext string when encrypting,
