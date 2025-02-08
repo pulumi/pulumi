@@ -1,5 +1,67 @@
 # Changelog
 
+## 3.149.0 (2025-02-07)
+
+
+### Features
+
+- [cli] Update `pulumi-java` to 1.2.0
+
+- [cli/display] Always print resource summaries in preview, even after errors
+  [#18465](https://github.com/pulumi/pulumi/pull/18465)
+
+- [cli/plugin] Improve the warning when using plugins from PATH
+  [#18476](https://github.com/pulumi/pulumi/pull/18476)
+
+- [engine] Deployments continue past delete errors due to protect
+  [#18396](https://github.com/pulumi/pulumi/pull/18396)
+
+- [sdk/python] [Experimental/Components] Add infrastructure to bootstrap providers from component resources
+  [#18403](https://github.com/pulumi/pulumi/pull/18403)
+  [#18401](https://github.com/pulumi/pulumi/pull/18401)
+
+- [sdk/python] [Experimental/Components] Analyze ComponentResource properties
+  [#18403](https://github.com/pulumi/pulumi/pull/18403)
+
+- [sdk/python] [Experimental/Components] Infer ComplexTypes for ComponentResources
+  [#18405](https://github.com/pulumi/pulumi/pull/18405)
+
+- [sdk/python] [Experimental/Components] Handle complex types in inputs and outputs
+  [#18419](https://github.com/pulumi/pulumi/pull/18419)
+
+- [sdk/python] [Experimental/Components] Support array types in component schema inference
+  [#18469](https://github.com/pulumi/pulumi/pull/18469)
+
+- [sdk/python] [Experimental/Components] Support dict types in component schema inference
+  [#18472](https://github.com/pulumi/pulumi/pull/18472)
+
+
+### Bug Fixes
+
+- [engine] Filter __internal keys when calling providers DiffConfig
+  [#18440](https://github.com/pulumi/pulumi/pull/18440)
+
+- [engine] The engine will correctly use old state for provider config with no reported differences
+  [#18411](https://github.com/pulumi/pulumi/pull/18411)
+
+- [cli/config] Fix setting indexed top-level config keys
+  [#18444](https://github.com/pulumi/pulumi/pull/18444)
+
+- [cli/import] Fix the declaration of parameterized providers in import JSON files
+  [#18450](https://github.com/pulumi/pulumi/pull/18450)
+
+- [sdk/go] Provide a better error message when a Go program can't be run
+  [#18383](https://github.com/pulumi/pulumi/pull/18383)
+
+- [cli/package] Allow https:// prefixes for Git repository URLs
+  [#18380](https://github.com/pulumi/pulumi/pull/18380)
+
+- [cli/package] Fix package add and code generation when package name contains dashes in Go
+  [#18457](https://github.com/pulumi/pulumi/pull/18457)
+
+- [sdk/python] [Experimental/Components] Handle inputs and outputs
+  [#18408](https://github.com/pulumi/pulumi/pull/18408)
+
 ## 3.148.0 (2025-01-31)
 
 

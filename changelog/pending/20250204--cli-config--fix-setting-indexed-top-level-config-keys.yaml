@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Fix setting indexed top-level config keys

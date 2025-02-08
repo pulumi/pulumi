@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: The engine will correctly use old state for provider config with no reported differences
