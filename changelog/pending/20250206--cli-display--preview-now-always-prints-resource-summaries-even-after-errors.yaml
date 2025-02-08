@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Always print resource summaries in preview, even after errors

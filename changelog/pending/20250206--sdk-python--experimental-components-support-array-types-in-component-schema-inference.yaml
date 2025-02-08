@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: "[Experimental/Components] Support array types in component schema inference"

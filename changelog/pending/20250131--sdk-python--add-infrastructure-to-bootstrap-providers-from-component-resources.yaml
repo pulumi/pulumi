@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: "[Experimental/Components] Add infrastructure to bootstrap providers from component resources"
