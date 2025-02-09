@@ -466,7 +466,7 @@ func renderDiffResourceOutputsEvent(
 			// things that are the same.
 			text := getResourceOutputsPropertiesString(
 				payload.Metadata, indent+1, payload.Planning,
-				payload.Debug, refresh, opts.ShowSameResources)
+				payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
 			if text != "" {
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
 					deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
