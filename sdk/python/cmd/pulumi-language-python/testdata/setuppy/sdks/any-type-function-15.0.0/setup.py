@@ -8,7 +8,7 @@ from setuptools.command.install import install
 from subprocess import check_call
 
 
-VERSION = "2.0.0"
+VERSION = "15.0.0"
 def readme():
     try:
         with open('README.md', encoding='utf-8') as f:
@@ -32,6 +32,7 @@ setup(name='pulumi_any_type_function',
       install_requires=[
           'parver>=0.2.1',
           'pulumi>=3.142.0,<4.0.0',
-          'semver>=2.8.1'
+          'semver>=2.8.1',
+          'typing-extensions>=4.11,<5; python_version < "3.11"'
       ],
       zip_safe=False)

@@ -53,7 +53,7 @@ func (p *AnyTypeFunctionProvider) GetSchema(
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "any-type-function",
-		Version: "2.0.0",
+		Version: "15.0.0",
 		Functions: map[string]schema.FunctionSpec{
 			"any-type-function:index:dynListToDyn": {
 				Inputs: &schema.ObjectTypeSpec{
@@ -105,9 +105,9 @@ func (p *AnyTypeFunctionProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "2.0.0" {
+	if version.StringValue() != "15.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 2.0.0"),
+			Failures: makeCheckFailure("version", "version is not 15.0.0"),
 		}, nil
 	}
 
@@ -133,7 +133,7 @@ func (p *AnyTypeFunctionProvider) Create(
 }
 
 func (p *AnyTypeFunctionProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	ver := semver.MustParse("2.0.0")
+	ver := semver.MustParse("15.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
