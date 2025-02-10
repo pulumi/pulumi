@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Allow `pulumi new` to use templates defined in the Pulumi Cloud
