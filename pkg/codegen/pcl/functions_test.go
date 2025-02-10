@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,4 +83,34 @@ func TestBindingInvokeThatReturnsRecursiveType(t *testing.T) {
 	variableType := localVariable.Type()
 	_, isPromise := variableType.(*model.PromiseType)
 	assert.True(t, isPromise, "the type is a promise")
+}
+
+// Tests that the PCL `try` intrinsic function refuses to bind when passed no arguments.
+func TestTryWithoutArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = try()"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "'try' expects at least one argument")
+}
+
+// Tests that the PCL `try` intrinsic function binds when correctly passed any non-zero number of arguments.
+func TestTryWithCorrectArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = try(1, 2, 3)"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
 }
