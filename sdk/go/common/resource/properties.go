@@ -502,13 +502,13 @@ func (v PropertyValue) IsArray() bool {
 	return is
 }
 
-// IsAsset returns true if the underlying value is an object.
+// IsAsset returns true if the underlying value is an asset.
 func (v PropertyValue) IsAsset() bool {
 	_, is := v.V.(*asset.Asset)
 	return is
 }
 
-// IsArchive returns true if the underlying value is an object.
+// IsArchive returns true if the underlying value is an archive.
 func (v PropertyValue) IsArchive() bool {
 	_, is := v.V.(*archive.Archive)
 	return is
