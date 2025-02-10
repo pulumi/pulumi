@@ -83,6 +83,8 @@ type ProjectTemplate struct {
 	// Config is an optional template config.
 	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
 	// Important indicates the template is important.
+	//
+	// Deprecated: We don't use this field any more.
 	Important bool `json:"important,omitempty" yaml:"important,omitempty"`
 	// Metadata are key/value pairs used to attach additional metadata to a template.
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
