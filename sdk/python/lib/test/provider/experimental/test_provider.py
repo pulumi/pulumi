@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from pathlib import Path
+from pulumi.errors import InputPropertyError
 from pulumi.provider.experimental.metadata import Metadata
-from pulumi.provider.experimental.provider import (
-    ComponentProvider,
-    MissingPropertyError,
-)
+from pulumi.provider.experimental.provider import ComponentProvider
 
 
 def test_validate_resource_type_invalid():
@@ -44,23 +42,17 @@ def test_map_inputs():
     try:
         provider.map_inputs({}, component_def)
         assert False, "expected an error"
-    except MissingPropertyError as e:
-        assert str(e) == "Missing required input 'MyComponent.a'"
+    except InputPropertyError as e:
+        assert e.reason == "Missing required input 'MyComponent.a'"
 
     try:
         provider.map_inputs({"a": {}}, component_def)
         assert False, "expected an error"
-    except MissingPropertyError as e:
-        assert (
-            str(e)
-            == "Missing required input 'RequiredType.b' for input 'MyComponent.a'"
-        )
+    except InputPropertyError as e:
+        assert e.reason == "Missing required input 'MyComponent.a.b'"
 
     try:
         provider.map_inputs({"a": {"b": {}}}, component_def)
         assert False, "expected an error"
-    except MissingPropertyError as e:
-        assert (
-            str(e)
-            == "Missing required input 'RequiredTypeNested.c' for input 'MyComponent.a.b'"
-        )
+    except InputPropertyError as e:
+        assert e.reason == "Missing required input 'MyComponent.a.b.c'"

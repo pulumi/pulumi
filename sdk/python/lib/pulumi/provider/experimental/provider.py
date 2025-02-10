@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
@@ -23,9 +24,6 @@ from .analyzer import Analyzer
 from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
 from .metadata import Metadata
 from .schema import generate_schema
-
-
-class MissingPropertyError(Exception): ...
 
 
 class ComponentProvider(Provider):
@@ -90,8 +88,10 @@ class ComponentProvider(Provider):
             input_val = inputs.get(schema_name, None)
             if input_val is None:
                 if not prop.optional:
-                    raise MissingPropertyError(
-                        f"Missing required input '{component_def.name}.{schema_name}'"
+                    property_path = f"{component_def.name}.{schema_name}"
+                    raise InputPropertyError(
+                        property_path,
+                        f"Missing required input '{property_path}'",
                     )
                 continue
             py_name = component_def.inputs_mapping[schema_name]
@@ -128,8 +128,12 @@ class ComponentProvider(Provider):
             input_val = inputs.get(schema_name, None)
             if input_val is None:
                 if not prop.optional:
-                    raise MissingPropertyError(
-                        f"Missing required input '{type_def.name}.{schema_name}' for input '{component_def.name}.{property_name}'"
+                    property_path = (
+                        f"{component_def.name}.{property_name}.{schema_name}"
+                    )
+                    raise InputPropertyError(
+                        property_path,
+                        f"Missing required input '{property_path}'",
                     )
                 continue
             py_name = type_def.properties_mapping[schema_name]
