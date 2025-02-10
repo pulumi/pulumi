@@ -1744,20 +1744,6 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return false, nil
 	}
 
-	// If one or both of these providers are not default providers, we will need to accept the diff and replace
-	// everything. This might not be strictly necessary, but it is conservatively correct.
-	if !providers.IsDefaultProvider(oldRef.URN()) || !providers.IsDefaultProvider(newRef.URN()) {
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): reporting provider diff due to change in default provider status", urn)
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): old provider %q is default: %v",
-			urn, oldRef.URN(), providers.IsDefaultProvider(oldRef.URN()))
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): new provider %q is default: %v",
-			urn, newRef.URN(), providers.IsDefaultProvider(newRef.URN()))
-		return true, err
-	}
-
 	// If both of these providers are default providers, use the *new provider* to diff the config and determine if
 	// this provider requires replacement.
 	//
