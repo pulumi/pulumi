@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/state
+  description: Add `--all` to `state delete`

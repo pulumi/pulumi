@@ -16,6 +16,7 @@ package state
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStateDeleteNoArgs(t *testing.T) {
@@ -38,6 +40,16 @@ func TestStateDeleteNoArgs(t *testing.T) {
 	cmd := &stateDeleteCmd{}
 	err := cmd.Run(context.Background(), []string{}, &pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
 	assert.ErrorContains(t, err, "Must supply <resource URN> unless pulumi is run interactively")
+}
+
+func TestStateDeleteAllAndURN(t *testing.T) {
+	t.Parallel()
+
+	cmd := &stateDeleteCmd{
+		all: true,
+	}
+	err := cmd.Run(context.Background(), []string{"urn"}, &pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
+	assert.ErrorContains(t, err, "cannot specify a resource URN when deleting all resources")
 }
 
 func TestNoProject(t *testing.T) {
@@ -226,4 +238,68 @@ func TestStateDeleteProtected(t *testing.T) {
 	assert.Equal(t,
 		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"metadata\":{}}",
 		string(savedDeployment.Deployment))
+}
+
+func TestStateDeleteAll(t *testing.T) {
+	t.Parallel()
+
+	snapshot := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
+			},
+			{
+				URN: "urn:pulumi:proj::stk::pkg:index:typ::dependee",
+				Dependencies: []resource.URN{
+					"urn:pulumi:proj::stk::pkg:index:typ::dependency",
+				},
+			},
+		},
+	}
+
+	var mockDeployment *apitype.UntypedDeployment
+	mockStack := &backend.MockStack{
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
+		},
+		ImportDeploymentF: func(_ context.Context, deployment *apitype.UntypedDeployment) error {
+			mockDeployment = deployment
+			return nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := &stateDeleteCmd{
+		stack: "stk",
+		all:   true,
+	}
+	err := cmd.Run(context.Background(), []string{}, ws, lm)
+	require.NoError(t, err)
+
+	deployment := apitype.DeploymentV3{}
+	err = json.Unmarshal(mockDeployment.Deployment, &deployment)
+	require.NoError(t, err)
+	assert.Len(t, deployment.Resources, 0)
 }
