@@ -2338,6 +2338,8 @@ func TestAutonaming(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "explicit-name", stackInfo.RootResource.Outputs["explicitName"])
 					assert.Equal(t, tc.autoName, stackInfo.RootResource.Outputs["autoName"])
+					assert.True(t, strings.HasSuffix(stackInfo.RootResource.Outputs["componentUrn"].(string), "::test3"),
+						"Expected componentUrn to end with '::test3', got %v", stackInfo.RootResource.Outputs["componentUrn"])
 				},
 			})
 		})
