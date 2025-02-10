@@ -1835,8 +1835,8 @@ func TestPythonComponentProviderRun(t *testing.T) {
 	providerDir := filepath.Join(testData, "provider")
 	installPythonProviderDependencies(t, providerDir)
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, runtime := range []string{"yaml", "nodejs", "python"} {
-		//nolint:paralleltest // ProgramTest calls t.Parallel()
 		t.Run(runtime, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
@@ -1884,8 +1884,6 @@ func TestPythonComponentProviderRun(t *testing.T) {
 
 						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
 						archive := stack.Outputs["archiveOutput"].(map[string]interface{})
-						if runtime == "yaml" {
-						}
 						asset1 := archive["assets"].(map[string]interface{})["asset1"].(map[string]interface{})
 						text = asset1["text"].(string)
 						checkAssetText(t, runtime, "IM INSIDE AN ARCHIVE", text)
