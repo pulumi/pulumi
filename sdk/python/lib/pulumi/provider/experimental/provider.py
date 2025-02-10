@@ -88,10 +88,9 @@ class ComponentProvider(Provider):
             input_val = inputs.get(schema_name, None)
             if input_val is None:
                 if not prop.optional:
-                    property_path = f"{component_def.name}.{schema_name}"
                     raise InputPropertyError(
-                        property_path,
-                        f"Missing required input '{property_path}'",
+                        schema_name,
+                        f"Missing required input '{schema_name}' on '{component_def.name}'",
                     )
                 continue
             py_name = component_def.inputs_mapping[schema_name]
@@ -128,12 +127,10 @@ class ComponentProvider(Provider):
             input_val = inputs.get(schema_name, None)
             if input_val is None:
                 if not prop.optional:
-                    property_path = (
-                        f"{component_def.name}.{property_name}.{schema_name}"
-                    )
+                    property_path = f"{property_name}.{schema_name}"
                     raise InputPropertyError(
                         property_path,
-                        f"Missing required input '{property_path}'",
+                        f"Missing required input '{property_path}' on '{component_def.name}'",
                     )
                 continue
             py_name = type_def.properties_mapping[schema_name]

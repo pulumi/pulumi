@@ -43,16 +43,16 @@ def test_map_inputs():
         provider.map_inputs({}, component_def)
         assert False, "expected an error"
     except InputPropertyError as e:
-        assert e.reason == "Missing required input 'MyComponent.a'"
+        assert e.reason == "Missing required input 'a' on 'MyComponent'"
 
     try:
         provider.map_inputs({"a": {}}, component_def)
         assert False, "expected an error"
     except InputPropertyError as e:
-        assert e.reason == "Missing required input 'MyComponent.a.b'"
+        assert e.reason == "Missing required input 'a.b' on 'MyComponent'"
 
     try:
         provider.map_inputs({"a": {"b": {}}}, component_def)
         assert False, "expected an error"
     except InputPropertyError as e:
-        assert e.reason == "Missing required input 'MyComponent.a.b.c'"
+        assert e.reason == "Missing required input 'a.b.c' on 'MyComponent'"
