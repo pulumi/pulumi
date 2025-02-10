@@ -19,12 +19,12 @@ import pulumi
 
 
 class Nested(TypedDict):
-    nested_str: str
+    str_plain: str
 
 
 class Complex(TypedDict):
-    complex_str: pulumi.Input[str]
-    nested: pulumi.Input[Nested]
+    str_input: pulumi.Input[str]
+    nested_input: pulumi.Input[Nested]
 
 
 class Args(TypedDict):
@@ -37,8 +37,8 @@ class Args(TypedDict):
 
 class MyComponent(pulumi.ComponentResource):
     str_output: pulumi.Output[str]
-    optional_int_output: pulumi.Output[Optional[int]]
-    complex_output: pulumi.Output[Optional[Complex]]
+    optional_int_output: Optional[pulumi.Output[int]]
+    complex_output: Optional[pulumi.Output[Complex]]
     list_output: pulumi.Output[list[str]]
     dict_output: pulumi.Output[dict[str, int]]
 
@@ -49,13 +49,13 @@ class MyComponent(pulumi.ComponentResource):
         )
         self.optional_int_output = pulumi.Output.from_input(
             args.get("optional_int_input", None)
-        ).apply(lambda x: x * 2 if x else None)
+        ).apply(lambda x: x * 2 if x else 7)
         self.complex_output = pulumi.Output.from_input(
             {
-                "complex_str": "complex_str_value",
-                "nested": pulumi.Output.from_input(
+                "str_input": "complex_str_input_value",
+                "nested_input": pulumi.Output.from_input(
                     {
-                        "nested_str": "nested_str_value",
+                        "str_plain": "nested_str_plain_value",
                     }
                 ),
             }

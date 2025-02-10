@@ -1843,9 +1843,9 @@ func TestPythonComponentProviderRun(t *testing.T) {
 			require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
 			require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
 			complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
-			require.Equal(t, "complex_str_value", complexOutput["complexStr"].(string))
-			nested := complexOutput["nested"].(map[string]interface{})
-			require.Equal(t, "nested_str_value", nested["nestedStr"].(string))
+			require.Equal(t, "complex_str_input_value", complexOutput["strInput"].(string))
+			nested := complexOutput["nestedInput"].(map[string]interface{})
+			require.Equal(t, "nested_str_plain_value", nested["strPlain"].(string))
 			require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
 			require.Equal(t, map[string]interface{}{
 				"a": float64(2),
@@ -1901,17 +1901,19 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"inputProperties": {
 			"strInput": { "type": "string" },
 			"optionalIntInput": { "type": "integer" },
-			"complexInput": { "$ref": "#/types/provider:index:Complex" },
+			"complexInput": { "$ref": "#/types/provider:index:Complex"},
 			"listInput": {
 				"type": "array",
 				"items": {
-					"type": "string"
+					"type": "string",
+					"plain": true
 				}
 			},
 			"dictInput": {
 				"type": "object",
 				"additionalProperties": {
-					"type": "integer"
+					"type": "integer",
+					"plain": true
 				}
 			}
 		},
@@ -1922,30 +1924,35 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	resources := schema["resources"].(map[string]interface{})
 	component := resources["provider:index:MyComponent"].(map[string]interface{})
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+	// TODO https://github.com/pulumi/pulumi/issues/18481
+	// properties.dictOutput.additionalProperties.plain and
+	// properties.listOutput.items.plain should be true, but they are not. The
+	// actual JSON the provider returns has these fields set to true, however
+	// somehwere in `package get-schema`, this information is lost.
 	require.Equal(t, expected, component)
 
 	// Check the complex types
 	expectedTypesJSON := `{
 		"provider:index:Complex": {
 			"properties": {
-				"complexStr": {
+				"strInput": {
 					"type": "string"
 				},
-				"nested": {
+				"nestedInput": {
 					"$ref": "#/types/provider:index:Nested"
 				}
 			},
 			"type": "object",
-			"required": ["complexStr", "nested"]
+			"required": ["nestedInput", "strInput"]
 		},
 		"provider:index:Nested": {
 			"properties": {
-				"nestedStr": {
-					"type": "string"
+				"strPlain": {
+					"type": "string", "plain": true
 				}
 			},
 			"type": "object",
-			"required": ["nestedStr"]
+			"required": ["strPlain"]
 		}
 	}`
 	expectedTypes := make(map[string]interface{})

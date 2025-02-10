@@ -138,7 +138,7 @@ class Analyzer:
         # Python handle this for us.
         for name, type_def in [*self.unresolved_forward_refs.items()]:
             a = self.find_type(module_path, type_def.name)
-            (properties, properties_mapping) = self.analyze_type(a)
+            (properties, properties_mapping) = self.analyze_type(a, can_be_plain=False)
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
             del self.unresolved_forward_refs[name]
@@ -212,8 +212,8 @@ class Analyzer:
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
             )
 
-        (inputs, inputs_mapping) = self.analyze_type(args)
-        (outputs, outputs_mapping) = self.analyze_type(component)
+        (inputs, inputs_mapping) = self.analyze_type(args, can_be_plain=True)
+        (outputs, outputs_mapping) = self.analyze_type(component, can_be_plain=False)
         return ComponentDefinition(
             name=component.__name__,
             description=component.__doc__.strip() if component.__doc__ else None,
@@ -225,7 +225,7 @@ class Analyzer:
         )
 
     def analyze_type(
-        self, typ: type
+        self, typ: type, can_be_plain: bool
     ) -> tuple[dict[str, PropertyDefinition], dict[str, str]]:
         """
         analyze_type returns a dictionary of the properties of a type based on
@@ -254,7 +254,8 @@ class Analyzer:
         ann = self.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            camel_case(k): self.analyze_property(v, typ, k) for k, v in ann.items()
+            camel_case(k): self.analyze_property(v, typ, k, can_be_plain)
+            for k, v in ann.items()
         }, mapping
 
     def analyze_property(
@@ -262,6 +263,7 @@ class Analyzer:
         arg: type,
         typ: type,
         name: str,
+        plain: bool,
         optional: Optional[bool] = None,
     ) -> PropertyDefinition:
         """
@@ -274,26 +276,34 @@ class Analyzer:
         """
         optional = optional if optional is not None else is_optional(arg)
         if is_plain(arg):
-            # TODO: handle plain types
             return PropertyDefinition(
                 type=py_type_to_property_type(arg),
                 optional=optional,
+                # We are currently looking at a plain type, but it might be
+                # wrapped in a pulumi.Input or pulumi.Output, in which case this
+                # isn't plain.
+                plain=plain,
             )
         elif is_input(arg):
             return self.analyze_property(
-                unwrap_input(arg), typ, name, optional=optional
+                unwrap_input(arg), typ, name, plain=False, optional=optional
             )
         elif is_output(arg):
             return self.analyze_property(
-                unwrap_output(arg), typ, name, optional=optional
+                unwrap_output(arg), typ, name, plain=False, optional=optional
             )
         elif is_optional(arg):
-            return self.analyze_property(unwrap_optional(arg), typ, name, optional=True)
+            return self.analyze_property(
+                unwrap_optional(arg), typ, name, plain=True, optional=True
+            )
         elif is_list(arg):
             args = get_args(arg)
-            items = self.analyze_property(args[0], typ, name)
+            items = self.analyze_property(args[0], typ, name, plain=True)
             return PropertyDefinition(
-                type=PropertyType.ARRAY, optional=optional, items=items
+                type=PropertyType.ARRAY,
+                optional=optional,
+                plain=plain,
+                items=items,
             )
         elif is_dict(arg):
             args = get_args(arg)
@@ -302,7 +312,13 @@ class Analyzer:
             return PropertyDefinition(
                 type=PropertyType.OBJECT,
                 optional=optional,
-                additional_properties=self.analyze_property(args[1], typ, name),
+                plain=plain,
+                additional_properties=self.analyze_property(
+                    args[1],
+                    typ,
+                    name,
+                    plain=True,
+                ),
             )
         elif is_forward_ref(arg):
             name = cast(ForwardRef, arg).__forward_arg__
@@ -317,6 +333,7 @@ class Analyzer:
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
+                    plain=plain,
                 )
             else:
                 # Forward ref to a type we haven't seen yet. We create an empty
@@ -337,6 +354,7 @@ class Analyzer:
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
+                    plain=plain,
                 )
         elif not is_builtin(arg):
             # We have a custom type, analyze it recursively. Immediately add the
@@ -357,7 +375,7 @@ class Analyzer:
             else:
                 if type_def.module and type_def.module != arg.__module__:
                     raise DuplicateTypeError(arg.__module__, type_def)
-            (properties, properties_mapping) = self.analyze_type(arg)
+            (properties, properties_mapping) = self.analyze_type(arg, can_be_plain=True)
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:
@@ -366,6 +384,7 @@ class Analyzer:
             return PropertyDefinition(
                 ref=ref,
                 optional=optional,
+                plain=plain,
             )
         else:
             raise ValueError(f"unsupported type {arg}")
