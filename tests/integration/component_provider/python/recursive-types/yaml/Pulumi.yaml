@@ -4,7 +4,7 @@ runtime: yaml
 plugins:
   providers:
     - name: provider
-      path: ./provider
+      path: ../provider
 resources:
   comp:
     type: provider:index:MyComponent

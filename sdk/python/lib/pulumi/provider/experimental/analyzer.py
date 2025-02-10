@@ -28,6 +28,7 @@ from typing import (
     get_origin,
 )
 
+from ...asset import Archive, Asset
 from ...output import Output
 from ...resource import ComponentResource, Resource
 from .component import (
@@ -356,6 +357,16 @@ class Analyzer:
                     optional=optional,
                     plain=plain,
                 )
+        elif is_asset(arg):
+            return PropertyDefinition(
+                ref="pulumi.json#/Asset",
+                optional=optional,
+            )
+        elif is_archive(arg):
+            return PropertyDefinition(
+                ref="pulumi.json#/Archive",
+                optional=optional,
+            )
         elif is_resource(arg):
             # TODO: https://github.com/pulumi/pulumi/issues/18484
             raise Exception(
@@ -518,9 +529,12 @@ def is_dict(typ: type) -> bool:
 
 
 def is_resource(typ: type) -> bool:
-    if Resource in typ.__bases__:
-        return True
-    for base in typ.__bases__:
-        if is_resource(base):
-            return True
-    return False
+    return issubclass(typ, Resource)
+
+
+def is_asset(typ: type) -> bool:
+    return issubclass(typ, Asset)
+
+
+def is_archive(typ: type) -> bool:
+    return issubclass(typ, Archive)

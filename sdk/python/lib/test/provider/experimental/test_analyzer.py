@@ -529,6 +529,48 @@ def test_analyze_component_complex_type():
     }
 
 
+def test_analyze_archive():
+    class Args(TypedDict):
+        input_archive: pulumi.Input[pulumi.Archive]
+
+    class Component(pulumi.ComponentResource):
+        output_archive: pulumi.Input[pulumi.Archive]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={"inputArchive": PropertyDefinition(ref="pulumi.json#/Archive")},
+        inputs_mapping={"inputArchive": "input_archive"},
+        outputs={"outputArchive": PropertyDefinition(ref="pulumi.json#/Archive")},
+        outputs_mapping={"outputArchive": "output_archive"},
+    )
+
+
+def test_analyze_asset():
+    class Args(TypedDict):
+        input_archive: pulumi.Input[pulumi.Asset]
+
+    class Component(pulumi.ComponentResource):
+        output_archive: pulumi.Input[pulumi.Asset]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={"inputArchive": PropertyDefinition(ref="pulumi.json#/Asset")},
+        inputs_mapping={"inputArchive": "input_archive"},
+        outputs={"outputArchive": PropertyDefinition(ref="pulumi.json#/Asset")},
+        outputs_mapping={"outputArchive": "output_archive"},
+    )
+
+
 def test_analyze_resource_ref():
     class MyResource(pulumi.CustomResource): ...
 
