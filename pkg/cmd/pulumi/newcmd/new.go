@@ -19,8 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,6 +37,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -57,7 +56,7 @@ import (
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error)
 
-type chooseTemplateFunc func(templates []workspace.Template, opts display.Options) (workspace.Template, error)
+type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
 	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
@@ -199,43 +198,36 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 	// Retrieve the template repo.
-	var repo workspace.TemplateRepository
-	repo, err = workspace.RetrieveTemplates(
-		ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
+	scope := cmdTemplates.ScopeAll
+	if args.offline {
+		scope = cmdTemplates.ScopeLocal
+	}
+	templateSource, err := cmdTemplates.New(ctx,
+		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, args.interactive)
 	if err != nil {
-		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
-		if !errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
-			return err
-		}
+		return err
+	}
+	defer func() { contract.IgnoreError(templateSource.Close()) }()
 
-		// ...If the request has 401'd AND we've identified the backend as being a Pulumi Cloud instance, we can
-		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
-		repo, err = retrievePrivatePulumiCloudTemplate(args.templateNameOrURL)
-		if err != nil {
-			return fmt.Errorf("retrieving private pulumi cloud template: %w", err)
+	// List the templates from the repo.
+	templates := templateSource.Templates()
+
+	var cmdTemplate cmdTemplates.Template
+	if len(templates) == 0 {
+		return errors.New("no templates")
+	} else if len(templates) == 1 {
+		cmdTemplate = templates[0]
+	} else {
+		if cmdTemplate, err = args.chooseTemplate(templates, opts); err != nil {
+			return err
 		}
 	}
 
-	defer func() {
-		contract.IgnoreError(repo.Delete())
-	}()
-
-	// List the templates from the repo.
-	templates, err := repo.Templates()
+	template, err := cmdTemplate.Download(ctx)
 	if err != nil {
 		return err
 	}
 
-	var template workspace.Template
-	if len(templates) == 0 {
-		return errors.New("no templates")
-	} else if len(templates) == 1 {
-		template = templates[0]
-	} else {
-		if template, err = args.chooseTemplate(templates, opts); err != nil {
-			return err
-		}
-	}
 	if template.Errored() {
 		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
 	}
@@ -492,49 +484,6 @@ func runNew(ctx context.Context, args newArgs) error {
 	return nil
 }
 
-// Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
-//
-// workspace.GetAccount ensures the user has a valid session with the Pulumi Cloud backend.
-//   - If the user is not logged in, the login flow will be initiated.
-//   - If the user is not logged in and pulumi does not recognize the backend as a known workspace then
-//     the user will see an authentication error.
-func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateRepository, error) {
-	u, err := url.Parse(templateURL)
-	if err != nil {
-		return workspace.TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
-	}
-	// Docs convention is to store the cloud URL with the protocol.
-	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
-	templatePulumiCloudHost := "https://" + u.Host
-
-	account, err := workspace.GetAccount(templatePulumiCloudHost)
-	if err != nil {
-		return workspace.TemplateRepository{}, fmt.Errorf(
-			"looking up pulumi cloud backend %s: %w",
-			templatePulumiCloudHost,
-			err,
-		)
-	}
-
-	if account.AccessToken == "" {
-		return workspace.TemplateRepository{}, fmt.Errorf("no access token found for %s", templatePulumiCloudHost)
-	}
-
-	templateRepository, err := workspace.RetrieveZIPTemplates(templateURL, func(req *http.Request) {
-		req.Header.Set("Authorization", "token "+account.AccessToken)
-	})
-
-	if errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
-		return workspace.TemplateRepository{}, fmt.Errorf(
-			"unauthorized to access template at %s. You may not have access to this template or token may have expired",
-			templatePulumiCloudHost,
-		)
-	}
-
-	// Caller can handle other errors
-	return templateRepository, err
-}
-
 // isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
 func isInteractive() bool {
 	test, ok := os.LookupEnv("PULUMI_TEST_INTERACTIVE")
@@ -552,16 +501,9 @@ func NewNewCmd() *cobra.Command {
 		promptRuntimeOptions: promptRuntimeOptions,
 	}
 
-	getTemplates := func(ctx context.Context) ([]workspace.Template, error) {
+	getTemplates := func(ctx context.Context) (*cmdTemplates.Source, error) {
 		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates(ctx, "", false /*offline*/, workspace.TemplateKindPulumiProject)
-		if err != nil {
-			logging.Warningf("could not retrieve templates: %v", err)
-			return []workspace.Template{}, err
-		}
-
-		// Get the list of templates.
-		return repo.Templates()
+		return cmdTemplates.New(ctx, "", cmdTemplates.ScopeAll, workspace.TemplateKindPulumiProject, args.interactive)
 	}
 
 	cmd := &cobra.Command{
@@ -628,7 +570,8 @@ func NewNewCmd() *cobra.Command {
 					logging.Warningf("could not list templates: %v", err)
 					return err
 				}
-				available, _ := templatesToOptionArrayAndMap(templates)
+				defer templates.Close()
+				available, _ := templatesToOptionArrayAndMap(templates.Templates())
 				fmt.Println("")
 				fmt.Println("Available Templates:")
 				for _, t := range available {
@@ -659,9 +602,9 @@ func NewNewCmd() *cobra.Command {
 		}
 
 		// If we have any templates, show them.
-		if len(templates) > 0 {
+		if l := len(templates.Templates()); l > 0 {
 			fmt.Println()
-			fmt.Printf("There are %d locally installed templates.\n", len(templates))
+			fmt.Printf("There are %d available templates.\n", l)
 		}
 	})
 

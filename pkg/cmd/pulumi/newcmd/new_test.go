@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -744,14 +745,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			chdir(t, tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
-			chooseTemplateMock := func(templates []workspace.Template, opts display.Options,
-			) (workspace.Template, error) {
+			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
+			) (cmdTemplates.Template, error) {
 				for _, template := range templates {
-					if template.Name == tt.prompted {
+					if template.Name() == tt.prompted {
 						return template, nil
 					}
 				}
-				return workspace.Template{}, errors.New("template not found")
+				return cmdTemplates.Template{}, errors.New("template not found")
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
