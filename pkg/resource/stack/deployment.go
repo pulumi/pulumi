@@ -280,9 +280,7 @@ func DeserializeDeploymentV3(
 		if err != nil {
 			return nil, err
 		}
-		if len(decrypted) != len(ciphertexts) {
-			return nil, errors.New("decrypted secrets count does not match ciphertexts count")
-		}
+		contract.Assertf(len(decrypted) == len(ciphertexts), "decrypted secrets count does not match ciphertexts count")
 		cache := make(map[string]string)
 		for i, ciphertext := range ciphertexts {
 			cache[ciphertext] = decrypted[i]

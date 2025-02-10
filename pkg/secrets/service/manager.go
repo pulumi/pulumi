@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 
@@ -83,11 +82,9 @@ func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) ([]s
 	}
 
 	decryptedSecrets := make([]string, len(secrets))
-	for i, cyphertext := range secrets {
-		decrypted, ok := decryptedList[cyphertext]
-		if !ok {
-			return nil, errors.New("decrypted value not found in bulk response")
-		}
+	for i, ciphertext := range secrets {
+		decrypted, ok := decryptedList[ciphertext]
+		contract.Assertf(ok, "decrypted value not found in bulk response")
 		decryptedSecrets[i] = string(decrypted)
 	}
 

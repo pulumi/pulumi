@@ -17,7 +17,6 @@ package stack
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -26,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
@@ -255,11 +255,9 @@ func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([
 
 	// Re-populate results
 	for i, ct := range ciphertexts {
-		if plaintext, ok := c.cache[ct]; ok {
-			decryptedResult[i] = plaintext
-		} else {
-			return nil, errors.New("decrypted value not found in bulk response")
-		}
+		plaintext, ok := c.cache[ct]
+		contract.Assertf(ok, "decrypted value not found in cache after bulk request")
+		decryptedResult[i] = plaintext
 	}
 
 	return decryptedResult, nil

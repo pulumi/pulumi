@@ -39,7 +39,7 @@ type Decrypter interface {
 	DecryptValue(ctx context.Context, ciphertext string) (string, error)
 
 	// BulkDecrypt supports bulk decryption of secrets.
-	// Returns a list of decrypted values in the same order as the input cyphertexts.
+	// Returns a list of decrypted values in the same order as the input ciphertexts.
 	BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
