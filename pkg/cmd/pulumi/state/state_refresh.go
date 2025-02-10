@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package operations
+package state
 
 import (
 	"context"
@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -46,7 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewRefreshCmd() *cobra.Command {
+func newStateRefreshCommand() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
@@ -113,7 +112,7 @@ func NewRefreshCmd() *cobra.Command {
 					"must be passed in to proceed when running in non-interactive mode")
 			}
 
-			opts, err := state.UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return err
 			}
@@ -344,7 +343,7 @@ func NewRefreshCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the refresh diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", state.DefaultParallel,
+		&parallel, "parallel", "p", DefaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
 		&previewOnly, "preview-only", false,
@@ -410,7 +409,7 @@ type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {
-	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+	return TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {

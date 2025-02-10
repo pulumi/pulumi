@@ -534,7 +534,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		stackRef = organization + "/large_resource_js/" + stackName
 	}
 
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", stackRef)
+	e.RunCommand("pulumi", "state", "destroy", "--skip-preview", "--yes", "-s", stackRef)
 	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
 }
 

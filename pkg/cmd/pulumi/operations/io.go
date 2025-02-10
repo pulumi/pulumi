@@ -15,9 +15,7 @@
 package operations
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -58,49 +56,4 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 		})
 	}
 	return proj, root, nil
-}
-
-// updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
-// is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
-	switch {
-	case !interactive && !yes && !skipPreview && !previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
-	case skipPreview && previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("--skip-preview and --preview-only cannot be used together")
-	case yes && previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("--yes and --preview-only cannot be used together")
-	default:
-		return backend.UpdateOptions{
-			AutoApprove: yes,
-			SkipPreview: skipPreview,
-			PreviewOnly: previewOnly,
-		}, nil
-	}
-}
-
-func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
-	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
-	// refresh is assigned the empty string by default to distinguish the difference between
-	// when the user actually interacted with the cli argument (`NoOptDefVal`)
-	// and the default functionality today
-	if refresh != "" {
-		refreshDetails, boolErr := strconv.ParseBool(refresh)
-		if boolErr != nil {
-			// the user has passed a --refresh but with a random value that we don't support
-			return false, errors.New("unable to determine value for --refresh")
-		}
-		return refreshDetails, nil
-	}
-
-	// the user has not specifically passed an argument on the cli to refresh but has set a Project option to refresh
-	if proj.Options != nil && proj.Options.Refresh == "always" {
-		return true, nil
-	}
-
-	// the default functionality right now is to always skip a refresh
-	return false, nil
 }

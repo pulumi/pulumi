@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -34,6 +33,7 @@ import (
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
@@ -48,11 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// The default number of parallel resource operations to run at once during an update, if --parallel is unset.
-// See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
-var defaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
-//                                                                  but the NumCPU function returns an int.
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
@@ -171,7 +166,7 @@ func NewUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, tr)
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := state.GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
@@ -423,7 +418,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := state.GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
@@ -508,7 +503,7 @@ func NewUpCmd() *cobra.Command {
 				)
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
+			opts, err := state.UpdateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return err
 			}
@@ -668,7 +663,7 @@ func NewUpCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", state.DefaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",

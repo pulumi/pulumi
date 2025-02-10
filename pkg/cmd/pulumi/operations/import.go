@@ -39,6 +39,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -813,7 +814,7 @@ func NewImportCmd() *cobra.Command {
 					" must be passed in to proceed when running in non-interactive mode")
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := state.UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return err
 			}
@@ -1069,7 +1070,7 @@ func NewImportCmd() *cobra.Command {
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", state.DefaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
 		&previewOnly, "preview-only", false,

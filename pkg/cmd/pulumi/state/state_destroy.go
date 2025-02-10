@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package operations
+package state
 
 import (
 	"context"
@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -48,7 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewDestroyCmd() *cobra.Command {
+func newStateDestroyCommand() *cobra.Command {
 	var debug bool
 	var remove bool
 	var stackName string
@@ -122,7 +121,7 @@ func NewDestroyCmd() *cobra.Command {
 					"must be passed in to proceed when running in non-interactive mode")
 			}
 
-			opts, err := state.UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return err
 			}
@@ -254,7 +253,7 @@ func NewDestroyCmd() *cobra.Command {
 				return fmt.Errorf("validating stack config: %w", configError)
 			}
 
-			refreshOption, err := state.GetRefreshOption(proj, refresh)
+			refreshOption, err := GetRefreshOption(proj, refresh)
 			if err != nil {
 				return err
 			}
@@ -373,7 +372,7 @@ func NewDestroyCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", state.DefaultParallel,
+		&parallel, "parallel", "p", DefaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
 		&previewOnly, "preview-only", false,

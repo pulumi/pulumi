@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -43,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
@@ -284,4 +287,54 @@ func missingNonInteractiveArg(args ...string) error {
 		return fmt.Errorf("Must supply %s and %s unless pulumi is run interactively",
 			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
 	}
+}
+
+// The default number of parallel resource operations to run at once during an update, if --parallel is unset.
+// See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
+var DefaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
+//                                                                  but the NumCPU function returns an int.
+
+// UpdateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
+// is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
+func UpdateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
+	switch {
+	case !interactive && !yes && !skipPreview && !previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+	case skipPreview && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--skip-preview and --preview-only cannot be used together")
+	case yes && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--yes and --preview-only cannot be used together")
+	default:
+		return backend.UpdateOptions{
+			AutoApprove: yes,
+			SkipPreview: skipPreview,
+			PreviewOnly: previewOnly,
+		}, nil
+	}
+}
+
+func GetRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
+	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
+	// refresh is assigned the empty string by default to distinguish the difference between
+	// when the user actually interacted with the cli argument (`NoOptDefVal`)
+	// and the default functionality today
+	if refresh != "" {
+		refreshDetails, boolErr := strconv.ParseBool(refresh)
+		if boolErr != nil {
+			// the user has passed a --refresh but with a random value that we don't support
+			return false, errors.New("unable to determine value for --refresh")
+		}
+		return refreshDetails, nil
+	}
+
+	// the user has not specifically passed an argument on the cli to refresh but has set a Project option to refresh
+	if proj.Options != nil && proj.Options.Refresh == "always" {
+		return true, nil
+	}
+
+	// the default functionality right now is to always skip a refresh
+	return false, nil
 }
