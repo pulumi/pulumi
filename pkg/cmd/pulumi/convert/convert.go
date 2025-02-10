@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -240,11 +239,6 @@ func runConvert(
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
-	case "dotnet":
-		projectGenerator = generatorWrapper(
-			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
-			}, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
