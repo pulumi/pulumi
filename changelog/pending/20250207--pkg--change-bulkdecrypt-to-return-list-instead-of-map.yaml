@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg
+  description: Change BulkDecrypt to return list instead of map

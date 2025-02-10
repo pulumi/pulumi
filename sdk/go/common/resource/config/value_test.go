@@ -217,7 +217,7 @@ func (d passThroughDecrypter) DecryptValue(
 
 func (d passThroughDecrypter) BulkDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, d, ciphertexts)
 }
 

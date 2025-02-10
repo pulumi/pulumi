@@ -66,7 +66,7 @@ func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) 
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
+func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) ([]string, error) {
 	secretsToDecrypt := slice.Prealloc[[]byte](len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
@@ -81,9 +81,11 @@ func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map
 		return nil, err
 	}
 
-	decryptedSecrets := make(map[string]string)
-	for name, val := range decryptedList {
-		decryptedSecrets[name] = string(val)
+	decryptedSecrets := make([]string, len(secrets))
+	for i, ciphertext := range secrets {
+		decrypted, ok := decryptedList[ciphertext]
+		contract.Assertf(ok, "decrypted value not found in bulk response")
+		decryptedSecrets[i] = string(decrypted)
 	}
 
 	return decryptedSecrets, nil

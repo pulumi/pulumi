@@ -39,7 +39,8 @@ type Decrypter interface {
 	DecryptValue(ctx context.Context, ciphertext string) (string, error)
 
 	// BulkDecrypt supports bulk decryption of secrets.
-	BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error)
+	// Returns a list of decrypted values in the same order as the input ciphertexts.
+	BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
 // Crypter can both encrypt and decrypt values.
@@ -60,7 +61,7 @@ func (nopCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, 
 	return ciphertext, nil
 }
 
-func (nopCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (nopCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, NopDecrypter, ciphertexts)
 }
 
@@ -88,7 +89,7 @@ func (b blindingCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return "[secret]", nil
 }
 
-func (b blindingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (b blindingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, b, ciphertexts)
 }
 
@@ -107,7 +108,7 @@ func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error
 	panic("attempt to decrypt value")
 }
 
-func (p panicCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (p panicCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	panic("attempt to bulk decrypt values")
 }
 
@@ -177,7 +178,7 @@ func (s symmetricCrypter) DecryptValue(ctx context.Context, value string) (strin
 	return string(msg), err
 }
 
-func (s symmetricCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (s symmetricCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, s, ciphertexts)
 }
 
@@ -219,7 +220,7 @@ func (c prefixCrypter) EncryptValue(ctx context.Context, plaintext string) (stri
 	return c.prefix + plaintext, nil
 }
 
-func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, c, ciphertexts)
 }
 
@@ -228,20 +229,20 @@ func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (m
 // their BulkDecrypt method in cases where they can't do more efficient than just individual decryptions.
 func DefaultBulkDecrypt(ctx context.Context,
 	decrypter Decrypter, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	if len(ciphertexts) == 0 {
 		return nil, nil
 	}
 
-	secretMap := map[string]string{}
-	for _, ct := range ciphertexts {
+	decrypted := make([]string, len(ciphertexts))
+	for i, ct := range ciphertexts {
 		pt, err := decrypter.DecryptValue(ctx, ct)
 		if err != nil {
 			return nil, err
 		}
-		secretMap[ct] = pt
+		decrypted[i] = pt
 	}
-	return secretMap, nil
+	return decrypted, nil
 }
 
 type base64Crypter struct{}
@@ -261,6 +262,6 @@ func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, err
 	return string(b), nil
 }
 
-func (c *base64Crypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (c *base64Crypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, c, ciphertexts)
 }
