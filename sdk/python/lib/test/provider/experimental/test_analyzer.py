@@ -529,6 +529,25 @@ def test_analyze_component_complex_type():
     }
 
 
+def test_analyze_resource_ref():
+    class MyResource(pulumi.CustomResource): ...
+
+    class Args(TypedDict):
+        password: pulumi.Input[MyResource]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    try:
+        analyzer.analyze_component(Component, Path("test_analyzer"))
+    except Exception as e:
+        assert (
+            str(e)
+            == "Resource references are not supported yet: found type 'MyResource' for 'Args.password'"
+        )
+
+
 def test_analyze_bad_type():
     analyzer = Analyzer(metadata)
 

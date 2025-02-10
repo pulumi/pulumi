@@ -29,7 +29,7 @@ from typing import (
 )
 
 from ...output import Output
-from ...resource import ComponentResource
+from ...resource import ComponentResource, Resource
 from .component import (
     ComponentDefinition,
     PropertyDefinition,
@@ -356,6 +356,11 @@ class Analyzer:
                     optional=optional,
                     plain=plain,
                 )
+        elif is_resource(arg):
+            # TODO: https://github.com/pulumi/pulumi/issues/18484
+            raise Exception(
+                f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
+            )
         elif not is_builtin(arg):
             # We have a custom type, analyze it recursively. Immediately add the
             # type definition to the list of type definitions, before calling
@@ -510,3 +515,12 @@ def is_dict(typ: type) -> bool:
     if isinstance(typ, GenericAlias):
         typ = get_origin(typ)
     return typ is dict
+
+
+def is_resource(typ: type) -> bool:
+    if Resource in typ.__bases__:
+        return True
+    for base in typ.__bases__:
+        if is_resource(base):
+            return True
+    return False

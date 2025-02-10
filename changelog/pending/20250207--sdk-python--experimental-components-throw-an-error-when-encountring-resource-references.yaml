@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: "[Experimental/Components] Throw an error when encountring resource references"
