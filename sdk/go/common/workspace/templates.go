@@ -203,9 +203,28 @@ type Template struct {
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 	Error       error                                 // Non-nil if the template is broken.
+	Group       *TemplateGroupMembership              // The group the template belongs to, if any.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.
+}
+
+type TemplateGroupMembership struct {
+	// The name of the group the template belongs to.
+	//
+	// This name must match other members of the template group (by definition).
+	GroupName string
+
+	// The description of the entire group. GroupDescription may be set on any number of group
+	// members, but it must match for all non-empty members.
+	GroupDescription string
+
+	// The name of the template in the context of a group.
+	//
+	// For example, consider the template group "aivien" with members "aiven-python",
+	// "aiven-typescript", "aiven-python". The InGroupName of "aiven-python" might be "python",
+	// since "python" uniquely identifies the project in the context of the "aiven" group.
+	InGroupName string
 }
 
 // Errored returns if the template has an error
@@ -475,6 +494,14 @@ func LoadTemplate(path string) (Template, error) {
 		template.Description = proj.Template.Description
 		template.Quickstart = proj.Template.Quickstart
 		template.Config = proj.Template.Config
+
+		if group := proj.Template.GroupMember; group != nil {
+			template.Group = &TemplateGroupMembership{
+				GroupName:        group.GroupName,
+				InGroupName:      group.InGroupName,
+				GroupDescription: group.GroupDescription,
+			}
+		}
 	}
 	if proj.Description != nil {
 		template.ProjectDescription = *proj.Description

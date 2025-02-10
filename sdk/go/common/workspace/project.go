@@ -82,6 +82,9 @@ type ProjectTemplate struct {
 	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 	// Config is an optional template config.
 	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
+
+	GroupMember *ProjectTemplateGroupMember `json:"groupMember,omitempty" yaml:"groupMember,omitempty"`
+
 	// Important indicates the template is important.
 	//
 	// Deprecated: We don't use this field any more.
@@ -98,6 +101,12 @@ type ProjectTemplateConfigValue struct {
 	Default string `json:"default,omitempty" yaml:"default,omitempty"`
 	// Secret may be set to true to indicate that the config value should be encrypted.
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
+}
+
+type ProjectTemplateGroupMember struct {
+	GroupName        string `json:"groupName,omitempty" yaml:"groupName,omitempty"`
+	InGroupName      string `json:"inGroupName,omitempty" yaml:"inGroupName,omitempty"`
+	GroupDescription string `json:"groupDescription,omitempty" yaml:"groupDescription,omitempty"`
 }
 
 // ProjectBackend is the configuration for where the backend state is stored. If unset, will use the

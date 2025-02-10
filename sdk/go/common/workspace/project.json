@@ -156,6 +156,13 @@
                         "null"
                     ]
                 },
+                "groupMember":{
+                    "description": "The group if the template is a member of the group.",
+                    "type":[
+                        "object",
+                        "null"
+                    ]
+                },
                 "description":{
                     "description":"Description of the template.",
                     "type":[

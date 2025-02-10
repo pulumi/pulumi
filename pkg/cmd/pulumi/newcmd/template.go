@@ -46,7 +46,32 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
+	groups := map[string]*group{}
+	toDisplay := make([]templateOrGroup, 0, len(templates))
+
+	for _, t := range templates {
+		if t.Group == nil || t.Group.GroupName == "" {
+			toDisplay = append(toDisplay, template(t))
+			continue
+		}
+
+		g, ok := groups[t.Group.GroupName]
+		if !ok {
+			g = new(group)
+			groups[t.Group.GroupName] = g
+		}
+		g.members = append(g.members, t)
+	}
+
+	for _, g := range groups {
+		if len(g.members) == 1 {
+			toDisplay = append(toDisplay, template(g.members[0]))
+			continue
+		}
+		toDisplay = append(toDisplay, *g)
+	}
+
+	options, optionToTemplateMap := templatesToOptionArrayAndMap(toDisplay, func(t templateOrGroup) templateOrGroup { return t })
 	nopts := len(options)
 	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
 	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", nopts)
@@ -61,36 +86,89 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 		return workspace.Template{}, errors.New(chooseTemplateErr)
 	}
 
-	return optionToTemplateMap[option], nil
+	if t, ok := optionToTemplateMap[option].(template); ok {
+		return workspace.Template(t), nil
+	}
+
+	g := optionToTemplateMap[option].(group)
+
+	options, optionToGroupMemberMap := templatesToOptionArrayAndMap(g.members, func(t workspace.Template) template { return template(t) })
+	nopts = len(options)
+	pageSize = cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
+	message = fmt.Sprintf("\rPlease choose a specific template (%d total):\n", nopts)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+
+	if err := survey.AskOne(&survey.Select{
+		Message:  message,
+		Options:  options,
+		PageSize: pageSize,
+	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
+		return workspace.Template{}, errors.New(chooseTemplateErr)
+	}
+
+	return optionToGroupMemberMap[option], nil
+}
+
+type templateOrGroup interface {
+	getName() string
+	broken() bool
+	description() string
+}
+
+var (
+	_ templateOrGroup = template{}
+	_ templateOrGroup = group{}
+)
+
+type template workspace.Template
+
+func (t template) getName() string { return t.Name }
+func (t template) broken() bool    { return (workspace.Template)(t).Errored() }
+func (t template) description() string {
+	// If template is broken, indicate it in the project description.
+	if t.broken() {
+		return pkgWorkspace.ValueOrDefaultProjectDescription("", BrokenTemplateDescription, t.Description)
+	}
+	return pkgWorkspace.ValueOrDefaultProjectDescription("", t.ProjectDescription, t.Description)
+}
+
+type group struct{ members []workspace.Template }
+
+func (g group) getName() string { return g.members[0].Group.GroupName }
+func (g group) broken() bool    { return false }
+func (g group) description() string {
+	for _, m := range g.members {
+		if m.Group.GroupDescription != "" {
+			return m.Group.GroupDescription
+		}
+	}
+	return ""
 }
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+func templatesToOptionArrayAndMap[T any, U templateOrGroup](templates []T, promote func(T) U) ([]string, map[string]T) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
-		if len(template.Name) > maxNameLength {
-			maxNameLength = len(template.Name)
+		template := promote(template)
+		if len(template.getName()) > maxNameLength {
+			maxNameLength = len(template.getName())
 		}
 	}
 
 	// Build the array and map.
 	var options []string
 	var brokenOptions []string
-	nameToTemplateMap := make(map[string]workspace.Template)
-	for _, template := range templates {
-		// If template is broken, indicate it in the project description.
-		if template.Errored() {
-			template.ProjectDescription = BrokenTemplateDescription
-		}
-
+	nameToTemplateMap := make(map[string]T)
+	for _, templateT := range templates {
+		template := promote(templateT)
 		// Create the option string that combines the name, padding, and description.
-		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
+		desc := template.description()
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.getName(), desc)
 
-		nameToTemplateMap[option] = template
-		if template.Errored() {
+		nameToTemplateMap[option] = templateT
+		if template.broken() {
 			brokenOptions = append(brokenOptions, option)
 		} else {
 			options = append(options, option)
