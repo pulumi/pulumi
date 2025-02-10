@@ -6,23 +6,23 @@ The `pulumi.provider.experimental` package allows writing a Pulumi provider in P
 
 Create a new directory that will hold the provider implementation.
 
-First we need to let Pulumi's plugin system know which language runtime should be used to run the provider plugin. Create a a `PulumiPlugin.yaml` file with the contents:
+First we need to let Pulumi's plugin system know which language runtime should be used to run the provider plugin. Create a `PulumiPlugin.yaml` file with the contents:
 
 ```yaml
 runtime: python
 ```
 
 > [!NOTE]
-> Python component providers only support the pip toolchain with a virtual environment named `venv`. Don't add any other runtime options to the `PulumiPlugin.yaml` file.
+> Python component providers currently only support the pip toolchain with a virtual environment named `venv`. Don't add any other runtime options to the `PulumiPlugin.yaml` file.
 
 We also need to create a `requirements.txt` file to list the dependencies of the provider:
 
 ```txt
-git+ssh://git@github.com/pulumi/pulumi.git@julienp/tutorial#subdirectory=sdk/python
+pulumi==3.149.1a1739196364
+pulumi_random=~4.0
 ```
 
-TODO: update version to a pre-release with the experimental component provider merged
-
+This uses a prerelease version of the Python Pulumi SDK that includes the experimental component provider feature. We'll use the `pulumi_random` package to generate a random greeting.
 
 The resources provided by the provider are are defined as Python classes that subclass `pulumi.ComponentResource`. Create a new file `my-component.py` to hold the component implementation:
 
@@ -46,9 +46,7 @@ Next, create a `__main__.py` file to host the provider:
 from pulumi.provider.experimental import Metadata, component_provider_host
 
 if __name__ == "__main__":
-    component_provider_host(
-        Metadata(name="my-provider", version="1.2.3", display_name="My Component Provider")
-    )
+    component_provider_host(Metadata(name="my-provider", version="1.0.0"))
 ```
 
 > [!NOTE]
@@ -78,7 +76,7 @@ Outputs are defined as attributes on the component class:
 
 ```diff
  class MyComponent(pulumi.ComponentResource):
-+    greeting: Optional[pulumi.Output[str]]
++    greeting: pulumi.Output[str]
 +
      def __init__(self, name: str, args: MyComponentArgs, opts: Optional[pulumi.ResourceOptions] = None):
          super().__init__("my-provider:index:MyComponent", name, {}, opts)
@@ -88,30 +86,98 @@ Outputs are defined as attributes on the component class:
 To return data from the component, assign a value to the output attribute:
 
 ```diff
++import pulumi_random as random
+ from typing import Optional, TypedDict
+
+...
+
      def __init__(self, name: str, args: MyComponentArgs, opts: Optional[pulumi.ResourceOptions] = None):
          super().__init__("my-provider:index:MyComponent", name, {}, opts)
 +        who = args.get("who") or "Pulumipus"
-+        self.greeting = pulumi.Output.concat("Hello, ", who, "!")
-         self.register_outputs({})
++        greeting_word = random.RandomShuffle(
++           f"{name}-greeting",
++           inputs=["Hello", "Bonjour", "Ciao", "Hola"],
++           result_count=1,
++           opts=pulumi.ResourceOptions(parent=self),
++        )
++         self.greeting = pulumi.Output.concat(greeting_word.results[0], ", ", who, "!")
+-         self.register_outputs({})
++         self.register_outputs({
++             "greeting": self.greeting,
++         })
 ```
 
-With everything in place, we can now run the provider, and request the schema:
+Note how we set the name of the `RandomShuffle` resource to include the name of the component, to avoid name collisions if more than one instance of the component is created. We also set the parent of the `RandomShuffle` resource to the component, to properly establish the dependency between the two resources.
+
+As a last step, we need to publish the provider so that we can use it. Create a new Git repository and push the provider code to it. Add a tag to the repository to mark the version of the provider:
 
 ```bash
-# Create a venv and install the dependencies
+git init
+git add .
+git commit -m "Initial commit"
+git tag v1.0.0
+git remote add origin $MY_GIT_REPO
+git push --tags
+```
+
+## Using the Component Provider
+
+Now that our component provider has been published, we can use it in a separate project. We'll use TypeScript in this example, but the provider can be used from any language supported by Pulumi. Create a new directory for the project and then initialize a new Pulumi project:
+
+```bash
+cd $MY_PULUMI_RPOJECT
+pulumi new typescript
+```
+
+To start using the provider we need to add it as a dependency to the project:
+
+```bash
+pulumi package add $MY_GIT_REPO@v1.0.0
+```
+
+This will download the provider from the git repo, generate the TypeScript SDK for the provider in `sdks/my-provider` and add a references to it in `package.json`.
+
+> [!NOTE]
+> You can commit the generated SDK to your project's repository to avoid having to regenerate it when checking out the project on a different machine, for example in CI.
+
+With the SDK in place, we can start using our component, edit `index.ts`:
+
+```typescript
+import * as myProvider from "@pulumi/my-provider";
+
+let greeter = new myProvider.MyComponent("greeter", { who: "Bonnie" });
+
+export let greeting = greeter.greeting;
+```
+
+Run the program:
+
+```bash
+pulumi up
+pulumi stack output greeting
+> Ciao, Bonnie!
+```
+
+## Debugging
+
+### Inspecting the schema
+
+While developing it can be useful to inspect the schema of the provider to ensure it matches the expected shape. To do this, run the following commands:
+
+```bash
+# Ensure the dependencies for the provider are installed inside the provider repository
+cd $MY_PROVIDER_REPO
 python -m venv venv
 source venv/*/activate
 pip install -r requirements.txt
-
 # Get the schema
-pulumi package get-schema ./
+pulumi package get-schema .
 ```
 
 ```json
 {
   "name": "my-provider",
-  "displayName": "My Component Provider",
-  "version": "1.2.3",
+  "version": "1.0.0",
   "meta": {
     "moduleFormat": "(.*)"
   },
@@ -142,19 +208,17 @@ pulumi package get-schema ./
 }
 ```
 
-To use the provider from a local project, create a new directory and add a `Pulumi.yaml` file with a reference to the provider under the `plugins.provider` key:
+### Running the provider from a local directory
 
-```bash
-mkdir example && cd example
-```
+During development, you may want to test the provider from a local directory without having to publish it to a Git repository. You can let Pulumi know where to find the provider by adding a reference to the provider directory in the `Pulumi.yaml`:
 
 ```yaml
-name: test-provider-tutorial
+name: my-provider-example
 runtime: yaml
 plugins:
   providers:
     - name: my-provider
-      path: ../
+      path: ../provider # Path to the provider directory
 resources:
   greeter:
     type: my-provider:index:MyComponent
@@ -164,22 +228,11 @@ outputs:
   greeting: ${greeter.greeting}
 ```
 
-```bash
-pulumi up
-pulumi stack output greeting
-> Hello, Bonnie!
-```
-
-TODO: use the provider from a differnt language with a generated SDK.
-
 ## Current Limitations
 
 The current implementation is not yet complete, and has the following limitations:
 
 * The module must always be `index`
-* Plain types are not supported
-* Dictionary types are not supported
-* List types are not supported
 * Enum types are not supported
 * Discriminated unions types are not supported
 * References to other components are not supported
