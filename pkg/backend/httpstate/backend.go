@@ -375,7 +375,7 @@ func (m defaultLoginManager) Current(
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
-	accessToken := os.Getenv(AccessTokenEnvVar)
+	accessToken := env.AccessToken.Value()
 
 	// If we have a saved access token, and it is valid, and it
 	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
@@ -421,7 +421,7 @@ func (m defaultLoginManager) Current(
 	}
 
 	// If there's already a token from the environment, use it.
-	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
+	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
 	// Try and use the credentials to see if they are valid.
@@ -474,7 +474,7 @@ func (m defaultLoginManager) Login(
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
+		return nil, backend.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
@@ -686,6 +686,20 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
+func (b *cloudBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListTemplatesResult, error) {
+	return b.client.ListOrgTemplates(ctx, orgName)
+}
+
+func (b *cloudBackend) DownloadTemplate(
+	ctx context.Context, orgName, sourceURL string,
+) (backend.TarReaderCloser, error) {
+	t, err := b.client.DownloadOrgTemplate(ctx, orgName, sourceURL)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (b *cloudBackend) SupportsTags() bool {
 	return true
 }
@@ -699,6 +713,10 @@ func (b *cloudBackend) SupportsProgress() bool {
 }
 
 func (b *cloudBackend) SupportsDeployments() bool {
+	return true
+}
+
+func (b *cloudBackend) SupportsTemplates() bool {
 	return true
 }
 

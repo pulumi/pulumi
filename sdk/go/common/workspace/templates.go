@@ -697,16 +697,26 @@ func newExistingFilesError(existing []string) error {
 	return errors.New(message)
 }
 
+type TemplateNotFoundError struct{ msg string }
+
+func (err TemplateNotFoundError) Error() string { return err.msg }
+
+func (TemplateNotFoundError) Is(target error) bool {
+	_, v := target.(TemplateNotFoundError)
+	_, p := target.(*TemplateNotFoundError)
+	return v || p
+}
+
 // newTemplateNotFoundError returns an error for when the template doesn't exist,
 // offering distance-based suggestions in the error message.
-func newTemplateNotFoundError(templateDir string, templateName string) error {
+func newTemplateNotFoundError(templateDir string, templateName string) TemplateNotFoundError {
 	message := fmt.Sprintf("template '%s' not found", templateName)
 
 	// Attempt to read the directory to offer suggestions.
 	entries, err := os.ReadDir(templateDir)
 	if err != nil {
 		contract.IgnoreError(err)
-		return errors.New(message)
+		return TemplateNotFoundError{message}
 	}
 
 	// Get suggestions based on levenshtein distance.
@@ -728,7 +738,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 		}
 	}
 
-	return errors.New(message)
+	return TemplateNotFoundError{message}
 }
 
 // transform returns a new string with ${PROJECT} and ${DESCRIPTION} replaced by

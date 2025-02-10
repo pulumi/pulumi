@@ -34,6 +34,7 @@ import (
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
@@ -259,16 +260,15 @@ func NewUpCmd() *cobra.Command {
 		cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(ctx, templateNameOrURL, false, workspace.TemplateKindPulumiProject)
-		if err != nil {
-			return err
-		}
+		templateSource := cmdTemplates.New(ctx,
+			templateNameOrURL, cmdTemplates.ScopeDefault,
+			workspace.TemplateKindPulumiProject, cmdutil.Interactive())
 		defer func() {
-			contract.IgnoreError(repo.Delete())
+			contract.IgnoreError(templateSource.Close())
 		}()
 
 		// List the templates from the repo.
-		templates, err := repo.Templates()
+		templates, err := templateSource.Templates()
 		if err != nil {
 			return err
 		}
@@ -277,9 +277,17 @@ func NewUpCmd() *cobra.Command {
 		if len(templates) == 0 {
 			return errors.New("no template found")
 		} else if len(templates) == 1 {
-			template = templates[0]
+			template, err = templates[0].Download(ctx)
+			if err != nil {
+				return err
+			}
 		} else {
-			if template, err = newcmd.ChooseTemplate(templates, opts.Display); err != nil {
+			t, err := newcmd.ChooseTemplate(templates, opts.Display)
+			if err != nil {
+				return err
+			}
+			template, err = t.Download(ctx)
+			if err != nil {
 				return err
 			}
 		}

@@ -367,3 +367,65 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *resp.AgentPoolID)
 	})
 }
+
+func TestListTemplates(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("with-templates", func(t *testing.T) {
+		t.Parallel()
+
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			const s1 = `[{"sourceName":"source1","name":"some-name","sourceURL":"example.com"}]`
+			return `{"orgHasTemplates":true,"templates":{"source1":` + s1 + `}}`
+		})
+		defer s.Close()
+		c := newMockClient(s)
+
+		actual, err := c.ListOrgTemplates(ctx, "some-org")
+		require.NoError(t, err)
+
+		assert.Equal(t, apitype.ListTemplatesResult{
+			OrgHasTemplates: true,
+			Templates: map[string][]*apitype.PulumiTemplateRemote{
+				"source1": {
+					{SourceName: "source1", Name: "some-name", SourceURL: "example.com"},
+				},
+			},
+		}, actual)
+	})
+
+	t.Run("org-with-no-templates", func(t *testing.T) {
+		t.Parallel()
+
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			return `{"orgHasTemplates":true}`
+		})
+		defer s.Close()
+		c := newMockClient(s)
+
+		actual, err := c.ListOrgTemplates(ctx, "some-org")
+		require.NoError(t, err)
+
+		assert.Equal(t, apitype.ListTemplatesResult{
+			OrgHasTemplates: true,
+		}, actual)
+	})
+
+	t.Run("has-access-error", func(t *testing.T) {
+		t.Parallel()
+
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			return `{"hasAccessError":true}`
+		})
+		defer s.Close()
+		c := newMockClient(s)
+
+		actual, err := c.ListOrgTemplates(ctx, "some-org")
+		require.NoError(t, err)
+
+		assert.Equal(t, apitype.ListTemplatesResult{
+			HasAccessError: true,
+		}, actual)
+	})
+}

@@ -30,6 +30,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
+		SupportsTemplatesF: func() bool { return false },
 	})
 
 	testNewArgs := newArgs{
