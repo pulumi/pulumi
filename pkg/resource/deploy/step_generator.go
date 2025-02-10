@@ -624,7 +624,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			"generated fewer (%d) than expected (%d) random bytes", n, len(randomSeed))
 	}
 	var autonaming *plugin.AutonamingOptions
-	if sg.deployment.opts.Autonamer != nil {
+	if sg.deployment.opts.Autonamer != nil && goal.Custom {
 		var dbr bool
 		autonaming, dbr = sg.deployment.opts.Autonamer.AutonamingForResource(urn, randomSeed)
 		// If autonaming settings had no randomness in the name, we must delete before creating a replacement.
