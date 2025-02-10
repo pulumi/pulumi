@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
@@ -78,25 +79,59 @@ class ComponentProvider(Provider):
         return self._type_defs[name]
 
     def map_inputs(self, inputs: Inputs, component_def: ComponentDefinition) -> Inputs:
-        """Maps the input's names from the schema into Python names."""
+        """
+        Maps the input's names from the schema into Python names and
+        validates that required inputs are present.
+        """
         mapped_input: dict[str, Input[Any]] = {}
         for schema_name, prop in component_def.inputs.items():
             input_val = inputs.get(schema_name, None)
             if input_val is None:
+                if not prop.optional:
+                    raise InputPropertyError(
+                        schema_name,
+                        f"Missing required input '{schema_name}' on '{component_def.name}'",
+                    )
                 continue
             py_name = component_def.inputs_mapping[schema_name]
             if prop.ref:
                 type_def = self.get_type_definition(prop)
-                mapped_input[py_name] = self.map_complex_input(input_val, type_def)  # type: ignore
+                mapped_input[py_name] = self.map_complex_input(
+                    input_val,  # type: ignore
+                    type_def,
+                    component_def,
+                    schema_name,
+                )
             else:
                 mapped_input[py_name] = input_val
         return mapped_input
 
-    def map_complex_input(self, inputs: Inputs, type_def: TypeDefinition) -> Inputs:
+    def map_complex_input(
+        self,
+        inputs: Inputs,
+        type_def: TypeDefinition,
+        component_def: ComponentDefinition,
+        property_name: str,
+    ) -> Inputs:
+        """
+        Recursively maps the names of a complex type from schema to Python names
+        and validates that required inputs are present.
+
+        :param inputs: The inputs for the complex type.
+        :param type_def: The type definition for the complex type.
+        :param component_def: The current component definition, which has a property of this complex type.
+        :param property_name: The name of the property in the component definition that has this complex type.
+        """
         mapped_value: dict[str, Input[Any]] = {}
         for schema_name, prop in type_def.properties.items():
             input_val = inputs.get(schema_name, None)
             if input_val is None:
+                if not prop.optional:
+                    property_path = f"{property_name}.{schema_name}"
+                    raise InputPropertyError(
+                        property_path,
+                        f"Missing required input '{property_path}' on '{component_def.name}'",
+                    )
                 continue
             py_name = type_def.properties_mapping[schema_name]
             if prop.ref:
@@ -105,6 +140,8 @@ class ComponentProvider(Provider):
                 mapped_value[py_name] = self.map_complex_input(
                     input_val,  # type: ignore
                     nested_type_def,
+                    component_def,
+                    property_name + "." + schema_name,
                 )
             else:
                 mapped_value[py_name] = input_val
