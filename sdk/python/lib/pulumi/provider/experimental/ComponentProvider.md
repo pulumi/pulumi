@@ -117,7 +117,7 @@ git add .
 git commit -m "Initial commit"
 git tag v1.0.0
 git remote add origin $MY_GIT_REPO
-git push --tags
+git push --tags origin main
 ```
 
 ## Using the Component Provider
