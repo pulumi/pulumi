@@ -559,6 +559,7 @@ func NewNewCmd() *cobra.Command {
 			logging.Warningf("could not retrieve templates: %v", err)
 			return []workspace.Template{}, err
 		}
+		defer func() { contract.IgnoreError(repo.Delete()) }()
 
 		// Get the list of templates.
 		return repo.Templates()
