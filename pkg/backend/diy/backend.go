@@ -643,6 +643,10 @@ func (b *diyBackend) SupportsTags() bool {
 	return false
 }
 
+func (b *diyBackend) SupportsTemplates() bool {
+	return false
+}
+
 func (b *diyBackend) SupportsOrganizations() bool {
 	return false
 }
@@ -1409,6 +1413,14 @@ func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
 ) (*apitype.DeploymentSettings, error) {
 	// The local backend does not support managing deployments.
 	return nil, errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) ListTemplates(context.Context, string) (apitype.ListTemplatesResult, error) {
+	return apitype.ListTemplatesResult{}, errors.New("list templates not supported with diy backends")
+}
+
+func (b *diyBackend) DownloadTemplate(context.Context, string, string) (backend.TarReaderCloser, error) {
+	return nil, errors.New("download template not supported with diy backends")
 }
 
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
