@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Avoid panic'ing when the project file is invalid
