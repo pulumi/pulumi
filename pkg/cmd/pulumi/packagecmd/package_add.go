@@ -15,7 +15,6 @@
 package packagecmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +65,7 @@ extension, Pulumi package schema is read from it directly:
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
-			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
+			if err != nil {
 				return err
 			}
 
