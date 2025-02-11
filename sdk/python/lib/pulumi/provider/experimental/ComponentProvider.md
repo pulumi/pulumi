@@ -32,6 +32,7 @@ from typing import Optional
 import pulumi
 
 class MyComponent(pulumi.ComponentResource):
+    """A component that greets someone"""
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
         super().__init__("my-provider:index:MyComponent", name, {}, opts)
         self.register_outputs({})
@@ -64,8 +65,10 @@ At this point, we can run the provider, but it does not yet do anything useful. 
 
 +class MyComponentArgs(TypedDict):
 +    who: Optional[pulumi.Output[str]]
++    """Who to greet"""
 +
- class MyComponent(pulumi.ComponentResource):
+ class MyComponent(pulumi.ComponentResourc0e):
+     """A component that greets someone"""
 -    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
 +    def __init__(self, name: str, args: MyComponentArgs, opts: Optional[pulumi.ResourceOptions] = None):
          super().__init__("my-provider:index:MyComponent", name, {}, opts)
@@ -77,11 +80,14 @@ Outputs are defined as attributes on the component class:
 ```diff
  class MyComponent(pulumi.ComponentResource):
 +    greeting: pulumi.Output[str]
++    """The greeting message"""
 +
      def __init__(self, name: str, args: MyComponentArgs, opts: Optional[pulumi.ResourceOptions] = None):
          super().__init__("my-provider:index:MyComponent", name, {}, opts)
          self.register_outputs({})
 ```
+
+The docstrings for the inputs and outputs that we added will be used as descriptions in the schema of the provider.
 
 To return data from the component, assign a value to the output attribute:
 

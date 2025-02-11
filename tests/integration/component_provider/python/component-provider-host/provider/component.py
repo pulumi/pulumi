@@ -19,16 +19,22 @@ import pulumi
 
 
 class Nested(TypedDict):
+    """Deep nesting"""
+
     str_plain: str
+    """A plain string"""
 
 
 class Complex(TypedDict):
+    """ComplexType is very complicated"""
+
     str_input: pulumi.Input[str]
     nested_input: pulumi.Input[Nested]
 
 
 class Args(TypedDict):
     str_input: pulumi.Input[str]
+    """This is a string input"""
     optional_int_input: Optional[pulumi.Input[int]]
     complex_input: Optional[pulumi.Input[Complex]]
     list_input: pulumi.Input[list[str]]
@@ -38,7 +44,10 @@ class Args(TypedDict):
 
 
 class MyComponent(pulumi.ComponentResource):
+    """MyComponent is the best"""
+
     str_output: pulumi.Output[str]
+    """This is a string output"""
     optional_int_output: Optional[pulumi.Output[int]]
     complex_output: Optional[pulumi.Output[Complex]]
     list_output: pulumi.Output[list[str]]

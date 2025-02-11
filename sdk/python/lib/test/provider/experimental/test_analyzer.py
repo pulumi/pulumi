@@ -571,6 +571,75 @@ def test_analyze_asset():
     )
 
 
+def test_analyze_descriptions():
+    analyzer = Analyzer(metadata)
+    (components, type_definitions) = analyzer.analyze(
+        Path(Path(__file__).parent, "testdata", "docstrings")
+    )
+    print(analyzer.docstrings)
+    assert components == {
+        "Component": ComponentDefinition(
+            description="Component doc string",
+            name="Component",
+            module="component.py",
+            inputs={
+                "someComplexType": PropertyDefinition(
+                    description="some_complex_type doc string",
+                    ref="#/types/my-component:index:ComplexType",
+                ),
+                "inputWithCommentAndDescription": PropertyDefinition(
+                    description="input_with_comment_and_description doc string",
+                    type=PropertyType.STRING,
+                ),
+            },
+            inputs_mapping={
+                "someComplexType": "some_complex_type",
+                "inputWithCommentAndDescription": "input_with_comment_and_description",
+            },
+            outputs={
+                "complexOutput": PropertyDefinition(
+                    description="complex_output doc string",
+                    ref="#/types/my-component:index:ComplexType",
+                )
+            },
+            outputs_mapping={"complexOutput": "complex_output"},
+        )
+    }
+    assert type_definitions == {
+        "ComplexType": TypeDefinition(
+            description="ComplexType doc string",
+            name="ComplexType",
+            module="component.py",
+            type="object",
+            properties={
+                "value": PropertyDefinition(
+                    description="value doc string",
+                    type=PropertyType.STRING,
+                    plain=True,
+                ),
+                "anotherValue": PropertyDefinition(
+                    ref="#/types/my-component:index:NestedComplexType",
+                    description=None,
+                ),
+            },
+            properties_mapping={"value": "value", "anotherValue": "another_value"},
+        ),
+        "NestedComplexType": TypeDefinition(
+            description="NestedComplexType doc string",
+            name="NestedComplexType",
+            module="component.py",
+            type="object",
+            properties={
+                "nestedValue": PropertyDefinition(
+                    type=PropertyType.STRING,
+                    description="nested_value doc string",
+                )
+            },
+            properties_mapping={"nestedValue": "nested_value"},
+        ),
+    }
+
+
 def test_analyze_resource_ref():
     class MyResource(pulumi.CustomResource): ...
 

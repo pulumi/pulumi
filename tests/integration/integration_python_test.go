@@ -1933,7 +1933,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"type": "object",
 		"properties": {
 			"optionalIntOutput": { "type": "integer" },
-			"strOutput": { "type": "string" },
+			"strOutput": {
+				"type": "string",
+				"description": "This is a string output"
+			},
 			"complexOutput": { "$ref": "#/types/provider:index:Complex" },
 			"listOutput": {
 				"type": "array",
@@ -1952,7 +1955,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		},
 		"required": ["archiveOutput", "assetOutput", "dictOutput", "listOutput", "strOutput"],
 		"inputProperties": {
-			"strInput": { "type": "string" },
+			"strInput": {
+				"type": "string",
+				"description": "This is a string input"
+			},
 			"optionalIntInput": { "type": "integer" },
 			"complexInput": { "$ref": "#/types/provider:index:Complex"},
 			"listInput": {
@@ -1989,6 +1995,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	// Check the complex types
 	expectedTypesJSON := `{
 		"provider:index:Complex": {
+			"description": "ComplexType is very complicated",
 			"properties": {
 				"strInput": {
 					"type": "string"
@@ -2001,9 +2008,12 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 			"required": ["nestedInput", "strInput"]
 		},
 		"provider:index:Nested": {
+			"description": "Deep nesting",
 			"properties": {
 				"strPlain": {
-					"type": "string", "plain": true
+					"type": "string",
+					"plain": true,
+					"description": "A plain string"
 				}
 			},
 			"type": "object",
