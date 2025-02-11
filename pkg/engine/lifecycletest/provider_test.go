@@ -1026,6 +1026,117 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 	}
 }
 
+// TestExplicitProviderDiffReplacement tests that, when replacing an explicit provider for a resource, the engine will
+// replace the resource if DiffConfig on the new provider returns a diff for the provider's new state.
+func TestExplicitProviderDiffReplacement(t *testing.T) {
+	t.Parallel()
+
+	const resName = "resA"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// This implementation of DiffConfig always requests replacement.
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
+				) (plugin.DiffResult, error) {
+					keys := []resource.PropertyKey{}
+					for k := range req.NewInputs {
+						keys = append(keys, k)
+					}
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: keys,
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	runProgram := func(base *deploy.Snapshot, name, version string,
+		expectedSteps ...display.StepOp,
+	) *deploy.Snapshot {
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+				deploytest.ResourceOptions{
+					Version: version,
+				})
+			assert.NoError(t, err)
+			provID := resp.ID
+
+			if provID == "" {
+				provID = providers.UnknownID
+			}
+
+			provARef, err := providers.NewReference(resp.URN, provID)
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", resName, true, deploytest.ResourceOptions{
+				Provider: provARef.String(),
+			})
+			assert.NoError(t, err)
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						events []Event, err error,
+					) error {
+						for _, entry := range entries {
+							if entry.Kind != JournalEntrySuccess {
+								continue
+							}
+
+							switch entry.Step.URN().Name() {
+							case resName:
+								assert.Subset(t, expectedSteps, []display.StepOp{entry.Step.Op()})
+							}
+						}
+						return err
+					},
+				},
+			},
+		}
+		return p.RunWithName(t, base, name)
+	}
+
+	// This test simulates the upgrade scenario of explicit providers, except that the requested upgrade results in the
+	// provider getting replaced. Because of this, the engine should decide to replace resA.
+	snap := runProgram(nil, "0", "1.0.0", deploy.OpCreate)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "provA", res.URN.Name())
+		case res.URN.Name() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "provA", provRef.URN().Name())
+		}
+	}
+
+	// Upon update, now that the language host is sending a version, DiffConfig reports that there's a diff between the
+	// old and new provider and so we must replace resA.
+	snap = runProgram(snap, "1", "2.0.0",
+		deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.True(t, res.URN.Name() == "provA")
+		case res.URN.Name() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "provA", provRef.URN().Name())
+		}
+	}
+}
+
 func TestProviderVersionDefault(t *testing.T) {
 	t.Parallel()
 
