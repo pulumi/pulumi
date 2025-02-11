@@ -1947,9 +1947,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 					"type": "integer"
 				}
 			},
-			"assetOutput": { "$ref": "pulumi.json#/Asset" }
+			"assetOutput": { "$ref": "pulumi.json#/Asset" },
+			"archiveOutput": { "$ref": "pulumi.json#/Archive" }
 		},
-		"required": ["assetOutput", "dictOutput", "listOutput", "strOutput"],
+		"required": ["archiveOutput", "assetOutput", "dictOutput", "listOutput", "strOutput"],
 		"inputProperties": {
 			"strInput": { "type": "string" },
 			"optionalIntInput": { "type": "integer" },
@@ -1968,9 +1969,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 					"plain": true
 				}
 			},
-			"assetInput": { "$ref": "pulumi.json#/Asset" }
+			"assetInput": { "$ref": "pulumi.json#/Asset" },
+			"archiveInput": { "$ref": "pulumi.json#/Archive" }
 		},
-		"requiredInputs": ["assetInput", "dictInput", "listInput", "strInput"]
+		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "listInput", "strInput"]
 	}
 	`
 	expected := make(map[string]interface{})
