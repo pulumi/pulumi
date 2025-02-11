@@ -1,0 +1,7 @@
+name: python-component-provider-typescript
+description: Using a component provider written in Python from TypeScript
+runtime: nodejs
+plugins:
+  providers:
+    - name: provider
+      path: ../provider

@@ -33,6 +33,8 @@ class Args(TypedDict):
     complex_input: Optional[pulumi.Input[Complex]]
     list_input: pulumi.Input[list[str]]
     dict_input: pulumi.Input[dict[str, int]]
+    asset_input: pulumi.Input[pulumi.Asset]
+    archive_input: pulumi.Input[pulumi.Archive]
 
 
 class MyComponent(pulumi.ComponentResource):
@@ -41,6 +43,8 @@ class MyComponent(pulumi.ComponentResource):
     complex_output: Optional[pulumi.Output[Complex]]
     list_output: pulumi.Output[list[str]]
     dict_output: pulumi.Output[dict[str, int]]
+    asset_output: pulumi.Output[pulumi.Asset]
+    archive_output: pulumi.Output[pulumi.Archive]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -66,4 +70,31 @@ class MyComponent(pulumi.ComponentResource):
         self.dict_output = pulumi.Output.from_input(args.get("dict_input")).apply(
             lambda x: {k: v * 2 for k, v in x.items()}
         )
-        self.register_outputs({})
+        self.asset_output = pulumi.Output.from_input(args.get("asset_input")).apply(
+            self.transform_asset
+        )
+        self.archive_output = pulumi.Output.from_input(args.get("archive_input")).apply(
+            self.transform_archive
+        )
+        self.register_outputs(
+            {
+                "asset_output": self.asset_output,
+            }
+        )
+
+    def transform_asset(self, asset: pulumi.Asset) -> pulumi.Asset:
+        if isinstance(asset, pulumi.StringAsset):
+            return pulumi.StringAsset(asset.text.upper())
+        elif isinstance(asset, pulumi.FileAsset):
+            return pulumi.FileAsset(asset.path.upper())
+        elif isinstance(asset, pulumi.RemoteAsset):
+            return pulumi.RemoteAsset(asset.uri.upper())
+        else:
+            raise ValueError(f"Unexpected asset type {asset.__class__.__name__}")
+
+    def transform_archive(self, asset: pulumi.Archive) -> pulumi.Archive:
+        if isinstance(asset, pulumi.AssetArchive):
+            asset = asset.assets["asset1"]  # type: ignore
+            return pulumi.AssetArchive({"asset1": self.transform_asset(asset)})  # type: ignore
+        else:
+            raise ValueError(f"Unexpected archive type {asset.__class__.__name__}")

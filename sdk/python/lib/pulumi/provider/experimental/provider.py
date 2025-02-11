@@ -95,6 +95,9 @@ class ComponentProvider(Provider):
                 continue
             py_name = component_def.inputs_mapping[schema_name]
             if prop.ref:
+                if prop.ref in ("pulumi.json#/Asset", "pulumi.json#/Archive"):
+                    mapped_input[py_name] = input_val
+                    continue
                 type_def = self.get_type_definition(prop)
                 mapped_input[py_name] = self.map_complex_input(
                     input_val,  # type: ignore
@@ -157,6 +160,9 @@ class ComponentProvider(Provider):
             if instance_val is None:
                 continue
             if prop.ref:
+                if prop.ref in ("pulumi.json#/Asset", "pulumi.json#/Archive"):
+                    state[k] = instance_val
+                    continue
                 # It's a complex type, get the type definition and map it
                 type_def = self.get_type_definition(prop)
                 state[k] = self.map_complex_output(instance_val, type_def)  # type: ignore

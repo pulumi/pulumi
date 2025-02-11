@@ -25,6 +25,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -1825,50 +1826,100 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
-// Tests that we can run a Python component provider using component_provider_host.
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
+// Tests that we can run a Python component provider using component_provider_host
 func TestPythonComponentProviderRun(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PrepareProject: func(info *engine.Projinfo) error {
-			installPythonProviderDependencies(t, filepath.Join(info.Root, "provider"))
-			return nil
-		},
-		Dir: filepath.Join("component_provider", "python", "component-provider-host"),
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
-			require.NoError(t, err)
-			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
-			require.Equal(t, "comp", urn.Name())
-			require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
-			require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
-			complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
-			require.Equal(t, "complex_str_input_value", complexOutput["strInput"].(string))
-			nested := complexOutput["nestedInput"].(map[string]interface{})
-			require.Equal(t, "nested_str_plain_value", nested["strPlain"].(string))
-			require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
-			require.Equal(t, map[string]interface{}{
-				"a": float64(2),
-				"b": float64(4),
-				"c": float64(6),
-			}, stack.Outputs["dictOutput"])
-		},
-	})
+	t.Parallel()
+
+	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "component-provider-host"))
+	require.NoError(t, err)
+	providerDir := filepath.Join(testData, "provider")
+	installPythonProviderDependencies(t, providerDir)
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	for _, runtime := range []string{"yaml", "nodejs", "python"} {
+		t.Run(runtime, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				PrepareProject: func(info *engine.Projinfo) error {
+					if runtime != "yaml" {
+						cmd := exec.Command("pulumi", "package", "add", providerDir)
+						cmd.Dir = info.Root
+						out, err := cmd.CombinedOutput()
+						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					}
+					return nil
+				},
+				Dir: filepath.Join(testData, runtime),
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+					require.NoError(t, err)
+					require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+					require.Equal(t, "comp", urn.Name())
+					t.Logf("Outputs: %v", stack.Outputs)
+					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
+					require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
+					complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
+					if runtime == "python" {
+						// The output is stored in the stack as a plain object,
+						// but that means for Python the keys are snake_case.
+						require.Equal(t, "complex_str_input_value", complexOutput["str_input"].(string))
+						nested := complexOutput["nested_input"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["str_plain"].(string))
+					} else {
+						require.Equal(t, "complex_str_input_value", complexOutput["strInput"].(string))
+						nested := complexOutput["nestedInput"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["strPlain"].(string))
+					}
+					require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
+					require.Equal(t, map[string]interface{}{
+						"a": float64(2),
+						"b": float64(4),
+						"c": float64(6),
+					}, stack.Outputs["dictOutput"])
+					// TODO: YAML is not properly exporting assets https://github.com/pulumi/pulumi-yaml/issues/714
+					if runtime != "yaml" {
+						// We're expecting assetOutput = map[text:HELLO, WORLD!]
+						asset := stack.Outputs["assetOutput"].(map[string]interface{})
+						text := asset["text"].(string)
+						checkAssetText(t, runtime, "HELLO, WORLD!", text)
+
+						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
+						archive := stack.Outputs["archiveOutput"].(map[string]interface{})
+						asset1 := archive["assets"].(map[string]interface{})["asset1"].(map[string]interface{})
+						text = asset1["text"].(string)
+						checkAssetText(t, runtime, "IM INSIDE AN ARCHIVE", text)
+					}
+				},
+			})
+		})
+	}
+}
+
+func checkAssetText(t *testing.T, runtime, expected, actual string) {
+	t.Helper()
+	switch runtime {
+	case "nodejs":
+		// Node.js replaces the asset text with "..." in the stack output.
+		// https://github.com/pulumi/pulumi/blob/a3c9fd948de150043a7e07aa82ca17ffaee0bddc/sdk/nodejs/runtime/stack.ts#L163
+		require.Equal(t, "...", actual)
+	default:
+		require.Equal(t, expected, actual)
+	}
 }
 
 // Tests that we can get the schema for a Python component provider using component_provider_host.
 func TestPythonComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
-	dir := filepath.Join("component_provider", "python", "component-provider-host", "provider")
+	dir, err := filepath.Abs(filepath.Join("component_provider", "python", "component-provider-host", "provider"))
+	require.NoError(t, err)
+	installPythonProviderDependencies(t, dir)
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
-	e.ImportDirectory(dir)
-	installPythonProviderDependencies(t, e.RootPath)
 
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", dir)
 	require.Empty(t, stderr)
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
@@ -1895,9 +1946,11 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				"additionalProperties": {
 					"type": "integer"
 				}
-			}
+			},
+			"assetOutput": { "$ref": "pulumi.json#/Asset" },
+			"archiveOutput": { "$ref": "pulumi.json#/Archive" }
 		},
-		"required": ["dictOutput", "listOutput", "strOutput"],
+		"required": ["archiveOutput", "assetOutput", "dictOutput", "listOutput", "strOutput"],
 		"inputProperties": {
 			"strInput": { "type": "string" },
 			"optionalIntInput": { "type": "integer" },
@@ -1915,9 +1968,11 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 					"type": "integer",
 					"plain": true
 				}
-			}
+			},
+			"assetInput": { "$ref": "pulumi.json#/Asset" },
+			"archiveInput": { "$ref": "pulumi.json#/Archive" }
 		},
-		"requiredInputs": ["dictInput", "listInput", "strInput"]
+		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "listInput", "strInput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -1963,12 +2018,14 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
+	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "recursive-types"))
+	require.NoError(t, err)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		PrepareProject: func(info *engine.Projinfo) error {
-			installPythonProviderDependencies(t, filepath.Join(info.Root, "provider"))
+			installPythonProviderDependencies(t, filepath.Join(testData, "provider"))
 			return nil
 		},
-		Dir: filepath.Join("component_provider", "python", "recursive-types"),
+		Dir: filepath.Join(testData, "yaml"),
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 			require.NoError(t, err)
@@ -1989,17 +2046,14 @@ func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
 	})
 }
 
+// lock to prevent concurrent installation of Python provider dependencies
+var installPythonProviderDependenciesLock sync.Mutex
+
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
-	// Add the core SDK to the requirements.txt file.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
-	f, err := os.OpenFile(filepath.Join(dir, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
-	require.NoError(t, err)
-	_, err = fmt.Fprintln(f, coreSDK)
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-	// Install the provider's dependencies.
+	installPythonProviderDependenciesLock.Lock()
+	defer installPythonProviderDependenciesLock.Unlock()
+
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
 		Virtualenv: "venv",
@@ -2009,5 +2063,12 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
-	require.NoError(t, err, "stdout: %s, stderr: %s", stdout.String(), stderr.String())
+	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
+	// Install the core SDK
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", coreSDK)
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", out)
 }
