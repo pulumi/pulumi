@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.150.0 (2025-02-11)
+
+
+### Features
+
+- [cli/state] Add `--all` to `state delete`
+  [#18502](https://github.com/pulumi/pulumi/pull/18502)
+
+- [sdk/python] [Experimental/Components] Check for required inputs
+  [#18487](https://github.com/pulumi/pulumi/pull/18487)
+
+- [sdk/python] [Experimental/Components] Infer plain types
+  [#18483](https://github.com/pulumi/pulumi/pull/18483)
+
+
+### Bug Fixes
+
+- [engine] Fix a potential panic for corrupted secret values
+  [#18501](https://github.com/pulumi/pulumi/pull/18501)
+
+- [engine] Apply autonaming strategy only to custom resources, not components
+  [#18523](https://github.com/pulumi/pulumi/pull/18523)
+
+- [sdk/python] [Experimental/Components] Throw an error when encountring resource references
+  [#18485](https://github.com/pulumi/pulumi/pull/18485)
+
+
+### Miscellaneous
+
+- [pkg] Change BulkDecrypt to return list instead of map
+  [#18486](https://github.com/pulumi/pulumi/pull/18486)
+
 ## 3.149.0 (2025-02-07)
 
 

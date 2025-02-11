@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Apply autonaming strategy only to custom resources, not components
