@@ -21,6 +21,7 @@ from typing import Dict, List, Set, Optional, TypeVar, Any, cast
 import argparse
 import asyncio
 import sys
+import traceback
 
 import grpc
 import grpc.aio
@@ -112,19 +113,28 @@ class ProviderServicer(ResourceProviderServicer):
         await self.lock.acquire()
         try:
             return await self._construct(request, context)
-        except InputPropertiesError as e:
-            status = self.create_grpc_invalid_properties_status(e.message, e.errors)
-            await context.abort_with_status(status)
-            # We already aborted at this point
-            raise
-        except InputPropertyError as e:
-            status = self.create_grpc_invalid_properties_status(
-                "", [{"property_path": e.property_path, "reason": e.reason}]
-            )
-            await context.abort_with_status(status)
-            # We already aborted at this point
-            raise
-
+        except Exception as e:  # noqa
+            if isinstance(e, InputPropertiesError):
+                status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+                await context.abort_with_status(status)
+                # We already aborted at this point
+                raise
+            elif isinstance(e, InputPropertyError):
+                status = self.create_grpc_invalid_properties_status(
+                    "", [{"property_path": e.property_path, "reason": e.reason}]
+                )
+                await context.abort_with_status(status)
+                # We already aborted at this point
+                raise
+            else:
+                stack = traceback.extract_tb(e.__traceback__)[:]
+                if len(stack) > 3:
+                    # If we have more than 3 frames, we've made it to the
+                    # provider code: server.Construct > server._construct >
+                    # provider.construct. Drop our internal frames.
+                    stack = stack[3:]
+                pretty_stack = "".join(traceback.format_list(stack))
+                raise Exception(f"{str(e)}:\n{pretty_stack}")
         finally:
             self.lock.release()
 
