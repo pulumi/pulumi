@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import abc
+import collections
 from pathlib import Path
+import typing
 from typing import Any, Optional, TypedDict, Union
 
 import pulumi
@@ -20,8 +23,11 @@ from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.analyzer import (
     Analyzer,
     DuplicateTypeError,
+    InvalidListTypeError,
     InvalidMapKeyError,
     TypeNotFoundError,
+    is_dict,
+    is_list,
     unwrap_input,
     unwrap_output,
 )
@@ -282,9 +288,13 @@ def test_analyze_component_plain_types():
 def test_analyze_list_simple():
     class Args(TypedDict):
         list_input: pulumi.Input[list[str]]
+        typing_list_input: pulumi.Input[typing.List[str]]
+        abc_sequence_input: pulumi.Input[abc.Sequence[str]]
 
     class Component(pulumi.ComponentResource):
         list_output: Optional[pulumi.Output[list[Optional[str]]]]
+        typing_list_output: pulumi.Output[typing.List[str]]
+        abc_sequence_output: pulumi.Output[abc.Sequence[str]]
 
         def __init__(self, args: Args): ...
 
@@ -297,9 +307,21 @@ def test_analyze_list_simple():
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(type=PropertyType.STRING, plain=True),
-            )
+            ),
+            "typingListInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+            ),
+            "abcSequenceInput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+            ),
         },
-        inputs_mapping={"listInput": "list_input"},
+        inputs_mapping={
+            "listInput": "list_input",
+            "typingListInput": "typing_list_input",
+            "abcSequenceInput": "abc_sequence_input",
+        },
         outputs={
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
@@ -307,9 +329,21 @@ def test_analyze_list_simple():
                     type=PropertyType.STRING, optional=True, plain=True
                 ),
                 optional=True,
-            )
+            ),
+            "typingListOutput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+            ),
+            "abcSequenceOutput": PropertyDefinition(
+                type=PropertyType.ARRAY,
+                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+            ),
         },
-        outputs_mapping={"listOutput": "list_output"},
+        outputs_mapping={
+            "listOutput": "list_output",
+            "typingListOutput": "typing_list_output",
+            "abcSequenceOutput": "abc_sequence_output",
+        },
     )
 
 
@@ -368,6 +402,23 @@ def test_analyze_list_complex():
     }
 
 
+def test_analyze_list_missing_type():
+    class Args(TypedDict):
+        bad_list: pulumi.Input[list]  # type: ignore
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    try:
+        analyzer.analyze_component(Component, Path("test_analyzer"))
+    except InvalidListTypeError as e:
+        assert (
+            str(e)
+            == "list types must specify a type argument, got 'list' for 'Args.bad_list'"
+        )
+
+
 def test_analyze_dict_non_str_key():
     class Args(TypedDict):
         bad_dict: pulumi.Input[dict[int, str]]
@@ -385,9 +436,13 @@ def test_analyze_dict_non_str_key():
 def test_analyze_dict_simple():
     class Args(TypedDict):
         dict_input: pulumi.Input[dict[str, int]]
+        typing_dict_input: pulumi.Input[typing.Dict[str, int]]
+        abc_mapping_input: pulumi.Input[abc.Mapping[str, int]]
 
     class Component(pulumi.ComponentResource):
         dict_output: Optional[pulumi.Output[dict[str, Optional[int]]]]
+        typing_dict_output: pulumi.Output[typing.Dict[str, int]]
+        abc_mapping_output: pulumi.Output[abc.Mapping[str, int]]
 
         def __init__(self, args: Args): ...
 
@@ -402,9 +457,25 @@ def test_analyze_dict_simple():
                 additional_properties=PropertyDefinition(
                     type=PropertyType.INTEGER, plain=True
                 ),
-            )
+            ),
+            "typingDictInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+            ),
+            "abcMappingInput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+            ),
         },
-        inputs_mapping={"dictInput": "dict_input"},
+        inputs_mapping={
+            "dictInput": "dict_input",
+            "typingDictInput": "typing_dict_input",
+            "abcMappingInput": "abc_mapping_input",
+        },
         outputs={
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
@@ -412,9 +483,25 @@ def test_analyze_dict_simple():
                     type=PropertyType.INTEGER, optional=True, plain=True
                 ),
                 optional=True,
-            )
+            ),
+            "typingDictOutput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+            ),
+            "abcMappingOutput": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.INTEGER, plain=True
+                ),
+            ),
         },
-        outputs_mapping={"dictOutput": "dict_output"},
+        outputs_mapping={
+            "dictOutput": "dict_output",
+            "typingDictOutput": "typing_dict_output",
+            "abcMappingOutput": "abc_mapping_output",
+        },
     )
 
 
@@ -453,7 +540,7 @@ def test_analyze_dict_complex():
                     plain=True,
                 ),
                 optional=True,
-            )
+            ),
         },
         outputs_mapping={"dictOutput": "dict_output"},
     )
@@ -894,3 +981,28 @@ def test_unwrap_input():
         assert False, "expected an exception"
     except ValueError as e:
         assert "is not an input type" in str(e)
+
+
+def test_is_dict():
+    assert is_dict(dict[str, int])
+    assert is_dict(abc.Mapping[str, int])
+    assert is_dict(abc.MutableMapping[str, int])
+    assert is_dict(abc.MutableMapping[str, int])
+    assert is_dict(collections.defaultdict[str, int])
+    assert is_dict(collections.OrderedDict[str, int])
+    assert is_dict(collections.UserDict[str, int])
+    assert is_dict(typing.Dict[str, int])
+    assert is_dict(typing.DefaultDict[str, int])
+    assert is_dict(typing.OrderedDict[str, int])
+    assert is_dict(typing.Mapping[str, int])
+    assert is_dict(typing.MutableMapping[str, int])
+
+
+def test_is_list():
+    assert is_list(list[str])
+    assert is_list(abc.Sequence[str])
+    assert is_list(abc.MutableSequence[str])
+    assert is_list(collections.UserList[str])
+    assert is_list(typing.List[str])
+    assert is_list(typing.Sequence[str])
+    assert is_list(typing.MutableSequence[str])
