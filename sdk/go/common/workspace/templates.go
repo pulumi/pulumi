@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -281,19 +283,88 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 }
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
+//
+// If the URL links to a Private cloud template in the Pulumi cloud, RetrieveTemplates will call
+// [GetAccount].
+//
+// [GetAccount] ensures the user has a valid session with the Pulumi Cloud backend.
+//   - If the user is not logged in, the login flow will be initiated.
+//   - If the user is not logged in and pulumi does not recognize the backend as a known workspace then
+//     the user will see an authentication error.
 func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind,
 ) (TemplateRepository, error) {
-	if isZIPTemplateURL(templateNamePathOrURL) {
+	r, err := retrieveTemplateFromURL(ctx, templateNamePathOrURL, offline, templateKind)
+	if err == nil {
+		return r, nil
+	}
+	if errors.Is(err, ErrPulumiCloudUnauthorized) {
+		return retrievePrivatePulumiCloudTemplate(templateNamePathOrURL)
+	}
+	if errors.Is(err, errNotAnURL) {
+		return retrievePulumiTemplates(ctx, templateNamePathOrURL, offline, templateKind)
+	}
+	return r, err
+}
+
+var errNotAnURL = errors.New("not an URL")
+
+func retrieveTemplateFromURL(ctx context.Context, templateNamePathOrURL string, offline bool,
+	templateKind TemplateKind,
+) (TemplateRepository, error) {
+	switch {
+	case isZIPTemplateURL(templateNamePathOrURL):
 		return RetrieveZIPTemplates(templateNamePathOrURL)
-	}
-	if IsTemplateURL(templateNamePathOrURL) {
+	case IsTemplateURL(templateNamePathOrURL):
 		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline, templateKind)
-	}
-	if isTemplateFileOrDirectory(templateNamePathOrURL) {
+	case isTemplateFileOrDirectory(templateNamePathOrURL):
 		return retrieveFileTemplates(templateNamePathOrURL)
+	default:
+		return TemplateRepository{}, errNotAnURL
 	}
-	return retrievePulumiTemplates(ctx, templateNamePathOrURL, offline, templateKind)
+}
+
+// Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
+//
+// workspace.GetAccount ensures the user has a valid session with the Pulumi Cloud backend.
+//   - If the user is not logged in, the login flow will be initiated.
+//   - If the user is not logged in and pulumi does not recognize the backend as a known workspace then
+//     the user will see an authentication error.
+func retrievePrivatePulumiCloudTemplate(templateURL string) (TemplateRepository, error) {
+	u, err := url.Parse(templateURL)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
+	}
+	// Docs convention is to store the cloud URL with the protocol.
+	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
+	templatePulumiCloudHost := "https://" + u.Host
+
+	account, err := GetAccount(templatePulumiCloudHost)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf(
+			"looking up pulumi cloud backend %s: %w",
+			templatePulumiCloudHost,
+			err,
+		)
+	}
+
+	if account.AccessToken == "" {
+		return TemplateRepository{}, fmt.Errorf("no access token found for %s", templatePulumiCloudHost)
+	}
+
+	templateRepository, err := RetrieveZIPTemplates(templateURL, func(req *http.Request) {
+		req.Header.Set("Authorization", "token "+account.AccessToken)
+	})
+
+	if errors.Is(err, ErrPulumiCloudUnauthorized) {
+		return TemplateRepository{}, fmt.Errorf(
+			"unauthorized to access template at %s. You may not have access to this template or token may have expired",
+			templatePulumiCloudHost,
+		)
+	}
+
+	// Caller can handle other errors
+	return templateRepository, err
 }
 
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
