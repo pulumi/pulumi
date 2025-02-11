@@ -412,13 +412,6 @@ const (
 	ProjectDescriptionTag StackTagName = "pulumi:description"
 	// ProjectTemplateTag is a tag that represents the template that was used to create a project.
 	ProjectTemplateTag StackTagName = "pulumi:template"
-	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
-	// may be associated with (inferred by the CLI based on git remote info).
-	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
-	GitHubOwnerNameTag StackTagName = "gitHub:owner"
-	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
-	// may be associated with (inferred by the CLI based on git remote info).
-	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
 	// VCSOwnerNameTag is a tag that represents the name of the owner on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	VCSOwnerNameTag StackTagName = "vcs:owner"
