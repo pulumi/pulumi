@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,18 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s        raise Exception("single_or_none expected input list to have a single element")
 %s    return elements[0]
 `, indent, indent, indent, indent), true
+	case "try":
+		return fmt.Sprintf(`%[1]sdef try_(*fns):
+%[1]s    for fn in fns:
+%[1]s        try:
+%[1]s            result = fn()
+%[1]s            return result
+%[1]s        except:
+%[1]s            continue
+%[1]s    return None
+`,
+			indent,
+		), true
 	default:
 		return "", false
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
@@ -418,5 +420,36 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			}},
 			ReturnType: model.NewOutputType(model.DynamicType),
 		}),
+		"try": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				// `try` is a variadic PCL function, so we can bind it in all cases except that in which there are no arguments.
+				// When we do bind it, we generate a type based on the types of the actual arguments provided. So a call of the
+				// form `try(e1, e2, ... en)` will be typed as `(t1, t2, ..., tn) -> output(dynamic)`, where `ti` is the type of
+				// `ei`.
+				if len(args) == 0 {
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'try' expects at least one argument",
+					}}
+				}
+
+				parameters := make([]model.Parameter, len(args))
+				for i, arg := range args {
+					parameters[i] = model.Parameter{
+						Name: fmt.Sprintf("arg%d", i),
+						Type: arg.Type(),
+					}
+				}
+
+				sig := model.StaticFunctionSignature{
+					Parameters: parameters,
+					ReturnType: model.NewOutputType(model.DynamicType),
+				}
+
+				return sig, diagnostics
+			},
+		)),
 	}
 }
