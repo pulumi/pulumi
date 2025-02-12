@@ -548,21 +548,10 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 // genCan generates code for a `can` expression. The argument is transformed into a closure to prevent its evaluation
 // (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
 //
-//	can_(
-//	    lambda: <arg>
-//	)
+//	can_(lambda: <arg>)
 func (g *generator) genCan(w io.Writer, args []model.Expression) {
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
-
-	g.Fprintf(w, "can_(")
-
-	arg := args[0]
-	g.Indented(func() {
-		g.Fgenf(w, "\n%slambda: %v", g.Indent, arg)
-	})
-
-	g.Fgen(w, "\n")
-	g.Fprintf(w, "%s)", g.Indent)
+	g.Fgenf(w, "can_(lambda: %v)", args[0])
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
