@@ -558,6 +558,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%s.getOutput(%v)", expr.Args[0], expr.Args[1])
 	case "try":
 		g.genTry(w, expr.Args)
+	case "can":
+		g.genCan(w, expr.Args)
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -594,6 +596,31 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 			g.Fgen(w, "\n")
 		}
 	}
+	g.Fprintf(w, "%s)", g.Indent)
+}
+
+// genCan generates code for a `can` expression.  Much like try, it attempts to
+// run the code by trnasforming it into a closure to prevent it's evaluation
+// which may fail until the `can_` utility function chooses to run it (catching the potential error).
+// We also disable type checking for the arguments, resulting in expression of the form:
+//
+//	can_(
+//	    // @ts-ignore
+//	    () => <arg1
+//	)
+//
+// which returns a bool indicating if the closure ran successfully.
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+
+	g.Fprintf(w, "can_(")
+
+	arg := args[0]
+	g.Indented(func() {
+		g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
+		g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
+	})
+	g.Fgen(w, "\n")
 	g.Fprintf(w, "%s)", g.Indent)
 }
 

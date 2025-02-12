@@ -443,10 +443,47 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}
 				}
 
+				// TODO[#18555] perhaps the return type should be an OutputType so
+				// apply can be called on it (since it may be an output).
 				sig := model.StaticFunctionSignature{
 					Parameters: parameters,
 					ReturnType: model.NewOutputType(model.DynamicType),
 				}
+
+				return sig, diagnostics
+			},
+		)),
+		"can": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				sig := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "arg",
+							Type: model.DynamicType,
+						},
+					},
+					ReturnType: model.NewOutputType(model.BoolType),
+				}
+
+				if len(args) != 1 {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'can' expects exactly one argument",
+					})
+
+					return sig, diagnostics
+				}
+
+				parameters := make([]model.Parameter, 1)
+				arg := args[0]
+				parameters[0] = model.Parameter{
+					Name: "arg",
+					Type: arg.Type(),
+				}
+
+				sig.Parameters = parameters
 
 				return sig, diagnostics
 			},
