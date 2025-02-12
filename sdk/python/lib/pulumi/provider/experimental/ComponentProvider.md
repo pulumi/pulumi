@@ -18,7 +18,7 @@ runtime: python
 We also need to create a `requirements.txt` file to list the dependencies of the provider:
 
 ```txt
-pulumi==3.149.1a1739196364
+pulumi>=3.150.0
 pulumi_random=~4.0
 ```
 
@@ -177,7 +177,7 @@ python -m venv venv
 source venv/*/activate
 pip install -r requirements.txt
 # Get the schema
-pulumi package get-schema .
+pulumi package get-schema ./
 ```
 
 ```json
