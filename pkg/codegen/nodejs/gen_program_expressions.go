@@ -600,7 +600,7 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 }
 
 // genCan generates code for a `can` expression.  Much like try, it attempts to
-// run the code by trnasforming it into a closure to prevent it's evaluation
+// run the code by transforming it into a closure to prevent its evaluation
 // which may fail until the `can_` utility function chooses to run it (catching the potential error).
 // We also disable type checking for the arguments, resulting in expression of the form:
 //
@@ -613,15 +613,9 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 func (g *generator) genCan(w io.Writer, args []model.Expression) {
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
 
-	g.Fprintf(w, "can_(")
-
 	arg := args[0]
-	g.Indented(func() {
-		g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
-		g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
-	})
-	g.Fgen(w, "\n")
-	g.Fprintf(w, "%s)", g.Indent)
+	g.Fprintf(w, "// @ts-ignore")
+	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
