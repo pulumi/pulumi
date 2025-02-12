@@ -659,21 +659,42 @@ def _translate_replace_on_changes(
     return replace_on_changes
 
 
-def _get_source_position(skip: int) -> Optional[source_pb2.SourcePosition]:
+def _get_source_position() -> Optional[source_pb2.SourcePosition]:
     """
-    Returns the source position of the Nth stack frame, where N is skip+1.
+    Returns the source position of the first stack frame in user code. This should look up to find what called into the
+    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
 
-    This is used to compute the source position of the user code that instantiated a resource. The number of frames to
-    skip is parameterized in order to account for differing call stacks for different operations.
+    This is used to compute the source position of the user code that instantiated a resource.
     """
+    
+    # This is somewhat brittle in that it expects a call stack of the form:
+    # - register_resource/read_resource
+    # - Resource class constructor
+    # - abstract Resource subclass constructor (CustomResource or ComponentResource)
+    # - concrete Resource subclass constructor (this maybe split into __internal_init__)
+    # - user code
+    #
+    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
 
-    # Capture a stack that includes the Nth stack frame. If the stack is not deep enough, return the empty string.
-    stack = traceback.extract_stack(limit=skip + 2)
-    if len(stack) < skip + 2:
+    # Capture a stack that includes the last 7 frames, this should be enough to cover the above.
+    stack = traceback.extract_stack(limit=7)
+
+    # Look up the stack to find the third __init__ frame (the first is Resource, the second is
+    # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
+    n = 0 # how many __inits__ we've seen
+    for i in range(len(stack) - 1, -1, -1):
+        f = stack[i]
+        if f.name == "__init__":
+            n = n + 1
+            if n == 3:
+                break
+    
+    # If we didn't find the third init frame before the end then just return None
+    if i < 1:
         return None
 
-    # Extract the Nth stack frame. If that frame is missing file or line information, return the empty string.
-    caller = stack[0]
+    # Extract the Ith stack frame. If that frame is missing file or line information, return the empty string.
+    caller = stack[i-1]
     if caller.filename == "" or caller.lineno is None:
         return None
 
@@ -682,7 +703,7 @@ def _get_source_position(skip: int) -> Optional[source_pb2.SourcePosition]:
     except BaseException:  # noqa: BLE001 catch blind exception
         return None
 
-    # Convert the Nth source position to a source position URI by converting the filename to a URI and appending
+    # Convert the Ith source position to a source position URI by converting the filename to a URI and appending
     # the line and column fragment.
     return source_pb2.SourcePosition(uri=uri, line=caller.lineno)
 
@@ -726,16 +747,7 @@ def read_resource(
     resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the source position.
-    #
-    # This is somewhat brittle in that it expects a call stack of the form:
-    # - read_resource
-    # - Resource class constructor
-    # - abstract Resource subclass constructor
-    # - concrete Resource subclass constructor
-    # - user code
-    #
-    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-    source_position = _get_source_position(4)
+    source_position = _get_source_position()
 
     async def do_read():
         try:
@@ -900,16 +912,7 @@ def register_resource(
     resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the source position.
-    #
-    # This is somewhat brittle in that it expects a call stack of the form:
-    # - register_resource
-    # - Resource class constructor
-    # - abstract Resource subclass constructor
-    # - concrete Resource subclass constructor
-    # - user code
-    #
-    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-    source_position = _get_source_position(4)
+    source_position = _get_source_position()
 
     async def do_register() -> None:
         try:
