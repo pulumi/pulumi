@@ -58,6 +58,18 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
+class ComponentInitError(Exception):
+    """
+    ComponentInitError signals an error raised from within the __init__ method
+    of a component. This allows us to distinguish between a user error and a
+    system error.
+    """
+
+    def __init__(self, inner: Exception) -> None:
+        super().__init__(str(inner))
+        self.inner = inner
+
+
 class ProviderServicer(ResourceProviderServicer):
     """Implements a subset of `ResourceProvider` methods to support
     `Construct` and other methods invoked by the engine when the user
@@ -127,12 +139,12 @@ class ProviderServicer(ResourceProviderServicer):
                 # We already aborted at this point
                 raise
             else:
-                stack = traceback.extract_tb(e.__traceback__)[:]
-                if len(stack) > 3:
-                    # If we have more than 3 frames, we've made it to the
-                    # provider code: server.Construct > server._construct >
-                    # provider.construct. Drop our internal frames.
-                    stack = stack[3:]
+                if isinstance(e, ComponentInitError):
+                    stack = traceback.extract_tb(e.inner.__traceback__)[:]
+                    # Drop the internal frame for `self._construct`.
+                    stack = stack[1:]
+                else:
+                    stack = traceback.extract_tb(e.__traceback__)[:]
                 pretty_stack = "".join(traceback.format_list(stack))
                 raise Exception(f"{str(e)}:\n{pretty_stack}")
         finally:

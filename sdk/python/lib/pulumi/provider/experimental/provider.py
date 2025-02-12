@@ -16,6 +16,8 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from pulumi.provider.server import ComponentInitError
+
 from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
@@ -66,8 +68,15 @@ class ComponentProvider(Provider):
         comp = self.analyzer.find_type(self.path, component_name)
         component_def = self._component_defs[component_name]
         mapped_args = self.map_inputs(inputs, component_def)
-        # ComponentResource's init signature is different from the derived class signature.
-        comp_instance = comp(name, mapped_args, options)  # type: ignore
+        # Wrap the call to the component constuctor in a try except block to
+        # catch any exceptions, so that we can re-raise a ComponentInitError.
+        # This allows us to detect and report errors that occur within the user
+        # code vs errors that occur in the SDK.
+        try:
+            # ComponentResource's init signature is different from the derived class signature.
+            comp_instance = comp(name, mapped_args, options)  # type: ignore
+        except Exception as e:  # noqa
+            raise ComponentInitError(e)
         state = self.get_state(comp_instance, component_def)
         return ConstructResult(comp_instance.urn, state)
 
