@@ -178,7 +178,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 }
 
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool,
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool, showSecrets bool,
 ) string {
 	var b bytes.Buffer
 
@@ -188,21 +188,21 @@ func getResourcePropertiesDetails(
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
-			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		} else {
-			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
 	} else if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
 		// and that's sufficient for a summarized deletion view.
 		if !summary {
-			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, truncateOutput, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, truncateOutput, debug, showSecrets)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, truncateOutput, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, truncateOutput, debug, showSecrets)
 	}
 
 	return b.String()
@@ -220,7 +220,7 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool,
+	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -230,6 +230,7 @@ func PrintObject(
 		prefix:         prefix,
 		debug:          debug,
 		truncateOutput: truncateOutput,
+		showSecrets:    showSecrets,
 	}
 	p.printObject(props)
 }
@@ -669,20 +670,20 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool,
+	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
-		PrintObject(b, news, planning, indent, deploy.OpSame, true, truncateOutput, debug)
+		PrintObject(b, news, planning, indent, deploy.OpSame, true, truncateOutput, debug, showSecrets)
 	}
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
-	planning bool, indent int, summary bool, truncateOutput bool, debug bool,
+	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -692,6 +693,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		debug:          debug,
 		summary:        summary,
 		truncateOutput: truncateOutput,
+		showSecrets:    showSecrets,
 	}
 	p.printObjectDiff(diff, include)
 }

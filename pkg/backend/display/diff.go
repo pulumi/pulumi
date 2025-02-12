@@ -170,7 +170,7 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	if detailed {
 		var b bytes.Buffer
 		PrintObjectDiff(&b, *diff, nil,
-			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
@@ -388,15 +388,15 @@ func renderDiff(
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
 			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
-				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
 			} else {
 				PrintObject(
-					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug, opts.ShowSecrets)
 			}
 			details = buf.String()
 		} else {
 			details = getResourcePropertiesDetails(
-				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
 		}
 	}
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
