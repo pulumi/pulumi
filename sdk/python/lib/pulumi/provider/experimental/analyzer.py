@@ -13,17 +13,22 @@
 # limitations under the License.
 
 import ast
+import collections
 import importlib.util
 import inspect
 import sys
+import typing
+from collections import abc
 from collections.abc import Awaitable
 from pathlib import Path
 from types import GenericAlias, ModuleType
-from typing import (
+from typing import (  # type: ignore
     Any,
     ForwardRef,
     Optional,
     Union,
+    _GenericAlias,  # type: ignore
+    _SpecialGenericAlias,  # type: ignore
     cast,
     get_args,
     get_origin,
@@ -42,6 +47,17 @@ from .metadata import Metadata
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
+
+# Types for parameterized generics got a clean public API in 3.9 with
+# https://peps.python.org/pep-0585/.
+# The modern types like `dict[str, int]` use `GenericAlias`, but some
+# decprecated types in the `typing` modoule use `typing._GenericAlias` or
+# `typing._SpecialGenericAlias`.
+_GenericAliasT = (  # type: ignore
+    _GenericAlias,
+    _SpecialGenericAlias,
+    GenericAlias,
+)
 
 
 class TypeNotFoundError(Exception):
@@ -71,6 +87,15 @@ class InvalidMapKeyError(Exception):
         self.typ = typ
         super().__init__(
             f"map keys must be strings, got '{key_type.__name__}' for '{typ.__name__}.{property_name}'"
+        )
+
+
+class InvalidListTypeError(Exception):
+    def __init__(self, arg: type, typ: type, property_name: str):
+        self.property = property_name
+        self.typ = typ
+        super().__init__(
+            f"list types must specify a type argument, got '{arg.__name__}' for '{typ.__name__}.{property_name}'"
         )
 
 
@@ -313,6 +338,8 @@ class Analyzer:
             )
         elif is_list(arg):
             args = get_args(arg)
+            if len(args) != 1:
+                raise InvalidListTypeError(arg, typ, name)
             items = self.analyze_property(args[0], typ, name, plain=True)
             return PropertyDefinition(
                 type=PropertyType.ARRAY,
@@ -603,24 +630,55 @@ def is_builtin(typ: type) -> bool:
 
 
 def is_list(typ: type) -> bool:
-    if isinstance(typ, GenericAlias):
-        typ = get_origin(typ)
-    return typ is list
+    t: Optional[type] = typ
+    if isinstance(typ, _GenericAliasT):
+        t = get_origin(typ)
+    return t in (
+        list,
+        abc.Sequence,
+        abc.MutableSequence,
+        collections.UserList,
+        typing.List,
+        typing.Sequence,
+        typing.MutableSequence,
+    )
 
 
 def is_dict(typ: type) -> bool:
-    if isinstance(typ, GenericAlias):
-        typ = get_origin(typ)
-    return typ is dict
+    t: Optional[type] = typ
+    if isinstance(typ, _GenericAliasT):
+        t = get_origin(typ)
+    return t in (
+        dict,
+        abc.Mapping,
+        abc.MutableMapping,
+        collections.defaultdict,
+        collections.OrderedDict,
+        collections.UserDict,
+        typing.Dict,
+        typing.Mapping,
+        typing.MutableMapping,
+        typing.DefaultDict,
+        typing.OrderedDict,
+    )
 
 
 def is_resource(typ: type) -> bool:
-    return issubclass(typ, Resource)
+    try:
+        return issubclass(typ, Resource)
+    except TypeError:
+        return False
 
 
 def is_asset(typ: type) -> bool:
-    return issubclass(typ, Asset)
+    try:
+        return issubclass(typ, Asset)
+    except TypeError:
+        return False
 
 
 def is_archive(typ: type) -> bool:
-    return issubclass(typ, Archive)
+    try:
+        return issubclass(typ, Archive)
+    except TypeError:
+        return False
