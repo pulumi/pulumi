@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: "[Experimental/Components] Add infrastructure for component discovery and schema inference"

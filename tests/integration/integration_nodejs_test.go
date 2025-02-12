@@ -18,13 +18,16 @@ package ints
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,6 +42,7 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2435,4 +2439,59 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+// Tests that we can get the schema for a Node.js component provider using component_provider_host.
+func TestNodejsComponentProviderGetSchema(t *testing.T) {
+	t.Parallel()
+	dir, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host", "provider"))
+	require.NoError(t, err)
+	installNodejsProviderDependencies(t, dir)
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Run the command from a different, sibling, directory. This ensures that
+	// get-package does not rely on the current working directory.
+	e.CWD = t.TempDir()
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", dir)
+	require.Empty(t, stderr)
+	var schema map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
+	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
+	require.Equal(t, "1.2.3", schema["version"].(string))
+	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
+
+	// Check the component schema
+	expectedJSON := `{
+		"isComponent": true,
+		"type": "object"
+	}
+	`
+	expected := make(map[string]interface{})
+	resources := schema["resources"].(map[string]interface{})
+	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]interface{})
+	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+	require.Equal(t, expected, component)
+}
+
+// lock to prevent concurrent installation of provider dependencies
+var installNodejsProviderDependenciesLock sync.Mutex
+
+func installNodejsProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+
+	installNodejsProviderDependenciesLock.Lock()
+	defer installNodejsProviderDependenciesLock.Unlock()
+
+	pm, err := npm.ResolvePackageManager(npm.YarnPackageManager, dir)
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err = pm.Install(context.Background(), dir, false /* production*/, stdout, stderr)
+	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
+	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", out)
 }
