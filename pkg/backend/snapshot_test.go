@@ -348,10 +348,6 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	changes = append(changes, NewResource(resourceA.URN))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 
-	// Change the resource source position.
-	changes = append(changes, NewResource(resourceA.URN))
-	changes[4].SourcePosition = "project:///foo.ts#1,2"
-
 	snap := NewSnapshot([]*resource.State{
 		provider,
 		resourceP,
@@ -400,6 +396,28 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		err = manager.Close()
 		assert.NoError(t, err)
 	}
+
+	// Source position is not a meaningful change, and we batch them up for performance reasons
+	manager, sp := MockSetup(t, snap)
+	sourceUpdated := NewResource(resourceA.URN)
+	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
+	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
+	mutation, err := manager.BeginMutation(sourceUpdatedSame)
+	assert.NoError(t, err)
+	_, _, err = sourceUpdatedSame.Apply()
+	assert.NoError(t, err)
+	err = mutation.End(sourceUpdatedSame, true)
+	assert.NoError(t, err)
+	assert.Empty(t, sp.SavedSnapshots)
+
+	// It should still write on close
+	err = manager.Close()
+	assert.NoError(t, err)
+
+	assert.NotEmpty(t, sp.SavedSnapshots)
+	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
+	inSnapshot := sp.SavedSnapshots[0].Resources[0]
+	assert.Equal(t, sourceUpdated, inSnapshot)
 
 	// Set up a second provider and change the resource's provider reference.
 	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
