@@ -44,7 +44,9 @@ class SourcePositionTest(LanghostTest):
         source_position,
     ):
         self.assertIsNotNone(source_position)
-        self.assertTrue(source_position.uri.endswith("__main__.py"), source_position.uri)
+        self.assertTrue(
+            source_position.uri.endswith("__main__.py"), source_position.uri
+        )
 
         if name == "custom":
             self.assertEqual(source_position.line, 34)

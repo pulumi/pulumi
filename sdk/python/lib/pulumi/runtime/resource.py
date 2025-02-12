@@ -666,7 +666,7 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
 
     This is used to compute the source position of the user code that instantiated a resource.
     """
-    
+
     # This is somewhat brittle in that it expects a call stack of the form:
     # - register_resource/read_resource
     # - Resource class constructor
@@ -681,20 +681,20 @@ def _get_source_position() -> Optional[source_pb2.SourcePosition]:
 
     # Look up the stack to find the third __init__ frame (the first is Resource, the second is
     # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
-    n = 0 # how many __inits__ we've seen
+    n = 0  # how many __inits__ we've seen
     for i in range(len(stack) - 1, -1, -1):
         f = stack[i]
         if f.name == "__init__":
             n = n + 1
             if n == 3:
                 break
-    
+
     # If we didn't find the third init frame before the end then just return None
     if i < 1:
         return None
 
     # Extract the Ith stack frame. If that frame is missing file or line information, return the empty string.
-    caller = stack[i-1]
+    caller = stack[i - 1]
     if caller.filename == "" or caller.lineno is None:
         return None
 
