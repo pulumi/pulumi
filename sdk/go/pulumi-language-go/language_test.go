@@ -182,6 +182,7 @@ var expectedFailures = map[string]string{
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
+	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
 }
 
 func TestLanguage(t *testing.T) {
