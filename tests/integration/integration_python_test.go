@@ -2056,6 +2056,45 @@ func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderException(t *testing.T) {
+	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "exception"))
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(testData, "provider"))
+			return nil
+		},
+		Dir:           filepath.Join(testData, "yaml"),
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"MyComponent resource 'comp' has a problem: Unexpected <class 'Exception'>: method_b failed")
+
+					matches := regexp.MustCompile(`File.*, line \d+, in .*`).FindAllString(event.DiagnosticEvent.Message, -1)
+					require.Len(t, matches, 3, "Expected 3 stack trace lines")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 27, in __init__")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 31, in method_a")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 34, in method_b")
+					foundError = true
+				}
+			}
+			require.True(t, foundError, "expected to find an error in the stack events")
+		},
+	})
+}
+
 // lock to prevent concurrent installation of Python provider dependencies
 var installPythonProviderDependenciesLock sync.Mutex
 

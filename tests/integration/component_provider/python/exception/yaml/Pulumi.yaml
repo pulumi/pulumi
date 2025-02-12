@@ -1,0 +1,10 @@
+name: python-component-provider-exception
+description: Using a component provider written in Python that throws an Exception
+runtime: yaml
+plugins:
+  providers:
+    - name: provider
+      path: ../provider
+resources:
+  comp:
+    type: provider:index:MyComponent
