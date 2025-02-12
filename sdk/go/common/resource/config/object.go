@@ -37,7 +37,7 @@ type object struct {
 
 // objectType describes the types of values that may be stored in the value field of an object
 type objectType interface {
-	bool | int64 | float64 | string | []object | map[string]object
+	bool | int64 | uint64 | float64 | string | []object | map[string]object
 }
 
 // newObject creates a new object with the given representation.
@@ -84,6 +84,8 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	case bool:
 		return NewPlaintext(v), nil
 	case int64:
+		return NewPlaintext(v), nil
+	case uint64:
 		return NewPlaintext(v), nil
 	case float64:
 		return NewPlaintext(v), nil
@@ -385,7 +387,7 @@ func (c object) marshalObjectValue(root bool) any {
 // indicate whether the receiver is secure and whether it is an object.
 func (c object) MarshalString() (text string, secure, object bool, err error) {
 	switch v := c.value.(type) {
-	case bool, int64, float64:
+	case bool, int64, uint64, float64:
 		bytes, err := c.MarshalJSON()
 		return string(bytes), false, false, err
 	case string:
@@ -456,6 +458,8 @@ func unmarshalObject(v any) (object, error) {
 		return object{}, fmt.Errorf("unrepresentable number %v: %w", v, err)
 	case int:
 		return newObject(int64(v)), nil
+	case uint64:
+		return newObject(v), nil
 	case int64:
 		return newObject(v), nil
 	case float64:
