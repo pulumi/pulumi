@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add batch encryption for snapshot serialization to increase performance working with many secrets
