@@ -17,11 +17,10 @@ package tests
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 func TestMain(m *testing.M) {
@@ -33,23 +32,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
-		// Find the root of the repository
-		stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-		if err != nil {
-			fmt.Printf("error finding repo root: %v\n", err)
-			os.Exit(1)
-		}
-		repoRoot := strings.TrimSpace(string(stdout))
-		cmd := exec.Command("make", "build_local")
-		cmd.Dir = repoRoot
-		stdout, err = cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("error building plugin: %v.  Output: %v\n", err, string(stdout))
-			os.Exit(1)
-		}
-		os.Setenv("PATH", fmt.Sprintf("%s:%s", repoRoot+"/bin", os.Getenv("PATH")))
-	}
+	testutil.SetupBinaryRebuilding()
 
 	code := m.Run()
 	os.Exit(code)
