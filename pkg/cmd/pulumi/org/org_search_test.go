@@ -169,6 +169,6 @@ func (f *stubHTTPBackend) CurrentUser() (string, []string, *workspace.TokenInfor
 	return f.CurrentUserF()
 }
 
-func (*stubHTTPBackend) Capabilities(context.Context) httpstate.Capabilities {
-	return httpstate.Capabilities{}
+func (*stubHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
+	return apitype.Capabilities{}
 }

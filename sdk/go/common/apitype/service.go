@@ -16,6 +16,7 @@ package apitype
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // An APICapability is the name of a capability or feature that a service backend
@@ -52,4 +53,42 @@ type APICapabilityConfig struct {
 // backend and are therefore available for the CLI to integrate against.
 type CapabilitiesResponse struct {
 	Capabilities []APICapabilityConfig `json:"capabilities"`
+}
+
+// Represents feature-detected capabilities of the service the backend is connected to.
+type Capabilities struct {
+	// If non-nil, indicates that delta checkpoint updates are supported.
+	DeltaCheckpointUpdates *DeltaCheckpointUploadsConfigV2
+
+	// Indicates whether the service supports bulk encryption.
+	BulkEncryption bool
+}
+
+func (r CapabilitiesResponse) Parse() (Capabilities, error) {
+	var parsed Capabilities
+	for _, entry := range r.Capabilities {
+		switch entry.Capability {
+		case DeltaCheckpointUploads:
+			var upcfg DeltaCheckpointUploadsConfigV2
+			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
+				return Capabilities{}, fmt.Errorf(msg, err)
+			}
+			parsed.DeltaCheckpointUpdates = &upcfg
+		case DeltaCheckpointUploadsV2:
+			if entry.Version == 2 {
+				var upcfg DeltaCheckpointUploadsConfigV2
+				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
+					return Capabilities{}, fmt.Errorf(msg, err)
+				}
+				parsed.DeltaCheckpointUpdates = &upcfg
+			}
+		case BulkEncrypt:
+			parsed.BulkEncryption = true
+		default:
+			continue
+		}
+	}
+	return parsed, nil
 }

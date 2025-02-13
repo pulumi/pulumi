@@ -86,8 +86,8 @@ func (b *MockHTTPBackend) Search(
 	return b.FSearch(ctx, orgName, queryParams)
 }
 
-func (b *MockHTTPBackend) Capabilities(context.Context) Capabilities {
-	return Capabilities{}
+func (b *MockHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
+	return apitype.Capabilities{}
 }
 
 var _ Backend = (*MockHTTPBackend)(nil)

@@ -18,7 +18,6 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -186,7 +185,7 @@ type Backend interface {
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
-	Capabilities(ctx context.Context) Capabilities
+	Capabilities(ctx context.Context) apitype.Capabilities
 }
 
 type cloudBackend struct {
@@ -194,7 +193,7 @@ type cloudBackend struct {
 	url          string
 	client       *client.Client
 	escClient    esc_client.Client
-	capabilities func(context.Context) Capabilities
+	capabilities func(context.Context) apitype.Capabilities
 
 	// The current project, if any.
 	currentProject *workspace.Project
@@ -706,7 +705,7 @@ func (b *cloudBackend) SupportsDeployments() bool {
 	return true
 }
 
-func (b *cloudBackend) Capabilities(ctx context.Context) Capabilities {
+func (b *cloudBackend) Capabilities(ctx context.Context) apitype.Capabilities {
 	return b.capabilities(ctx)
 }
 
@@ -2110,21 +2109,12 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 	return c.backend.GetStackResourceOutputs(ctx, name)
 }
 
-// Represents feature-detected capabilities of the service the backend is connected to.
-type Capabilities struct {
-	// If non-nil, indicates that delta checkpoint updates are supported.
-	DeltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
-
-	// Indicates whether the service supports bulk encryption.
-	BulkEncryption bool
-}
-
 // Builds a lazy wrapper around doDetectCapabilities.
-func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) Capabilities {
+func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) apitype.Capabilities {
 	var once sync.Once
-	var caps Capabilities
+	var caps apitype.Capabilities
 	done := make(chan struct{})
-	get := func(ctx context.Context) Capabilities {
+	get := func(ctx context.Context) apitype.Capabilities {
 		once.Do(func() {
 			caps = doDetectCapabilities(ctx, d, client)
 			close(done)
@@ -2135,16 +2125,16 @@ func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Con
 	return get
 }
 
-func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) Capabilities {
+func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) apitype.Capabilities {
 	resp, err := client.GetCapabilities(ctx)
 	if err != nil {
 		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
-		return Capabilities{}
+		return apitype.Capabilities{}
 	}
-	caps, err := decodeCapabilities(resp.Capabilities)
+	caps, err := resp.Parse()
 	if err != nil {
 		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
-		return Capabilities{}
+		return apitype.Capabilities{}
 	}
 
 	// Allow users to opt out of deltaCheckpointUpdates even if the backend indicates it should be used. This
@@ -2156,35 +2146,6 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 	}
 
 	return caps
-}
-
-func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (Capabilities, error) {
-	var parsed Capabilities
-	for _, entry := range wireLevel {
-		switch entry.Capability {
-		case apitype.DeltaCheckpointUploads:
-			var upcfg apitype.DeltaCheckpointUploadsConfigV2
-			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
-				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
-				return Capabilities{}, fmt.Errorf(msg, err)
-			}
-			parsed.DeltaCheckpointUpdates = &upcfg
-		case apitype.DeltaCheckpointUploadsV2:
-			if entry.Version == 2 {
-				var upcfg apitype.DeltaCheckpointUploadsConfigV2
-				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
-					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
-					return Capabilities{}, fmt.Errorf(msg, err)
-				}
-				parsed.DeltaCheckpointUpdates = &upcfg
-			}
-		case apitype.BulkEncrypt:
-			parsed.BulkEncryption = true
-		default:
-			continue
-		}
-	}
-	return parsed, nil
 }
 
 func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Manager, error) {
