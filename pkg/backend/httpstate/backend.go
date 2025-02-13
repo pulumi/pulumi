@@ -2108,6 +2108,9 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 type capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
 	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
+
+	// Indicates whether the service supports bulk encryption.
+	bulkEncryption bool
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
@@ -2171,6 +2174,8 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 				}
 				parsed.deltaCheckpointUpdates = &upcfg
 			}
+		case apitype.BulkEncrypt:
+			parsed.bulkEncryption = true
 		default:
 			continue
 		}
