@@ -570,7 +570,7 @@ func NewPreviewCmd() *cobra.Command {
 		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false,
-		"Show secrets in plaintext in the CLI output, if used with --save-plan the secrets will be shown in the plan file. Defaults to `false`")
+		"Show secrets in plaintext in the CLI output, if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false`")
 
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
