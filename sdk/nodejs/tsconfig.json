@@ -114,6 +114,7 @@
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
         "tests/provider/experimental/provider.spec.ts",
+        "tests/provider/experimental/analyzer.spec.ts",
         "tests_with_mocks/mocks.spec.ts",
         "npm/testdata/nested/project/index.ts",
         "types/arborist.d.ts"

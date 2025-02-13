@@ -26,8 +26,17 @@ import { ComponentResource } from "../../resource";
 // analyzer code is compatible with all of them.
 const ts: typeof typescript = require("../../typescript-shim");
 
+export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
+
+export type PropertyDefinition = {
+    type: PropertyType;
+    optional?: boolean;
+};
+
 export type ComponentDefinition = {
     name: string;
+    inputs: Record<string, PropertyDefinition>;
+    outputs: Record<string, PropertyDefinition>;
 };
 
 export type TypeDefinition = {
@@ -100,12 +109,48 @@ export class Analyzer {
         // instantiate components defined inside functions or methods.
         sourceFile.forEachChild((node) => {
             if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
-                const componentName = node.name.text;
-                this.components[componentName] = {
-                    name: componentName,
-                };
+                const component = this.analyzeComponent(node);
+                this.components[component.name] = component;
             }
         });
+    }
+
+    private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
+        const componentName = node.name?.text;
+
+        // We expect exactly 1 constructor, and it must have and 'args'
+        // parameter that has an interface type.
+        const constructors = node.members.filter((member: typescript.ClassElement) =>
+            ts.isConstructorDeclaration(member),
+        ) as typescript.ConstructorDeclaration[];
+        if (constructors.length !== 1) {
+            throw new Error(`Component '${componentName}' must have exactly one constructor`);
+        }
+        const argsParam = constructors?.[0].parameters.find((param: typescript.ParameterDeclaration) => {
+            return ts.isIdentifier(param.name) && param.name.escapedText === "args";
+        });
+        if (!argsParam) {
+            throw new Error(`Component '${componentName}' constructor must have an 'args' parameter`);
+        }
+        if (!argsParam.type) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must have a type`);
+        }
+        const args = this.checker.getTypeAtLocation(argsParam.type);
+        const argsSymbol = args.getSymbol();
+        if (!argsSymbol || !isInterface(argsSymbol)) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must be an interface`);
+        }
+
+        let inputs: Record<string, PropertyDefinition> = {};
+        if (argsSymbol.members) {
+            inputs = this.analyzeSymbolTable(argsSymbol.members, argsParam);
+        }
+
+        return {
+            name: componentName!,
+            inputs,
+            outputs: {},
+        };
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
@@ -125,4 +170,58 @@ export class Analyzer {
             });
         });
     }
+
+    private analyzeSymbolTable(
+        members: typescript.SymbolTable,
+        location: typescript.Node,
+    ): Record<string, PropertyDefinition> {
+        const properties: Record<string, PropertyDefinition> = {};
+        members.forEach((member) => {
+            const name = member.escapedName as string;
+            properties[name] = this.analyzeSymbol(member, location);
+        });
+        return properties;
+    }
+
+    private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        const prop: PropertyDefinition = {
+            type: tsTypeToPropertyType(propType),
+        };
+        if (isOptional(symbol)) {
+            prop.optional = true;
+        }
+        return prop;
+    }
+}
+
+function isOptional(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
+}
+
+function isInterface(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Interface) === ts.SymbolFlags.Interface;
+}
+
+function isNumber(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number;
+}
+
+function isString(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.String) === ts.TypeFlags.String;
+}
+
+function isBoolean(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
+}
+
+function tsTypeToPropertyType(type: typescript.Type): PropertyType {
+    if (isNumber(type)) {
+        return "number";
+    } else if (isString(type)) {
+        return "string";
+    } else if (isBoolean(type)) {
+        return "boolean";
+    }
+    throw new Error(`Unsupported type '${type}'`);
 }

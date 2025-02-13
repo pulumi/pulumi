@@ -105,6 +105,11 @@ export function generateSchema(
         result.resources[`${providerName}:index:${name}`] = {
             type: "object",
             isComponent: true,
+            inputProperties: component.inputs,
+            requiredInputs: Object.entries(component.inputs)
+                .filter(([_, def]) => !def.optional)
+                .map(([propName, _]) => propName)
+                .sort(),
         };
     }
 
