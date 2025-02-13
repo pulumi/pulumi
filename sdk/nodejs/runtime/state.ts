@@ -23,6 +23,7 @@ import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
+    projectRoot: "PULUMI_NODEJS_PROJECT_ROOT",
     stack: "PULUMI_NODEJS_STACK",
     dryRun: "PULUMI_NODEJS_DRY_RUN",
     queryMode: "PULUMI_NODEJS_QUERY_MODE",
@@ -215,6 +216,7 @@ export class LocalStore implements Store {
         options: {
             organization: process.env[nodeEnvKeys.organization],
             project: process.env[nodeEnvKeys.project] || "project",
+            projectRoot: process.env[nodeEnvKeys.projectRoot] || "projectRoot",
             stack: process.env[nodeEnvKeys.stack] || "stack",
             dryRun: process.env[nodeEnvKeys.dryRun] === "true",
             queryMode: process.env[nodeEnvKeys.queryMode] === "true",

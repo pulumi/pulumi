@@ -278,6 +278,9 @@ func (ctx *Context) Organization() string {
 // Project returns the current project name.
 func (ctx *Context) Project() string { return ctx.state.info.Project }
 
+// ProjectRoot returns the root of the current project, the location of the Pulumi.yaml.
+func (ctx *Context) ProjectRoot() string { return ctx.state.info.ProjectRoot }
+
 // Stack returns the current stack name being deployed into.
 func (ctx *Context) Stack() string { return ctx.state.info.Stack }
 

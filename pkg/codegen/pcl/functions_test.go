@@ -159,3 +159,31 @@ func TestCanWithTooManyArguments(t *testing.T) {
 	assert.Nil(t, program, "The program doesn't bind")
 	assert.ErrorContains(t, err, "'can' expects exactly one argument")
 }
+
+func TestProjectRootFailsWithNoArguments(t *testing.T) {
+	t.Parallel()
+
+	// Test with no arguments (correct usage)
+
+	// Arrange.
+	source := "value = projectRoot()"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "'projectRoot' expects no arguments")
+}
+
+func TestProjectRoot(t *testing.T) {
+	// Arrange.
+	source := "value = projectRoot(\"foo\")"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
+}
