@@ -89,10 +89,11 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
-	if err := json.Unmarshal(b, &v); err != nil {
+	var v2 interface{}
+	if err := json.Unmarshal(b, &v2); err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return DeserializePropertyValue(v, dec)
+	return DeserializePropertyValue(v2, dec)
 }
 
 func TestCachingCrypter(t *testing.T) {

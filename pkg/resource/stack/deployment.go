@@ -115,6 +115,11 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		enc = config.NewPanicCrypter()
 	}
 
+	var completeBulkEncrypt completeBulkOperation
+	if eventualSecretCrypter, ok := enc.(bulkSecretEncrypter); ok {
+		completeBulkEncrypt = eventualSecretCrypter.BeginBulkEncryption(ctx)
+	}
+
 	// Serialize all vertices and only include a vertex section if non-empty.
 	resources := slice.Prealloc[apitype.ResourceV3](len(snap.Resources))
 	for _, res := range snap.Resources {
@@ -132,6 +137,13 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 			return nil, err
 		}
 		operations = append(operations, sop)
+	}
+
+	if completeBulkEncrypt != nil {
+		err := completeBulkEncrypt()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var secretsProvider *apitype.SecretsProvidersV1
@@ -478,23 +490,24 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
-			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
-			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-			var ciphertext string
-			if cachingCrypter, ok := enc.(*cachingSecretsManager); ok {
-				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
+			// If the encrypter is a EventualSecretEncrypter, call through its EncryptSecret method,
+			// which will populate the secret with the cyphertext immediately or defer the encryption
+			// until FinalizeEncryptions is called.
+			if secretCrypter, ok := enc.(bulkSecretEncrypter); ok {
+				err = secretCrypter.EnqueueEncryption(ctx, prop.SecretValue(), plaintext, &secret)
+				if err != nil {
+					return nil, fmt.Errorf("failed to register secret value for encryption: %w", err)
+				}
 			} else {
-				ciphertext, err = enc.EncryptValue(ctx, plaintext)
+				ciphertext, err := enc.EncryptValue(ctx, plaintext)
+				if err != nil {
+					return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
+				}
+				secret.Ciphertext = ciphertext
 			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
-			}
-			contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
-
-			secret.Ciphertext = ciphertext
 		}
 
-		return secret, nil
+		return &secret, nil
 	}
 
 	// All others are returned as-is.
@@ -631,10 +644,10 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
-							"malformed secret value: one of `ciphertext` or `plaintext` must be supplied")
+							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
 					}
 
-					if !plainOk {
+					if !plainOk { // We only have ciphertext, so decrypt it to get plaintext
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
 							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
@@ -655,14 +668,11 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
 					// new *resource.Secret as the key.
 					if cachingCrypter, ok := dec.(*cachingSecretsManager); ok {
-						if !cipherOk {
-							encryptedText, err := cachingCrypter.EncryptValue(ctx, plaintext)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
-							}
-							ciphertext = encryptedText
+						if cipherOk {
+							// We only had ciphertext, but already decrypted it, so add to the cache so we can skip future encrypts.
+							// This is required to perform round-trip re-serialization without the source crypter.
+							cachingCrypter.cacheSecretEncryption(prop.SecretValue(), plaintext, ciphertext)
 						}
-						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil
 				case resource.ResourceReferenceSig:
