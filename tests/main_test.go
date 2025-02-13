@@ -51,6 +51,8 @@ func TestMain(m *testing.M) {
 		os.Setenv("PATH", fmt.Sprintf("%s:%s", repoRoot+"/bin", os.Getenv("PATH")))
 	}
 
+	os.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
 	code := m.Run()
 	os.Exit(code)
 }
