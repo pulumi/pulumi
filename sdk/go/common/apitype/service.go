@@ -55,7 +55,8 @@ type CapabilitiesResponse struct {
 	Capabilities []APICapabilityConfig `json:"capabilities"`
 }
 
-// Represents feature-detected capabilities of the service the backend is connected to.
+// Represents the set of features a backend is capable of supporting.
+// This is a user-friendly representation of the CapabilitiesResponse.
 type Capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
 	DeltaCheckpointUpdates *DeltaCheckpointUploadsConfigV2
@@ -64,6 +65,7 @@ type Capabilities struct {
 	BulkEncryption bool
 }
 
+// Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
 func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 	var parsed Capabilities
 	for _, entry := range r.Capabilities {
@@ -71,16 +73,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case DeltaCheckpointUploads:
 			var upcfg DeltaCheckpointUploadsConfigV2
 			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
-				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
-				return Capabilities{}, fmt.Errorf(msg, err)
+				return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfig returned %w", err)
 			}
 			parsed.DeltaCheckpointUpdates = &upcfg
 		case DeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg DeltaCheckpointUploadsConfigV2
 				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
-					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
-					return Capabilities{}, fmt.Errorf(msg, err)
+					return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfigV2 returned %w", err)
 				}
 				parsed.DeltaCheckpointUpdates = &upcfg
 			}

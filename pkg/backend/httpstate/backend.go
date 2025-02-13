@@ -185,6 +185,7 @@ type Backend interface {
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
 }
 
