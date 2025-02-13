@@ -151,7 +151,7 @@ export class Analyzer {
         let outputs: Record<string, PropertyDefinition> = {};
         const classType = this.checker.getTypeAtLocation(node);
         const classSymbol = classType.getSymbol();
-        if (classSymbol && classSymbol.members) {
+        if (classSymbol?.members) {
             outputs = this.analyzeSymbolTable(classSymbol.members, node);
         }
 
