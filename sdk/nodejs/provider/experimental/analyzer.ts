@@ -16,6 +16,7 @@
 // Use `ts` instead to access typescript library functions.
 import typescript from "typescript";
 import * as path from "path";
+import { ComponentResource } from "../../resource";
 
 // Use the TypeScript shim which allows us to fallback to a vendored version of
 // TypeScript if the user has not installed it.
@@ -39,6 +40,7 @@ export type AnalyzeResult = {
 };
 
 export class Analyzer {
+    private path: string;
     private checker: typescript.TypeChecker;
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
@@ -48,6 +50,7 @@ export class Analyzer {
         const configPath = `${dir}/tsconfig.json`;
         const config = ts.readConfigFile(configPath, ts.sys.readFile);
         const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
+        this.path = dir;
         this.program = ts.createProgram({
             rootNames: parsedConfig.fileNames,
             options: parsedConfig.options,
@@ -67,6 +70,28 @@ export class Analyzer {
             components: this.components,
             typeDefinitons: this.typeDefinitons,
         };
+    }
+
+    public async findComponent(name: string): Promise<typeof ComponentResource> {
+        const sourceFiles = this.program.getSourceFiles();
+        for (const sourceFile of sourceFiles) {
+            if (sourceFile.fileName.includes("node_modules") || sourceFile.fileName.endsWith(".d.ts")) {
+                continue;
+            }
+            for (const node of sourceFile.statements) {
+                if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
+                    if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name?.text === name) {
+                        try {
+                            const module = await import(sourceFile.fileName);
+                            return module[name];
+                        } catch (e) {
+                            throw new Error(`Failed to import component '${name}': ${e}`);
+                        }
+                    }
+                }
+            }
+        }
+        throw new Error(`Component '${name}' not found`);
     }
 
     private analyseFile(sourceFile: typescript.SourceFile) {

@@ -21,10 +21,31 @@ import { main } from "../server";
 import { generateSchema } from "./schema";
 import { Analyzer } from "./analyzer";
 
-class ComponentProvider implements Provider {
-    packageJSON: Record<string, any>;
+export class ComponentProvider implements Provider {
+    private packageJSON: Record<string, any>;
+    private path: string;
+    private analyzer: Analyzer;
+
     version: string;
-    path: string;
+
+    public static validateResourceType(packageName: string, resourceType: string): void {
+        const parts = resourceType.split(":");
+        if (parts.length !== 3) {
+            throw new Error(`Invalid resource type ${resourceType}`);
+        }
+        if (parts[0] !== packageName) {
+            throw new Error(`Invalid package name ${parts[0]}, expected '${packageName}'`);
+        }
+        // We might want to relax this limitation, but for now we only support the "index" module.
+        if (parts[1] !== "index" && parts[1] !== "") {
+            throw new Error(
+                `Invalid module '${parts[1]}' in resource type '${resourceType}', expected 'index' or empty string`,
+            );
+        }
+        if (parts[2].length === 0) {
+            throw new Error(`Empty resource name in resource type '${resourceType}'`);
+        }
+    }
 
     constructor(readonly dir: string) {
         const absDir = path.resolve(dir);
@@ -32,11 +53,11 @@ class ComponentProvider implements Provider {
         this.packageJSON = JSON.parse(packStr);
         this.version = this.packageJSON.version;
         this.path = absDir;
+        this.analyzer = new Analyzer(this.path);
     }
 
     async getSchema(): Promise<string> {
-        const analyzer = new Analyzer(this.path);
-        const { components, typeDefinitons } = analyzer.analyze();
+        const { components, typeDefinitons } = this.analyzer.analyze();
         const schema = generateSchema(this.packageJSON, components, typeDefinitons);
         return JSON.stringify(schema);
     }
@@ -47,7 +68,18 @@ class ComponentProvider implements Provider {
         inputs: Inputs,
         options: ComponentResourceOptions,
     ): Promise<ConstructResult> {
-        throw new Error("Not implemented");
+        ComponentProvider.validateResourceType(this.packageJSON.name, type);
+        const componentName = type.split(":")[2];
+        const ComponentClass = await this.analyzer.findComponent(componentName);
+        // The ComponentResource base class has a 4 argument constructor, but
+        // the user defined component has a 3 argument constructor without the
+        // typestring.
+        // @ts-ignore
+        const instance = new ComponentClass(name, inputs, options);
+        return {
+            urn: instance.urn,
+            state: {},
+        };
     }
 }
 

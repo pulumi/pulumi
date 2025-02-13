@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
@@ -2473,6 +2474,41 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]interface{})
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	require.Equal(t, expected, component)
+}
+
+// Tests that we can run a Node.js component provider using component_provider_host
+func TestNodejsComponentProviderRun(t *testing.T) {
+	t.Parallel()
+
+	testData, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host"))
+	require.NoError(t, err)
+	providerDir := filepath.Join(testData, "provider")
+	installNodejsProviderDependencies(t, providerDir)
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	for _, runtime := range []string{"yaml", "python"} {
+		t.Run(runtime, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				PrepareProject: func(info *engine.Projinfo) error {
+					if runtime != "yaml" {
+						cmd := exec.Command("pulumi", "package", "add", providerDir)
+						cmd.Dir = info.Root
+						out, err := cmd.CombinedOutput()
+						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					}
+					return nil
+				},
+				Dir: filepath.Join(testData, runtime),
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					t.Logf("Outputs: %v", stack.Outputs)
+					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+					require.NoError(t, err)
+					require.Equal(t, tokens.Type("nodejs-component-provider:index:MyComponent"), urn.Type())
+					require.Equal(t, "comp", urn.Name())
+				},
+			})
+		})
+	}
 }
 
 // lock to prevent concurrent installation of provider dependencies
