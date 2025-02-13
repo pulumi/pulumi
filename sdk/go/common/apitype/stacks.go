@@ -78,6 +78,18 @@ type EncryptValueResponse struct {
 	Ciphertext []byte `json:"ciphertext"`
 }
 
+// BulkEncryptRequest defines the request body for encrypting multiple values.
+type BulkEncryptRequest struct {
+	// The values to encrypt.
+	Plaintexts [][]byte `json:"plaintexts"`
+}
+
+// BulkEncryptResponse defines the response body for multiple encrypted values.
+type BulkEncryptResponse struct {
+	// The encrypted values, in order of the plaintexts from the request.
+	Ciphertexts [][]byte `json:"ciphertexts"`
+}
+
 // DecryptValueRequest defines the request body for decrypting a value.
 type DecryptValueRequest struct {
 	// The value to decrypt.

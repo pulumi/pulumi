@@ -486,6 +486,20 @@ func (pc *Client) EncryptValue(ctx context.Context, stack StackIdentifier, plain
 	return resp.Ciphertext, nil
 }
 
+// BulkEncrypt encrypts multiple plaintext values in the context of the indicated stack.
+func (pc *Client) BulkEncrypt(ctx context.Context, stack StackIdentifier,
+	plaintexts [][]byte,
+) ([][]byte, error) {
+	req := apitype.BulkEncryptRequest{Plaintexts: plaintexts}
+	var resp apitype.BulkEncryptResponse
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "bulk-encrypt"), nil, &req, &resp,
+		httpCallOptions{GzipCompress: true, RetryPolicy: retryAllMethods}); err != nil {
+		return nil, err
+	}
+
+	return resp.Ciphertexts, nil
+}
+
 // DecryptValue decrypts a ciphertext value in the context of the indicated stack.
 func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphertext []byte) ([]byte, error) {
 	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}

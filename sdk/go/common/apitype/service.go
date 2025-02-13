@@ -27,6 +27,9 @@ const (
 	// DeltaCheckpointUploads is the feature that enables the CLI to upload checkpoints
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
 	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
+
+	// Indicates that the service backend supports stack bulk encryption.
+	BulkEncrypt APICapability = "bulk-encrypt"
 )
 
 // Deprecated. Use DeltaCheckpointUploadsConfigV2.
