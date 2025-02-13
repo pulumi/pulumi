@@ -114,3 +114,48 @@ func TestTryWithCorrectArguments(t *testing.T) {
 	assert.NotNil(t, program, "The program binds")
 	assert.NoError(t, err)
 }
+
+// Tests that the PCL `can` intrinsic function refuses to bind when passed no arguments.
+func TestCanWithoutArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = can()"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "'can' expects exactly one argument")
+}
+
+// Tests that the PCL `can` intrinsic function binds when correctly passed one argument.
+func TestCanWithCorrectArgument(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = can(1)"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
+}
+
+// Tests that the PCL `can` intrinsic function refuses to bind when passed too many arguments.
+func TestCanWithTooManyArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = can(1, 2)"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "'can' expects exactly one argument")
+}

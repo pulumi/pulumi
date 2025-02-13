@@ -509,6 +509,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v.get_output(%v)", expr.Args[0], expr.Args[1])
 	case "try":
 		g.genTry(w, expr.Args)
+	case "can":
+		g.genCan(w, expr.Args)
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -541,6 +543,15 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 		}
 	}
 	g.Fprintf(w, "%s)", g.Indent)
+}
+
+// genCan generates code for a `can` expression. The argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
+//
+//	can_(lambda: <arg>)
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	g.Fgenf(w, "can_(lambda: %v)", args[0])
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

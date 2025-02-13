@@ -50,6 +50,16 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 `,
 			indent,
 		), true
+	case "can":
+		return fmt.Sprintf(`%[1]sdef can_(fn):
+%[1]s    try:
+%[1]s        _result = fn()
+%[1]s        return True
+%[1]s    except:
+%[1]s        return False
+`,
+			indent,
+		), true
 	default:
 		return "", false
 	}

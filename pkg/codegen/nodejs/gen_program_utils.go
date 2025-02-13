@@ -70,6 +70,26 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 `,
 			indent,
 		), true
+	case "can":
+		// Much like try, but instead of returning the result only returns true or
+		// false if the one argument has no error.  The "too safe" problem
+		// described above exists for can as well.
+		return fmt.Sprintf(`%[1]sfunction can_(
+%[1]s    fn: () => unknown
+%[1]s): boolean {
+%[1]s    try {
+%[1]s        const result = fn();
+%[1]s        if (result === undefined) {
+%[1]s            return false;
+%[1]s        }
+%[1]s        return true;
+%[1]s    } catch (e) {
+%[1]s        return false;
+%[1]s    }
+%[1]s}
+`,
+			indent,
+		), true
 	default:
 		return "", false
 	}
