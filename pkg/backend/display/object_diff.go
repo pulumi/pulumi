@@ -178,7 +178,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 }
 
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool,
+	debug bool, showSecrets bool,
 ) string {
 	var b bytes.Buffer
 
@@ -200,9 +201,11 @@ func getResourcePropertiesDetails(
 			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, truncateOutput, debug, showSecrets)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
+			summary, truncateOutput, debug, showSecrets)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, truncateOutput, debug, showSecrets)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
+			summary, truncateOutput, debug, showSecrets)
 	}
 
 	return b.String()

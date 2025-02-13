@@ -133,7 +133,9 @@ func Test_PrintObject(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("secrets")}),
 				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
-					"super_secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("super_secret")}),
+					"super_secret": resource.NewSecretProperty(&resource.Secret{
+						Element: resource.NewStringProperty("super_secret"),
+					}),
 				}),
 			}),
 			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{
@@ -148,7 +150,9 @@ func Test_PrintObject(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("my_secret")}),
 				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
-					"super_secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("my_super_secret")}),
+					"super_secret": resource.NewSecretProperty(&resource.Secret{
+						Element: resource.NewStringProperty("my_super_secret"),
+					}),
 				}),
 			}),
 			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{

@@ -388,10 +388,12 @@ func renderDiff(
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
 			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
-				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
+					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
 			} else {
 				PrintObject(
-					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug, opts.ShowSecrets)
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
+					opts.TruncateOutput, debug, opts.ShowSecrets)
 			}
 			details = buf.String()
 		} else {
