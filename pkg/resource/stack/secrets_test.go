@@ -33,8 +33,9 @@ import (
 )
 
 type testSecretsManager struct {
-	encryptCalls int
-	decryptCalls int
+	encryptCalls         int
+	decryptCalls         int
+	enableBulkEncryption bool
 }
 
 func (t *testSecretsManager) Type() string { return "test" }
@@ -54,6 +55,16 @@ func (t *testSecretsManager) EncryptValue(
 ) (string, error) {
 	t.encryptCalls++
 	return fmt.Sprintf("%v:%v", t.encryptCalls, plaintext), nil
+}
+
+func (t *testSecretsManager) SupportsBulkEncryption(ctx context.Context) bool {
+	return t.enableBulkEncryption
+}
+
+func (t *testSecretsManager) BulkEncrypt(
+	ctx context.Context, secrets []string,
+) ([]string, error) {
+	return config.DefaultBulkEncrypt(ctx, t, secrets)
 }
 
 func (t *testSecretsManager) DecryptValue(

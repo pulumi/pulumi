@@ -138,6 +138,14 @@ func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext st
 	return csm.encrypter.Value().EncryptValue(ctx, plaintext)
 }
 
+func (csm *cachingSecretsManager) SupportsBulkEncryption(ctx context.Context) bool {
+	return csm.manager.Encrypter().SupportsBulkEncryption(ctx)
+}
+
+func (csm *cachingSecretsManager) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	return csm.manager.Encrypter().BulkEncrypt(ctx, plaintexts)
+}
+
 func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
 	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }

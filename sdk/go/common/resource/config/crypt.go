@@ -32,6 +32,14 @@ import (
 // Encrypter encrypts plaintext into its encrypted ciphertext.
 type Encrypter interface {
 	EncryptValue(ctx context.Context, plaintext string) (string, error)
+
+	// SupportsBulkEncryption returns true if the underlying encrypter implements bulk operations.
+	SupportsBulkEncryption(ctx context.Context) bool
+
+	// BulkEncrypt supports bulk encryption of secrets.
+	// Returns a list of encrypted values in the same order as the input secrets.
+	// Each secret is encrypted individually and duplicate secret values will result in different ciphertext.
+	BulkEncrypt(ctx context.Context, secrets []string) ([]string, error)
 }
 
 // Decrypter decrypts encrypted ciphertext to its plaintext representation.
@@ -41,6 +49,25 @@ type Decrypter interface {
 	// BulkDecrypt supports bulk decryption of secrets.
 	// Returns a list of decrypted values in the same order as the input ciphertexts.
 	BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
+}
+
+// DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted sequentially. The returned
+// list of ciphertexts is in the same order as the input list. This should only be used by implementers of Decrypter
+// to implement their BulkDecrypt method in cases where they can't do more efficient than just individual operations.
+func DefaultBulkEncrypt(ctx context.Context, encrypter Encrypter, secrets []string) ([]string, error) {
+	if len(secrets) == 0 {
+		return nil, nil
+	}
+
+	encrypted := make([]string, len(secrets))
+	for i, secret := range secrets {
+		enc, err := encrypter.EncryptValue(ctx, secret)
+		if err != nil {
+			return nil, err
+		}
+		encrypted[i] = enc
+	}
+	return encrypted, nil
 }
 
 // Crypter can both encrypt and decrypt values.
@@ -69,6 +96,14 @@ func (nopCrypter) EncryptValue(ctx context.Context, plaintext string) (string, e
 	return plaintext, nil
 }
 
+func (nopCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (nopCrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BulkEncrypt not supported for nopCrypter")
+}
+
 // BlindingCrypter returns a Crypter that instead of decrypting or encrypting data, just returns "[secret]", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted or encrypted.
@@ -89,6 +124,14 @@ func (b blindingCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return "[secret]", nil
 }
 
+func (blindingCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (b blindingCrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BulkEncrypt not supported for blindingCrypter")
+}
+
 func (b blindingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, b, ciphertexts)
 }
@@ -102,6 +145,14 @@ type panicCrypter struct{}
 
 func (p panicCrypter) EncryptValue(ctx context.Context, _ string) (string, error) {
 	panic("attempt to encrypt value")
+}
+
+func (panicCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (p panicCrypter) BulkEncrypt(ctx context.Context, _ []string) ([]string, error) {
+	panic("attempt to bulk encrypt values")
 }
 
 func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
@@ -138,6 +189,14 @@ func (s symmetricCrypter) EncryptValue(ctx context.Context, value string) (strin
 	secret, nonce := encryptAES256GCGM(value, s.key)
 	return fmt.Sprintf("v1:%s:%s",
 		base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(secret)), nil
+}
+
+func (symmetricCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (s symmetricCrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BulkEncrypt not supported for symmetricCrypter")
 }
 
 func (s symmetricCrypter) DecryptValue(ctx context.Context, value string) (string, error) {
@@ -220,6 +279,14 @@ func (c prefixCrypter) EncryptValue(ctx context.Context, plaintext string) (stri
 	return c.prefix + plaintext, nil
 }
 
+func (prefixCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (c prefixCrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BulkEncrypt not supported for prefixCrypter")
+}
+
 func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBulkDecrypt(ctx, c, ciphertexts)
 }
@@ -252,6 +319,14 @@ var Base64Crypter Crypter = &base64Crypter{}
 
 func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(s)), nil
+}
+
+func (*base64Crypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false // Bulk is no faster than individual operations
+}
+
+func (c *base64Crypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BulkEncrypt not supported for base64Crypter")
 }
 
 func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {
