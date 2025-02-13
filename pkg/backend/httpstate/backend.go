@@ -29,7 +29,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -51,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -193,7 +193,7 @@ type cloudBackend struct {
 	url          string
 	client       *client.Client
 	escClient    esc_client.Client
-	capabilities func(context.Context) apitype.Capabilities
+	capabilities *promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
 	currentProject *workspace.Project
@@ -215,17 +215,13 @@ func New(ctx context.Context, d diag.Sink,
 
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
-	capabilities := detectCapabilities(d, apiClient)
-
-	// Pre-detecting capabilities so that capability request is not on the critical path.
-	go capabilities(ctx)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
 		client:         apiClient,
 		escClient:      escClient,
-		capabilities:   capabilities,
+		capabilities:   detectCapabilities(d, apiClient),
 		currentProject: project,
 	}, nil
 }
@@ -706,7 +702,11 @@ func (b *cloudBackend) SupportsDeployments() bool {
 }
 
 func (b *cloudBackend) Capabilities(ctx context.Context) apitype.Capabilities {
-	return b.capabilities(ctx)
+	capabilities, err := b.capabilities.Result(ctx)
+	if err != nil {
+		return apitype.Capabilities{}
+	}
+	return capabilities
 }
 
 // qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
@@ -2110,19 +2110,10 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
-func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) apitype.Capabilities {
-	var once sync.Once
-	var caps apitype.Capabilities
-	done := make(chan struct{})
-	get := func(ctx context.Context) apitype.Capabilities {
-		once.Do(func() {
-			caps = doDetectCapabilities(ctx, d, client)
-			close(done)
-		})
-		<-done
-		return caps
-	}
-	return get
+func detectCapabilities(d diag.Sink, client *client.Client) *promise.Promise[apitype.Capabilities] {
+	return promise.Run(func() (apitype.Capabilities, error) {
+		return doDetectCapabilities(context.Background(), d, client), nil
+	})
 }
 
 func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) apitype.Capabilities {
