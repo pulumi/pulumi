@@ -274,6 +274,11 @@ func TestGetCapabilities(t *testing.T) {
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
 		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BulkEncrypt)
+
+		parsed, err := resp.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, parsed.DeltaCheckpointUpdates, &cfg)
+		assert.True(t, parsed.BulkEncryption)
 	})
 }
 
