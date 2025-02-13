@@ -256,6 +256,8 @@ func TestGetCapabilities(t *testing.T) {
 				Version:       3,
 				Capability:    apitype.DeltaCheckpointUploads,
 				Configuration: json.RawMessage(cfgJSON),
+			}, {
+				Capability: apitype.BulkEncrypt,
 			}},
 		}
 		respJSON, err := json.Marshal(actualResp)
@@ -267,10 +269,11 @@ func TestGetCapabilities(t *testing.T) {
 		resp, err := c.GetCapabilities(context.Background())
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Len(t, resp.Capabilities, 1)
+		assert.Len(t, resp.Capabilities, 2)
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
+		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BulkEncrypt)
 	})
 }
 
