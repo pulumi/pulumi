@@ -110,6 +110,11 @@ export function generateSchema(
                 .filter(([_, def]) => !def.optional)
                 .map(([propName, _]) => propName)
                 .sort(),
+            properties: component.outputs,
+            required: Object.entries(component.outputs)
+                .filter(([_, def]) => !def.optional)
+                .map(([propName, _]) => propName)
+                .sort(),
         };
     }
 

@@ -9,6 +9,10 @@ export interface MyComponentArgs {
 }
 
 export class MyComponent extends pulumi.ComponentResource {
+    outNumber: pulumi.Output<number>;
+    outString: pulumi.Output<string>;
+    outBoolean: pulumi.Output<boolean>;
+
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("provider:index:MyComponent", name, args, opts);
     }

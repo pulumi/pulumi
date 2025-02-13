@@ -16,6 +16,7 @@
 // Use `ts` instead to access typescript library functions.
 import typescript from "typescript";
 import * as path from "path";
+import { inspect } from "util";
 import { ComponentResource } from "../../resource";
 
 // Use the TypeScript shim which allows us to fallback to a vendored version of
@@ -31,6 +32,7 @@ export type PropertyType = "string" | "integer" | "number" | "boolean" | "array"
 export type PropertyDefinition = {
     type: PropertyType;
     optional?: boolean;
+    plain?: boolean;
 };
 
 export type ComponentDefinition = {
@@ -146,10 +148,17 @@ export class Analyzer {
             inputs = this.analyzeSymbolTable(argsSymbol.members, argsParam);
         }
 
+        let outputs: Record<string, PropertyDefinition> = {};
+        const classType = this.checker.getTypeAtLocation(node);
+        const classSymbol = classType.getSymbol();
+        if (classSymbol && classSymbol.members) {
+            outputs = this.analyzeSymbolTable(classSymbol.members, node);
+        }
+
         return {
             name: componentName!,
             inputs,
-            outputs: {},
+            outputs,
         };
     }
 
@@ -171,12 +180,50 @@ export class Analyzer {
         });
     }
 
+    private isOutput(type: typescript.Type): boolean {
+        // In sdk/nodejs/output.ts we define Output as:
+        //
+        //   export type Output<T> = OutputInstance<T> & Lifted<T>;
+        //
+        // Depending on T, we might have an OutputInstance<T> because Lifted<T>
+        // does not add anything to the resulting type, or we get the
+        // intersection. In the latter case, we want to find the
+        // OutputInstance<T> within the intersection.
+        if (type.isIntersection()) {
+            for (const t of type.types) {
+                if (this.isOutput(t)) {
+                    return true;
+                }
+            }
+        }
+        const symbol = type.getSymbol();
+        const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
+        return !!matchesName && !!matchesSourceFile;
+    }
+
+    private unwrapOutputIntersection(type: typescript.Type): typescript.Type {
+        if (type.isIntersection()) {
+            for (const t of type.types) {
+                if (this.isOutput(t)) {
+                    return t;
+                }
+            }
+        }
+        return type;
+    }
+
     private analyzeSymbolTable(
         members: typescript.SymbolTable,
         location: typescript.Node,
     ): Record<string, PropertyDefinition> {
         const properties: Record<string, PropertyDefinition> = {};
         members.forEach((member) => {
+            if (!isPropertyDeclaration(member)) {
+                return;
+            }
             const name = member.escapedName as string;
             properties[name] = this.analyzeSymbol(member, location);
         });
@@ -184,14 +231,34 @@ export class Analyzer {
     }
 
     private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
+        // Check if the property is optional, e.g.: myProp?: string; This is
+        // defined on the symbol, not the type.
+        const optional = isOptional(symbol);
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
-        const prop: PropertyDefinition = {
-            type: tsTypeToPropertyType(propType),
-        };
-        if (isOptional(symbol)) {
-            prop.optional = true;
+        return this.analyzeType(propType, optional, true);
+    }
+
+    private analyzeType(type: typescript.Type, optional: boolean = false, plain: boolean = true): PropertyDefinition {
+        if (isPlain(type)) {
+            return { type: tsTypeToPropertyType(type), plain: plain ? true : undefined, optional };
+        } else if (this.isOutput(type)) {
+            type = this.unwrapOutputIntersection(type);
+            // Grab the inner type of the OutputInstance<T> type, and then
+            // recurse, passing through the optional flag. The type can now not
+            // be plain anymore, since it's wrapped in an output.
+            const typeArguments = (type as typescript.TypeReference).typeArguments;
+            if (!typeArguments || typeArguments.length !== 1) {
+                throw new Error("OutputInstance must have a type argument");
+            }
+            const innerType = typeArguments[0];
+            return this.analyzeType(innerType, optional, false /* canBePlain */);
+        } else if (type.isUnion()) {
+            throw new Error("Union types are not supported");
+        } else if (type.isIntersection()) {
+            throw new Error("Intersection types are not supported");
         }
-        return prop;
+
+        throw new Error(`Unsupported type '${inspect(type)}'`);
     }
 }
 
@@ -201,6 +268,10 @@ function isOptional(symbol: typescript.Symbol): boolean {
 
 function isInterface(symbol: typescript.Symbol): boolean {
     return (symbol.flags & ts.SymbolFlags.Interface) === ts.SymbolFlags.Interface;
+}
+
+function isPropertyDeclaration(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Property) === ts.SymbolFlags.Property;
 }
 
 function isNumber(type: typescript.Type): boolean {
@@ -215,6 +286,10 @@ function isBoolean(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
 }
 
+function isPlain(type: typescript.Type): boolean {
+    return isNumber(type) || isString(type) || isBoolean(type);
+}
+
 function tsTypeToPropertyType(type: typescript.Type): PropertyType {
     if (isNumber(type)) {
         return "number";
@@ -223,5 +298,12 @@ function tsTypeToPropertyType(type: typescript.Type): PropertyType {
     } else if (isBoolean(type)) {
         return "boolean";
     }
-    throw new Error(`Unsupported type '${type}'`);
+
+    throw new Error(`Unsupported type '${type.symbol?.name}'`);
+}
+
+function debug(label: string, msg: any) {
+    const fs = require("fs");
+    const util = require("util");
+    fs.writeFileSync("/tmp/debug.log", label + ": " + util.inspect(msg) + "\n", { flag: "a" });
 }

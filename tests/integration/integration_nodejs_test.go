@@ -2469,13 +2469,24 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 		"type": "object",
 		"inputProperties": {
 			"aNumber": {
-				"type": "number"
+				"type": "number",
+				"plain": true
 			},
 			"anOptionalString": {
+				"type": "string",
+				"plain": true
+			}
+		},
+		"requiredInputs": ["aNumber"],
+		"properties": {
+			"aNumberOutput": {
+				"type": "number"
+			},
+			"anOptionalStringOutput": {
 				"type": "string"
 			}
 		},
-		"requiredInputs": ["aNumber"]
+		"required": ["aNumberOutput"]
 	}
 	`
 	expected := make(map[string]interface{})
