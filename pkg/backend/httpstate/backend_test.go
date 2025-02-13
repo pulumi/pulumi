@@ -45,7 +45,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -80,7 +80,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -236,7 +236,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
