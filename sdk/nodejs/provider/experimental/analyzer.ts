@@ -240,7 +240,14 @@ export class Analyzer {
 
     private analyzeType(type: typescript.Type, optional: boolean = false, plain: boolean = true): PropertyDefinition {
         if (isPlain(type)) {
-            return { type: tsTypeToPropertyType(type), plain: plain ? true : undefined, optional };
+            const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
         } else if (this.isOutput(type)) {
             type = this.unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then

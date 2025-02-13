@@ -40,14 +40,14 @@ describe("Analyzer", function () {
             MyComponent: {
                 name: "MyComponent",
                 inputs: {
-                    aNumber: { type: "number", plain: true, optional: false },
-                    aString: { type: "string", plain: true, optional: false },
-                    aBoolean: { type: "boolean", plain: true, optional: false },
+                    aNumber: { type: "number", plain: true },
+                    aString: { type: "string", plain: true },
+                    aBoolean: { type: "boolean", plain: true },
                 },
                 outputs: {
-                    outNumber: { type: "number", plain: false, optional: false },
-                    outString: { type: "string", plain: false, optional: false },
-                    outBoolean: { type: "boolean", plain: false, optional: false },
+                    outNumber: { type: "number" },
+                    outString: { type: "string" },
+                    outBoolean: { type: "boolean" },
                 },
             },
         });
@@ -64,7 +64,7 @@ describe("Analyzer", function () {
                     optionalNumber: { type: "number", optional: true, plain: true },
                 },
                 outputs: {
-                    optionalOutputNumber: { type: "number", optional: true, plain: false },
+                    optionalOutputNumber: { type: "number", optional: true },
                 },
             },
         });
