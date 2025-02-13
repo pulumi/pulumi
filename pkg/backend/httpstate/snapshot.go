@@ -110,8 +110,8 @@ func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.U
 		backend:     b,
 	}
 
-	caps := b.capabilities(ctx)
-	deltaCaps := caps.deltaCheckpointUpdates
+	caps := b.Capabilities(ctx)
+	deltaCaps := caps.DeltaCheckpointUpdates
 	if deltaCaps != nil {
 		p.deploymentDiffState = newDeploymentDiffState(deltaCaps.CheckpointCutoffSizeBytes)
 	}

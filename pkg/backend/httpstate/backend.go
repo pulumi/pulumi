@@ -186,6 +186,7 @@ type Backend interface {
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	Capabilities(ctx context.Context) Capabilities
 }
 
 type cloudBackend struct {
@@ -193,7 +194,7 @@ type cloudBackend struct {
 	url          string
 	client       *client.Client
 	escClient    esc_client.Client
-	capabilities func(context.Context) capabilities
+	capabilities func(context.Context) Capabilities
 
 	// The current project, if any.
 	currentProject *workspace.Project
@@ -203,7 +204,9 @@ type cloudBackend struct {
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool) (Backend, error) {
+func New(ctx context.Context, d diag.Sink,
+	cloudURL string, project *workspace.Project, insecure bool,
+) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -214,6 +217,9 @@ func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 	capabilities := detectCapabilities(d, apiClient)
+
+	// Pre-detecting capabilities so that capability request is not on the critical path.
+	go capabilities(ctx)
 
 	return &cloudBackend{
 		d:              d,
@@ -700,6 +706,10 @@ func (b *cloudBackend) SupportsDeployments() bool {
 	return true
 }
 
+func (b *cloudBackend) Capabilities(ctx context.Context) Capabilities {
+	return b.capabilities(ctx)
+}
+
 // qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
 // may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
 // Project. We infer the missing data and try to make things work as best we can in ParseStackReference.
@@ -907,10 +917,6 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	if err != nil {
 		return nil, err
 	}
-
-	// GetStack is typically the initial call to a series of calls to the backend. Although logically unrelated,
-	// this is a good time to start detecting capabilities so that capability request is not on the critical path.
-	go b.capabilities(ctx)
 
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
@@ -2105,20 +2111,20 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 }
 
 // Represents feature-detected capabilities of the service the backend is connected to.
-type capabilities struct {
+type Capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
-	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
+	DeltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
 
 	// Indicates whether the service supports bulk encryption.
-	bulkEncryption bool
+	BulkEncryption bool
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
-func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) capabilities {
+func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) Capabilities {
 	var once sync.Once
-	var caps capabilities
+	var caps Capabilities
 	done := make(chan struct{})
-	get := func(ctx context.Context) capabilities {
+	get := func(ctx context.Context) Capabilities {
 		once.Do(func() {
 			caps = doDetectCapabilities(ctx, d, client)
 			close(done)
@@ -2129,16 +2135,16 @@ func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Con
 	return get
 }
 
-func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) capabilities {
+func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) Capabilities {
 	resp, err := client.GetCapabilities(ctx)
 	if err != nil {
 		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
-		return capabilities{}
+		return Capabilities{}
 	}
 	caps, err := decodeCapabilities(resp.Capabilities)
 	if err != nil {
 		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
-		return capabilities{}
+		return Capabilities{}
 	}
 
 	// Allow users to opt out of deltaCheckpointUpdates even if the backend indicates it should be used. This
@@ -2146,34 +2152,34 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 	// may cause out-of-memory issues in constrained environments.
 	switch strings.ToLower(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH")) {
 	case "0", "false":
-		caps.deltaCheckpointUpdates = nil
+		caps.DeltaCheckpointUpdates = nil
 	}
 
 	return caps
 }
 
-func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, error) {
-	var parsed capabilities
+func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (Capabilities, error) {
+	var parsed Capabilities
 	for _, entry := range wireLevel {
 		switch entry.Capability {
 		case apitype.DeltaCheckpointUploads:
 			var upcfg apitype.DeltaCheckpointUploadsConfigV2
 			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
 				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
-				return capabilities{}, fmt.Errorf(msg, err)
+				return Capabilities{}, fmt.Errorf(msg, err)
 			}
-			parsed.deltaCheckpointUpdates = &upcfg
+			parsed.DeltaCheckpointUpdates = &upcfg
 		case apitype.DeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg apitype.DeltaCheckpointUploadsConfigV2
 				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
 					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
-					return capabilities{}, fmt.Errorf(msg, err)
+					return Capabilities{}, fmt.Errorf(msg, err)
 				}
-				parsed.deltaCheckpointUpdates = &upcfg
+				parsed.DeltaCheckpointUpdates = &upcfg
 			}
 		case apitype.BulkEncrypt:
-			parsed.bulkEncryption = true
+			parsed.BulkEncryption = true
 		default:
 			continue
 		}
