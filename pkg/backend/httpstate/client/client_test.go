@@ -246,7 +246,7 @@ func TestGetCapabilities(t *testing.T) {
 	})
 	t.Run("updated-service-with-delta-checkpoint-capability", func(t *testing.T) {
 		t.Parallel()
-		cfg := apitype.DeltaCheckpointUploadsConfigV1{
+		cfg := apitype.DeltaCheckpointUploadsConfigV2{
 			CheckpointCutoffSizeBytes: 1024 * 1024 * 4,
 		}
 		cfgJSON, err := json.Marshal(cfg)

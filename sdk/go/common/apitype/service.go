@@ -14,7 +14,9 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // An APICapability is the name of a capability or feature that a service backend
 // may or may not support.
@@ -31,11 +33,6 @@ const (
 	// Indicates that the service backend supports stack bulk encryption.
 	BulkEncrypt APICapability = "bulk-encrypt"
 )
-
-// Deprecated. Use DeltaCheckpointUploadsConfigV2.
-type DeltaCheckpointUploadsConfigV1 struct {
-	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
-}
 
 type DeltaCheckpointUploadsConfigV2 struct {
 	// CheckpointCutoffSizeBytes defines the size of a checkpoint file, in bytes,

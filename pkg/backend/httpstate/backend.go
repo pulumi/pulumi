@@ -2157,14 +2157,12 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 	for _, entry := range wireLevel {
 		switch entry.Capability {
 		case apitype.DeltaCheckpointUploads:
-			var upcfg apitype.DeltaCheckpointUploadsConfigV1
+			var upcfg apitype.DeltaCheckpointUploadsConfigV2
 			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
 				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
 				return capabilities{}, fmt.Errorf(msg, err)
 			}
-			parsed.deltaCheckpointUpdates = &apitype.DeltaCheckpointUploadsConfigV2{
-				CheckpointCutoffSizeBytes: upcfg.CheckpointCutoffSizeBytes,
-			}
+			parsed.deltaCheckpointUpdates = &upcfg
 		case apitype.DeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg apitype.DeltaCheckpointUploadsConfigV2
