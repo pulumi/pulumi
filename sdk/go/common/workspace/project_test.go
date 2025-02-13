@@ -1801,3 +1801,32 @@ runtime: yaml`
 		assert.Equal(t, expected, string(marshaled))
 	})
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/18581, check that we handle uint64's in yaml
+func TestStackConfigUInt64(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet`
+
+	projectStackYaml := `
+config:
+  test:instanceSize: 18446744073709551615`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
+		"dev",
+		project,
+		esc.Value{},
+		stack.Config,
+		config.NewPanicCrypter(),
+		config.NewPanicCrypter())
+	assert.NoError(t, configError, "Config override should be valid")
+
+	assert.Equal(t, 1, len(stack.Config), "Stack config now has three values")
+	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
+}

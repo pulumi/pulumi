@@ -1465,6 +1465,14 @@ func TestPropertyMap(t *testing.T) {
 		},
 		{
 			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("18446744073709551615"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewNumberProperty(1.8446744073709552e+19),
+			},
+		},
+		{
+			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("true"),
 			},
 			Expected: resource.PropertyMap{
