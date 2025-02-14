@@ -514,6 +514,10 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		args = append(args, "--yes", "--skip-preview")
 	}
 
+	if importOpts.Diff != nil && *importOpts.Diff {
+		args = append(args, "--diff")
+	}
+
 	if importOpts.Resources != nil {
 		importFilePath := filepath.Join(tempDir, "import.json")
 		importContent := map[string]interface{}{

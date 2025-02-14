@@ -110,6 +110,13 @@ func ImportFile(importFile string) Option {
 	})
 }
 
+// Diff specifies whether to show the diff of the import
+func Diff(diff bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = &diff
+	})
+}
+
 type ImportResource struct {
 	// The ID of the resource to import. The format of the ID is determined by the resource's provider.
 	ID string `json:"id,omitempty"`
@@ -148,6 +155,7 @@ type Options struct {
 	ErrorProgressStreams []io.Writer
 	PreviewOnly          *bool
 	ImportFile           *string
+	Diff                 *bool
 }
 
 type optionFunc func(*Options)
