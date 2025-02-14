@@ -26,8 +26,18 @@ import { ComponentResource } from "../../resource";
 // analyzer code is compatible with all of them.
 const ts: typeof typescript = require("../../typescript-shim");
 
+export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
+
+export type PropertyDefinition = {
+    type: PropertyType;
+    optional?: boolean;
+    plain?: boolean;
+};
+
 export type ComponentDefinition = {
     name: string;
+    inputs: Record<string, PropertyDefinition>;
+    outputs: Record<string, PropertyDefinition>;
 };
 
 export type TypeDefinition = {
@@ -100,12 +110,55 @@ export class Analyzer {
         // instantiate components defined inside functions or methods.
         sourceFile.forEachChild((node) => {
             if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
-                const componentName = node.name.text;
-                this.components[componentName] = {
-                    name: componentName,
-                };
+                const component = this.analyzeComponent(node);
+                this.components[component.name] = component;
             }
         });
+    }
+
+    private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
+        const componentName = node.name?.text;
+
+        // We expect exactly 1 constructor, and it must have and 'args'
+        // parameter that has an interface type.
+        const constructors = node.members.filter((member: typescript.ClassElement) =>
+            ts.isConstructorDeclaration(member),
+        ) as typescript.ConstructorDeclaration[];
+        if (constructors.length !== 1) {
+            throw new Error(`Component '${componentName}' must have exactly one constructor`);
+        }
+        const argsParam = constructors?.[0].parameters.find((param: typescript.ParameterDeclaration) => {
+            return ts.isIdentifier(param.name) && param.name.escapedText === "args";
+        });
+        if (!argsParam) {
+            throw new Error(`Component '${componentName}' constructor must have an 'args' parameter`);
+        }
+        if (!argsParam.type) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must have a type`);
+        }
+        const args = this.checker.getTypeAtLocation(argsParam.type);
+        const argsSymbol = args.getSymbol();
+        if (!argsSymbol || !isInterface(argsSymbol)) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must be an interface`);
+        }
+
+        let inputs: Record<string, PropertyDefinition> = {};
+        if (argsSymbol.members) {
+            inputs = this.analyzeSymbolTable(argsSymbol.members, argsParam);
+        }
+
+        let outputs: Record<string, PropertyDefinition> = {};
+        const classType = this.checker.getTypeAtLocation(node);
+        const classSymbol = classType.getSymbol();
+        if (classSymbol?.members) {
+            outputs = this.analyzeSymbolTable(classSymbol.members, node);
+        }
+
+        return {
+            name: componentName!,
+            inputs,
+            outputs,
+        };
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
@@ -125,4 +178,132 @@ export class Analyzer {
             });
         });
     }
+
+    private isOutput(type: typescript.Type): boolean {
+        // In sdk/nodejs/output.ts we define Output as:
+        //
+        //   export type Output<T> = OutputInstance<T> & Lifted<T>;
+        //
+        // Depending on T, we might have an OutputInstance<T> because Lifted<T>
+        // does not add anything to the resulting type, or we get the
+        // intersection. In the latter case, we want to find the
+        // OutputInstance<T> within the intersection.
+        if (type.isIntersection()) {
+            for (const t of type.types) {
+                if (this.isOutput(t)) {
+                    return true;
+                }
+            }
+        }
+        const symbol = type.getSymbol();
+        const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
+        return !!matchesName && !!matchesSourceFile;
+    }
+
+    private unwrapOutputIntersection(type: typescript.Type): typescript.Type {
+        if (type.isIntersection()) {
+            for (const t of type.types) {
+                if (this.isOutput(t)) {
+                    return t;
+                }
+            }
+        }
+        return type;
+    }
+
+    private analyzeSymbolTable(
+        members: typescript.SymbolTable,
+        location: typescript.Node,
+    ): Record<string, PropertyDefinition> {
+        const properties: Record<string, PropertyDefinition> = {};
+        members.forEach((member) => {
+            if (!isPropertyDeclaration(member)) {
+                return;
+            }
+            const name = member.escapedName as string;
+            properties[name] = this.analyzeSymbol(member, location);
+        });
+        return properties;
+    }
+
+    private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
+        // Check if the property is optional, e.g.: myProp?: string; This is
+        // defined on the symbol, not the type.
+        const optional = isOptional(symbol);
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        return this.analyzeType(propType, optional, true);
+    }
+
+    private analyzeType(type: typescript.Type, optional: boolean = false, plain: boolean = true): PropertyDefinition {
+        if (isPlain(type)) {
+            const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
+        } else if (this.isOutput(type)) {
+            type = this.unwrapOutputIntersection(type);
+            // Grab the inner type of the OutputInstance<T> type, and then
+            // recurse, passing through the optional flag. The type can now not
+            // be plain anymore, since it's wrapped in an output.
+            const typeArguments = (type as typescript.TypeReference).typeArguments;
+            if (!typeArguments || typeArguments.length !== 1) {
+                throw new Error(`OutputInstance must have a type argument, got '${this.checker.typeToString(type)}`);
+            }
+            const innerType = typeArguments[0];
+            return this.analyzeType(innerType, optional, false /* canBePlain */);
+        } else if (type.isUnion()) {
+            throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
+        } else if (type.isIntersection()) {
+            throw new Error(`Intersection types are not supported, got '${this.checker.typeToString(type)}`);
+        }
+
+        throw new Error(`Unsupported type '${this.checker.typeToString(type)}'`);
+    }
+}
+
+function isOptional(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
+}
+
+function isInterface(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Interface) === ts.SymbolFlags.Interface;
+}
+
+function isPropertyDeclaration(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Property) === ts.SymbolFlags.Property;
+}
+
+function isNumber(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number;
+}
+
+function isString(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.String) === ts.TypeFlags.String;
+}
+
+function isBoolean(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
+}
+
+function isPlain(type: typescript.Type): boolean {
+    return isNumber(type) || isString(type) || isBoolean(type);
+}
+
+function tsTypeToPropertyType(type: typescript.Type): PropertyType {
+    if (isNumber(type)) {
+        return "number";
+    } else if (isString(type)) {
+        return "string";
+    } else if (isBoolean(type)) {
+        return "boolean";
+    }
+
+    throw new Error(`Unsupported type '${type.symbol?.name}'`);
 }

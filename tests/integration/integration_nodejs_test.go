@@ -2466,7 +2466,27 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
-		"type": "object"
+		"type": "object",
+		"inputProperties": {
+			"aNumber": {
+				"type": "number",
+				"plain": true
+			},
+			"anOptionalString": {
+				"type": "string",
+				"plain": true
+			}
+		},
+		"requiredInputs": ["aNumber"],
+		"properties": {
+			"aNumberOutput": {
+				"type": "number"
+			},
+			"anOptionalStringOutput": {
+				"type": "string"
+			}
+		},
+		"required": ["aNumberOutput"]
 	}
 	`
 	expected := make(map[string]interface{})

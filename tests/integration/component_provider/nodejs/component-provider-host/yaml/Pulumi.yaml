@@ -8,6 +8,8 @@ plugins:
 resources:
   comp:
     type: nodejs-component-provider:index:MyComponent
-    properties: {}
+    properties:
+      aNumber: 123
+      anOptionalString: "hello"
 outputs:
   urn: ${comp.urn}
