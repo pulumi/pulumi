@@ -16,7 +16,6 @@
 // Use `ts` instead to access typescript library functions.
 import typescript from "typescript";
 import * as path from "path";
-import { inspect } from "util";
 import { ComponentResource } from "../../resource";
 
 // Use the TypeScript shim which allows us to fallback to a vendored version of
