@@ -480,9 +480,13 @@ export function call<T>(
                     pluginDownloadURL = res.__pluginDownloadURL;
                 }
 
-                // We keep output values when serializing inputs for call.
                 const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                    // We keep output values when serializing inputs for call.
                     keepOutputValues: true,
+                    // We exclude resource references from 'argDependencies' when serializing inputs for call.
+                    // This way, component providers creating outputs for component inputs based on
+                    // 'argDependencies' won't create outputs for properties that only contain resource references.
+                    excludeResourceReferencesFromDependencies: true,
                 });
                 log.debug(
                     `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
