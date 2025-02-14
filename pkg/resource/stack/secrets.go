@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/lazy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -94,8 +95,10 @@ type cacheEntry struct {
 }
 
 type cachingSecretsManager struct {
-	manager secrets.Manager
-	cache   map[*resource.Secret]cacheEntry
+	manager   secrets.Manager
+	encrypter lazy.Lazy[config.Encrypter]
+	decrypter lazy.Lazy[config.Decrypter]
+	cache     map[*resource.Secret]cacheEntry
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
@@ -103,8 +106,10 @@ type cachingSecretsManager struct {
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	return &cachingSecretsManager{
-		manager: manager,
-		cache:   make(map[*resource.Secret]cacheEntry),
+		manager:   manager,
+		encrypter: lazy.New(manager.Encrypter),
+		decrypter: lazy.New(manager.Decrypter),
+		cache:     make(map[*resource.Secret]cacheEntry),
 	}
 }
 
@@ -117,23 +122,25 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 }
 
 func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
-	return csm // The cachingSecretsManager is also an Encrypter itself.
+	csm.encrypter.Value() // Ensure the encrypter is initialized.
+	return csm            // The cachingSecretsManager is also an Encrypter itself.
 }
 
 func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
-	return csm // The cachingSecretsManager is also a Decrypter itself.
+	csm.decrypter.Value() // Ensure the decrypter is initialized.
+	return csm            // The cachingSecretsManager is also a Decrypter itself.
 }
 
 func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return csm.manager.Encrypter().EncryptValue(ctx, plaintext)
+	return csm.encrypter.Value().EncryptValue(ctx, plaintext)
 }
 
 func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return csm.manager.Decrypter().DecryptValue(ctx, ciphertext)
+	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }
 
 func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return csm.manager.Decrypter().BulkDecrypt(ctx, ciphertexts)
+	return csm.decrypter.Value().BulkDecrypt(ctx, ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
