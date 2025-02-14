@@ -82,9 +82,9 @@ describe("Analyzer", function () {
                     anOptionalString: { type: "string", optional: true },
                 },
                 outputs: {},
-            }
-        })
-    })
+            },
+        });
+    });
 
     it("rejects bad args", async function () {
         const dir = path.join(__dirname, "testdata", "bad-args");

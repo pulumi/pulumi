@@ -218,19 +218,19 @@ export class Analyzer {
             // can recursively analyze the type, passing through the optional
             // flag. The type can now not be plain anymore, since it's in an
             // input.
-            const base = (type as typescript.UnionType)?.types?.find(isPromise)
+            const base = (type as typescript.UnionType)?.types?.find(isPromise);
             if (!base) {
                 // unreachable due to the isInput check
                 throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}`);
             }
-            const innerType = this.unwrapTypeReference(base)
+            const innerType = this.unwrapTypeReference(base);
             return this.analyzeType(innerType, optional, false /* plain */);
         } else if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
-            const innerType = this.unwrapTypeReference(type)
+            const innerType = this.unwrapTypeReference(type);
             return this.analyzeType(innerType, optional, false /* plain */);
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
@@ -244,7 +244,9 @@ export class Analyzer {
     unwrapTypeReference(type: typescript.Type): typescript.Type {
         const typeArguments = (type as typescript.TypeReference).typeArguments;
         if (!typeArguments || typeArguments.length !== 1) {
-            throw new Error(`Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`);
+            throw new Error(
+                `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+            );
         }
         const innerType = typeArguments[0];
         return innerType;
