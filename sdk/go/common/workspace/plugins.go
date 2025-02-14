@@ -2293,6 +2293,11 @@ func getPluginInfoAndPath(
 		match = LegacySelectCompatiblePlugin(plugins, kind, name, version)
 	}
 
+	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+	if subdir != "" && match != nil {
+		match.Path = filepath.Join(match.Path, subdir)
+	}
+
 	if match != nil {
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
@@ -2331,10 +2336,6 @@ func SelectPrereleasePlugin(
 ) *PluginInfo {
 	for _, cur := range plugins {
 		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
-			// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
-			if subdir != "" {
-				cur.Path = filepath.Join(cur.Path, subdir)
-			}
 			return &cur
 		}
 	}
