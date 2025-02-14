@@ -595,6 +595,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 func (acts *updateActions) OnResourceStepPost(
 	ctx interface{}, step deploy.Step,
 	status resource.Status, err error,
+	errorsAsWarnings bool,
 ) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
@@ -620,7 +621,11 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		if !errorsAsWarnings {
+			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		} else {
+			acts.Opts.Diag.Warningf(diag.GetResourceOperationFailedError(errorURN), err)
+		}
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 	} else {
 		op, record := step.Op(), step.Logical()
@@ -755,7 +760,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 }
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error,
+	step deploy.Step, status resource.Status, err error, errorsAsWarnings bool,
 ) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
@@ -771,7 +776,11 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 			reportedURN = step.URN()
 		}
 
-		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
+		if !errorsAsWarnings {
+			acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
+		} else {
+			acts.Opts.Diag.Warningf(diag.GetPreviewWarningError(reportedURN), err)
+		}
 	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
@@ -812,7 +821,7 @@ func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.Analyze
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+before resource.PropertyMap, after resource.PropertyMap,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }

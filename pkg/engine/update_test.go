@@ -91,6 +91,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	err := acts.OnResourceStepPost(
 		&mockSnapshotMutation{}, step, resource.StatusOK,
 		nil, /* err */
+		false,
 	)
 	require.NoError(t, err)
 

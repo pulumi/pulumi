@@ -57,7 +57,7 @@ func (e *mockRegisterResourceOutputsEvent) Done() {}
 
 type mockEvents struct {
 	OnResourceStepPreF   func(step Step) (interface{}, error)
-	OnResourceStepPostF  func(ctx interface{}, step Step, status resource.Status, err error) error
+	OnResourceStepPostF  func(ctx interface{}, step Step, status resource.Status, err error, errorsAsWarnings bool) error
 	OnResourceOutputsF   func(step Step) error
 	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic)
 	OnPolicyRemediationF func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
@@ -70,9 +70,15 @@ func (e *mockEvents) OnResourceStepPre(step Step) (interface{}, error) {
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error {
+func (e *mockEvents) OnResourceStepPost(
+	ctx interface{},
+	step Step,
+	status resource.Status,
+	err error,
+	errorsAsWarnings bool,
+) error {
 	if e.OnResourceStepPostF != nil {
-		return e.OnResourceStepPostF(ctx, step, status, err)
+		return e.OnResourceStepPostF(ctx, step, status, err, errorsAsWarnings)
 	}
 	panic("unimplemented")
 }
@@ -201,7 +207,7 @@ func TestStepExecutor(t *testing.T) {
 							return nil, nil
 						},
 						OnResourceStepPostF: func(
-							ctx interface{}, step Step, status resource.Status, err error,
+							ctx interface{}, step Step, status resource.Status, err error, errorsAsWarnings bool,
 						) error {
 							return expectedErr
 						},
