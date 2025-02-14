@@ -333,6 +333,20 @@ func (l *pluginLoader) loadSchemaBytes(
 	if err != nil {
 		return nil, nil, err
 	}
+	// note that in the case of parameterization, parameterizing can change
+	// the schema and expected version, eg in the terraform provider.
+	//
+	// The loader also compares the version against the schema against this, so
+	// they must be updated to be referencing the same semantic package (ie the
+	// parameterized package, see [LoadPackageReferenceV2])
+	//
+	// For example, we are given a descriptor:
+	// ...
+	// { name = "terraform-provider", version = "1.2.3", parameterization = { ... version = "4.5.6" } }
+	// ...
+	// The expected version in the schema is "4.5.6" and the expected version of
+	// the base package is "1.2.3", but this returned schema json and version will
+	// be "4.5.6"
 	version := descriptor.Version
 
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
@@ -343,11 +357,12 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
-		if version == nil {
+		if version == nil || descriptor.Parameterization != nil {
 			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
 			version = info.Version
 		}
+
 		return schemaBytes, version, nil
 	}
 
@@ -405,7 +420,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 	}
 
-	if version == nil {
+	if version == nil || descriptor.Parameterization != nil {
 		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
 		version = info.Version
 	}

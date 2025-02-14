@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix bug in paramaterized provider version schemas
