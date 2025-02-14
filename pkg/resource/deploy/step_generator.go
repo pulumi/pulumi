@@ -44,6 +44,9 @@ import (
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 
+	// true if this is a refresh generation
+	isRefresh bool
+
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
 	// report them all at once.
@@ -56,6 +59,8 @@ type stepGenerator struct {
 	updates  map[resource.URN]bool // set of URNs updated in this deployment
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+
+	refreshes map[resource.URN]Step // set of URNs that were refreshed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
@@ -590,6 +595,21 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		for _, aliasURN := range aliasUrns {
 			sg.providers[aliasURN] = new
 		}
+	}
+
+	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
+	// custom non-provider resources.
+	if sg.isRefresh && goal.Custom && !providers.IsProviderType(goal.Type) {
+		// Custom resources that aren't in state just have to be skipped.
+		if !hasOld {
+			sg.sames[urn] = true
+			sg.skippedCreates[urn] = true
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+		}
+		// Else do a refresh step
+		step := NewRefreshStep(sg.deployment, event, old)
+		sg.refreshes[urn] = step
+		return []Step{step}, nil
 	}
 
 	// Fetch the provider for this resource.
@@ -2271,9 +2291,10 @@ func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(deployment *Deployment) *stepGenerator {
+func newStepGenerator(deployment *Deployment, isRefresh bool) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
+		isRefresh:            isRefresh,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
@@ -2281,6 +2302,7 @@ func newStepGenerator(deployment *Deployment) *stepGenerator {
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
+		refreshes:            make(map[resource.URN]Step),
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
