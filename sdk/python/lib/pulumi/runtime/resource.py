@@ -191,15 +191,20 @@ async def prepare_resource(
     if typ is not None:
         translate = None
 
-    # To initially scope the use of this new feature, we only keep output values when
-    # remote is true (for multi-lang components).
     serialized_props = await rpc.serialize_properties(
         props,
         property_dependencies_resources,
         res,
         translate,
         typ,
+        # To initially scope the use of this new feature, we only keep output values when
+        # remote is true (for multi-lang components, i.e. MLCs).
         keep_output_values=remote,
+        # When remote is true, exclude resource references from `propertyDependencies`.
+        # This way, component providers creating outputs for component inputs based
+        # on `propertyDependencies` won't create outputs for properties that only
+        # contain resource references.
+        exclude_resource_refs_from_deps=remote,
     )
 
     # Wait for our parent to resolve

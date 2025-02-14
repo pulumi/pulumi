@@ -1709,3 +1709,31 @@ def future(val):
     fut = asyncio.Future()
     fut.set_result(val)
     return fut
+
+
+@pulumi_test
+async def test_serialize_resource_references_dependencies():
+    set_mocks(MyMocks())
+
+    custom1 = MyCustomResource("custom1")
+    custom2 = MyCustomResource("custom2")
+
+    inputs = {
+        "resources": [custom1, custom2],
+    }
+
+    def gen_test_parameters():
+        yield (True, True, set())
+        yield (True, False, {custom1, custom2})
+        yield (False, True, {custom1, custom2})
+        yield (False, False, {custom1, custom2})
+
+    for supports, exclude, expected in gen_test_parameters():
+        settings.SETTINGS.feature_support["resourceReferences"] = supports
+        property_deps = {}
+        await rpc.serialize_properties(
+            inputs, property_deps, exclude_resource_refs_from_deps=exclude
+        )
+        assert (
+            set(property_deps["resources"]) == expected
+        ), f"Failed with supports={supports}, exclude={exclude}"
