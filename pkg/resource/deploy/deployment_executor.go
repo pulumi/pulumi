@@ -560,7 +560,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 			}
 
-			step := NewRefreshStep(ex.deployment, res, nil)
+			step := NewRefreshStep(ex.deployment, res)
 			steps = append(steps, step)
 			resourceToStep[res] = step
 		}

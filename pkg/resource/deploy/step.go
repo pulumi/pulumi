@@ -945,13 +945,12 @@ type RefreshStep struct {
 	deployment *Deployment       // the deployment that produced this refresh
 	old        *resource.State   // the old resource state, if one exists for this urn
 	new        *resource.State   // the new resource state, to be used to query the provider
-	done       chan<- bool       // the channel to use to signal completion, if any
 	provider   plugin.Provider   // the optional provider to use.
 	diff       plugin.DiffResult // the diff between the cloud provider and the state file
 }
 
 // NewRefreshStep creates a new Refresh step.
-func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- bool) Step {
+func NewRefreshStep(deployment *Deployment, old *resource.State) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 
 	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
@@ -959,7 +958,6 @@ func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- boo
 		deployment: deployment,
 		old:        old,
 		new:        old,
-		done:       done,
 	}
 }
 
@@ -1009,9 +1007,6 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 
 func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	var complete func()
-	if s.done != nil {
-		complete = func() { close(s.done) }
-	}
 
 	resourceID := s.old.ID
 
