@@ -217,14 +217,8 @@ func promptForConfig(
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
-	encrypter, err := sm.Encrypter()
-	if err != nil {
-		return nil, err
-	}
-	decrypter, err := sm.Decrypter()
-	if err != nil {
-		return nil, err
-	}
+	encrypter := sm.Encrypter()
+	decrypter := sm.Decrypter()
 
 	c := make(config.Map)
 

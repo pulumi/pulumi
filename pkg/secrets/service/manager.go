@@ -114,14 +114,14 @@ func (sm *serviceSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
-func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {
+func (sm *serviceSecretsManager) Decrypter() config.Decrypter {
 	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
-func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
+func (sm *serviceSecretsManager) Encrypter() config.Encrypter {
 	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
 func NewServiceSecretsManager(

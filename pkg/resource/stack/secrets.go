@@ -104,16 +104,8 @@ type cachingSecretsManager struct {
 // secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
-	// All secrets managers should have an encrypter and decrypter, but if they don't, we'll use a panic crypter
-	// Only the mock secrets manager might be missing these
-	encrypter, err := manager.Encrypter()
-	if err != nil {
-		encrypter = config.NewPanicCrypter()
-	}
-	decrypter, err := manager.Decrypter()
-	if err != nil {
-		decrypter = config.NewPanicCrypter()
-	}
+	encrypter := manager.Encrypter()
+	decrypter := manager.Decrypter()
 	return &cachingSecretsManager{
 		manager:   manager,
 		encrypter: encrypter,
@@ -130,12 +122,12 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 	return csm.manager.State()
 }
 
-func (csm *cachingSecretsManager) Encrypter() (config.Encrypter, error) {
-	return csm, nil
+func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
+	return csm
 }
 
-func (csm *cachingSecretsManager) Decrypter() (config.Decrypter, error) {
-	return csm, nil
+func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
+	return csm
 }
 
 func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {

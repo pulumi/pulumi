@@ -62,9 +62,9 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	fellback := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			fellback = true
-			return config.NopDecrypter, nil
+			return config.NopDecrypter
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -100,7 +100,7 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
 		TypeF:      func() string { return passphrase.Type },
-		DecrypterF: func() (config.Decrypter, error) { return config.NopDecrypter, nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
 		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -133,9 +133,9 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	defaulted := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			defaulted = true
-			return config.NopDecrypter, nil
+			return config.NopDecrypter
 		},
 	}
 
@@ -170,9 +170,9 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	fellback := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			fellback = true
-			return config.NopEncrypter, nil
+			return config.NopEncrypter
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -208,7 +208,7 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
 		TypeF:      func() string { return passphrase.Type },
-		EncrypterF: func() (config.Encrypter, error) { return config.NopEncrypter, nil },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
 		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -241,9 +241,9 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	defaulted := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			defaulted = true
-			return config.NopEncrypter, nil
+			return config.NopEncrypter
 		},
 	}
 

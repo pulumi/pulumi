@@ -110,11 +110,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	sm := snap.SecretsManager
 	var enc config.Encrypter
 	if sm != nil {
-		e, err := sm.Encrypter()
-		if err != nil {
-			return nil, fmt.Errorf("getting encrypter for deployment: %w", err)
-		}
-		enc = e
+		enc = sm.Encrypter()
 	} else {
 		enc = config.NewPanicCrypter()
 	}
@@ -260,10 +256,7 @@ func DeserializeDeploymentV3(
 		dec = config.NewPanicCrypter()
 		enc = config.NewPanicCrypter()
 	} else {
-		d, err := secretsManager.Decrypter()
-		if err != nil {
-			return nil, err
-		}
+		d := secretsManager.Decrypter()
 
 		// Do a first pass through state and collect all of the secrets that need decrypting.
 		// We will collect all secrets and decrypt them all at once, rather than just-in-time.
@@ -287,11 +280,7 @@ func DeserializeDeploymentV3(
 		}
 		dec = newMapDecrypter(d, cache)
 
-		e, err := secretsManager.Encrypter()
-		if err != nil {
-			return nil, err
-		}
-		enc = e
+		enc = secretsManager.Encrypter()
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.

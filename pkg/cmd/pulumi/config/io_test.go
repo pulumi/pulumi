@@ -293,11 +293,11 @@ func TestStackEnvConfig(t *testing.T) {
 	}
 
 	mockSecretsManager := &secrets.MockSecretsManager{
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
-			return encrypter, nil
+			return encrypter
 		},
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
 				DecryptValueF: func() string {
 					return "plaintext"
@@ -309,7 +309,7 @@ func TestStackEnvConfig(t *testing.T) {
 				},
 			}
 
-			return decrypter, nil
+			return decrypter
 		},
 	}
 
@@ -378,11 +378,11 @@ func TestCopyConfig(t *testing.T) {
 	}
 
 	mockSecretsManager := &secrets.MockSecretsManager{
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
-			return encrypter, nil
+			return encrypter
 		},
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
 				DecryptValueF: func() string {
 					return "plaintext"
@@ -394,7 +394,7 @@ func TestCopyConfig(t *testing.T) {
 				},
 			}
 
-			return decrypter, nil
+			return decrypter
 		},
 	}
 

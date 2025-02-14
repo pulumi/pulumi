@@ -51,11 +51,8 @@ func testURL(ctx context.Context, t *testing.T, url string) {
 	}
 	require.NoError(t, err)
 
-	enc, err := manager.Encrypter()
-	require.NoError(t, err)
-
-	dec, err := manager.Decrypter()
-	require.NoError(t, err)
+	enc := manager.Encrypter()
+	dec := manager.Decrypter()
 
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
 	require.NoError(t, err)

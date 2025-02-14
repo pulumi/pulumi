@@ -192,10 +192,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	)
 
 	// get the encrypter for the new secrets manager
-	newEncrypter, err := newSecretsManager.Encrypter()
-	if err != nil {
-		return err
-	}
+	newEncrypter := newSecretsManager.Encrypter()
 
 	// Create a copy of the current config map and re-encrypt using the new secrets provider
 	newProjectConfig, err := currentConfig.Config.Copy(decrypter, newEncrypter)

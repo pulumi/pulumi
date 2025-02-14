@@ -26,8 +26,8 @@ import (
 type MockSecretsManager struct {
 	TypeF      func() string
 	StateF     func() json.RawMessage
-	EncrypterF func() (config.Encrypter, error)
-	DecrypterF func() (config.Decrypter, error)
+	EncrypterF func() config.Encrypter
+	DecrypterF func() config.Decrypter
 }
 
 var _ Manager = &MockSecretsManager{}
@@ -48,7 +48,7 @@ func (msm *MockSecretsManager) State() json.RawMessage {
 	panic("not implemented")
 }
 
-func (msm *MockSecretsManager) Encrypter() (config.Encrypter, error) {
+func (msm *MockSecretsManager) Encrypter() config.Encrypter {
 	if msm.EncrypterF != nil {
 		return msm.EncrypterF()
 	}
@@ -56,7 +56,7 @@ func (msm *MockSecretsManager) Encrypter() (config.Encrypter, error) {
 	panic("not implemented")
 }
 
-func (msm *MockSecretsManager) Decrypter() (config.Decrypter, error) {
+func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 	if msm.DecrypterF != nil {
 		return msm.DecrypterF()
 	}
