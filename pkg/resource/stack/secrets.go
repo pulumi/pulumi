@@ -94,23 +94,17 @@ type cacheEntry struct {
 }
 
 type cachingSecretsManager struct {
-	manager   secrets.Manager
-	encrypter config.Encrypter
-	decrypter config.Decrypter
-	cache     map[*resource.Secret]cacheEntry
+	manager secrets.Manager
+	cache   map[*resource.Secret]cacheEntry
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
 // secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
-	encrypter := manager.Encrypter()
-	decrypter := manager.Decrypter()
 	return &cachingSecretsManager{
-		manager:   manager,
-		encrypter: encrypter,
-		decrypter: decrypter,
-		cache:     make(map[*resource.Secret]cacheEntry),
+		manager: manager,
+		cache:   make(map[*resource.Secret]cacheEntry),
 	}
 }
 
@@ -123,23 +117,23 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 }
 
 func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
-	return csm
+	return csm // The cachingSecretsManager is also an Encrypter itself.
 }
 
 func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
-	return csm
+	return csm // The cachingSecretsManager is also a Decrypter itself.
 }
 
 func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return csm.encrypter.EncryptValue(ctx, plaintext)
+	return csm.manager.Encrypter().EncryptValue(ctx, plaintext)
 }
 
 func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return csm.decrypter.DecryptValue(ctx, ciphertext)
+	return csm.manager.Decrypter().DecryptValue(ctx, ciphertext)
 }
 
 func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return csm.decrypter.BulkDecrypt(ctx, ciphertexts)
+	return csm.manager.Decrypter().BulkDecrypt(ctx, ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
@@ -153,7 +147,7 @@ func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
 	if ok && entry.plaintext == plaintext {
 		return entry.ciphertext, nil
 	}
-	ciphertext, err := csm.encrypter.EncryptValue(ctx, plaintext)
+	ciphertext, err := csm.manager.Encrypter().EncryptValue(ctx, plaintext)
 	if err != nil {
 		return "", err
 	}
