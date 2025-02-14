@@ -905,7 +905,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	props := getResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources)
+		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)

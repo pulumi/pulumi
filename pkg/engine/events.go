@@ -390,7 +390,7 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
-func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool) StepEventMetadata {
+func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, showSecrets bool) StepEventMetadata {
 	contract.Assertf(op == step.Op() || step.Op() == deploy.OpRefresh,
 		"step must be %v or %v, got %v", op, deploy.OpRefresh, step.Op())
 
@@ -416,19 +416,18 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool) Step
 		Keys:         keys,
 		Diffs:        diffs,
 		DetailedDiff: detailedDiff,
-		Old:          makeStepEventStateMetadata(step.Old(), debug),
-		New:          makeStepEventStateMetadata(step.New(), debug),
-		Res:          makeStepEventStateMetadata(step.Res(), debug),
+		Old:          makeStepEventStateMetadata(step.Old(), debug, showSecrets),
+		New:          makeStepEventStateMetadata(step.New(), debug, showSecrets),
+		Res:          makeStepEventStateMetadata(step.Res(), debug, showSecrets),
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
 	}
 }
 
-func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventStateMetadata {
+func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets bool) *StepEventStateMetadata {
 	if state == nil {
 		return nil
 	}
-
 	return &StepEventStateMetadata{
 		State:          state,
 		Type:           state.Type,
@@ -439,8 +438,8 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 		Parent:         state.Parent,
 		Protect:        state.Protect,
 		RetainOnDelete: state.RetainOnDelete,
-		Inputs:         filterResourceProperties(state.Inputs, debug),
-		Outputs:        filterResourceProperties(state.Outputs, debug),
+		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
+		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
 		Provider:       state.Provider,
 		InitErrors:     state.InitErrors,
 	}
@@ -456,24 +455,24 @@ func (e *eventEmitter) sendEvent(event Event) {
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
-	step deploy.Step, status resource.Status, steps int, debug bool,
+	step deploy.Step, status resource.Status, steps int, debug, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourceOperationFailedPayload{
-		Metadata: makeStepEventMetadata(step.Op(), step, debug),
+		Metadata: makeStepEventMetadata(step.Op(), step, debug, showSecrets),
 		Status:   status,
 		Steps:    steps,
 	}))
 }
 
 func (e *eventEmitter) resourceOutputsEvent(
-	op display.StepOp, step deploy.Step, planning, debug, internal bool,
+	op display.StepOp, step deploy.Step, planning, debug, internal, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourceOutputsEventPayload{
-		Metadata: makeStepEventMetadata(op, step, debug),
+		Metadata: makeStepEventMetadata(op, step, debug, showSecrets),
 		Planning: planning,
 		Debug:    debug,
 		Internal: internal,
@@ -481,12 +480,12 @@ func (e *eventEmitter) resourceOutputsEvent(
 }
 
 func (e *eventEmitter) resourcePreEvent(
-	step deploy.Step, planning, debug, internal bool,
+	step deploy.Step, planning, debug, internal, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourcePreEventPayload{
-		Metadata: makeStepEventMetadata(step.Op(), step, debug),
+		Metadata: makeStepEventMetadata(step.Op(), step, debug, showSecrets),
 		Planning: planning,
 		Debug:    debug,
 		Internal: internal,
@@ -650,11 +649,11 @@ func (e *eventEmitter) startDebugging(info plugin.DebuggingInfo) {
 	}))
 }
 
-func filterResourceProperties(m resource.PropertyMap, debug bool) resource.PropertyMap {
-	return filterPropertyValue(resource.NewObjectProperty(m), debug).ObjectValue()
+func filterResourceProperties(m resource.PropertyMap, debug bool, showSecrets bool) resource.PropertyMap {
+	return filterPropertyValue(resource.NewObjectProperty(m), debug, showSecrets).ObjectValue()
 }
 
-func filterPropertyValue(v resource.PropertyValue, debug bool) resource.PropertyValue {
+func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool) resource.PropertyValue {
 	switch {
 	case v.IsNull(), v.IsBool(), v.IsNumber():
 		return v
@@ -668,26 +667,28 @@ func filterPropertyValue(v resource.PropertyValue, debug bool) resource.Property
 	case v.IsArray():
 		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, v := range v.ArrayValue() {
-			arr[i] = filterPropertyValue(v, debug)
+			arr[i] = filterPropertyValue(v, debug, showSecrets)
 		}
 		return resource.NewArrayProperty(arr)
 	case v.IsObject():
 		obj := make(resource.PropertyMap, len(v.ObjectValue()))
 		for k, v := range v.ObjectValue() {
-			obj[k] = filterPropertyValue(v, debug)
+			obj[k] = filterPropertyValue(v, debug, showSecrets)
 		}
 		return resource.NewObjectProperty(obj)
 	case v.IsComputed():
-		return resource.MakeComputed(filterPropertyValue(v.Input().Element, debug))
+		return resource.MakeComputed(filterPropertyValue(v.Input().Element, debug, showSecrets))
 	case v.IsOutput():
-		return resource.MakeComputed(filterPropertyValue(v.OutputValue().Element, debug))
+		return resource.MakeComputed(filterPropertyValue(v.OutputValue().Element, debug, showSecrets))
+	case v.IsSecret() && showSecrets:
+		return resource.NewSecretProperty(v.SecretValue())
 	case v.IsSecret():
 		return resource.MakeSecret(resource.NewStringProperty("[secret]"))
 	case v.IsResourceReference():
 		ref := v.ResourceReferenceValue()
 		return resource.NewResourceReferenceProperty(resource.ResourceReference{
 			URN:            resource.URN(logging.FilterString(string(ref.URN))),
-			ID:             filterPropertyValue(ref.ID, debug),
+			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),
 		})
 	default:

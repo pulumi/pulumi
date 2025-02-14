@@ -178,7 +178,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 }
 
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool,
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool,
+	debug bool, showSecrets bool,
 ) string {
 	var b bytes.Buffer
 
@@ -188,21 +189,23 @@ func getResourcePropertiesDetails(
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
-			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		} else {
-			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
 	} else if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
 		// and that's sufficient for a summarized deletion view.
 		if !summary {
-			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug)
+			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, truncateOutput, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
+			summary, truncateOutput, debug, showSecrets)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, truncateOutput, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
+			summary, truncateOutput, debug, showSecrets)
 	}
 
 	return b.String()
@@ -220,7 +223,7 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool,
+	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -230,6 +233,7 @@ func PrintObject(
 		prefix:         prefix,
 		debug:          debug,
 		truncateOutput: truncateOutput,
+		showSecrets:    showSecrets,
 	}
 	p.printObject(props)
 }
@@ -347,7 +351,7 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func getResourceOutputsPropertiesString(
-	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool,
+	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames, showSecrets bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
@@ -427,11 +431,12 @@ func getResourceOutputsPropertiesString(
 
 	b := &bytes.Buffer{}
 	p := propertyPrinter{
-		dest:     b,
-		planning: planning,
-		indent:   indent,
-		op:       op,
-		debug:    debug,
+		dest:        b,
+		planning:    planning,
+		indent:      indent,
+		op:          op,
+		debug:       debug,
+		showSecrets: showSecrets,
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
@@ -504,6 +509,7 @@ type propertyPrinter struct {
 	debug          bool
 	summary        bool
 	truncateOutput bool
+	showSecrets    bool
 
 	indent int
 }
@@ -667,20 +673,20 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool,
+	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
-		PrintObject(b, news, planning, indent, deploy.OpSame, true, truncateOutput, debug)
+		PrintObject(b, news, planning, indent, deploy.OpSame, true, truncateOutput, debug, showSecrets)
 	}
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
-	planning bool, indent int, summary bool, truncateOutput bool, debug bool,
+	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -690,6 +696,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		debug:          debug,
 		summary:        summary,
 		truncateOutput: truncateOutput,
+		showSecrets:    showSecrets,
 	}
 	p.printObjectDiff(diff, include)
 }
@@ -854,7 +861,11 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writef("undefined")
 		}
 	} else if v.IsSecret() {
-		p.writef("[secret]")
+		if p.showSecrets {
+			p.printPropertyValue(v.SecretValue().Element)
+		} else {
+			p.writef("[secret]")
+		}
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
