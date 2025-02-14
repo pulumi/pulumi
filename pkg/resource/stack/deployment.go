@@ -496,7 +496,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
 			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
 			var ciphertext string
-			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+			if cachingCrypter, ok := enc.(*cachingSecretsManager); ok {
 				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
 			} else {
 				ciphertext, err = enc.EncryptValue(ctx, plaintext)
@@ -672,7 +672,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					prop := resource.MakeSecret(ev)
 					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
 					// new *resource.Secret as the key.
-					if cachingCrypter, ok := dec.(*cachingCrypter); ok {
+					if cachingCrypter, ok := dec.(*cachingSecretsManager); ok {
 						if !cipherOk {
 							encryptedText, err := enc.EncryptValue(ctx, plaintext)
 							if err != nil {

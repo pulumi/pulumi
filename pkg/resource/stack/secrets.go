@@ -94,17 +94,31 @@ type cacheEntry struct {
 }
 
 type cachingSecretsManager struct {
-	manager secrets.Manager
-	cache   map[*resource.Secret]cacheEntry
+	manager   secrets.Manager
+	encrypter config.Encrypter
+	decrypter config.Decrypter
+	cache     map[*resource.Secret]cacheEntry
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
 // secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
+	// All secrets managers should have an encrypter and decrypter, but if they don't, we'll use a panic crypter
+	// Only the mock secrets manager might be missing these
+	encrypter, err := manager.Encrypter()
+	if err != nil {
+		encrypter = config.NewPanicCrypter()
+	}
+	decrypter, err := manager.Decrypter()
+	if err != nil {
+		decrypter = config.NewPanicCrypter()
+	}
 	return &cachingSecretsManager{
-		manager: manager,
-		cache:   make(map[*resource.Secret]cacheEntry),
+		manager:   manager,
+		encrypter: encrypter,
+		decrypter: decrypter,
+		cache:     make(map[*resource.Secret]cacheEntry),
 	}
 }
 
@@ -117,65 +131,47 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 }
 
 func (csm *cachingSecretsManager) Encrypter() (config.Encrypter, error) {
-	enc, err := csm.manager.Encrypter()
-	if err != nil {
-		return nil, err
-	}
-	return &cachingCrypter{
-		encrypter: enc,
-		cache:     csm.cache,
-	}, nil
+	return csm, nil
 }
 
 func (csm *cachingSecretsManager) Decrypter() (config.Decrypter, error) {
-	dec, err := csm.manager.Decrypter()
-	if err != nil {
-		return nil, err
-	}
-	return &cachingCrypter{
-		decrypter: dec,
-		cache:     csm.cache,
-	}, nil
+	return csm, nil
 }
 
-type cachingCrypter struct {
-	encrypter config.Encrypter
-	decrypter config.Decrypter
-	cache     map[*resource.Secret]cacheEntry
+func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	return csm.encrypter.EncryptValue(ctx, plaintext)
 }
 
-func (c *cachingCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return c.encrypter.EncryptValue(ctx, plaintext)
+func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	return csm.decrypter.DecryptValue(ctx, ciphertext)
 }
 
-func (c *cachingCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return c.decrypter.DecryptValue(ctx, ciphertext)
-}
-
-func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return c.decrypter.BulkDecrypt(ctx, ciphertexts)
+func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return csm.decrypter.BulkDecrypt(ctx, ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
-func (c *cachingCrypter) encryptSecret(ctx context.Context, secret *resource.Secret, plaintext string) (string, error) {
+func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
+	secret *resource.Secret, plaintext string,
+) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
 	//
 	// Otherwise, re-encrypt the plaintext and update the cache.
-	entry, ok := c.cache[secret]
+	entry, ok := csm.cache[secret]
 	if ok && entry.plaintext == plaintext {
 		return entry.ciphertext, nil
 	}
-	ciphertext, err := c.encrypter.EncryptValue(ctx, plaintext)
+	ciphertext, err := csm.encrypter.EncryptValue(ctx, plaintext)
 	if err != nil {
 		return "", err
 	}
-	c.insert(secret, plaintext, ciphertext)
+	csm.insert(secret, plaintext, ciphertext)
 	return ciphertext, nil
 }
 
 // insert associates the given secret with the given plain- and ciphertext in the cache.
-func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
-	c.cache[secret] = cacheEntry{plaintext, ciphertext}
+func (csm *cachingSecretsManager) insert(secret *resource.Secret, plaintext, ciphertext string) {
+	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
 }
 
 // mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,
