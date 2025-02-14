@@ -199,8 +199,7 @@ func NewUpCmd() *cobra.Command {
 
 		if planFilePath != "" {
 			dec := sm.Decrypter()
-			enc := sm.Encrypter()
-			p, err := plan.Read(planFilePath, dec, enc)
+			p, err := plan.Read(planFilePath, dec)
 			if err != nil {
 				return err
 			}
