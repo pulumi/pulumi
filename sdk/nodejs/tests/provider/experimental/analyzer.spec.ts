@@ -70,6 +70,22 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers input types", async function () {
+        const dir = path.join(__dirname, "testdata", "input-types");
+        const analyzer = new Analyzer(dir);
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    aNumber: { type: "number" },
+                    anOptionalString: { type: "string", optional: true },
+                },
+                outputs: {},
+            },
+        });
+    });
+
     it("rejects bad args", async function () {
         const dir = path.join(__dirname, "testdata", "bad-args");
         const analyzer = new Analyzer(dir);

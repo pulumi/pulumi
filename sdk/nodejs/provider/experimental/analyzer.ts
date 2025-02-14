@@ -179,41 +179,6 @@ export class Analyzer {
         });
     }
 
-    private isOutput(type: typescript.Type): boolean {
-        // In sdk/nodejs/output.ts we define Output as:
-        //
-        //   export type Output<T> = OutputInstance<T> & Lifted<T>;
-        //
-        // Depending on T, we might have an OutputInstance<T> because Lifted<T>
-        // does not add anything to the resulting type, or we get the
-        // intersection. In the latter case, we want to find the
-        // OutputInstance<T> within the intersection.
-        if (type.isIntersection()) {
-            for (const t of type.types) {
-                if (this.isOutput(t)) {
-                    return true;
-                }
-            }
-        }
-        const symbol = type.getSymbol();
-        const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
-        const sourceFile = symbol?.declarations?.[0].getSourceFile();
-        const matchesSourceFile =
-            sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
-        return !!matchesName && !!matchesSourceFile;
-    }
-
-    private unwrapOutputIntersection(type: typescript.Type): typescript.Type {
-        if (type.isIntersection()) {
-            for (const t of type.types) {
-                if (this.isOutput(t)) {
-                    return t;
-                }
-            }
-        }
-        return type;
-    }
-
     private analyzeSymbolTable(
         members: typescript.SymbolTable,
         location: typescript.Node,
@@ -247,17 +212,26 @@ export class Analyzer {
                 prop.plain = true;
             }
             return prop;
-        } else if (this.isOutput(type)) {
-            type = this.unwrapOutputIntersection(type);
+        } else if (isInput(type)) {
+            // Grab the promise type from the `T | Promise<T> | OutputInstance<T>`
+            // union, and get the type reference `T` from there. With that we
+            // can recursively analyze the type, passing through the optional
+            // flag. The type can now not be plain anymore, since it's in an
+            // input.
+            const base = (type as typescript.UnionType)?.types?.find(isPromise);
+            if (!base) {
+                // unreachable due to the isInput check
+                throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}`);
+            }
+            const innerType = this.unwrapTypeReference(base);
+            return this.analyzeType(innerType, optional, false /* plain */);
+        } else if (isOutput(type)) {
+            type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
-            const typeArguments = (type as typescript.TypeReference).typeArguments;
-            if (!typeArguments || typeArguments.length !== 1) {
-                throw new Error(`OutputInstance must have a type argument, got '${this.checker.typeToString(type)}`);
-            }
-            const innerType = typeArguments[0];
-            return this.analyzeType(innerType, optional, false /* canBePlain */);
+            const innerType = this.unwrapTypeReference(type);
+            return this.analyzeType(innerType, optional, false /* plain */);
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
         } else if (type.isIntersection()) {
@@ -265,6 +239,17 @@ export class Analyzer {
         }
 
         throw new Error(`Unsupported type '${this.checker.typeToString(type)}'`);
+    }
+
+    unwrapTypeReference(type: typescript.Type): typescript.Type {
+        const typeArguments = (type as typescript.TypeReference).typeArguments;
+        if (!typeArguments || typeArguments.length !== 1) {
+            throw new Error(
+                `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+            );
+        }
+        const innerType = typeArguments[0];
+        return innerType;
     }
 }
 
@@ -294,6 +279,79 @@ function isBoolean(type: typescript.Type): boolean {
 
 function isPlain(type: typescript.Type): boolean {
     return isNumber(type) || isString(type) || isBoolean(type);
+}
+
+function isPromise(type: typescript.Type): boolean {
+    if (!(type.flags & ts.TypeFlags.Object)) {
+        return false;
+    }
+    const symbol = (type as typescript.ObjectType).symbol;
+    if (!symbol) {
+        return false;
+    }
+    return symbol.name === "Promise";
+}
+
+function isOutput(type: typescript.Type): boolean {
+    // In sdk/nodejs/output.ts we define Output as:
+    //
+    //   export type Output<T> = OutputInstance<T> & Lifted<T>;
+    //
+    // Depending on T, we might have an OutputInstance<T> because Lifted<T>
+    // does not add anything to the resulting type, or we get the
+    // intersection. In the latter case, we want to find the
+    // OutputInstance<T> within the intersection.
+    if (type.isIntersection()) {
+        for (const t of type.types) {
+            if (isOutput(t)) {
+                return true;
+            }
+        }
+    }
+    const symbol = type.getSymbol();
+    const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
+    const sourceFile = symbol?.declarations?.[0].getSourceFile();
+    const matchesSourceFile =
+        sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
+    return !!matchesName && !!matchesSourceFile;
+}
+
+function unwrapOutputIntersection(type: typescript.Type): typescript.Type {
+    // Output<T> is an intersection type `OutputInstance<T> & Lifted<T>`, and
+    // we want to find the `OutputInstance<T>` within the intersection for
+    // further analysis.
+    // Depending on `T`, TypeScript sometimes infers Output<T> directly as
+    // `OutputInstance<T>`, dropping the `Lifted<T>` part.
+    if (type.isIntersection()) {
+        for (const t of type.types) {
+            if (isOutput(t)) {
+                return t;
+            }
+        }
+    }
+    return type;
+}
+
+/**
+ * An input type is a union of Output<T>, Promise<T>, and T.
+ */
+function isInput(type: typescript.Type): boolean {
+    if (!type.isUnion()) {
+        return false;
+    }
+    let hasOutput = false;
+    let hasPromise = false;
+    let hasOther = false;
+    for (const t of type.types) {
+        if (isOutput(t)) {
+            hasOutput = true;
+        } else if (isPromise(t)) {
+            hasPromise = true;
+        } else {
+            hasOther = true;
+        }
+    }
+    return hasOutput && hasPromise && hasOther;
 }
 
 function tsTypeToPropertyType(type: typescript.Type): PropertyType {
