@@ -14,6 +14,8 @@
 - [sdk/python] [Experimental/Components] Infer plain types
   [#18483](https://github.com/pulumi/pulumi/pull/18483)
 
+- [sdk/go] Add preview only in ImportResources
+  [#18608](https://github.com/pulumi/pulumi/pull/18608)
 
 ### Bug Fixes
 
@@ -1268,8 +1270,8 @@
 - [sdkgen/python] Link to Python docs about input types
   [#16763](https://github.com/pulumi/pulumi/pull/16763)
 
-## 3.127.0 (2024-07-25)
 
+## 3.127.0 (2024-07-25)
 
 ### Features
 
