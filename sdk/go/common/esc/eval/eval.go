@@ -601,7 +601,7 @@ func (e *evalContext) evaluateExpr(x *expr, accept *schema.Schema) *value {
 		panic(fmt.Sprintf("fatal: invalid expr type %T", repr))
 	}
 
-	if accept.RotateOnly {
+	if accept.IsRotateOnly() {
 		val.rotateOnly = true
 	}
 	if x.secret {
@@ -628,7 +628,7 @@ func (e *evalContext) evaluateSkippedExpr(x *expr, accept *schema.Schema) (*valu
 	//
 	// thus, we want to skip evaluation if in a rotateOnly context and opening the root environment
 	// or if this is an imported env
-	if skipEval := accept.RotateOnly && (!e.rotating && !e.validating || !e.isRootEnv); skipEval {
+	if skipEval := accept.IsRotateOnly() && (!e.rotating && !e.validating || !e.isRootEnv); skipEval {
 		return &value{def: newMissingExpr(x.path, x.base), schema: schema.Always(), unknown: true, rotateOnly: true}, true
 	}
 

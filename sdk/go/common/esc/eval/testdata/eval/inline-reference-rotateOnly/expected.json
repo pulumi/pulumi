@@ -74,12 +74,14 @@
                             "inputs": {
                                 "properties": {
                                     "next": {
-                                        "type": "string",
-                                        "rotateOnly": true
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object",
                                 "required": [
+                                    "next"
+                                ],
+                                "rotateOnly": [
                                     "next"
                                 ]
                             },
@@ -696,12 +698,14 @@
                             "inputs": {
                                 "properties": {
                                     "next": {
-                                        "type": "string",
-                                        "rotateOnly": true
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object",
                                 "required": [
+                                    "next"
+                                ],
+                                "rotateOnly": [
                                     "next"
                                 ]
                             },
@@ -1384,12 +1388,14 @@
                             "inputs": {
                                 "properties": {
                                     "next": {
-                                        "type": "string",
-                                        "rotateOnly": true
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object",
                                 "required": [
+                                    "next"
+                                ],
+                                "rotateOnly": [
                                     "next"
                                 ]
                             },

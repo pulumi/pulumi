@@ -23,8 +23,7 @@ import (
 )
 
 type ObjectBuilder struct {
-	s                    Schema
-	rotateOnlyProperties []string
+	s Schema
 }
 
 func Object() *ObjectBuilder {
@@ -116,14 +115,11 @@ func (b *ObjectBuilder) Examples(vals ...map[string]any) *ObjectBuilder {
 }
 
 func (b *ObjectBuilder) RotateOnly(names ...string) *ObjectBuilder {
-	b.rotateOnlyProperties = names
+	b.s.RotateOnly = names
 	return b
 }
 
 func (b *ObjectBuilder) Schema() *Schema {
 	b.s.Type = "object"
-	for _, name := range b.rotateOnlyProperties {
-		b.s.Properties[name].RotateOnly = true
-	}
 	return &b.s
 }
