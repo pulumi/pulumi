@@ -3,16 +3,13 @@
 import * as pulumi from "@pulumi/pulumi";
 
 export interface MyComponentArgs {
-    aNumber: number;
-    anOptionalString?: string
-    aBooleanInput: pulumi.Input<boolean>;
+    aNumber: pulumi.Input<number>;
+    anOptionalString?: pulumi.Input<string>;
 }
 
 export class MyComponent extends pulumi.ComponentResource {
-    aNumberOutput: pulumi.Output<number>;
-    anOptionalStringOutput?: pulumi.Output<string>;
 
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
-        super("nodejs-component-provider:index:MyComponent", name, args, opts);
+        super("provider:index:MyComponent", name, args, opts);
     }
 }

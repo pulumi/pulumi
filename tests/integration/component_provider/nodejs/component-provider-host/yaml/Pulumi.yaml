@@ -11,5 +11,6 @@ resources:
     properties:
       aNumber: 123
       anOptionalString: "hello"
+      aBooleanInput: true
 outputs:
   urn: ${comp.urn}

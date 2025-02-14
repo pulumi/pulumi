@@ -2475,9 +2475,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			"anOptionalString": {
 				"type": "string",
 				"plain": true
+			},
+			"aBooleanInput": {
+				"type": "boolean"
 			}
 		},
-		"requiredInputs": ["aNumber"],
+		"requiredInputs": ["aBooleanInput", "aNumber"],
 		"properties": {
 			"aNumberOutput": {
 				"type": "number"
