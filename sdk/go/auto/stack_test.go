@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -251,4 +252,61 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	)
 
 	assert.Contains(t, args, "--clear-pending-creates")
+}
+
+func TestImportResources(t *testing.T) {
+	t.Parallel()
+
+	// Skip on Windows due to potential file path issues
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on Windows")
+	}
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	// Create a new stack with inline source
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		ctx.Export("exp_static", pulumi.String("foo"))
+		return nil
+	})
+	require.NoError(t, err, "failed to initialize stack")
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// Create test resources to import
+	resources := []*optimport.ImportResource{
+		{
+			Type: "aws:s3/bucket:Bucket",
+			Name: "imported-bucket",
+			ID:   "bar",
+		},
+	}
+
+	// Test with basic import options
+	result, err := s.ImportResources(ctx, optimport.Resources(resources), optimport.GenerateCode(true))
+	require.NoError(t, err, "import failed")
+	assert.Equal(t, "succeeded", result.Summary.Result, "expected import to succeed")
+
+	// Test preview only import
+	tempDir, err := os.MkdirTemp("", "import-files")
+	importFilePath := filepath.Join(tempDir, "import.json")
+	// clean-up the temp directory after we are done
+	defer os.RemoveAll(tempDir)
+
+	os.WriteFile(importFilePath, []byte(`{"resoures": [{"type":"aws:s3/bucket:Bucket","name":"imported-bucket","id":"bar"}]}`), 0o600)
+	protect := false
+	generateCode := true
+	result2, err := s.ImportResources(ctx,
+		optimport.Protect(protect),
+		optimport.GenerateCode(generateCode),
+		optimport.PreviewOnly(true),
+		optimport.ImportFile(importFilePath),
+	)
+	require.NoError(t, err, "import with options failed")
+	assert.Equal(t, "succeeded", result2.Summary.Result, "expected import to succeed")
 }
