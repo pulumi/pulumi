@@ -1,0 +1,1979 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "open testdata/eval/inline-reference-rotateOnly/fake/inaccessible1.yaml: no such file or directory",
+            "Detail": "",
+            "Subject": {
+                "Filename": "inline-reference-rotateOnly",
+                "Start": {
+                    "Line": 11,
+                    "Column": 15,
+                    "Byte": 398
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 72,
+                    "Byte": 455
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalid1[\"fn::rotate::echo\"].inputs.next"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "invalid1": {
+                "range": {
+                    "environment": "inline-reference-rotateOnly",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 48
+                    },
+                    "end": {
+                        "line": 13,
+                        "column": 23,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 21,
+                            "byte": 64
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string",
+                                        "rotateOnly": true
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 392
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 72,
+                                        "byte": 455
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 9,
+                                            "byte": 392
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 13,
+                                            "byte": 396
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 398
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 72,
+                                                "byte": 455
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string"
+                                        },
+                                        "interpolate": [
+                                            {
+                                                "text": "interpolate ",
+                                                "value": [
+                                                    {
+                                                        "key": "environments",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 29,
+                                                                "byte": 412
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "fake",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "inaccessible1",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "some_value",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 71,
+                                                                "byte": 454
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 23,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 13,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 13,
+                                            "column": 16,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 18,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 23,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "invalid1": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 23,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "valid": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "transitive",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 71,
+                            "byte": 500
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "invalid1": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "valid": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current",
+                        "previous"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "invalid1",
+                "valid"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "invalid1": "[unknown]",
+        "valid": "[unknown]"
+    },
+    "eval": {
+        "exprs": {
+            "invalid1": {
+                "range": {
+                    "environment": "inline-reference-rotateOnly",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 48
+                    },
+                    "end": {
+                        "line": 13,
+                        "column": 23,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "hello"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 21,
+                            "byte": 64
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string",
+                                        "rotateOnly": true
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 392
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 72,
+                                        "byte": 455
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": true
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 9,
+                                            "byte": 392
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 13,
+                                            "byte": 396
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 398
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 72,
+                                                "byte": 455
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string"
+                                        },
+                                        "interpolate": [
+                                            {
+                                                "text": "interpolate ",
+                                                "value": [
+                                                    {
+                                                        "key": "environments",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 29,
+                                                                "byte": 412
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "fake",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "inaccessible1",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "some_value",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 71,
+                                                                "byte": 454
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 23,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 13,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 13,
+                                            "column": 16,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 18,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 23,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "invalid1": {
+                "value": {
+                    "current": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "inline-reference-rotateOnly",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 5,
+                                    "byte": 48
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 23,
+                                    "byte": 0
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 23,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "valid": {
+                "value": {
+                    "current": {
+                        "value": "this value should be merged into the root environment",
+                        "trace": {
+                            "def": {
+                                "environment": "transitive",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 21
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 71,
+                                    "byte": 500
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "transitive",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 71,
+                            "byte": 500
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "invalid1": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "hello"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "valid": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "this value should be merged into the root environment"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "invalid1",
+                "valid"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "invalid1": {
+            "current": "hello"
+        },
+        "valid": {
+            "current": "this value should be merged into the root environment"
+        }
+    },
+    "evalJSONRevealed": {
+        "invalid1": {
+            "current": "hello"
+        },
+        "valid": {
+            "current": "this value should be merged into the root environment"
+        }
+    },
+    "rotateDiags": [
+        {
+            "Severity": 1,
+            "Summary": "open testdata/eval/inline-reference-rotateOnly/fake/inaccessible1.yaml: no such file or directory",
+            "Detail": "",
+            "Subject": {
+                "Filename": "inline-reference-rotateOnly",
+                "Start": {
+                    "Line": 11,
+                    "Column": 15,
+                    "Byte": 398
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 72,
+                    "Byte": 455
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.invalid1[\"fn::rotate::echo\"].inputs.next"
+        }
+    ],
+    "rotate": {
+        "exprs": {
+            "invalid1": {
+                "range": {
+                    "environment": "inline-reference-rotateOnly",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 48
+                    },
+                    "end": {
+                        "line": 13,
+                        "column": 23,
+                        "byte": 0
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::rotate::echo",
+                    "nameRange": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 21,
+                            "byte": 64
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "properties": {
+                                    "next": {
+                                        "type": "string",
+                                        "rotateOnly": true
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "next"
+                                ]
+                            },
+                            "state": {
+                                "oneOf": [
+                                    {
+                                        "properties": {
+                                            "current": {
+                                                "type": "string"
+                                            },
+                                            "previous": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "current"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "type": ""
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "state"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 392
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 72,
+                                        "byte": 455
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "next": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "next"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "next": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 9,
+                                            "byte": 392
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 13,
+                                            "byte": 396
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "next": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 398
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 72,
+                                                "byte": 455
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string"
+                                        },
+                                        "interpolate": [
+                                            {
+                                                "text": "interpolate ",
+                                                "value": [
+                                                    {
+                                                        "key": "environments",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 29,
+                                                                "byte": 412
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "fake",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 41,
+                                                                "byte": 424
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "inaccessible1",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 46,
+                                                                "byte": 429
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "some_value",
+                                                        "range": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 60,
+                                                                "byte": 443
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 71,
+                                                                "byte": 454
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "inline-reference-rotateOnly",
+                                                            "begin": {
+                                                                "line": 11,
+                                                                "column": 15,
+                                                                "byte": 398
+                                                            },
+                                                            "end": {
+                                                                "line": 11,
+                                                                "column": 72,
+                                                                "byte": 455
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            "state": {
+                                "range": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 9,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 23,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "current": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "current"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "current": {
+                                        "environment": "inline-reference-rotateOnly",
+                                        "begin": {
+                                            "line": 13,
+                                            "column": 9,
+                                            "byte": 0
+                                        },
+                                        "end": {
+                                            "line": 13,
+                                            "column": 16,
+                                            "byte": 0
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "current": {
+                                        "range": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 18,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 23,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "invalid1": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "inline-reference-rotateOnly",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 23,
+                            "byte": 0
+                        }
+                    }
+                }
+            },
+            "valid": {
+                "value": {
+                    "current": {
+                        "value": "this value should be merged into the root environment",
+                        "trace": {
+                            "def": {
+                                "environment": "transitive",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 21
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 71,
+                                    "byte": 500
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "transitive",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 71,
+                            "byte": 500
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "invalid1": {
+                    "properties": {
+                        "current": {
+                            "type": "string"
+                        },
+                        "previous": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                },
+                "valid": {
+                    "properties": {
+                        "current": {
+                            "type": "string",
+                            "const": "this value should be merged into the root environment"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "current"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "invalid1",
+                "valid"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "inline-reference-rotateOnly",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "inline-reference-rotateOnly",
+                            "trace": {
+                                "def": {
+                                    "environment": "inline-reference-rotateOnly",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "inline-reference-rotateOnly",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "inline-reference-rotateOnly"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "rotateJson": {
+        "invalid1": "[unknown]",
+        "valid": {
+            "current": "this value should be merged into the root environment"
+        }
+    }
+}

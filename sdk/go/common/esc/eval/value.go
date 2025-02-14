@@ -44,8 +44,9 @@ type value struct {
 
 	// true if the value is unknown (e.g. because it did not evaluate successfully or is the result of an unevaluated
 	// fn::open)
-	unknown bool
-	secret  bool // true if the value is secret
+	unknown    bool
+	rotateOnly bool
+	secret     bool // true if the value is secret
 
 	repr any // nil | bool | json.Number | string | []*value | map[string]*value
 }
@@ -76,6 +77,32 @@ func (v *value) containsUnknowns() bool {
 	case map[string]*value:
 		for _, k := range v.keys() {
 			if v.property(v.def.repr.syntax(), k).containsUnknowns() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsObservableUnknowns returns true if the value contains any unknown values.
+// the rotating flag indicate our tolerance of unknown rotateOnly values.
+func (v *value) containsObservableUnknowns(rotating bool) bool {
+	if v == nil {
+		return false
+	}
+	if v.unknown {
+		return v.rotateOnly && rotating
+	}
+	switch repr := v.repr.(type) {
+	case []*value:
+		for _, v := range repr {
+			if v.containsObservableUnknowns(rotating) {
+				return true
+			}
+		}
+	case map[string]*value:
+		for _, k := range v.keys() {
+			if v.property(v.def.repr.syntax(), k).containsObservableUnknowns(rotating) {
 				return true
 			}
 		}

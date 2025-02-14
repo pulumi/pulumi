@@ -120,7 +120,8 @@ type Schema struct {
 	Examples    []any  `json:"examples,omitempty"`
 
 	// Environments extensions
-	Secret bool `json:"secret,omitempty"`
+	Secret     bool `json:"secret,omitempty"`
+	RotateOnly bool `json:"rotateOnly,omitempty"`
 
 	ref              *Schema
 	multipleOf       *big.Float
@@ -401,10 +402,11 @@ func buildOneOf[T Builder](b T, oneOf []Builder) T {
 
 func union(oneOf []*Schema) *Schema {
 	// Filter out Never schemas.
-	n := 0
+	n, rotateOnly := 0, true
 	for _, s := range oneOf {
 		if s != nil && !s.Never {
 			oneOf[n] = s
+			rotateOnly = rotateOnly && s.RotateOnly
 			n++
 		}
 	}
@@ -419,6 +421,6 @@ func union(oneOf []*Schema) *Schema {
 		return oneOf[0]
 	default:
 		// Otherwise, return a OneOf.
-		return &Schema{OneOf: oneOf}
+		return &Schema{OneOf: oneOf, RotateOnly: rotateOnly}
 	}
 }

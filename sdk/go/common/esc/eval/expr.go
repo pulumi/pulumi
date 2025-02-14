@@ -121,9 +121,13 @@ func (x *expr) export(environment string) esc.Expr {
 			if p.value != nil {
 				value = make([]esc.PropertyAccessor, len(p.value.accessors))
 				for i, a := range p.value.accessors {
+					var rng esc.Range
+					if a.value != nil {
+						rng = a.value.def.defRange(environment)
+					}
 					value[i] = esc.PropertyAccessor{
 						Accessor: exportAccessor(a.accessor, environment),
-						Value:    a.value.def.defRange(environment),
+						Value:    rng,
 					}
 				}
 			}
@@ -136,9 +140,13 @@ func (x *expr) export(environment string) esc.Expr {
 	case *symbolExpr:
 		value := make([]esc.PropertyAccessor, len(repr.property.accessors))
 		for i, a := range repr.property.accessors {
+			var rng esc.Range
+			if a.value != nil {
+				rng = a.value.def.defRange(environment)
+			}
 			value[i] = esc.PropertyAccessor{
 				Accessor: exportAccessor(a.accessor, environment),
-				Value:    a.value.def.defRange(environment),
+				Value:    rng,
 			}
 		}
 		ex.Symbol = value

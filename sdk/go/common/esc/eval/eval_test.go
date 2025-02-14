@@ -170,7 +170,7 @@ type echoRotator struct{}
 func (echoRotator) Schema() (*schema.Schema, *schema.Schema, *schema.Schema) {
 	inputSchema := schema.Record(schema.BuilderMap{
 		"next": schema.String(),
-	}).Schema()
+	}).RotateOnly("next").Schema()
 	stateSchema := schema.Object().Properties(schema.BuilderMap{
 		"current":  schema.String(),
 		"previous": schema.String(),
@@ -180,6 +180,10 @@ func (echoRotator) Schema() (*schema.Schema, *schema.Schema, *schema.Schema) {
 }
 
 func (echoRotator) Open(ctx context.Context, inputs, state map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	if !inputs["next"].Unknown && inputs["next"].Value != state["current"].Value {
+		return esc.Value{}, fmt.Errorf("oh no! inputs were evaluated outside of rotation")
+	}
+
 	return esc.NewValue(state), nil
 }
 
@@ -189,6 +193,9 @@ func (echoRotator) Rotate(ctx context.Context, inputs, state map[string]esc.Valu
 	}
 
 	next := inputs["next"]
+	if next.Unknown {
+		return esc.Value{}, fmt.Errorf("oh no! rotateOnly inputs were not evaluated during rotation")
+	}
 	current := state["current"]
 
 	return esc.NewValue(map[string]esc.Value{
