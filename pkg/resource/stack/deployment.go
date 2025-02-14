@@ -663,7 +663,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					// new *resource.Secret as the key.
 					if cachingCrypter, ok := dec.(*cachingSecretsManager); ok {
 						if !cipherOk {
-							encryptedText, err := enc.EncryptValue(ctx, plaintext)
+							encryptedText, err := cachingCrypter.EncryptValue(ctx, plaintext)
 							if err != nil {
 								return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
 							}
