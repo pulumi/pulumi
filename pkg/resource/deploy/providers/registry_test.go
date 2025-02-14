@@ -402,6 +402,8 @@ func TestCRUD(t *testing.T) {
 		// Create
 		create, err := r.Create(context.Background(), plugin.CreateRequest{
 			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
 			Properties: check.Properties,
 			Timeout:    timeout,
 		})
