@@ -105,12 +105,15 @@ type cachingSecretsManager struct {
 // secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
-	return &cachingSecretsManager{
-		manager:   manager,
-		encrypter: lazy.New(manager.Encrypter),
-		decrypter: lazy.New(manager.Decrypter),
-		cache:     make(map[*resource.Secret]cacheEntry),
+	sm := &cachingSecretsManager{
+		manager: manager,
+		cache:   make(map[*resource.Secret]cacheEntry),
 	}
+	if manager != nil {
+		sm.encrypter = lazy.New(manager.Encrypter)
+		sm.decrypter = lazy.New(manager.Decrypter)
+	}
+	return sm
 }
 
 func (csm *cachingSecretsManager) Type() string {
