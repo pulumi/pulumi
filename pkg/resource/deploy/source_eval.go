@@ -1382,7 +1382,10 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
 
-	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
+	if result == nil {
+		return nil, fmt.Errorf("ReadResource operation failed")
+	}
+
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
@@ -2363,6 +2366,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	if result == nil {
+		return nil, fmt.Errorf("RegisterResource operation failed")
+	}
+
 	if result != nil && result.State != nil && result.State.URN != "" {
 		// We've got a safe URN now, save the parent and transformations
 		func() {
@@ -2567,6 +2574,10 @@ func (g *registerResourceEvent) Done(result *RegisterResult) {
 	g.done <- result
 }
 
+func (g *registerResourceEvent) Reject(err error) {
+	g.done <- nil
+}
+
 type registerResourceOutputsEvent struct {
 	urn     resource.URN         // the URN to which this completion applies.
 	outputs resource.PropertyMap // an optional property bag for output properties.
@@ -2588,6 +2599,10 @@ func (g *registerResourceOutputsEvent) Outputs() resource.PropertyMap {
 func (g *registerResourceOutputsEvent) Done() {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
 	g.done <- true
+}
+
+func (g *registerResourceOutputsEvent) Reject(err error) {
+	g.done <- false
 }
 
 type readResourceEvent struct {
@@ -2621,6 +2636,10 @@ func (g *readResourceEvent) SourcePosition() string { return g.sourcePosition }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
+}
+
+func (g *readResourceEvent) Reject(err error) {
+	g.done <- nil
 }
 
 func generateTimeoutInSeconds(timeout string) (float64, error) {
