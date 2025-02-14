@@ -506,7 +506,13 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 	// clean-up the temp directory after we are done
 	defer os.RemoveAll(tempDir)
 
-	args := []string{"import", "--yes", "--skip-preview"}
+	args := []string{"import"}
+
+	if importOpts.PreviewOnly != nil && *importOpts.PreviewOnly {
+		args = append(args, "--preview-only")
+	} else {
+		args = append(args, "--yes", "--skip-preview")
+	}
 
 	if importOpts.Resources != nil {
 		importFilePath := filepath.Join(tempDir, "import.json")
@@ -530,6 +536,10 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		args = append(args, "--file", importFilePath)
 	}
 
+	if importOpts.Resources == nil && importOpts.ImportFile != nil {
+		args = append(args, "--file", *importOpts.ImportFile)
+	}
+
 	if importOpts.Protect != nil && !*importOpts.Protect {
 		// the protect flag is true by default so only add the flag if it's explicitly set to false
 		args = append(args, "--protect=false")
@@ -551,6 +561,7 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		}
 	}
 
+	// return ImportResult{}, nil
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
 		importOpts.ProgressStreams,      /* additionalOutputs */

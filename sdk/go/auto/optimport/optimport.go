@@ -96,6 +96,20 @@ func ErrorProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
+// PreviewOnly allows preview the import without executing the import
+func PreviewOnly(previewOnly bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PreviewOnly = &previewOnly
+	})
+}
+
+// ImportFile specifies the file to import resources from
+func ImportFile(importFile string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportFile = &importFile
+	})
+}
+
 type ImportResource struct {
 	// The ID of the resource to import. The format of the ID is determined by the resource's provider.
 	ID string `json:"id,omitempty"`
@@ -132,6 +146,8 @@ type Options struct {
 	Message              string
 	ProgressStreams      []io.Writer
 	ErrorProgressStreams []io.Writer
+	PreviewOnly          *bool
+	ImportFile           *string
 }
 
 type optionFunc func(*Options)
