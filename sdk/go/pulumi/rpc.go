@@ -103,8 +103,25 @@ func expandDependencies(ctx context.Context, deps []Resource) (map[URN]Resource,
 	return set, nil
 }
 
+// marshalOptions controls the options for marshaling inputs.
+type marshalOptions struct {
+	// Set to true to error if any Outputs are present; otherwise Outputs will be awaited.
+	ErrorOnOutput bool
+
+	// Set to true to exclude resource references from the set of dependencies identified
+	// during marshaling. This is useful for remote components (i.e. MLCs) where we want
+	// propertyDependencies to be empty for a property that only contains resource
+	// references.
+	ExcludeResourceRefsFromDeps bool
+}
+
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
 func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, error) {
+	return marshalInputsOptions(props, nil)
+}
+
+// marshalInputs turns resource property inputs into a map suitable for marshaling.
+func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyMap, map[string][]URN, []URN, error) {
 	deps := map[URN]struct{}{}
 	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
 
@@ -114,7 +131,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 
 	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
-		v, resourceDeps, err := marshalInput(pv, pt, true)
+		v, resourceDeps, err := marshalInputOptions(pv, pt, opts)
 		if err != nil {
 			return fmt.Errorf("awaiting input property %q: %w", pname, err)
 		}
@@ -208,14 +225,21 @@ const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, error) {
-	return marshalInputImpl(v, destType, await, false /*skipInputCheck*/)
+func marshalInput(v interface{}, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
+	return marshalInputOptions(v, destType, nil)
+}
+
+// marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
+func marshalInputOptions(
+	v interface{}, destType reflect.Type, opts *marshalOptions,
+) (resource.PropertyValue, []Resource, error) {
+	return marshalInputOptionsImpl(v, destType, opts, false /*skipInputCheck*/)
 }
 
 // marshalInputImpl marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInputImpl(v interface{},
+func marshalInputOptionsImpl(v interface{},
 	destType reflect.Type,
-	await,
+	opts *marshalOptions,
 	skipInputCheck bool,
 ) (resource.PropertyValue, []Resource, error) {
 	var deps []Resource
@@ -253,7 +277,7 @@ func marshalInputImpl(v interface{},
 
 			// If the input is an Output, await its value. The returned value is fully resolved.
 			if output, ok := input.(Output); ok {
-				if !await {
+				if opts != nil && opts.ErrorOnOutput {
 					return resource.PropertyValue{}, nil, fmt.Errorf(cannotAwaitFmt, output)
 				}
 
@@ -266,7 +290,7 @@ func marshalInputImpl(v interface{},
 				// Get the underlying value, if known.
 				var element resource.PropertyValue
 				if known {
-					element, _, err = marshalInputImpl(ov, destType, await, true /*skipInputCheck*/)
+					element, _, err = marshalInputOptionsImpl(ov, destType, opts, true /*skipInputCheck*/)
 					if err != nil {
 						return resource.PropertyValue{}, nil, err
 					}
@@ -338,7 +362,7 @@ func marshalInputImpl(v interface{},
 			if as := v.Assets(); as != nil {
 				assets = make(map[string]interface{})
 				for k, a := range as {
-					aa, _, err := marshalInput(a, anyType, await)
+					aa, _, err := marshalInputOptions(a, anyType, opts)
 					if err != nil {
 						return resource.PropertyValue{}, nil, err
 					}
@@ -351,7 +375,9 @@ func marshalInputImpl(v interface{},
 				URI:    v.URI(),
 			}), deps, nil
 		case Resource:
-			deps = append(deps, v)
+			if opts == nil || !opts.ExcludeResourceRefsFromDeps {
+				deps = append(deps, v)
+			}
 
 			urn, known, secretURN, err := v.URN().awaitURN(context.Background())
 			if err != nil {
@@ -425,7 +451,7 @@ func marshalInputImpl(v interface{},
 			arr := make([]resource.PropertyValue, 0, rv.Len())
 			for i := 0; i < rv.Len(); i++ {
 				elem := rv.Index(i)
-				e, d, err := marshalInput(elem.Interface(), destElem, await)
+				e, d, err := marshalInputOptions(elem.Interface(), destElem, opts)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -451,7 +477,7 @@ func marshalInputImpl(v interface{},
 			obj := resource.PropertyMap{}
 			for _, key := range rv.MapKeys() {
 				value := rv.MapIndex(key)
-				mv, d, err := marshalInput(value.Interface(), destElem, await)
+				mv, d, err := marshalInputOptions(value.Interface(), destElem, opts)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -473,7 +499,7 @@ func marshalInputImpl(v interface{},
 					continue
 				}
 
-				fv, d, err := marshalInput(rv.Field(i).Interface(), destField.Type, await)
+				fv, d, err := marshalInputOptions(rv.Field(i).Interface(), destField.Type, opts)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
