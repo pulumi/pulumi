@@ -652,13 +652,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 							"malformed secret value: one of `ciphertext` or `plaintext` must be supplied")
 					}
 
-					if plainOk {
-						encryptedText, err := enc.EncryptValue(ctx, plaintext)
-						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
-						}
-						ciphertext = encryptedText
-					} else {
+					if !plainOk {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
 							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
@@ -679,6 +673,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
 					// new *resource.Secret as the key.
 					if cachingCrypter, ok := dec.(*cachingCrypter); ok {
+						if !cipherOk {
+							encryptedText, err := enc.EncryptValue(ctx, plaintext)
+							if err != nil {
+								return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
+							}
+							ciphertext = encryptedText
+						}
 						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil
