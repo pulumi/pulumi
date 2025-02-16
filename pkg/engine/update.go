@@ -132,6 +132,9 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
+	// true if stack outputs should be registered even if a failure happened during the deployment.
+	RegisterStackOutputsOnError bool
+
 	// Specific resources to replace during an update operation.
 	ReplaceTargets deploy.UrnTargets
 

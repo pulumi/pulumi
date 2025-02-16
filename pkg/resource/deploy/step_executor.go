@@ -34,8 +34,7 @@ const (
 	infiniteWorkerID    = -2
 
 	// Utility constant for easy debugging.
-	stepExecutorLogLevel        = 4
-	registerStackOutputsOnError = false
+	stepExecutorLogLevel = 4
 )
 
 // StepApplyFailed is a sentinel error for errors that arise when step application fails.
@@ -397,7 +396,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 		se.erroredStepLock.Lock()
 		defer se.erroredStepLock.Unlock()
 		se.erroredSteps = append(se.erroredSteps, step)
-	} else if registerStackOutputsOnError {
+	} else if se.deployment.opts.RegisterStackOutputsOnError {
 		step.Fail()
 		se.skipUntilStackOutputsLock.Lock()
 		defer se.skipUntilStackOutputsLock.Unlock()
