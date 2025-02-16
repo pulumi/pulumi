@@ -50,6 +50,19 @@ type PackageDescriptor struct {
 	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
 }
 
+func (pd *PackageDescriptor) String() string {
+	version := "nil"
+	if pd.Version != nil {
+		version = pd.Version.String()
+	}
+
+	// If the package descriptor has a parameterization, write that information out first.
+	if pd.Parameterization != nil {
+		return fmt.Sprintf("%s@%s (%s@%s)", pd.Parameterization.Name, pd.Parameterization.Version, pd.Name, version)
+	}
+	return fmt.Sprintf("%s@%s", pd.Name, version)
+}
+
 type Loader interface {
 	// deprecated: use LoadPackageV2
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
