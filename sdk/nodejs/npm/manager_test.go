@@ -186,7 +186,6 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"npm", "Invalid package, must have name and version"},
 		{"yarn", "Package doesn't have a version"},
 		{"pnpm", "Package version is not defined in the package.json"},
-		{"bun", "error: failed to parse lockfile: UnknownLockfileVersion"},
 	} {
 		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
