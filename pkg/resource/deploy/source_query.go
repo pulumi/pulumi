@@ -240,6 +240,8 @@ func newQueryResourceMonitor(
 			}
 			resp, err := reg.Create(context.TODO(), plugin.CreateRequest{
 				URN:        urn,
+				Name:       urn.Name(),
+				Type:       urn.Type(),
 				Properties: checkResponse.Properties,
 				Timeout:    9999,
 			})

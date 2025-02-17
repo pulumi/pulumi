@@ -296,6 +296,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
 			URN:        s.URN(),
+			Name:       s.new.URN.Name(),
+			Type:       s.new.URN.Type(),
 			Properties: s.new.Inputs,
 			Timeout:    s.new.CustomTimeouts.Create,
 			Preview:    s.deployment.opts.DryRun,
@@ -869,6 +871,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
 		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
 			URN:    urn,
+			Name:   urn.Name(),
+			Type:   urn.Type(),
 			ID:     id,
 			Inputs: s.new.Inputs,
 			State:  s.new.Inputs,
@@ -1024,6 +1028,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	var initErrors []string
 	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
 		URN:    s.old.URN,
+		Name:   s.old.URN.Name(),
+		Type:   s.old.URN.Type(),
 		ID:     resourceID,
 		Inputs: s.old.Inputs,
 		State:  s.old.Outputs,
@@ -1278,8 +1284,10 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN: s.new.URN,
-			ID:  s.new.ID,
+			URN:  s.new.URN,
+			Name: s.new.URN.Name(),
+			Type: s.new.URN.Type(),
+			ID:   s.new.ID,
 		})
 		rst = read.Status
 
