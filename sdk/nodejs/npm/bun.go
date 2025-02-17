@@ -88,7 +88,7 @@ func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) (
 		return nil, err
 	}
 
-	// The other package managers have the ability to read the output from the pack command
+	// The other package managers have the ability to write the filename to the output of pack command
 	// but bun can't do that, so we read in the package.json and get the pack filename from that
 	packageJSONFilePath := filepath.Join(dir, "package.json")
 	defer os.Remove(packageJSONFilePath)
