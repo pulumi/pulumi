@@ -110,11 +110,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	sm := snap.SecretsManager
 	var enc config.Encrypter
 	if sm != nil {
-		e, err := sm.Encrypter()
-		if err != nil {
-			return nil, fmt.Errorf("getting encrypter for deployment: %w", err)
-		}
-		enc = e
+		enc = sm.Encrypter()
 	} else {
 		enc = config.NewPanicCrypter()
 	}
@@ -244,7 +240,6 @@ func DeserializeDeploymentV3(
 	}
 
 	var dec config.Decrypter
-	var enc config.Encrypter
 	if secretsManager == nil {
 		var ciphertexts []string
 		for _, res := range deployment.Resources {
@@ -258,12 +253,8 @@ func DeserializeDeploymentV3(
 			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found")
 		}
 		dec = config.NewPanicCrypter()
-		enc = config.NewPanicCrypter()
 	} else {
-		d, err := secretsManager.Decrypter()
-		if err != nil {
-			return nil, err
-		}
+		d := secretsManager.Decrypter()
 
 		// Do a first pass through state and collect all of the secrets that need decrypting.
 		// We will collect all secrets and decrypt them all at once, rather than just-in-time.
@@ -286,18 +277,12 @@ func DeserializeDeploymentV3(
 			cache[ciphertext] = decrypted[i]
 		}
 		dec = newMapDecrypter(d, cache)
-
-		e, err := secretsManager.Encrypter()
-		if err != nil {
-			return nil, err
-		}
-		enc = e
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
 	resources := slice.Prealloc[*resource.State](len(deployment.Resources))
 	for _, res := range deployment.Resources {
-		desres, err := DeserializeResource(res, dec, enc)
+		desres, err := DeserializeResource(res, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +291,7 @@ func DeserializeDeploymentV3(
 
 	ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
 	for _, op := range deployment.PendingOperations {
-		desop, err := DeserializeOperation(op, dec, enc)
+		desop, err := DeserializeOperation(op, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -496,7 +481,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
 			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
 			var ciphertext string
-			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+			if cachingCrypter, ok := enc.(*cachingSecretsManager); ok {
 				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
 			} else {
 				ciphertext, err = enc.EncryptValue(ctx, plaintext)
@@ -537,13 +522,13 @@ func collectCiphertexts(ciphertexts *[]string, prop interface{}) {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc config.Encrypter) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
-	inputs, err := DeserializeProperties(res.Inputs, dec, enc)
+	inputs, err := DeserializeProperties(res.Inputs, dec)
 	if err != nil {
 		return nil, err
 	}
-	outputs, err := DeserializeProperties(res.Outputs, dec, enc)
+	outputs, err := DeserializeProperties(res.Outputs, dec)
 	if err != nil {
 		return nil, err
 	}
@@ -570,9 +555,8 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 
 // DeserializeOperation hydrates a pending resource/operation pair.
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
-	enc config.Encrypter,
 ) (resource.Operation, error) {
-	res, err := DeserializeResource(op.Resource, dec, enc)
+	res, err := DeserializeResource(op.Resource, dec)
 	if err != nil {
 		return resource.Operation{}, err
 	}
@@ -581,11 +565,10 @@ func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
 func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
-	enc config.Encrypter,
 ) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
 	for k, prop := range props {
-		desprop, err := DeserializePropertyValue(prop, dec, enc)
+		desprop, err := DeserializePropertyValue(prop, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -596,7 +579,6 @@ func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
 
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v interface{}, dec config.Decrypter,
-	enc config.Encrypter,
 ) (resource.PropertyValue, error) {
 	ctx := context.TODO()
 	if v != nil {
@@ -613,7 +595,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 		case []interface{}:
 			arr := make([]resource.PropertyValue, len(w))
 			for i, elem := range w {
-				ev, err := DeserializePropertyValue(elem, dec, enc)
+				ev, err := DeserializePropertyValue(elem, dec)
 				if err != nil {
 					return resource.PropertyValue{}, err
 				}
@@ -621,7 +603,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			}
 			return resource.NewArrayProperty(arr), nil
 		case map[string]interface{}:
-			obj, err := DeserializeProperties(w, dec, enc)
+			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
@@ -652,13 +634,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 							"malformed secret value: one of `ciphertext` or `plaintext` must be supplied")
 					}
 
-					if plainOk {
-						encryptedText, err := enc.EncryptValue(ctx, plaintext)
-						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
-						}
-						ciphertext = encryptedText
-					} else {
+					if !plainOk {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
 							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
@@ -671,14 +647,21 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					if err := json.Unmarshal([]byte(plaintext), &elem); err != nil {
 						return resource.PropertyValue{}, err
 					}
-					ev, err := DeserializePropertyValue(elem, config.NopDecrypter, enc)
+					ev, err := DeserializePropertyValue(elem, config.NopDecrypter)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					prop := resource.MakeSecret(ev)
 					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
 					// new *resource.Secret as the key.
-					if cachingCrypter, ok := dec.(*cachingCrypter); ok {
+					if cachingCrypter, ok := dec.(*cachingSecretsManager); ok {
+						if !cipherOk {
+							encryptedText, err := cachingCrypter.EncryptValue(ctx, plaintext)
+							if err != nil {
+								return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
+							}
+							ciphertext = encryptedText
+						}
 						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil

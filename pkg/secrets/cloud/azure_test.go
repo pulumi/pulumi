@@ -85,11 +85,8 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
 
-	enc, err := manager.Encrypter()
-	require.NoError(t, err)
-
-	dec, err := manager.Decrypter()
-	require.NoError(t, err)
+	enc := manager.Encrypter()
+	dec := manager.Decrypter()
 
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
 	require.NoError(t, err)
@@ -112,11 +109,8 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
 	require.NoError(t, err)
 
-	enc, err := manager.Encrypter()
-	require.NoError(t, err)
-
-	dec, err := manager.Decrypter()
-	require.NoError(t, err)
+	enc := manager.Encrypter()
+	dec := manager.Decrypter()
 
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
 	require.NoError(t, err)
@@ -164,9 +158,7 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
 
-	enc, err := manager.Encrypter()
-	require.NoError(t, err)
-
+	enc := manager.Encrypter()
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
 	require.NoError(t, err)
 
@@ -174,9 +166,7 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 	newManager, err := NewCloudSecretsManagerFromState(manager.State())
 	require.NoError(t, err)
 
-	dec, err := newManager.Decrypter()
-	require.NoError(t, err)
-
+	dec := newManager.Decrypter()
 	plaintext, err := dec.DecryptValue(ctx, ciphertext)
 	require.NoError(t, err)
 	assert.Equal(t, "plaintext", plaintext)
@@ -199,11 +189,8 @@ func TestAzureKeyVaultAutoFix15329(t *testing.T) {
 	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
 	require.NoError(t, err)
 
-	enc, err := manager.Encrypter()
-	require.NoError(t, err)
-
-	dec, err := manager.Decrypter()
-	require.NoError(t, err)
+	enc := manager.Encrypter()
+	dec := manager.Decrypter()
 
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
 	require.NoError(t, err)

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // Modifies the environment
@@ -59,12 +60,10 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	fellback := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		DecrypterF: func() (config.Decrypter, error) {
-			fellback = true
-			return config.NopDecrypter, nil
+		DecrypterF: func() config.Decrypter {
+			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -79,7 +78,9 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	require.NoError(t, err)
+	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
 
 	// Assert.
 	//
@@ -91,7 +92,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 		t, SecretsManagerUnchanged, state,
 		"A mock decrypter should have no effect on the project stack",
 	)
-	assert.True(t, fellback, "Should have fallen back to the mock decrypter")
+	assert.Equal(t, plaintext, "defaulted plaintext", "Should have fallen back to the mock decrypter")
 }
 
 func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
@@ -100,7 +101,7 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
 		TypeF:      func() string { return passphrase.Type },
-		DecrypterF: func() (config.Decrypter, error) { return config.NopDecrypter, nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
 		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -130,12 +131,10 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	t.Parallel()
 
 	// Arrange.
-	defaulted := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		DecrypterF: func() (config.Decrypter, error) {
-			defaulted = true
-			return config.NopDecrypter, nil
+		DecrypterF: func() config.Decrypter {
+			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
 		},
 	}
 
@@ -152,7 +151,9 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	require.NoError(t, err)
+	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
 
 	// Assert.
 	assert.NoError(t, err)
@@ -160,19 +161,17 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
 	)
-	assert.True(t, defaulted, "Should have loaded the default decrypter")
+	assert.Equal(t, plaintext, "defaulted plaintext", "Should have loaded the default decrypter")
 }
 
 func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	fellback := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		EncrypterF: func() (config.Encrypter, error) {
-			fellback = true
-			return config.NopEncrypter, nil
+		EncrypterF: func() config.Encrypter {
+			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -187,7 +186,9 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	require.NoError(t, err)
+	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
 
 	// Assert.
 	//
@@ -199,7 +200,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 		t, SecretsManagerUnchanged, state,
 		"A mock encrypter should have no effect on the project stack",
 	)
-	assert.True(t, fellback, "Should have fallen back to the mock encrypter")
+	assert.Equal(t, ciphertext, "defaulted ciphertext", "Should have fallen back to the mock encrypter")
 }
 
 func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
@@ -208,7 +209,7 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
 		TypeF:      func() string { return passphrase.Type },
-		EncrypterF: func() (config.Encrypter, error) { return config.NopEncrypter, nil },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
 		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
@@ -238,12 +239,10 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	t.Parallel()
 
 	// Arrange.
-	defaulted := false
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
-		EncrypterF: func() (config.Encrypter, error) {
-			defaulted = true
-			return config.NopEncrypter, nil
+		EncrypterF: func() config.Encrypter {
+			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
 		},
 	}
 
@@ -260,7 +259,9 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	require.NoError(t, err)
+	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
 
 	// Assert.
 	assert.NoError(t, err)
@@ -268,5 +269,5 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
 	)
-	assert.True(t, defaulted, "Should have loaded the default encrypter")
+	assert.Equal(t, ciphertext, "defaulted ciphertext", "Should have used the default encrypter")
 }

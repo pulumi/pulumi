@@ -141,14 +141,8 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		decrypter, err := sm.Decrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack decrypter: %w", err)
-		}
-		encrypter, err := sm.Encrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack encrypter: %w", err)
-		}
+		decrypter := sm.Decrypter()
+		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().Name().String()
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
@@ -206,15 +200,8 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		if planFilePath != "" {
-			dec, err := sm.Decrypter()
-			if err != nil {
-				return err
-			}
-			enc, err := sm.Encrypter()
-			if err != nil {
-				return err
-			}
-			p, err := plan.Read(planFilePath, dec, enc)
+			dec := sm.Decrypter()
+			p, err := plan.Read(planFilePath, dec)
 			if err != nil {
 				return err
 			}
@@ -403,14 +390,8 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		decrypter, err := sm.Decrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack decrypter: %w", err)
-		}
-		encrypter, err := sm.Encrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack encrypter: %w", err)
-		}
+		decrypter := sm.Decrypter()
+		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().String()
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(

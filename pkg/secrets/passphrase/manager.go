@@ -107,14 +107,14 @@ func (sm *localSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
-func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
+func (sm *localSecretsManager) Decrypter() config.Decrypter {
 	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
-func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
+func (sm *localSecretsManager) Encrypter() config.Encrypter {
 	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
 func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {

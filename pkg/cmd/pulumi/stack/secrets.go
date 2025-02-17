@@ -178,10 +178,7 @@ func (l *SecretsManagerLoader) GetDecrypter(
 		return nil, SecretsManagerUnchanged, err
 	}
 
-	dec, err := sm.Decrypter()
-	if err != nil {
-		return nil, state, err
-	}
+	dec := sm.Decrypter()
 	return dec, state, nil
 }
 
@@ -196,10 +193,7 @@ func (l *SecretsManagerLoader) GetEncrypter(
 		return nil, SecretsManagerUnchanged, err
 	}
 
-	enc, err := sm.Encrypter()
-	if err != nil {
-		return nil, state, err
-	}
+	enc := sm.Encrypter()
 	return enc, state, nil
 }
 

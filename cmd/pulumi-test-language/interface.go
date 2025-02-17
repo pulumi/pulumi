@@ -669,8 +669,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Just use base64 "secrets" for these tests
 	sm := b64secrets.NewBase64SecretsManager()
-	dec, err := sm.Decrypter()
-	contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
+	dec := sm.Decrypter()
 
 	// Create a temp dir for the a diy backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)

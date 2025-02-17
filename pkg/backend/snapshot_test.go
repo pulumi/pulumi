@@ -160,7 +160,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 
 	// Model reading from state file
 	state := map[string]interface{}{"defaults": []interface{}{}}
-	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter, config.NopEncrypter)
+	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter)
 	assert.NoError(t, err)
 
 	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)

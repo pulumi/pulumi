@@ -48,7 +48,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			t.Parallel()
-			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
+			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -164,7 +164,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}
@@ -240,7 +240,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}

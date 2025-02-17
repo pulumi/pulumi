@@ -360,9 +360,9 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		// Deserialize the before and after properties, ignoring serialization
 		// errors as the other event types do (e.g., step events).
 		crypter := config.BlindingCrypter
-		before, err := stack.DeserializeProperties(p.Before, crypter, crypter)
+		before, err := stack.DeserializeProperties(p.Before, crypter)
 		contract.IgnoreError(err)
-		after, err := stack.DeserializeProperties(p.After, crypter, crypter)
+		after, err := stack.DeserializeProperties(p.After, crypter)
 		contract.IgnoreError(err)
 
 		event = engine.NewEvent(engine.PolicyRemediationEventPayload{
@@ -512,10 +512,10 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 	}
 
 	crypter := config.BlindingCrypter
-	inputs, err := stack.DeserializeProperties(md.Inputs, crypter, crypter)
+	inputs, err := stack.DeserializeProperties(md.Inputs, crypter)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.DeserializeProperties(md.Outputs, crypter, crypter)
+	outputs, err := stack.DeserializeProperties(md.Outputs, crypter)
 	contract.IgnoreError(err)
 
 	return &engine.StepEventStateMetadata{
