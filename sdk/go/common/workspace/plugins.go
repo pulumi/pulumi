@@ -1035,6 +1035,16 @@ func NewPluginSpec(
 			// Prefix the url with `git://`, so we can later recognize this as a git URL.
 			pluginDownloadURL = "git://" + u.String()
 			isGitPlugin = true
+			// If there is no version specified, we version the plugin ourselves. This way the user gets
+			// a consistent experience once the plugin is installed, and won't have any problems when the repo
+			// is updated.
+			if versionStr == "" {
+				var err error
+				version, err = gitutil.GetLatestTagOrHash(context.Background(), url)
+				if err != nil {
+					return PluginSpec{}, err
+				}
+			}
 		}
 	}
 

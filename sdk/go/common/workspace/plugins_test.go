@@ -1793,19 +1793,6 @@ func TestNewPluginSpec(t *testing.T) {
 			Error:  errors.New("VERSION must be valid semver: Invalid character(s) found in patch number \"0.0\""),
 		},
 		{
-			name:   "git plugin",
-			source: "github.com/pulumi/pulumi-example",
-			kind:   apitype.ResourcePlugin,
-			ExpectedPluginSpec: PluginSpec{
-				Name:              "github.com_pulumi_pulumi-example.git",
-				Kind:              apitype.ResourcePlugin,
-				Version:           nil,
-				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
-				PluginDir:         "",
-				Checksums:         nil,
-			},
-		},
-		{
 			name:   "git plugin with version",
 			source: "github.com/pulumi/pulumi-example@v1.0.0",
 			kind:   apitype.ResourcePlugin,
@@ -1836,19 +1823,6 @@ func TestNewPluginSpec(t *testing.T) {
 			source: "github.com/pulumi/pulumi-example@abcdxyz",
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: abcdxyz"),
-		},
-		{
-			name:   "https prefixed git plugin",
-			source: "https://github.com/pulumi/pulumi-example",
-			kind:   apitype.ResourcePlugin,
-			ExpectedPluginSpec: PluginSpec{
-				Name:              "github.com_pulumi_pulumi-example.git",
-				Kind:              apitype.ResourcePlugin,
-				Version:           nil,
-				PluginDownloadURL: "git://github.com/pulumi/pulumi-example",
-				PluginDir:         "",
-				Checksums:         nil,
-			},
 		},
 		{
 			name:   "https prefixed git plugin with version",
@@ -1884,12 +1858,13 @@ func TestNewPluginSpec(t *testing.T) {
 		},
 		{
 			name:   "https:// prefixed with no . in URL",
-			source: "https://localhost/test/repo",
+			source: "https://localhost/test/repo@v1.0.0",
 			kind:   apitype.ResourcePlugin,
 			ExpectedPluginSpec: PluginSpec{
 				Name:              "localhost_test_repo.git",
 				Kind:              apitype.ResourcePlugin,
 				PluginDownloadURL: "git://localhost/test/repo",
+				Version:           &v1,
 			},
 		},
 		{
