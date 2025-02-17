@@ -217,7 +217,8 @@ func writeLockFile(t *testing.T, dir string, packageManager string) {
 	case "pnpm":
 		writeFile(t, filepath.Join(dir, "pnpm-lock.yaml"), "lockfileVersion: '6.0'")
 	case "bun":
-		writeFile(t, filepath.Join(dir, "bun.lock"), "{\"lockfileVersion\": 1, \"workspaces\": {\"\": {\"name\": \"test-package\",},}}")
+		writeFile(t, filepath.Join(dir, "bun.lock"), "{\"lockfileVersion\": 1, \"workspaces\": "+
+			"{\"\": {\"name\": \"test-package\",},}}")
 	}
 }
 
