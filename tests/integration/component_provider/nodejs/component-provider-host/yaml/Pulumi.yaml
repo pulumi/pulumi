@@ -10,7 +10,10 @@ resources:
     type: nodejs-component-provider:index:MyComponent
     properties:
       aNumber: 123
-      anOptionalString: "hello"
+      anOptionalString: "Bonnie"
       aBooleanInput: true
 outputs:
   urn: ${comp.urn}
+  aNumberOutput: ${comp.aNumberOutput}
+  anOptionalStringOutput: ${comp.anOptionalStringOutput}
+  aBooleanOutput: ${comp.aBooleanOutput}

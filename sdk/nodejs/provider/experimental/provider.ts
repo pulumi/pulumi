@@ -14,13 +14,27 @@
 
 import { readFileSync } from "fs";
 import * as path from "path";
-import { ComponentResourceOptions } from "../../resource";
+import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
-import { Inputs } from "../../output";
+import { Inputs, Input, Output } from "../../output";
 import { main } from "../server";
 import { generateSchema } from "./schema";
 import { Analyzer } from "./analyzer";
 
+type OutputsToInputs<T> = {
+    [K in keyof T]: T[K] extends Output<infer U> ? Input<U> : never;
+};
+
+function getInputsFromOutputs<T extends ComponentResource>(resource: T): OutputsToInputs<T> {
+    const result: any = {};
+    for (const key of Object.keys(resource)) {
+        const value = resource[key as keyof T];
+        if (Output.isInstance(value)) {
+            result[key] = value;
+        }
+    }
+    return result as OutputsToInputs<T>;
+}
 export class ComponentProvider implements Provider {
     private packageJSON: Record<string, any>;
     private path: string;
@@ -78,7 +92,7 @@ export class ComponentProvider implements Provider {
         const instance = new ComponentClass(name, inputs, options);
         return {
             urn: instance.urn,
-            state: {},
+            state: getInputsFromOutputs(instance),
         };
     }
 }

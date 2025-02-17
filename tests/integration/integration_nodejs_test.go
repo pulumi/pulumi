@@ -2487,9 +2487,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"anOptionalStringOutput": {
 				"type": "string"
+			},
+			"aBooleanOutput": {
+				"type": "boolean"
 			}
 		},
-		"required": ["aNumberOutput"]
+		"required": ["aBooleanOutput", "aNumberOutput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2528,6 +2531,9 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, tokens.Type("nodejs-component-provider:index:MyComponent"), urn.Type())
 					require.Equal(t, "comp", urn.Name())
+					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
+					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
+					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
 				},
 			})
 		})
