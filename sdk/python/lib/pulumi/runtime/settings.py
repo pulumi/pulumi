@@ -53,7 +53,7 @@ class Settings:
     def __init__(
         self,
         project: Optional[str],
-        project_root: Optional[str],
+        root_directory: Optional[str],
         stack: Optional[str],
         monitor: Optional[Union[str, Any]] = None,
         engine: Optional[Union[str, Any]] = None,
@@ -68,7 +68,7 @@ class Settings:
 
         # Save the metadata information.
         self.project = project
-        self.project_root = project_root
+        self.root_directory = root_directory
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
@@ -127,7 +127,7 @@ class Settings:
     def project(self) -> Optional[str]: ...
 
     @contextproperty
-    def project_root(self) -> Optional[str]: ...
+    def root_directory(self) -> Optional[str]: ...
 
     @contextproperty
     def stack(self) -> Optional[str]: ...
@@ -152,7 +152,12 @@ class Settings:
 
 
 # default to "empty" settings.
-SETTINGS = Settings(stack="stack", project="project", project_root="project_root", organization="organization")
+SETTINGS = Settings(
+    stack="stack",
+    project="project",
+    root_directory="root_directory",
+    organization="organization",
+)
 
 
 def configure(settings: Settings):
@@ -197,11 +202,11 @@ def get_project() -> str:
     return SETTINGS.project
 
 
-def get_project_root() -> str:
+def get_root_directory() -> str:
     """
     Returns the project root, the location of Pulumi.yaml.
     """
-    return SETTINGS.project_root
+    return SETTINGS.root_directory
 
 
 def _set_project(v: Optional[str]):

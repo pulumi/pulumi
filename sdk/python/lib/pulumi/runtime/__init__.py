@@ -40,7 +40,7 @@ from .settings import (
     is_dry_run,
     reset_options,
     get_root_resource,
-    get_project_root,
+    get_root_directory,
 )
 
 from .stack import (
@@ -90,7 +90,7 @@ __all__ = [
     "is_dry_run",
     "reset_options",
     "get_root_resource",
-    "get_project_root",
+    "get_root_directory",
     # stack
     "run_in_stack",
     "register_stack_transformation",

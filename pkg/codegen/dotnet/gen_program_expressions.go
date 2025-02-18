@@ -673,8 +673,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "Deployment.Instance.OrganizationName")
 	case "cwd":
 		g.Fgenf(w, "Directory.GetCurrentDirectory()")
-	case "projectRoot":
-		g.genProjectRoot(w)
+	case "rootDirectory":
+		g.genRootDirectory(w)
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -705,8 +705,8 @@ func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	}
 }
 
-func (g *generator) genProjectRoot(w io.Writer) {
-	g.Fgenf(w, "Pulumi.Deployment.Instance.ProjectRoot")
+func (g *generator) genRootDirectory(w io.Writer) {
+	g.Fgenf(w, "Pulumi.Deployment.Instance.RootDirectory")
 }
 
 func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression, valueType string) {

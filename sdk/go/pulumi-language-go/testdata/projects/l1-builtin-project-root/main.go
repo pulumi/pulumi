@@ -6,7 +6,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("projectRootOutput", pulumi.String(ctx.ProjectRoot()))
+		ctx.Export("rootDirectoryOutput", pulumi.String(ctx.RootDirectory()))
 		return nil
 	})
 }

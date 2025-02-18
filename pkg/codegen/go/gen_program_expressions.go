@@ -428,8 +428,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
 	case "getOutput":
 		g.Fgenf(w, "%v.GetOutput(pulumi.String(%v))", expr.Args[0], expr.Args[1])
-	case "projectRoot":
-		g.genProjectRoot(w)
+	case "rootDirectory":
+		g.genRootDirectory(w)
 	default:
 		// toJSON and readDir are reduced away, shouldn't see them here
 		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
@@ -469,8 +469,8 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 	return strings.TrimSuffix(ty, "Args") + "OutputArgs", nil
 }
 
-func (g *generator) genProjectRoot(w io.Writer) {
-	g.Fgenf(w, "ctx.ProjectRoot()")
+func (g *generator) genRootDirectory(w io.Writer) {
+	g.Fgenf(w, "ctx.RootDirectory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

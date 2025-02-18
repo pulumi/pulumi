@@ -143,7 +143,7 @@ type RunFunc func(ctx *Context) error
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
 	Project           string
-	ProjectRoot       string
+	RootDirectory     string
 	Stack             string
 	Config            map[string]string
 	ConfigSecretKeys  []string
@@ -182,7 +182,7 @@ func getEnvInfo() RunInfo {
 	return RunInfo{
 		Organization:     os.Getenv(EnvOrganization),
 		Project:          os.Getenv(EnvProject),
-		ProjectRoot:      os.Getenv(EnvPulumiProjectRoot),
+		RootDirectory:    os.Getenv(EnvPulumiRootDirectory),
 		Stack:            os.Getenv(EnvStack),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
@@ -199,8 +199,8 @@ const (
 	EnvOrganization = "PULUMI_ORGANIZATION"
 	// EnvProject is the envvar used to read the current Pulumi project name.
 	EnvProject = "PULUMI_PROJECT"
-	// EnvPulumiProjectRoot is the envvar used to read the current Pulumi project root, location of Pulumi.yaml.
-	EnvPulumiProjectRoot = "PULUMI_PROJECT"
+	// EnvPulumiRootDirectory is the envvar used to read the current Pulumi project root, location of Pulumi.yaml.
+	EnvPulumiRootDirectory = "PULUMI_ROOT_DIRECTORY"
 	// EnvStack is the envvar used to read the current Pulumi stack name.
 	EnvStack = "PULUMI_STACK"
 	// EnvConfig is the envvar used to read the current Pulumi configuration variables.

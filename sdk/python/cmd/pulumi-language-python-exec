@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
     ap = argparse.ArgumentParser(description='Execute a Pulumi Python program')
     ap.add_argument('--project', help='Set the project name')
-    ap.add_argument('--project_root', help='Set the project root, location of Pulumi.yaml')
+    ap.add_argument('--root_directory', help='Set the project root directory, location of Pulumi.yaml')
     ap.add_argument('--stack', help='Set the stack name')
     ap.add_argument('--parallel', help='Run P resource operations in parallel (default=none)')
     ap.add_argument('--dry_run', help='Simulate resource changes, but without making them')
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             monitor=args.monitor,
             engine=args.engine,
             project=args.project,
-            project_root=args.project_root,
+            root_directory=args.root_directory,
             stack=args.stack,
             parallel=int(args.parallel),
             dry_run=args.dry_run == "true",

@@ -52,7 +52,7 @@ export interface Options {
     /**
      * The root directory of the current project. This is the location of the Pulumi.yaml file.
      */
-    readonly projectRoot?: string;
+    readonly rootDirectory?: string;
 
     /**
      * The name of the current stack being deployed into.
@@ -355,11 +355,11 @@ export function getProject(): string {
 }
 
 /**
-  * Get the project root directory.  This is the location of the Pulumi.yaml file.
-  */
-export function getProjectRoot(): string {
-  const { projectRoot } = options();
-  return projectRoot || "";
+ * Get the project root directory.  This is the location of the Pulumi.yaml file.
+ */
+export function getRootDirectory(): string {
+    const { rootDirectory: rootDirectory } = options();
+    return rootDirectory || "";
 }
 
 /**

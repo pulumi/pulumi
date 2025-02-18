@@ -43,7 +43,7 @@ func init() {
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 1, "expected 1 outputs")
-					AssertPropertyMapMember(l, outputs, "projectRootOutput", resource.NewStringProperty(projectDirectory))
+					AssertPropertyMapMember(l, outputs, "rootDirectoryOutput", resource.NewStringProperty(projectDirectory))
 				},
 			},
 		},

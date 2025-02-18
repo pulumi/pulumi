@@ -1087,7 +1087,7 @@ func (host *pythonLanguageHost) constructArguments(req *pulumirpc.RunRequest) []
 	maybeAppendArg("monitor", req.GetMonitorAddress())
 	maybeAppendArg("engine", host.engineAddress)
 	maybeAppendArg("project", req.GetProject())
-	maybeAppendArg("project_root", req.GetInfo().RootDirectory)
+	maybeAppendArg("root_directory", req.GetInfo().RootDirectory)
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())
 	maybeAppendArg("dry_run", strconv.FormatBool(req.GetDryRun()))

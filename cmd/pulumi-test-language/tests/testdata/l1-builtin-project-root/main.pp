@@ -1,3 +1,3 @@
-output "projectRootOutput" {
-  value = projectRoot()
+output "rootDirectoryOutput" {
+  value = rootDirectory()
 }
