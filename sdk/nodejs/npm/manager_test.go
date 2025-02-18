@@ -207,6 +207,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest
 func TestBunPackNonExistentPackageJSON(t *testing.T) {
 	dir := t.TempDir()
 	stderr := new(bytes.Buffer)
