@@ -2478,9 +2478,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aBooleanInput": {
 				"type": "boolean"
+			},
+			"aComplexTypeInput": {
+				"$ref": "#/types/nodejs-component-provider:index:Complex"
 			}
 		},
-		"requiredInputs": ["aBooleanInput", "aNumber"],
+		"requiredInputs": ["aBooleanInput", "aComplexTypeInput", "aNumber"],
 		"properties": {
 			"aNumberOutput": {
 				"type": "number"
@@ -2490,9 +2493,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aBooleanOutput": {
 				"type": "boolean"
+			},
+			"aComplexTypeOutput": {
+				"$ref": "#/types/nodejs-component-provider:index:Complex"
 			}
 		},
-		"required": ["aBooleanOutput", "aNumberOutput"]
+		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2500,6 +2506,37 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]interface{})
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	require.Equal(t, expected, component)
+
+	expectedTypesJSON := `{
+		"nodejs-component-provider:index:Complex": {
+			"properties": {
+				"aNumber": {
+					"type": "number",
+					"plain": true
+				},
+				"nestedComplexType": {
+					"$ref": "#/types/nodejs-component-provider:index:Nested",
+					"plain": true
+				}
+			},
+			"type": "object",
+			"required": ["aNumber", "nestedComplexType"]
+		},
+		"nodejs-component-provider:index:Nested": {
+			"properties": {
+				"aNumber": {
+					"type": "number",
+					"plain": true
+				}
+			},
+			"type": "object",
+			"required": ["aNumber"]
+		}
+	}`
+	expectedTypes := make(map[string]interface{})
+	types := schema["types"].(map[string]interface{})
+	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
+	require.Equal(t, expectedTypes, types)
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
@@ -2534,6 +2571,18 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
+					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
+					if runtime == "python" {
+						// The output is stored in the stack as a plain object,
+						// but that means for Python the keys are snake_case.
+						require.Equal(t, float64(14), aComplexTypeOutput["a_number"].(float64))
+						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]interface{})
+						require.Equal(t, float64(18), nestedComplexType["a_number"].(float64))
+					} else {
+						require.Equal(t, float64(14), aComplexTypeOutput["aNumber"].(float64))
+						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]interface{})
+						require.Equal(t, float64(18), nestedComplexType["aNumber"].(float64))
+					}
 				},
 			})
 		})

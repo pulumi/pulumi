@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ComponentDefinition, TypeDefinition } from "./analyzer";
+import { ComponentDefinition, TypeDefinition, PropertyDefinition } from "./analyzer";
 
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
 /**
+ * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#type
+ */
+export type Type = ({ type: PropertyType } | { $ref: string }) & {
+    items?: Type;
+    additionalProperties?: Type;
+    plain?: boolean;
+};
+
+/**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#property
  */
-export interface Property {
-    type: PropertyType;
-    items?: Property;
-    additionalProperties?: Property;
-    ref?: string;
-    plain?: boolean;
+export type Property = Type & {
     description?: string;
-}
+};
 
 /**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#objecttype
@@ -69,7 +73,7 @@ export interface PackageSpec {
 export function generateSchema(
     packageJSON: Record<string, any>,
     components: Record<string, ComponentDefinition>,
-    typeDefinitons: Record<string, TypeDefinition>,
+    typeDefinitions: Record<string, TypeDefinition>,
 ): PackageSpec {
     const providerName = packageJSON.name;
     const result: PackageSpec = {
@@ -106,23 +110,26 @@ export function generateSchema(
             type: "object",
             isComponent: true,
             inputProperties: component.inputs,
-            requiredInputs: Object.entries(component.inputs)
-                .filter(([_, def]) => !def.optional)
-                .map(([propName, _]) => propName)
-                .sort(),
+            requiredInputs: required(component.inputs),
             properties: component.outputs,
-            required: Object.entries(component.outputs)
-                .filter(([_, def]) => !def.optional)
-                .map(([propName, _]) => propName)
-                .sort(),
+            required: required(component.outputs),
         };
     }
 
-    for (const [name, type] of Object.entries(typeDefinitons)) {
+    for (const [name, type] of Object.entries(typeDefinitions)) {
         result.types[`${providerName}:index:${name}`] = {
             type: "object",
+            properties: type.properties,
+            required: required(type.properties),
         };
     }
 
     return result;
+}
+
+function required(properties: Record<string, PropertyDefinition>): string[] {
+    return Object.entries(properties)
+        .filter(([_, def]) => !def.optional)
+        .map(([propName, _]) => propName)
+        .sort();
 }

@@ -12,8 +12,13 @@ resources:
       aNumber: 123
       anOptionalString: "Bonnie"
       aBooleanInput: true
+      aComplexTypeInput:
+        aNumber: 7
+        nestedComplexType:
+          aNumber: 9
 outputs:
   urn: ${comp.urn}
   aNumberOutput: ${comp.aNumberOutput}
   anOptionalStringOutput: ${comp.anOptionalStringOutput}
   aBooleanOutput: ${comp.aBooleanOutput}
+  aComplexTypeOutput: ${comp.aComplexTypeOutput}

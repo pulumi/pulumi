@@ -28,8 +28,7 @@ const ts: typeof typescript = require("../../typescript-shim");
 
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
-export type PropertyDefinition = {
-    type: PropertyType;
+export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
     optional?: boolean;
     plain?: boolean;
 };
@@ -42,25 +41,28 @@ export type ComponentDefinition = {
 
 export type TypeDefinition = {
     name: string;
+    properties: Record<string, PropertyDefinition>;
 };
 
 export type AnalyzeResult = {
     components: Record<string, ComponentDefinition>;
-    typeDefinitons: Record<string, TypeDefinition>;
+    typeDefinitions: Record<string, TypeDefinition>;
 };
 
 export class Analyzer {
     private path: string;
+    private providerName: string;
     private checker: typescript.TypeChecker;
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
-    private typeDefinitons: Record<string, TypeDefinition> = {};
+    private typeDefinitions: Record<string, TypeDefinition> = {};
 
-    constructor(dir: string) {
+    constructor(dir: string, providerName: string) {
         const configPath = `${dir}/tsconfig.json`;
         const config = ts.readConfigFile(configPath, ts.sys.readFile);
         const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
         this.path = dir;
+        this.providerName = providerName;
         this.program = ts.createProgram({
             rootNames: parsedConfig.fileNames,
             options: parsedConfig.options,
@@ -78,7 +80,7 @@ export class Analyzer {
         }
         return {
             components: this.components,
-            typeDefinitons: this.typeDefinitons,
+            typeDefinitions: this.typeDefinitions,
         };
     }
 
@@ -144,14 +146,14 @@ export class Analyzer {
 
         let inputs: Record<string, PropertyDefinition> = {};
         if (argsSymbol.members) {
-            inputs = this.analyzeSymbolTable(argsSymbol.members, argsParam);
+            inputs = this.analyzeSymbols(symbolTableToSymbols(argsSymbol.members), argsParam);
         }
 
         let outputs: Record<string, PropertyDefinition> = {};
         const classType = this.checker.getTypeAtLocation(node);
         const classSymbol = classType.getSymbol();
         if (classSymbol?.members) {
-            outputs = this.analyzeSymbolTable(classSymbol.members, node);
+            outputs = this.analyzeSymbols(symbolTableToSymbols(classSymbol.members), node);
         }
 
         return {
@@ -179,12 +181,12 @@ export class Analyzer {
         });
     }
 
-    private analyzeSymbolTable(
-        members: typescript.SymbolTable,
+    private analyzeSymbols(
+        symbols: typescript.Symbol[],
         location: typescript.Node,
     ): Record<string, PropertyDefinition> {
         const properties: Record<string, PropertyDefinition> = {};
-        members.forEach((member) => {
+        symbols.forEach((member) => {
             if (!isPropertyDeclaration(member)) {
                 return;
             }
@@ -199,11 +201,16 @@ export class Analyzer {
         // defined on the symbol, not the type.
         const optional = isOptional(symbol);
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
-        return this.analyzeType(propType, optional, true);
+        return this.analyzeType(propType, location, optional, true);
     }
 
-    private analyzeType(type: typescript.Type, optional: boolean = false, plain: boolean = true): PropertyDefinition {
-        if (isPlain(type)) {
+    private analyzeType(
+        type: typescript.Type,
+        location: typescript.Node,
+        optional: boolean = false,
+        plain: boolean = true,
+    ): PropertyDefinition {
+        if (isSimpleType(type)) {
             const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
             if (optional) {
                 prop.optional = true;
@@ -224,14 +231,46 @@ export class Analyzer {
                 throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}`);
             }
             const innerType = this.unwrapTypeReference(base);
-            return this.analyzeType(innerType, optional, false /* plain */);
+            return this.analyzeType(innerType, location, optional, false /* plain */);
         } else if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
             const innerType = this.unwrapTypeReference(type);
-            return this.analyzeType(innerType, optional, false /* plain */);
+            return this.analyzeType(innerType, location, optional, false /* plain */);
+        } else if (type.isClassOrInterface()) {
+            // This is a complex type, create a typedef and then reference it in
+            // the PropertyDefinition.
+            const name = type.getSymbol()?.escapedName as string | undefined;
+            if (!name) {
+                throw new Error(`Class or interface '${this.checker.typeToString(type)}}' has no name`);
+            }
+            if (this.typeDefinitions[name]) {
+                // Type already exists, just reference it and we're done.
+                const refProp: PropertyDefinition = { $ref: `#/types/${this.providerName}:index:${name}` };
+                if (optional) {
+                    refProp.optional = true;
+                }
+                if (plain) {
+                    refProp.plain = true;
+                }
+                return refProp;
+            }
+            // Immediately add an empty type definition, so that it can be
+            // referenced recursively, then analyze the properties.
+            this.typeDefinitions[name] = { name, properties: {} };
+            const properties = this.analyzeSymbols(type.getProperties(), location);
+            this.typeDefinitions[name].properties = properties;
+            const $ref = `#/types/${this.providerName}:index:${name}`;
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
         } else if (type.isIntersection()) {
@@ -277,7 +316,7 @@ function isBoolean(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
 }
 
-function isPlain(type: typescript.Type): boolean {
+function isSimpleType(type: typescript.Type): boolean {
     return isNumber(type) || isString(type) || isBoolean(type);
 }
 
@@ -364,4 +403,12 @@ function tsTypeToPropertyType(type: typescript.Type): PropertyType {
     }
 
     throw new Error(`Unsupported type '${type.symbol?.name}'`);
+}
+
+function symbolTableToSymbols(table: typescript.SymbolTable): typescript.Symbol[] {
+    const symbols: typescript.Symbol[] = [];
+    table.forEach((symbol) => {
+        symbols.push(symbol);
+    });
+    return symbols;
 }

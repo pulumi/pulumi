@@ -34,7 +34,7 @@ describe("Analyzer", function () {
 
     it("infers simple types", async function () {
         const dir = path.join(__dirname, "testdata", "simple-types");
-        const analyzer = new Analyzer(dir);
+        const analyzer = new Analyzer(dir, "provider");
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -55,7 +55,7 @@ describe("Analyzer", function () {
 
     it("infers optional types", async function () {
         const dir = path.join(__dirname, "testdata", "optional-types");
-        const analyzer = new Analyzer(dir);
+        const analyzer = new Analyzer(dir, "provider");
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -72,7 +72,7 @@ describe("Analyzer", function () {
 
     it("infers input types", async function () {
         const dir = path.join(__dirname, "testdata", "input-types");
-        const analyzer = new Analyzer(dir);
+        const analyzer = new Analyzer(dir, "provider");
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -86,9 +86,88 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers complex types", async function () {
+        const dir = path.join(__dirname, "testdata", "complex-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    anInterfaceType: { $ref: "#/types/provider:index:MyInterfaceType", plain: true },
+                    aClassType: { $ref: "#/types/provider:index:MyClassType", plain: true },
+                },
+                outputs: {
+                    anInterfaceTypeOutput: { $ref: "#/types/provider:index:MyInterfaceType" },
+                    aClassTypeOutput: { $ref: "#/types/provider:index:MyClassType" },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            MyInterfaceType: {
+                name: "MyInterfaceType",
+                properties: { aNumber: { type: "number", plain: true } },
+            },
+            MyClassType: {
+                name: "MyClassType",
+                properties: { aString: { type: "string", plain: true } },
+            },
+        });
+    });
+
+    it("infers self recursive complex types", async function () {
+        const dir = path.join(__dirname, "testdata", "recursive-complex-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    theSelfRecursiveTypeInput: { $ref: "#/types/provider:index:SelfRecursive" },
+                },
+                outputs: {
+                    theSelfRecursiveTypeOutput: { $ref: "#/types/provider:index:SelfRecursive" },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            SelfRecursive: {
+                name: "SelfRecursive",
+                properties: { self: { $ref: "#/types/provider:index:SelfRecursive", plain: true } },
+            },
+        });
+    });
+
+    it("infers mutually recursive complex types", async function () {
+        const dir = path.join(__dirname, "testdata", "mutually-recursive-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    typeAInput: { $ref: "#/types/provider:index:TypeA" },
+                },
+                outputs: {
+                    typeBOutput: { $ref: "#/types/provider:index:TypeB" },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            TypeA: {
+                name: "TypeA",
+                properties: { b: { $ref: "#/types/provider:index:TypeB", plain: true } },
+            },
+            TypeB: {
+                name: "TypeB",
+                properties: { a: { $ref: "#/types/provider:index:TypeA", plain: true } },
+            },
+        });
+    });
+
     it("rejects bad args", async function () {
         const dir = path.join(__dirname, "testdata", "bad-args");
-        const analyzer = new Analyzer(dir);
+        const analyzer = new Analyzer(dir, "provider");
         assert.throws(
             () => analyzer.analyze(),
             /Error: Component 'MyComponent' constructor 'args' parameter must be an interface/,

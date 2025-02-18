@@ -67,12 +67,12 @@ export class ComponentProvider implements Provider {
         this.packageJSON = JSON.parse(packStr);
         this.version = this.packageJSON.version;
         this.path = absDir;
-        this.analyzer = new Analyzer(this.path);
+        this.analyzer = new Analyzer(this.path, this.packageJSON.name);
     }
 
     async getSchema(): Promise<string> {
-        const { components, typeDefinitons } = this.analyzer.analyze();
-        const schema = generateSchema(this.packageJSON, components, typeDefinitons);
+        const { components, typeDefinitions } = this.analyzer.analyze();
+        const schema = generateSchema(this.packageJSON, components, typeDefinitions);
         return JSON.stringify(schema);
     }
 
