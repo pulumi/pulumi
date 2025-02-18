@@ -34,7 +34,9 @@ which you can do as follows:
    typically accomplished by adding an appropriate invocation of `mise activate`
    to your shell's configuration file (e.g. `.bashrc`, `.zshrc`, etc.).
 3. Restart your shell session so that your configuration changes take effect.
-4. `cd` into the root of this repository. You should find that the tools you
+4. `cd` into the root of this repository. Run `mise trust` to allow the
+   repository to specify the required tools, all of which are listed in the
+   top-level `.mise.toml` file. After this, you should find that the tools you
    need are now available in your `PATH`. If not, running `mise install` should
    sort things out.
 
