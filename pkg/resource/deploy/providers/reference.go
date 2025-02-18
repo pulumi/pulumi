@@ -131,6 +131,9 @@ func NewReference(urn resource.URN, id resource.ID) (Reference, error) {
 	if err := validateURN(urn); err != nil {
 		return Reference{}, err
 	}
+	if id == "" {
+		id = UnknownID
+	}
 	return Reference{urn: urn, id: id}, nil
 }
 

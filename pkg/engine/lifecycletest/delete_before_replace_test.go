@@ -318,17 +318,12 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	var provURN, urnA, urnB resource.URN
-	var provID resource.ID
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		var resp *deploytest.RegisterResourceResponse
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
-		provURN, provID = resp.URN, resp.ID
+		provURN = resp.URN
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-		provRef, err := providers.NewReference(provURN, provID)
+		provRef, err := providers.NewReference(provURN, resp.ID)
 		assert.NoError(t, err)
 		provA := provRef.String()
 

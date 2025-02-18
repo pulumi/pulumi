@@ -80,13 +80,8 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
-		provID := resp.ID
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -320,13 +315,8 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{Inputs: providerInputs})
 		assert.NoError(t, err)
-		provID := resp.ID
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -469,12 +459,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 			})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		if registerResource {
@@ -565,12 +550,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -709,12 +689,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			deploytest.ResourceOptions{Inputs: providerInputs})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1045,12 +1020,7 @@ func TestProviderVersionDefault(t *testing.T) {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1093,12 +1063,7 @@ func TestProviderVersionOption(t *testing.T) {
 			})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1143,12 +1108,7 @@ func TestProviderVersionInput(t *testing.T) {
 			})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1194,12 +1154,7 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 			})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1238,12 +1193,7 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1679,12 +1629,7 @@ func TestComponentProvidersInheritance(t *testing.T) {
 		resp, err := monitor.RegisterResource("pulumi:providers:pkg", "provA", true)
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		respA, err := monitor.RegisterResource("my_component", "resA", false, deploytest.ResourceOptions{
@@ -1860,12 +1805,7 @@ func TestInternalFiltered(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{

@@ -321,12 +321,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			PackageRef: extRef,
 		})
 		assert.NoError(t, err)
-		provID := prov.ID
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-		provRef, err := providers.NewReference(prov.URN, provID)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resD", true, deploytest.ResourceOptions{
@@ -590,12 +586,8 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			PackageRef: extRef,
 		})
 		assert.NoError(t, err)
-		provID := prov.ID
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-		provRef, err := providers.NewReference(prov.URN, provID)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resC", true, deploytest.ResourceOptions{

@@ -162,7 +162,6 @@ func (noopOutputsEvent) Done()                         {}
 type importer struct {
 	deployment *Deployment
 	executor   *stepExecutor
-	preview    bool
 }
 
 func (i *importer) executeSerial(ctx context.Context, steps ...Step) bool {
@@ -342,12 +341,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	// Update the URN to reference map.
 	for _, s := range steps {
 		res := s.Res()
-		id := res.ID
-		if i.preview {
-			id = providers.UnknownID
-		}
-		ref, err := providers.NewReference(res.URN, id)
-		contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, id)
+		ref, err := providers.NewReference(res.URN, res.ID)
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, res.ID)
 		urnToReference[res.URN] = ref.String()
 	}
 
