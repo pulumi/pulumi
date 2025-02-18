@@ -17,6 +17,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -52,6 +53,7 @@ func TestPlaintextSecure(t *testing.T) {
 		"hello": NewPlaintext([]Plaintext{
 			NewPlaintext(true),
 			NewPlaintext(int64(42)),
+			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
 			NewSecurePlaintext("moon"),
@@ -63,6 +65,7 @@ func TestPlaintextSecure(t *testing.T) {
 		"hello": NewPlaintext([]Plaintext{
 			NewPlaintext(true),
 			NewPlaintext(int64(42)),
+			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
 		}),
@@ -77,6 +80,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 		"hello": NewPlaintext([]Plaintext{
 			NewPlaintext(true),
 			NewPlaintext(int64(42)),
+			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
 			NewSecurePlaintext("moon"),
@@ -89,6 +93,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 		"hello": newObject([]object{
 			newObject(true),
 			newObject(int64(42)),
+			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
 			newSecureObject("moon"),
@@ -104,6 +109,7 @@ func TestPlaintextRoundtrip(t *testing.T) {
 		"hello": NewPlaintext([]Plaintext{
 			NewPlaintext(true),
 			NewPlaintext(int64(42)),
+			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
 			NewSecurePlaintext("moon"),
@@ -114,7 +120,20 @@ func TestPlaintextRoundtrip(t *testing.T) {
 
 	actual, err := value.Decrypt(context.Background(), NopDecrypter)
 	require.NoError(t, err)
-	assert.Equal(t, plain, actual)
+
+	rt := NewPlaintext(map[string]Plaintext{
+		"hello": NewPlaintext([]Plaintext{
+			NewPlaintext(true),
+			NewPlaintext(int64(42)),
+			// uint64 can't roundtrip through JSON
+			NewPlaintext(float64(math.MaxUint64)),
+			NewPlaintext(float64(3.14159)),
+			NewPlaintext("world"),
+			NewSecurePlaintext("moon"),
+		}),
+	})
+
+	assert.Equal(t, rt, actual)
 }
 
 func TestMarshalPlaintext(t *testing.T) {

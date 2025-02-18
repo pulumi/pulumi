@@ -1777,7 +1777,7 @@ type decrypterMock struct {
 	DecryptValueF func(
 		ctx context.Context, ciphertext string) (string, error)
 	BulkDecryptF func(
-		ctx context.Context, ciphertexts []string) (map[string]string, error)
+		ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
 var _ config.Decrypter = (*decrypterMock)(nil)
@@ -1789,7 +1789,7 @@ func (d *decrypterMock) DecryptValue(ctx context.Context, ciphertext string) (st
 	panic("unimplemented")
 }
 
-func (d *decrypterMock) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (d *decrypterMock) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	if d.BulkDecryptF != nil {
 		return d.BulkDecryptF(ctx, ciphertexts)
 	}

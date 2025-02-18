@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,52 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 		return fmt.Sprintf(`%sfunction mimeType(path: string): string {
 %s    throw new Error("mimeType not implemented, use the mime or mime-types package instead");
 %s}`, indent, indent, indent), true
+	case "try":
+		// During code generation, it's possible that we'll generate expression code that is "too safe" as arguments to try.
+		// E.g. given some PCL code `try(a.b.c, "fallback")`, where perhaps `a.b` is not defined, we'd ideally generate
+		// `a.b.c` in TypeScript, which will throw and hit the `catch` block. However, depending on the inferred optionality
+		// of the expressions involved, we may generate e.g. `a?.b?.c`, which instead of throwing will return `undefined`.
+		// We thus check for this explicitly in our helper. This should be safe, since `undefined` is _not_ strictly equal
+		// to `null`, and `null` is the "official no-value" value for PCL.
+		return fmt.Sprintf(`%[1]sfunction try_(
+%[1]s    ...fns: Array<() => unknown>
+%[1]s): any {
+%[1]s    for (const fn of fns) {
+%[1]s        try {
+%[1]s            const result = fn();
+%[1]s            if (result === undefined) {
+%[1]s                continue;
+%[1]s            }
+%[1]s            return result;
+%[1]s        } catch (e) {
+%[1]s            continue;
+%[1]s        }
+%[1]s    }
+%[1]s    return undefined;
+%[1]s}
+`,
+			indent,
+		), true
+	case "can":
+		// Much like try, but instead of returning the result only returns true or
+		// false if the one argument has no error.  The "too safe" problem
+		// described above exists for can as well.
+		return fmt.Sprintf(`%[1]sfunction can_(
+%[1]s    fn: () => unknown
+%[1]s): boolean {
+%[1]s    try {
+%[1]s        const result = fn();
+%[1]s        if (result === undefined) {
+%[1]s            return false;
+%[1]s        }
+%[1]s        return true;
+%[1]s    } catch (e) {
+%[1]s        return false;
+%[1]s    }
+%[1]s}
+`,
+			indent,
+		), true
 	default:
 		return "", false
 	}

@@ -628,7 +628,7 @@ func NewNewCmd() *cobra.Command {
 					logging.Warningf("could not list templates: %v", err)
 					return err
 				}
-				available, _ := templatesToOptionArrayAndMap(templates, true)
+				available, _ := templatesToOptionArrayAndMap(templates)
 				fmt.Println("")
 				fmt.Println("Available Templates:")
 				for _, t := range available {

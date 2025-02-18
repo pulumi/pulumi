@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
+import collections
 import importlib.util
 import inspect
 import sys
+import typing
+from collections import abc
 from collections.abc import Awaitable
 from pathlib import Path
 from types import GenericAlias, ModuleType
-from typing import (
+from typing import (  # type: ignore
     Any,
     ForwardRef,
     Optional,
     Union,
+    _GenericAlias,  # type: ignore
+    _SpecialGenericAlias,  # type: ignore
     cast,
     get_args,
     get_origin,
 )
 
+from ...asset import Archive, Asset
 from ...output import Output
 from ...resource import ComponentResource, Resource
 from .component import (
@@ -40,6 +47,17 @@ from .metadata import Metadata
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
+
+# Types for parameterized generics got a clean public API in 3.9 with
+# https://peps.python.org/pep-0585/.
+# The modern types like `dict[str, int]` use `GenericAlias`, but some
+# decprecated types in the `typing` modoule use `typing._GenericAlias` or
+# `typing._SpecialGenericAlias`.
+_GenericAliasT = (  # type: ignore
+    _GenericAlias,
+    _SpecialGenericAlias,
+    GenericAlias,
+)
 
 
 class TypeNotFoundError(Exception):
@@ -69,6 +87,15 @@ class InvalidMapKeyError(Exception):
         self.typ = typ
         super().__init__(
             f"map keys must be strings, got '{key_type.__name__}' for '{typ.__name__}.{property_name}'"
+        )
+
+
+class InvalidListTypeError(Exception):
+    def __init__(self, arg: type, typ: type, property_name: str):
+        self.property = property_name
+        self.typ = typ
+        super().__init__(
+            f"list types must specify a type argument, got '{arg.__name__}' for '{typ.__name__}.{property_name}'"
         )
 
 
@@ -104,12 +131,22 @@ class Analyzer:
     we have unresolved forward references, the analyser resolves these by
     iterating over the Python modules in the same manner as it does to find the
     components.
+
+    The type and property descriptions are inferred from the docstrings of the
+    Python classes and their attributes. For classes, the docstrings are
+    available on type.__doc__. Unfortunately, the docstrings of the class
+    attributes are not present at runtime. We have to parse the source code to
+    retrieve them, which means we are doing two passes over all the Python files
+    in the module: one pass of runtime inspection to determine the types, and a
+    second pass of source code parsing to get the docstrings.
     """
 
     def __init__(self, metadata: Metadata):
         self.metadata = metadata
         self.type_definitions: dict[str, TypeDefinition] = {}
         self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
+        self.docstrings: dict[str, dict[str, str]] = {}
+        """A map of component/type names to a map of property -> docstring."""
 
     def analyze(
         self, module_path: Path
@@ -118,6 +155,8 @@ class Analyzer:
         Analyze walks the directory at `path` and searches for
         ComponentResources in Python files.
         """
+        self.docstrings = self.find_docstrings(module_path)
+
         components: dict[str, ComponentDefinition] = {}
         for file_path in self.iter(module_path):
             new_components = self.analyze_file(file_path, module_path)
@@ -283,6 +322,7 @@ class Analyzer:
                 # wrapped in a pulumi.Input or pulumi.Output, in which case this
                 # isn't plain.
                 plain=plain,
+                description=self.get_docstring(typ.__name__, name),
             )
         elif is_input(arg):
             return self.analyze_property(
@@ -298,12 +338,15 @@ class Analyzer:
             )
         elif is_list(arg):
             args = get_args(arg)
+            if len(args) != 1:
+                raise InvalidListTypeError(arg, typ, name)
             items = self.analyze_property(args[0], typ, name, plain=True)
             return PropertyDefinition(
                 type=PropertyType.ARRAY,
                 optional=optional,
                 plain=plain,
                 items=items,
+                description=self.get_docstring(typ.__name__, name),
             )
         elif is_dict(arg):
             args = get_args(arg)
@@ -319,21 +362,23 @@ class Analyzer:
                     name,
                     plain=True,
                 ),
+                description=self.get_docstring(typ.__name__, name),
             )
         elif is_forward_ref(arg):
-            name = cast(ForwardRef, arg).__forward_arg__
-            type_def = self.type_definitions.get(name)
+            ref_name = cast(ForwardRef, arg).__forward_arg__
+            type_def = self.type_definitions.get(ref_name)
             # Forward references are assumed to be in the type's module.
             module = typ.__module__
             if type_def:
                 if type_def.module != module:
                     raise DuplicateTypeError(module, type_def)
                 # Forward ref to a type we saw before, return a reference to it.
-                ref = f"#/types/{self.metadata.name}:index:{name}"
+                ref = f"#/types/{self.metadata.name}:index:{ref_name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
                     plain=plain,
+                    description=self.get_docstring(typ.__name__, name),
                 )
             else:
                 # Forward ref to a type we haven't seen yet. We create an empty
@@ -342,20 +387,34 @@ class Analyzer:
                 # forward references, so that we can come back to it after the
                 # analysis is done.
                 type_def = TypeDefinition(
-                    name=name,
+                    name=ref_name,
                     type="object",
                     properties={},
                     properties_mapping={},
                     module=module,
+                    description=self.get_docstring(typ.__name__, name),
                 )
-                self.unresolved_forward_refs[name] = type_def
+                self.unresolved_forward_refs[ref_name] = type_def
                 self.type_definitions[type_def.name] = type_def
                 ref = f"#/types/{self.metadata.name}:index:{type_def.name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
                     plain=plain,
+                    description=self.get_docstring(typ.__name__, name),
                 )
+        elif is_asset(arg):
+            return PropertyDefinition(
+                ref="pulumi.json#/Asset",
+                optional=optional,
+                description=self.get_docstring(typ.__name__, name),
+            )
+        elif is_archive(arg):
+            return PropertyDefinition(
+                ref="pulumi.json#/Archive",
+                optional=optional,
+                description=self.get_docstring(typ.__name__, name),
+            )
         elif is_resource(arg):
             # TODO: https://github.com/pulumi/pulumi/issues/18484
             raise Exception(
@@ -365,11 +424,11 @@ class Analyzer:
             # We have a custom type, analyze it recursively. Immediately add the
             # type definition to the list of type definitions, before calling
             # `analyze_type`, so we can resolve recursive forward references.
-            name = arg.__name__
-            type_def = self.type_definitions.get(name)
+            type_name = arg.__name__
+            type_def = self.type_definitions.get(type_name)
             if not type_def:
                 type_def = TypeDefinition(
-                    name=name,
+                    name=type_name,
                     type="object",
                     properties={},
                     properties_mapping={},
@@ -390,9 +449,74 @@ class Analyzer:
                 ref=ref,
                 optional=optional,
                 plain=plain,
+                description=self.get_docstring(typ.__name__, name),
             )
         else:
             raise ValueError(f"unsupported type {arg}")
+
+    def find_docstrings(self, path: Path) -> dict[str, dict[str, str]]:
+        """
+        find_docstrings returns the docstrings for all the attributes of all
+        the classes in `self.path.
+
+        Unfortunately, only class docstrings are available at runtime, the
+        docstrings of the attributes are not available. Instead of relying on
+        runtime information we parse the source code to extract the docstrings.
+        """
+        docs: dict[str, dict[str, str]] = {}
+        for file_path in self.iter(path):
+            if file_path.suffix != ".py":
+                continue
+            with open(file_path) as f:
+                src = f.read()
+                t = ast.parse(src)
+                docs.update(self.find_docstrings_in_module(t))
+        return docs
+
+    def find_docstrings_in_module(self, mod: ast.Module) -> dict[str, dict[str, str]]:
+        """
+        Find the docstrings for all the class attributes in the module. The
+        return dict has an entry for each class name, with a dict of attribute
+        name to docstring.
+
+        We look for all the (top level) class definitions in the module, and for
+        each class we look for attribute assignments with type annotations. If
+        we find such an assignment, we look for a string constant right after
+        the assignment, which we assume is the docstring for the attribute.
+        """
+        docs: dict[str, dict[str, str]] = {}
+        for stmt in mod.body:
+            if isinstance(stmt, ast.ClassDef):
+                class_name = stmt.name
+                docs[class_name] = {}
+                it = iter(stmt.body)
+                while True:
+                    try:
+                        node = next(it)
+                        # Look for an assignment with a type annotation
+                        if isinstance(node, ast.AnnAssign):
+                            if isinstance(node.target, ast.Name):
+                                name = node.target.id
+                                # Look for a docstring right after the assignment
+                                node = next(it)
+                                if (
+                                    isinstance(node, ast.Expr)
+                                    and isinstance(node.value, ast.Constant)
+                                    and isinstance(node.value.value, str)
+                                ):
+                                    docs[class_name][name] = node.value.value
+                                else:
+                                    # Push back the node if it's not a docstring
+                                    it = iter([node] + list(it))
+                    except StopIteration:
+                        break
+        return docs
+
+    def get_docstring(self, type_name: str, property_name: str) -> Optional[str]:
+        typ = self.docstrings.get(type_name)
+        if typ:
+            return typ.get(property_name)
+        return None
 
 
 def is_in_venv(path: Path):
@@ -506,21 +630,55 @@ def is_builtin(typ: type) -> bool:
 
 
 def is_list(typ: type) -> bool:
-    if isinstance(typ, GenericAlias):
-        typ = get_origin(typ)
-    return typ is list
+    t: Optional[type] = typ
+    if isinstance(typ, _GenericAliasT):
+        t = get_origin(typ)
+    return t in (
+        list,
+        abc.Sequence,
+        abc.MutableSequence,
+        collections.UserList,
+        typing.List,
+        typing.Sequence,
+        typing.MutableSequence,
+    )
 
 
 def is_dict(typ: type) -> bool:
-    if isinstance(typ, GenericAlias):
-        typ = get_origin(typ)
-    return typ is dict
+    t: Optional[type] = typ
+    if isinstance(typ, _GenericAliasT):
+        t = get_origin(typ)
+    return t in (
+        dict,
+        abc.Mapping,
+        abc.MutableMapping,
+        collections.defaultdict,
+        collections.OrderedDict,
+        collections.UserDict,
+        typing.Dict,
+        typing.Mapping,
+        typing.MutableMapping,
+        typing.DefaultDict,
+        typing.OrderedDict,
+    )
 
 
 def is_resource(typ: type) -> bool:
-    if Resource in typ.__bases__:
-        return True
-    for base in typ.__bases__:
-        if is_resource(base):
-            return True
-    return False
+    try:
+        return issubclass(typ, Resource)
+    except TypeError:
+        return False
+
+
+def is_asset(typ: type) -> bool:
+    try:
+        return issubclass(typ, Asset)
+    except TypeError:
+        return False
+
+
+def is_archive(typ: type) -> bool:
+    try:
+        return issubclass(typ, Archive)
+    except TypeError:
+        return False

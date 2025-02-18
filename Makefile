@@ -76,6 +76,9 @@ build:: build_proto build_display_wasm .make/ensure/go
 build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
 
+build_local:: build_proto .make/ensure/go
+	export GOBIN=$(shell realpath ./bin) && make dist
+
 install:: .make/ensure/phony .make/ensure/go
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 

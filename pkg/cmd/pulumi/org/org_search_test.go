@@ -168,3 +168,7 @@ func (f *stubHTTPBackend) NaturalLanguageSearch(
 func (f *stubHTTPBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
 	return f.CurrentUserF()
 }
+
+func (*stubHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
+	return apitype.Capabilities{}
+}

@@ -107,14 +107,14 @@ func (sm *localSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
-func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
+func (sm *localSecretsManager) Decrypter() config.Decrypter {
 	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
-func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
+func (sm *localSecretsManager) Encrypter() config.Encrypter {
 	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
-	return sm.crypter, nil
+	return sm.crypter
 }
 
 func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
@@ -427,7 +427,7 @@ func (ec *errorCrypter) DecryptValue(ctx context.Context, _ string) (string, err
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) (map[string]string, error) {
+func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) ([]string, error) {
 	return nil, errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }

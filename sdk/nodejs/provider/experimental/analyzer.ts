@@ -1,0 +1,367 @@
+// Copyright 2025-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// The typescript import is used for type-checking only. Do not reference it in the emitted code.
+// Use `ts` instead to access typescript library functions.
+import typescript from "typescript";
+import * as path from "path";
+import { ComponentResource } from "../../resource";
+
+// Use the TypeScript shim which allows us to fallback to a vendored version of
+// TypeScript if the user has not installed it.
+// TODO: we should consider requiring the user to install TypeScript and not
+// rely on the shim. In any case, we should add tests for providers with
+// different versions of TypeScript in their dependencies, to ensure the
+// analyzer code is compatible with all of them.
+const ts: typeof typescript = require("../../typescript-shim");
+
+export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
+
+export type PropertyDefinition = {
+    type: PropertyType;
+    optional?: boolean;
+    plain?: boolean;
+};
+
+export type ComponentDefinition = {
+    name: string;
+    inputs: Record<string, PropertyDefinition>;
+    outputs: Record<string, PropertyDefinition>;
+};
+
+export type TypeDefinition = {
+    name: string;
+};
+
+export type AnalyzeResult = {
+    components: Record<string, ComponentDefinition>;
+    typeDefinitons: Record<string, TypeDefinition>;
+};
+
+export class Analyzer {
+    private path: string;
+    private checker: typescript.TypeChecker;
+    private program: typescript.Program;
+    private components: Record<string, ComponentDefinition> = {};
+    private typeDefinitons: Record<string, TypeDefinition> = {};
+
+    constructor(dir: string) {
+        const configPath = `${dir}/tsconfig.json`;
+        const config = ts.readConfigFile(configPath, ts.sys.readFile);
+        const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
+        this.path = dir;
+        this.program = ts.createProgram({
+            rootNames: parsedConfig.fileNames,
+            options: parsedConfig.options,
+        });
+        this.checker = this.program.getTypeChecker();
+    }
+
+    public analyze(): AnalyzeResult {
+        const sourceFiles = this.program.getSourceFiles();
+        for (const sourceFile of sourceFiles) {
+            if (sourceFile.fileName.includes("node_modules") || sourceFile.fileName.endsWith(".d.ts")) {
+                continue;
+            }
+            this.analyseFile(sourceFile);
+        }
+        return {
+            components: this.components,
+            typeDefinitons: this.typeDefinitons,
+        };
+    }
+
+    public async findComponent(name: string): Promise<typeof ComponentResource> {
+        const sourceFiles = this.program.getSourceFiles();
+        for (const sourceFile of sourceFiles) {
+            if (sourceFile.fileName.includes("node_modules") || sourceFile.fileName.endsWith(".d.ts")) {
+                continue;
+            }
+            for (const node of sourceFile.statements) {
+                if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
+                    if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name?.text === name) {
+                        try {
+                            const module = await import(sourceFile.fileName);
+                            return module[name];
+                        } catch (e) {
+                            throw new Error(`Failed to import component '${name}': ${e}`);
+                        }
+                    }
+                }
+            }
+        }
+        throw new Error(`Component '${name}' not found`);
+    }
+
+    private analyseFile(sourceFile: typescript.SourceFile) {
+        // We intentionally visit only the top-level nodes, because we only
+        // support components defined at the top-level. We have no way to
+        // instantiate components defined inside functions or methods.
+        sourceFile.forEachChild((node) => {
+            if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
+                const component = this.analyzeComponent(node);
+                this.components[component.name] = component;
+            }
+        });
+    }
+
+    private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
+        const componentName = node.name?.text;
+
+        // We expect exactly 1 constructor, and it must have and 'args'
+        // parameter that has an interface type.
+        const constructors = node.members.filter((member: typescript.ClassElement) =>
+            ts.isConstructorDeclaration(member),
+        ) as typescript.ConstructorDeclaration[];
+        if (constructors.length !== 1) {
+            throw new Error(`Component '${componentName}' must have exactly one constructor`);
+        }
+        const argsParam = constructors?.[0].parameters.find((param: typescript.ParameterDeclaration) => {
+            return ts.isIdentifier(param.name) && param.name.escapedText === "args";
+        });
+        if (!argsParam) {
+            throw new Error(`Component '${componentName}' constructor must have an 'args' parameter`);
+        }
+        if (!argsParam.type) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must have a type`);
+        }
+        const args = this.checker.getTypeAtLocation(argsParam.type);
+        const argsSymbol = args.getSymbol();
+        if (!argsSymbol || !isInterface(argsSymbol)) {
+            throw new Error(`Component '${componentName}' constructor 'args' parameter must be an interface`);
+        }
+
+        let inputs: Record<string, PropertyDefinition> = {};
+        if (argsSymbol.members) {
+            inputs = this.analyzeSymbolTable(argsSymbol.members, argsParam);
+        }
+
+        let outputs: Record<string, PropertyDefinition> = {};
+        const classType = this.checker.getTypeAtLocation(node);
+        const classSymbol = classType.getSymbol();
+        if (classSymbol?.members) {
+            outputs = this.analyzeSymbolTable(classSymbol.members, node);
+        }
+
+        return {
+            name: componentName!,
+            inputs,
+            outputs,
+        };
+    }
+
+    private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
+        if (!node.heritageClauses) {
+            return false;
+        }
+
+        return node.heritageClauses.some((clause) => {
+            return clause.types.some((clauseNode) => {
+                const type = this.checker.getTypeAtLocation(clauseNode);
+                const symbol = type.getSymbol();
+                const matchesName = symbol?.escapedName === "ComponentResource";
+                const sourceFile = symbol?.declarations?.[0].getSourceFile();
+                const matchesSourceFile =
+                    sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
+                return matchesName && matchesSourceFile;
+            });
+        });
+    }
+
+    private analyzeSymbolTable(
+        members: typescript.SymbolTable,
+        location: typescript.Node,
+    ): Record<string, PropertyDefinition> {
+        const properties: Record<string, PropertyDefinition> = {};
+        members.forEach((member) => {
+            if (!isPropertyDeclaration(member)) {
+                return;
+            }
+            const name = member.escapedName as string;
+            properties[name] = this.analyzeSymbol(member, location);
+        });
+        return properties;
+    }
+
+    private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
+        // Check if the property is optional, e.g.: myProp?: string; This is
+        // defined on the symbol, not the type.
+        const optional = isOptional(symbol);
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        return this.analyzeType(propType, optional, true);
+    }
+
+    private analyzeType(type: typescript.Type, optional: boolean = false, plain: boolean = true): PropertyDefinition {
+        if (isPlain(type)) {
+            const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
+        } else if (isInput(type)) {
+            // Grab the promise type from the `T | Promise<T> | OutputInstance<T>`
+            // union, and get the type reference `T` from there. With that we
+            // can recursively analyze the type, passing through the optional
+            // flag. The type can now not be plain anymore, since it's in an
+            // input.
+            const base = (type as typescript.UnionType)?.types?.find(isPromise);
+            if (!base) {
+                // unreachable due to the isInput check
+                throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}`);
+            }
+            const innerType = this.unwrapTypeReference(base);
+            return this.analyzeType(innerType, optional, false /* plain */);
+        } else if (isOutput(type)) {
+            type = unwrapOutputIntersection(type);
+            // Grab the inner type of the OutputInstance<T> type, and then
+            // recurse, passing through the optional flag. The type can now not
+            // be plain anymore, since it's wrapped in an output.
+            const innerType = this.unwrapTypeReference(type);
+            return this.analyzeType(innerType, optional, false /* plain */);
+        } else if (type.isUnion()) {
+            throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
+        } else if (type.isIntersection()) {
+            throw new Error(`Intersection types are not supported, got '${this.checker.typeToString(type)}`);
+        }
+
+        throw new Error(`Unsupported type '${this.checker.typeToString(type)}'`);
+    }
+
+    unwrapTypeReference(type: typescript.Type): typescript.Type {
+        const typeArguments = (type as typescript.TypeReference).typeArguments;
+        if (!typeArguments || typeArguments.length !== 1) {
+            throw new Error(
+                `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+            );
+        }
+        const innerType = typeArguments[0];
+        return innerType;
+    }
+}
+
+function isOptional(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
+}
+
+function isInterface(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Interface) === ts.SymbolFlags.Interface;
+}
+
+function isPropertyDeclaration(symbol: typescript.Symbol): boolean {
+    return (symbol.flags & ts.SymbolFlags.Property) === ts.SymbolFlags.Property;
+}
+
+function isNumber(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number;
+}
+
+function isString(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.String) === ts.TypeFlags.String;
+}
+
+function isBoolean(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
+}
+
+function isPlain(type: typescript.Type): boolean {
+    return isNumber(type) || isString(type) || isBoolean(type);
+}
+
+function isPromise(type: typescript.Type): boolean {
+    if (!(type.flags & ts.TypeFlags.Object)) {
+        return false;
+    }
+    const symbol = (type as typescript.ObjectType).symbol;
+    if (!symbol) {
+        return false;
+    }
+    return symbol.name === "Promise";
+}
+
+function isOutput(type: typescript.Type): boolean {
+    // In sdk/nodejs/output.ts we define Output as:
+    //
+    //   export type Output<T> = OutputInstance<T> & Lifted<T>;
+    //
+    // Depending on T, we might have an OutputInstance<T> because Lifted<T>
+    // does not add anything to the resulting type, or we get the
+    // intersection. In the latter case, we want to find the
+    // OutputInstance<T> within the intersection.
+    if (type.isIntersection()) {
+        for (const t of type.types) {
+            if (isOutput(t)) {
+                return true;
+            }
+        }
+    }
+    const symbol = type.getSymbol();
+    const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
+    const sourceFile = symbol?.declarations?.[0].getSourceFile();
+    const matchesSourceFile =
+        sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
+    return !!matchesName && !!matchesSourceFile;
+}
+
+function unwrapOutputIntersection(type: typescript.Type): typescript.Type {
+    // Output<T> is an intersection type `OutputInstance<T> & Lifted<T>`, and
+    // we want to find the `OutputInstance<T>` within the intersection for
+    // further analysis.
+    // Depending on `T`, TypeScript sometimes infers Output<T> directly as
+    // `OutputInstance<T>`, dropping the `Lifted<T>` part.
+    if (type.isIntersection()) {
+        for (const t of type.types) {
+            if (isOutput(t)) {
+                return t;
+            }
+        }
+    }
+    return type;
+}
+
+/**
+ * An input type is a union of Output<T>, Promise<T>, and T.
+ */
+function isInput(type: typescript.Type): boolean {
+    if (!type.isUnion()) {
+        return false;
+    }
+    let hasOutput = false;
+    let hasPromise = false;
+    let hasOther = false;
+    for (const t of type.types) {
+        if (isOutput(t)) {
+            hasOutput = true;
+        } else if (isPromise(t)) {
+            hasPromise = true;
+        } else {
+            hasOther = true;
+        }
+    }
+    return hasOutput && hasPromise && hasOther;
+}
+
+function tsTypeToPropertyType(type: typescript.Type): PropertyType {
+    if (isNumber(type)) {
+        return "number";
+    } else if (isString(type)) {
+        return "string";
+    } else if (isBoolean(type)) {
+        return "boolean";
+    }
+
+    throw new Error(`Unsupported type '${type.symbol?.name}'`);
+}

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -556,7 +556,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "process.cwd()")
 	case "getOutput":
 		g.Fgenf(w, "%s.getOutput(%v)", expr.Args[0], expr.Args[1])
-
+	case "try":
+		g.genTry(w, expr.Args)
+	case "can":
+		g.genCan(w, expr.Args)
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -564,6 +567,55 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.genNYI(w, "FunctionCallExpression: %v (%v)", expr.Name, rng)
 	}
+}
+
+// genTry generates code for a `try` expression. Each argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `try_` utility function chooses. Since the whole point of `try` is to
+// support unsafe expressions that may fail, we also disable type checking for the arguments. This results in an
+// expression of the form:
+//
+//	try_(
+//	    // @ts-ignore
+//	    () => <arg1>,
+//	    // @ts-ignore
+//	    () => <arg2>,
+//	    ...
+//	)
+func (g *generator) genTry(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+
+	g.Fprintf(w, "try_(")
+	for i, arg := range args {
+		g.Indented(func() {
+			g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
+			g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
+		})
+		if i < len(args)-1 {
+			g.Fgen(w, ",")
+		} else {
+			g.Fgen(w, "\n")
+		}
+	}
+	g.Fprintf(w, "%s)", g.Indent)
+}
+
+// genCan generates code for a `can` expression.  Much like try, it attempts to
+// run the code by transforming it into a closure to prevent its evaluation
+// which may fail until the `can_` utility function chooses to run it (catching the potential error).
+// We also disable type checking for the arguments, resulting in expression of the form:
+//
+//	can_(
+//	    // @ts-ignore
+//	    () => <arg1
+//	)
+//
+// which returns a bool indicating if the closure ran successfully.
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+
+	arg := args[0]
+	g.Fprintf(w, "// @ts-ignore")
+	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

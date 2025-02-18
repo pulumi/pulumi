@@ -18,6 +18,7 @@ module.exports = {
         "tests/sxs_ts_test/*.ts",
         "tests/runtime/testdata/closure-tests/**/*.ts",
         "tests/runtime/testdata/closure-tests/**/*.js",
+        "tests/provider/experimental/testdata/**/*.ts",
         "vendor/",
     ],
     rules: {

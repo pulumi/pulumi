@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 func TestMain(m *testing.M) {
@@ -30,6 +31,8 @@ func TestMain(m *testing.M) {
 		fmt.Printf("error setting env var '%s': %v\n", disableCheckpointBackups, err)
 		os.Exit(1)
 	}
+
+	testutil.SetupBinaryRebuilding()
 
 	code := m.Run()
 	os.Exit(code)

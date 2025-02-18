@@ -31,7 +31,7 @@ func NewBase64SecretsManager() secrets.Manager {
 
 type manager struct{}
 
-func (m *manager) Type() string                         { return Type }
-func (m *manager) State() json.RawMessage               { return nil }
-func (m *manager) Encrypter() (config.Encrypter, error) { return config.Base64Crypter, nil }
-func (m *manager) Decrypter() (config.Decrypter, error) { return config.Base64Crypter, nil }
+func (m *manager) Type() string                { return Type }
+func (m *manager) State() json.RawMessage      { return nil }
+func (m *manager) Encrypter() config.Encrypter { return config.Base64Crypter }
+func (m *manager) Decrypter() config.Decrypter { return config.Base64Crypter }

@@ -256,7 +256,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 	for _, s := range cases.Resources {
 		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
-			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
+			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -438,7 +438,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}
@@ -529,7 +529,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}
@@ -618,7 +618,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}
@@ -690,7 +690,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		if !assert.NoError(t, err) {
 			t.Fatal()
 		}

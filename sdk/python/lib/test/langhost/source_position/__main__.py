@@ -16,6 +16,9 @@ from pulumi import ComponentResource, CustomResource
 
 class MyResource(CustomResource):
     def __init__(self, name, opts=None):
+        self.__internal_init__(name, opts)
+
+    def __internal_init__(self, name, opts):
         CustomResource.__init__(
             self, "test:index:MyResource", name, props={}, opts=opts
         )

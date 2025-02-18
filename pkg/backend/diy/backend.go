@@ -1062,7 +1062,6 @@ func (b *diyBackend) apply(
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
-
 	stackRef := stack.Ref()
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {

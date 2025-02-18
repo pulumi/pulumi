@@ -43,15 +43,17 @@ class SourcePositionTest(LanghostTest):
         _providers,
         source_position,
     ):
-        assert source_position is not None
-        assert source_position.uri.endswith("__main__.py")
+        self.assertIsNotNone(source_position)
+        self.assertTrue(
+            source_position.uri.endswith("__main__.py"), source_position.uri
+        )
 
         if name == "custom":
-            self.assertEqual(source_position.line, 31)
+            self.assertEqual(source_position.line, 34)
         elif name == "component":
-            self.assertEqual(source_position.line, 32)
+            self.assertEqual(source_position.line, 35)
         else:
-            assert False
+            self.fail("unexpected name: " + name)
 
         return {
             "urn": self.make_urn(ty, name),

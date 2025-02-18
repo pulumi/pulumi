@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-invoke-dynamic-function",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/any-type-function": "ROOT/artifacts/pulumi-any-type-function-15.0.0.tgz"
+	}
+}

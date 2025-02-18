@@ -38,6 +38,7 @@ build_package:: ensure
 	yarn run tsc
 	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
+	cp -R tests/provider/experimental/testdata/ bin/tests/provider/experimental/testdata
 	cp .npmignore README.md ../../LICENSE ./dist/* bin/
 	cp -R ./vendor/ ./bin/vendor/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}

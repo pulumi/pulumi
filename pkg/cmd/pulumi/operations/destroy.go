@@ -231,14 +231,8 @@ func NewDestroyCmd() *cobra.Command {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
-			decrypter, err := sm.Decrypter()
-			if err != nil {
-				return fmt.Errorf("getting stack decrypter: %w", err)
-			}
-			encrypter, err := sm.Encrypter()
-			if err != nil {
-				return fmt.Errorf("getting stack encrypter: %w", err)
-			}
+			decrypter := sm.Decrypter()
+			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
 			configError := workspace.ValidateStackConfigAndApplyProjectConfig(

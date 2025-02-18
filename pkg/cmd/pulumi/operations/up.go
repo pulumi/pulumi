@@ -83,6 +83,7 @@ func NewUpCmd() *cobra.Command {
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showSecrets bool
 	var showReads bool
 	var skipPreview bool
 	var showFullOutput bool
@@ -140,14 +141,8 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		decrypter, err := sm.Decrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack decrypter: %w", err)
-		}
-		encrypter, err := sm.Encrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack encrypter: %w", err)
-		}
+		decrypter := sm.Decrypter()
+		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().Name().String()
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
@@ -192,6 +187,7 @@ func NewUpCmd() *cobra.Command {
 			DisableProviderPreview:    env.DisableProviderPreview.Value(),
 			DisableResourceReferences: env.DisableResourceReferences.Value(),
 			DisableOutputValues:       env.DisableOutputValues.Value(),
+			ShowSecrets:               showSecrets,
 			Targets:                   deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
@@ -204,15 +200,8 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		if planFilePath != "" {
-			dec, err := sm.Decrypter()
-			if err != nil {
-				return err
-			}
-			enc, err := sm.Encrypter()
-			if err != nil {
-				return err
-			}
-			p, err := plan.Read(planFilePath, dec, enc)
+			dec := sm.Decrypter()
+			p, err := plan.Read(planFilePath, dec)
 			if err != nil {
 				return err
 			}
@@ -401,14 +390,8 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
-		decrypter, err := sm.Decrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack decrypter: %w", err)
-		}
-		encrypter, err := sm.Encrypter()
-		if err != nil {
-			return fmt.Errorf("getting stack encrypter: %w", err)
-		}
+		decrypter := sm.Decrypter()
+		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().String()
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
@@ -427,13 +410,12 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refreshOption,
-
+			ShowSecrets:      showSecrets,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
 			GeneratePlan: env.Experimental.Value(),
@@ -537,6 +519,7 @@ func NewUpCmd() *cobra.Command {
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 				JSONDisplay:            jsonDisplay,
+				ShowSecrets:            showSecrets,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -687,6 +670,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false,
+		"Show secret outputs in the CLI output")
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")

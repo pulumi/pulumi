@@ -283,13 +283,14 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	// Build a .csproj based on the packages used by program
+	// Build a .csproj based on the packages used by program.
+	// Using the current LTS of .NET which is 8.0 as of now.
 	var csproj bytes.Buffer
 	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 `)
@@ -523,9 +524,8 @@ func componentInputElementType(pclType model.Type) string {
 				return componentInputElementType(pclType.ElementTypes[1])
 			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
 				return componentInputElementType(pclType.ElementTypes[0])
-			} else {
-				return dynamicType
 			}
+			return dynamicType
 		default:
 			return dynamicType
 		}

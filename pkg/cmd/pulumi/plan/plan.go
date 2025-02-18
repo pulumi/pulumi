@@ -42,7 +42,7 @@ func Write(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets boo
 	return encoder.Encode(deploymentPlan)
 }
 
-func Read(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+func Read(path string, dec config.Decrypter) (*deploy.Plan, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -53,5 +53,5 @@ func Read(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan
 	if err := json.NewDecoder(f).Decode(&deploymentPlan); err != nil {
 		return nil, err
 	}
-	return stack.DeserializePlan(deploymentPlan, dec, enc)
+	return stack.DeserializePlan(deploymentPlan, dec)
 }
