@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/dotnet
+  description: Update dotnet to 8.0 LTS
