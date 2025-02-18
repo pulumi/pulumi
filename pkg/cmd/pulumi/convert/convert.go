@@ -571,7 +571,6 @@ func generateAndLinkSdksForPackages(
 		if err != nil {
 			return fmt.Errorf("could not change to output directory: %w", err)
 		}
-		defer returnToStartingDir()
 
 		_, _, err = ws.ReadProject()
 		if err != nil {
@@ -583,6 +582,8 @@ func generateAndLinkSdksForPackages(
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
+
+		returnToStartingDir()
 	}
 
 	return nil

@@ -1304,7 +1304,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.6.0")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))
@@ -1324,6 +1324,46 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	}
 
 	assert.True(t, containsRename)
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertMultipleTerraformProviderGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertmultiplefromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
+
+	assert.True(t, e.PathExists("godir/go.mod"))
+	assert.True(t, e.PathExists("godir/sdks/supabase/go.mod"))
+	assert.True(t, e.PathExists("godir/sdks/b2/go.mod"))
+
+	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
+	assert.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", modBytes, nil)
+	assert.NoError(t, err)
+
+	containsRenameSupabase := false
+	containsRenameBB := false
+	for _, r := range gomod.Replace {
+		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
+			containsRenameSupabase = true
+		}
+		if r.New.Path == "./sdks/b2" && r.Old.Path ==
+			"github.com/pulumi/pulumi-terraform-provider/sdks/go/b2" {
+			containsRenameBB = true
+		}
+	}
+
+	assert.True(t, containsRenameSupabase)
+	assert.True(t, containsRenameBB)
 }
 
 func readUpdateEventLog(logfile string) ([]apitype.EngineEvent, error) {
