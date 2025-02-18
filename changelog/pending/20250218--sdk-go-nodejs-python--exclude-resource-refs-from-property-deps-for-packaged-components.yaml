@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go,nodejs,python
+  description: Exclude resource references from property dependencies for packaged components
