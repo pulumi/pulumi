@@ -160,7 +160,7 @@ func TestCanWithTooManyArguments(t *testing.T) {
 	assert.ErrorContains(t, err, "'can' expects exactly one argument")
 }
 
-func TestRootDirectoryFailsWithNoArguments(t *testing.T) {
+func TestRootDirectory(t *testing.T) {
 	t.Parallel()
 
 	// Test with no arguments (correct usage)
@@ -172,11 +172,11 @@ func TestRootDirectoryFailsWithNoArguments(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.Nil(t, program, "The program doesn't bind")
-	assert.ErrorContains(t, err, "'rootDirectory' expects no arguments")
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
 }
 
-func TestRootDirectory(t *testing.T) {
+func TestRootDirectoryFailsWithArguments(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
@@ -186,6 +186,6 @@ func TestRootDirectory(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "too many arguments to call")
 }

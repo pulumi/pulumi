@@ -53,7 +53,6 @@ class Settings:
     def __init__(
         self,
         project: Optional[str],
-        root_directory: Optional[str],
         stack: Optional[str],
         monitor: Optional[Union[str, Any]] = None,
         engine: Optional[Union[str, Any]] = None,
@@ -61,6 +60,7 @@ class Settings:
         dry_run: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
         organization: Optional[str] = None,
+        root_directory: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
         self.outputs = deque()
@@ -359,6 +359,7 @@ def _sync_monitor_supports_parameterization() -> bool:
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
+    root_directory: Optional[str] = None,
     parallel: Optional[int] = None,
     engine_address: Optional[str] = None,
     monitor_address: Optional[str] = None,
@@ -375,6 +376,7 @@ def reset_options(
             monitor=monitor_address,
             engine=engine_address,
             stack=stack,
+            root_directory=root_directory,
             parallel=parallel,
             dry_run=preview,
             organization=organization,
