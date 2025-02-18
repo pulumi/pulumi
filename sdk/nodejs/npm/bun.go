@@ -62,9 +62,13 @@ func (bun *bunManager) Install(ctx context.Context, dir string, production bool,
 func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	args := []string{"install"}
 
-	if production {
-		args = append(args, "--production")
-	}
+	/*
+		Commenting this out because Bun has a bug where --production
+		enforces "frozen lockfile" when it probably shouldn't: https://github.com/oven-sh/bun/issues/10949
+	*/
+	// if production {
+	// 	args = append(args, "--production")
+	// }
 
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, bun.executable, args...)

@@ -186,6 +186,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"npm", "Invalid package, must have name and version"},
 		{"yarn", "Package doesn't have a version"},
 		{"pnpm", "Package version is not defined in the package.json"},
+		{"bun", "error: package.json must have `name` and `version` fields"},
 	} {
 		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
@@ -203,6 +204,18 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
 		})
 	}
+}
+
+func TestBunPackNonExistentPackageJSON(t *testing.T) {
+	dir := t.TempDir()
+	stderr := new(bytes.Buffer)
+	errorMessage := "error: No package.json was found for directory"
+
+	_, err := Pack(context.Background(), "bun", dir, stderr)
+	exitErr := new(exec.ExitError)
+	require.ErrorAs(t, err, &exitErr)
+	assert.NotZero(t, exitErr.ExitCode())
+	require.Contains(t, stderr.String(), errorMessage)
 }
 
 // writeLockFile writes a mock lockfile for the selected package manager
