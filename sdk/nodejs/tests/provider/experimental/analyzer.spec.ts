@@ -173,4 +173,36 @@ describe("Analyzer", function () {
             /Error: Component 'MyComponent' constructor 'args' parameter must be an interface/,
         );
     });
+
+    it("infers map types", async function () {
+        const dir = path.join(__dirname, "testdata", "map-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    aRecordOfStrings: { type: "object", additionalProperties: { type: "string", plain: true } },
+                    aRecordOfNumbers: {
+                        type: "object",
+                        additionalProperties: { type: "number", plain: true },
+                        optional: true,
+                    },
+                    aRecordOfBooleans: { type: "object", additionalProperties: { type: "boolean", plain: true } },
+                    aMapOfStrings: { type: "object", additionalProperties: { type: "string", plain: true } },
+                    aMapOfNumbers: { type: "object", additionalProperties: { type: "number", plain: true } },
+                    aMapOfBooleans: {
+                        type: "object",
+                        additionalProperties: { type: "boolean", plain: true },
+                        optional: true,
+                    },
+                },
+                outputs: {
+                    outMapOfStrings: { type: "object", additionalProperties: { type: "string" } },
+                    outMapOfNumbers: { type: "object", additionalProperties: { type: "number" } },
+                    outMapOfBooleans: { type: "object", additionalProperties: { type: "boolean" } },
+                },
+            },
+        });
+    });
 });

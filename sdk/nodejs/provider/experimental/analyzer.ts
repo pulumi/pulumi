@@ -31,6 +31,8 @@ export type PropertyType = "string" | "integer" | "number" | "boolean" | "array"
 export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
     optional?: boolean;
     plain?: boolean;
+} & {
+    additionalProperties?: PropertyDefinition;
 };
 
 export type ComponentDefinition = {
@@ -271,6 +273,46 @@ export class Analyzer {
                 prop.plain = true;
             }
             return prop;
+        } else if (isMapType(type, this.checker)) {
+            const prop: PropertyDefinition = { type: "object" };
+            if (optional) {
+                prop.optional = true;
+            }
+
+            let innerType: typescript.Type;
+            const indexInfo = this.checker.getIndexInfoOfType(type, ts.IndexKind.String);
+            if (type.getSymbol()?.escapedName === "Map") {
+                const typeArguments = (type as typescript.TypeReference).typeArguments;
+                if (typeArguments && typeArguments.length === 2) {
+                    if (!(typeArguments[0].flags & ts.TypeFlags.String)) {
+                        throw new Error(`Expected key of '${this.checker.typeToString(type)}' to be 'string'`);
+                    }
+                    innerType = typeArguments[1];
+                } else {
+                    throw new Error(
+                        `Expected exactly two type arguments in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+                    );
+                }
+            } else if (type.aliasSymbol?.escapedName === "Record") {
+                const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+                if (typeArguments && typeArguments.length === 2) {
+                    if (!(typeArguments[0].flags & ts.TypeFlags.String)) {
+                        throw new Error(`Expected key of '${this.checker.typeToString(type)}' to be 'string'`);
+                    }
+                    innerType = typeArguments[1];
+                } else {
+                    throw new Error(
+                        `Expected exactly two type arguments in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+                    );
+                }
+            } else if (indexInfo !== undefined) {
+                innerType = indexInfo.type;
+            } else {
+                throw new Error(`Expected type to be a Record, got '${this.checker.typeToString(type)}'`);
+            }
+
+            prop.additionalProperties = this.analyzeType(innerType, location, false /* optional */, plain);
+            return prop;
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
         } else if (type.isIntersection()) {
@@ -318,6 +360,16 @@ function isBoolean(type: typescript.Type): boolean {
 
 function isSimpleType(type: typescript.Type): boolean {
     return isNumber(type) || isString(type) || isBoolean(type);
+}
+
+function isMapType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
+    return (
+        (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object &&
+        (type.getSymbol()?.escapedName === "Map" ||
+            type.aliasSymbol?.escapedName === "Record" ||
+            indexInfo !== undefined)
+    );
 }
 
 function isPromise(type: typescript.Type): boolean {
