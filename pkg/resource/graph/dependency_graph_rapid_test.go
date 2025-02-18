@@ -63,7 +63,7 @@ var hasDependency R = func(res, dependency *resource.State) bool {
 	return false
 }
 
-var expectedDependenciesOf R = union(isParent, hasProvider, hasDependency)
+var expectedDependenciesOf = union(isParent, hasProvider, hasDependency)
 
 // Verify `DependneciesOf` against `expectedDependenciesOf`.
 func TestRapidDependenciesOf(t *testing.T) {

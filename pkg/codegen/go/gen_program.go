@@ -201,9 +201,8 @@ func componentInputElementType(pclType model.Type) string {
 				return componentInputElementType(pclType.ElementTypes[1])
 			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
 				return componentInputElementType(pclType.ElementTypes[0])
-			} else {
-				return "interface{}"
 			}
+			return "interface{}"
 		default:
 			return "interface{}"
 		}
