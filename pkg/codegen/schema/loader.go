@@ -399,7 +399,9 @@ func (l *pluginLoader) loadSchemaBytes(
 		version = pluginInfo.Version
 	}
 
-	if pluginInfo.SchemaPath != "" && version != nil && descriptor.Parameterization == nil {
+	canCache := pluginInfo.SchemaPath != "" && version != nil && descriptor.Parameterization == nil
+
+	if canCache {
 		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil
@@ -411,7 +413,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
 
-	if pluginInfo.SchemaPath != "" {
+	if canCache {
 		err = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
