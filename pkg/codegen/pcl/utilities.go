@@ -270,9 +270,8 @@ func UnwrapOption(exprType model.Type) model.Type {
 			return exprType.ElementTypes[1]
 		} else if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[1] == model.NoneType {
 			return exprType.ElementTypes[0]
-		} else {
-			return exprType
 		}
+		return exprType
 	default:
 		return exprType
 	}

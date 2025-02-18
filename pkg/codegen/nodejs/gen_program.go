@@ -487,9 +487,8 @@ func componentElementType(pclType model.Type) string {
 				return componentElementType(pclType.ElementTypes[1])
 			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
 				return componentElementType(pclType.ElementTypes[0])
-			} else {
-				return "any"
 			}
+			return "any"
 		default:
 			return "any"
 		}
