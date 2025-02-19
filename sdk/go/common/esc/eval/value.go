@@ -91,7 +91,10 @@ func (v *value) containsObservableUnknowns(rotating bool) bool {
 		return false
 	}
 	if v.unknown {
-		return v.rotateOnly && rotating
+		if v.rotateOnly && !rotating {
+			return false // this unknown value will not be observed
+		}
+		return true
 	}
 	switch repr := v.repr.(type) {
 	case []*value:

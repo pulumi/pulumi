@@ -75,3 +75,42 @@ func TestValueToString(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsObservableUnknowns(t *testing.T) {
+	fake := newMissingExpr("", nil)
+	cases := map[string]struct {
+		value    *value
+		expected bool
+	}{
+		"unknown is rotateOnly, so it's not observable": {
+			value: &value{def: fake, repr: map[string]*value{
+				"rotateOnly": {def: fake, rotateOnly: true, unknown: true},
+				"plain":      {def: fake, rotateOnly: false, unknown: false, repr: "bar"},
+			}},
+			expected: false,
+		},
+		"unknown is not rotateOnly, so it's observable": {
+			value: &value{def: fake, repr: map[string]*value{
+				"rotateOnly": {def: fake, rotateOnly: true, unknown: false, repr: "foo"},
+				"plain":      {def: fake, rotateOnly: false, unknown: true},
+			}},
+			expected: true,
+		},
+		"there are no unknowns": {
+			value: &value{def: fake, repr: map[string]*value{
+				"rotateOnly": {def: fake, rotateOnly: true, unknown: false, repr: "foo"},
+				"plain":      {def: fake, rotateOnly: false, unknown: false, repr: "bar"},
+			}},
+			expected: false,
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			// when rotating, containsObservableUnknowns === containsUnknowns
+			assert.Equal(t, c.value.containsUnknowns(), c.value.containsObservableUnknowns(true))
+
+			// when not rotating, containsObservableUnknowns is based on rotateOnly
+			assert.Equal(t, c.expected, c.value.containsObservableUnknowns(false))
+		})
+	}
+}
