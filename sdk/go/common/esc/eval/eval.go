@@ -117,7 +117,7 @@ func RotateEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 	paths []resource.PropertyPath,
-) (*esc.Environment, []*Patch, syntax.Diagnostics) {
+) (*esc.Environment, *RotationResult, syntax.Diagnostics) {
 	rotateDocPaths := make(map[string]bool, len(paths))
 	for _, path := range paths {
 		rotateDocPaths["values."+path.String()] = true
@@ -138,7 +138,7 @@ func evalEnvironment(
 	execContext *esc.ExecContext,
 	showSecrets bool,
 	rotatePaths map[string]bool,
-) (*esc.Environment, []*Patch, syntax.Diagnostics) {
+) (*esc.Environment, *RotationResult, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
 		return nil, nil, nil
 	}
@@ -165,7 +165,7 @@ func evalEnvironment(
 		Properties:       v.export(name).Value.(map[string]esc.Value),
 		Schema:           s,
 		ExecutionContext: executionContext,
-	}, ec.patchOutputs, diags
+	}, &ec.rotationResult, diags
 }
 
 type imported struct {
@@ -194,7 +194,7 @@ type evalContext struct {
 	base      *value // the base value
 
 	rotateDocPaths map[string]bool // the subset of document paths to invoke rotation for when rotating. if empty, all rotators will be invoked.
-	patchOutputs   []*Patch        // updated rotation state generated during evaluation, to be written back to the environment definition
+	rotationResult RotationResult  // result of secret rotations
 
 	diags syntax.Diagnostics // diagnostics generated during evaluation
 }
@@ -1103,15 +1103,23 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 	}
 	v.schema = x.schema
 
+	docPath := x.repr.syntax().Syntax().Syntax().Path()
+
 	inputs, inputsOK := e.evaluateTypedExpr(repr.inputs, repr.inputSchema)
 	state, stateOK := e.evaluateTypedExpr(repr.state, repr.stateSchema)
 	if !inputsOK || inputs.containsObservableUnknowns(e.rotating) || !stateOK || state.containsUnknowns() || e.validating || err != nil {
+		if e.shouldRotate(docPath) {
+			e.rotationResult = append(e.rotationResult, &Rotation{
+				Path:   docPath,
+				Status: RotationNotEvaluated,
+			})
+		}
+
 		v.unknown = true
 		return v
 	}
 
 	// if rotating, invoke prior to open
-	docPath := x.repr.syntax().Syntax().Syntax().Path()
 	if e.shouldRotate(docPath) {
 		newState, err := rotator.Rotate(
 			e.ctx,
@@ -1120,18 +1128,29 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 			e.execContext,
 		)
 		if err != nil {
+			diag := ast.ExprError(repr.syntax(), err.Error())
+			e.rotationResult = append(e.rotationResult, &Rotation{
+				Path:   docPath,
+				Status: RotationFailed,
+				Diags:  []*syntax.Diagnostic{diag},
+			})
+
 			e.errorf(repr.syntax(), "rotate: %s", err.Error())
 			v.unknown = true
 			return v
 		}
 
-		// todo: validate newState conforms to state schema
-
-		e.patchOutputs = append(e.patchOutputs, &Patch{
-			// rotation output is written back to the fn's `state` input
-			DocPath:     util.JoinKey(docPath, repr.node.Name().GetValue()) + ".state",
-			Replacement: newState,
+		e.rotationResult = append(e.rotationResult, &Rotation{
+			Path:   docPath,
+			Status: RotationSucceeded,
+			Patch: &Patch{
+				// rotation output is written back to the fn's `state` input
+				DocPath:     util.JoinKey(docPath, repr.node.Name().GetValue()) + ".state",
+				Replacement: newState,
+			},
 		})
+
+		// todo: validate newState conforms to state schema
 
 		// pass the updated state to open, as if it were already persisted
 		state = unexport(newState, x)

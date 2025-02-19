@@ -17,6 +17,7 @@ package eval
 import (
 	"context"
 	"fmt"
+
 	"github.com/pulumi/esc"
 )
 
@@ -46,10 +47,10 @@ values:
 
 	// rotate the environment
 	execContext, _ := esc.NewExecContext(nil)
-	_, patches, _ := RotateEnvironment(context.Background(), "<stdin>", env, rot128{}, testProviders{}, &testEnvironments{}, execContext, nil)
+	_, rotationResult, _ := RotateEnvironment(context.Background(), "<stdin>", env, rot128{}, testProviders{}, &testEnvironments{}, execContext, nil)
 
 	// writeback state patches
-	updated, _ := ApplyValuePatches([]byte(def), patches)
+	updated, _ := ApplyValuePatches([]byte(def), rotationResult.Patches())
 
 	// encrypt secret values
 	encryptedYaml, _ := EncryptSecrets(context.Background(), "<stdin>", updated, rot128{})

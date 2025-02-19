@@ -404,9 +404,11 @@ func TestEval(t *testing.T) {
 				var rotated *esc.Environment
 				var patches []*Patch
 				var rotateDiags syntax.Diagnostics
+				var rotationResult *RotationResult
 				if doRotate {
-					rotated, patches, rotateDiags = RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+					rotated, rotationResult, rotateDiags = RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
 						&testEnvironments{basePath}, execContext, rotatePaths)
+					patches = rotationResult.Patches()
 				}
 
 				var checkJSON any
@@ -475,8 +477,12 @@ func TestEval(t *testing.T) {
 
 			var rotated *esc.Environment
 			if doRotate {
-				rotated_, patches, diags := RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+				rotated_, rotationResult, diags := RotateEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
 					&testEnvironments{basePath}, execContext, rotatePaths)
+				var patches []*Patch
+				if rotationResult != nil {
+					patches = rotationResult.Patches()
+				}
 
 				sortEnvironmentDiagnostics(diags)
 				require.Equal(t, expected.RotateDiags, diags)
