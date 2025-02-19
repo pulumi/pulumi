@@ -1432,6 +1432,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		request, err := proto.Marshal(&pulumirpc.TransformRequest{
 			Name:       name,
 			Type:       typ,
+			Parent:     string(parent),
 			Custom:     custom,
 			Properties: mprops,
 			Options:    opts,
