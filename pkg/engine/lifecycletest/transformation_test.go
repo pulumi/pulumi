@@ -394,6 +394,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
 				if typ == "pkgA:m:typA" {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typC::resC", parent)
 					props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
 						return resource.NewNumberProperty(v.NumberValue() + 1)
 					})
@@ -773,7 +774,6 @@ func TestTransformsProviderOpt(t *testing.T) {
 			TransformFunction(func(name, typ string, custom bool, parent string,
 				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				fmt.Println("provider: ", opts.Provider)
 				if opts.Provider == "" {
 					opts.Provider = implicitProvider
 				}
