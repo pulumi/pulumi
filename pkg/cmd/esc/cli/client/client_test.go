@@ -518,7 +518,7 @@ func TestRotateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
+		_, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -554,7 +554,7 @@ func TestRotateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
+		_, diags, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		require.NoError(t, err)
 		assert.Equal(t, expected, diags)
 	})
@@ -570,7 +570,7 @@ func TestRotateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
+		_, _, err := client.RotateEnvironment(context.Background(), "test-org", "test-project", "test-env", rotationPaths)
 		assert.ErrorContains(t, err, "not found")
 	})
 }

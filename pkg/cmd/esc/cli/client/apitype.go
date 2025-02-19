@@ -34,6 +34,49 @@ type EnvironmentErrorResponse struct {
 	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
 }
 
+type RotateEnvironmentResponse struct {
+	Code                int                     `json:"code,omitempty"`
+	Message             string                  `json:"message,omitempty"`
+	Diagnostics         []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+	SecretRotationEvent SecretRotationEvent     `json:"secretRotationEvent,omitempty"`
+}
+
+type SecretRotationEvent struct {
+	ID                   string              `json:"id"`
+	EnvironmentID        string              `json:"environmentId"`
+	CreatedAt            time.Time           `json:"created"`
+	PreRotationRevision  int                 `json:"preRotationRevision"`
+	PostRotationRevision *int                `json:"postRotationRevision,omitempty"`
+	UserID               string              `json:"userID"`
+	CompletedAt          *time.Time          `json:"completed,omitempty"`
+	Status               RotationEventStatus `json:"status"`
+	ScheduledActionID    *string             `json:"scheduledActionID,omitempty"`
+	ErrorMessage         *string             `json:"errorMessage,omitempty"`
+	Rotations            []SecretRotation    `json:"rotations"`
+}
+
+type SecretRotation struct {
+	ID              string         `json:"id"`
+	EnvironmentPath string         `json:"environmentPath"`
+	Status          RotationStatus `json:"status"`
+	ErrorMessage    *string        `json:"errorMessage,omitempty"`
+}
+
+type RotationEventStatus string
+
+const (
+	RotationEventSucceeded  RotationEventStatus = "succeeded"
+	RotationEventFailed     RotationEventStatus = "failed"
+	RotationEventInProgress RotationEventStatus = "in_progress"
+)
+
+type RotationStatus string
+
+const (
+	RotationSucceeded RotationStatus = "succeeded"
+	RotationFailed    RotationStatus = "failed"
+)
+
 func (err EnvironmentErrorResponse) Error() string {
 	errString := fmt.Sprintf("[%d] %s", err.Code, err.Message)
 	if len(err.Diagnostics) > 0 {

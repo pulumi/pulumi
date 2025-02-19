@@ -5,7 +5,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/pulumi/esc/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +21,6 @@ func newEnvRotateCmd(envcmd *envCommand) *cobra.Command {
 			"\n" +
 			"Optionally accepts any number of Property Paths as additional arguments. If given any paths, will only rotate secrets at those paths.\n",
 		SilenceUsage: true,
-		Hidden:       true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
@@ -44,15 +46,49 @@ func newEnvRotateCmd(envcmd *envCommand) *cobra.Command {
 				rotationPaths = append(rotationPaths, arg)
 			}
 
-			diags, err := envcmd.esc.client.RotateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, rotationPaths)
+			resp, diags, err := envcmd.esc.client.RotateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, rotationPaths)
 			if err != nil {
 				return err
 			}
 			if len(diags) != 0 {
 				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
 			}
+			if resp == nil {
+				return nil
+			}
 
-			fmt.Fprintf(envcmd.esc.stdout, "Environment '%s' rotated.\n", args[0])
+			event := resp.SecretRotationEvent
+
+			// Print result of rotation
+			var b strings.Builder
+			if event.Status == client.RotationEventSucceeded {
+				fmt.Fprintf(&b, "Environment '%s' rotated.\n", args[0])
+			} else if event.Status == client.RotationEventFailed {
+				if event.ErrorMessage != nil {
+					fmt.Fprintf(&b, "%vError rotating: %s.%v\n", colors.SpecError, *event.ErrorMessage, colors.Reset)
+				} else {
+					fmt.Fprintf(&b, "%vEnvironment '%s' rotated with errors.%v\n", colors.SpecWarning, args[0], colors.Reset)
+				}
+			}
+			if event.PostRotationRevision != nil {
+				fmt.Fprintf(&b, "New revision '%d' was created.\n", *event.PostRotationRevision)
+			}
+
+			var failedRotations []client.SecretRotation
+			for _, rotation := range event.Rotations {
+				if rotation.Status == client.RotationFailed {
+					failedRotations = append(failedRotations, rotation)
+				}
+			}
+			if len(failedRotations) > 0 {
+				fmt.Fprintf(&b, "\n%vFailed secrets:%v\n", colors.SpecError, colors.Reset)
+				for _, rotation := range failedRotations {
+					fmt.Fprintf(&b, "Path: %s, error: %s\n", rotation.EnvironmentPath, *rotation.ErrorMessage)
+				}
+			}
+
+			fmt.Fprint(envcmd.esc.stdout, envcmd.esc.colors.Colorize(b.String()))
+
 			return nil
 		},
 	}

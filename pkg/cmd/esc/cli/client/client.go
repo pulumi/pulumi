@@ -163,7 +163,7 @@ type Client interface {
 		projectName string,
 		envName string,
 		rotationPaths []string,
-	) ([]EnvironmentDiagnostic, error)
+	) (*RotateEnvironmentResponse, []EnvironmentDiagnostic, error)
 
 	// CheckYAMLEnvironment checks the given environment YAML for errors within the context of org orgName.
 	//
@@ -632,7 +632,7 @@ func (pc *client) RotateEnvironment(
 	projectName string,
 	envName string,
 	rotationPaths []string,
-) ([]EnvironmentDiagnostic, error) {
+) (*RotateEnvironmentResponse, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/rotate", orgName, projectName, envName)
 
 	reqObj := struct {
@@ -641,9 +641,7 @@ func (pc *client) RotateEnvironment(
 		Paths: rotationPaths,
 	}
 
-	var resp struct {
-		ID string `json:"id"`
-	}
+	var resp RotateEnvironmentResponse
 	var errResp EnvironmentErrorResponse
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, reqObj, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
@@ -651,11 +649,11 @@ func (pc *client) RotateEnvironment(
 	if err != nil {
 		var diags *EnvironmentErrorResponse
 		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
-			return diags.Diagnostics, nil
+			return nil, diags.Diagnostics, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return nil, nil
+	return &resp, nil, nil
 }
 
 func (pc *client) CheckYAMLEnvironment(

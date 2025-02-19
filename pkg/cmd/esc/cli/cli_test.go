@@ -683,8 +683,8 @@ func (c *testPulumiClient) RotateEnvironment(
 	projectName string,
 	envName string,
 	rotationPaths []string,
-) ([]client.EnvironmentDiagnostic, error) {
-	return []client.EnvironmentDiagnostic{}, nil
+) (*client.RotateEnvironmentResponse, []client.EnvironmentDiagnostic, error) {
+	return &client.RotateEnvironmentResponse{}, []client.EnvironmentDiagnostic{}, nil
 }
 
 func (c *testPulumiClient) CheckYAMLEnvironment(
