@@ -176,6 +176,46 @@ describe("Analyzer", function () {
         );
     });
 
+    it("infers array types", async function () {
+        const dir = path.join(__dirname, "testdata", "array-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    anArrayOfStrings: { type: "array", items: { type: "string", plain: true }, plain: true },
+                    anArrayOfNumbers: {
+                        type: "array",
+                        items: { type: "number", plain: true },
+                        optional: true,
+                        plain: true,
+                    },
+                    anArrayOfBooleans: { type: "array", items: { type: "boolean", plain: true }, plain: true },
+                    inputArrayOfStrings: { type: "array", items: { type: "string" } },
+                    inputArrayOfNumbers: { type: "array", items: { type: "number" }, optional: true },
+                    inputArrayOfBooleans: { type: "array", items: { type: "boolean" } },
+                    anArrayOfInputStrings: { type: "array", items: { type: "string" }, plain: true },
+                    anArrayOfInputNumbers: { type: "array", items: { type: "number" }, optional: true, plain: true },
+                    anArrayOfInputBooleans: { type: "array", items: { type: "boolean" }, plain: true },
+                    aListOfStrings: { type: "array", items: { type: "string", plain: true }, plain: true },
+                    aListOfNumbers: { type: "array", items: { type: "number", plain: true }, plain: true },
+                    aListOfBooleans: {
+                        type: "array",
+                        items: { type: "boolean", plain: true },
+                        optional: true,
+                        plain: true,
+                    },
+                },
+                outputs: {
+                    outArrayOfStrings: { type: "array", items: { type: "string" } },
+                    outArrayOfNumbers: { type: "array", items: { type: "number" } },
+                    outArrayOfBooleans: { type: "array", items: { type: "boolean" } },
+                },
+            },
+        });
+    });
+
     it("infers map types", async function () {
         const dir = path.join(__dirname, "testdata", "map-types");
         const analyzer = new Analyzer(dir, "provider");

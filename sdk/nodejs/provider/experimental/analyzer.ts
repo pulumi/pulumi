@@ -32,6 +32,7 @@ export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
     optional?: boolean;
     plain?: boolean;
     additionalProperties?: PropertyDefinition;
+    items?: PropertyDefinition;
 };
 
 export type ComponentDefinition = {
@@ -306,6 +307,25 @@ export class Analyzer {
                 prop.plain = true;
             }
             return prop;
+        } else if (isArrayType(type)) {
+            const prop: PropertyDefinition = { type: "array" };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+
+            const typeArguments = (type as typescript.TypeReference).typeArguments;
+            if (!typeArguments || typeArguments.length !== 1) {
+                throw new Error(
+                    `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+                );
+            }
+
+            const innerType = typeArguments[0];
+            prop.items = this.analyzeType(innerType, location, false /* optional */, plain);
+            return prop;
         } else if (isMapType(type, this.checker)) {
             const prop: PropertyDefinition = { type: "object" };
             if (optional) {
@@ -404,6 +424,10 @@ function isSimpleType(type: typescript.Type): boolean {
 function isMapType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
     const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
     return indexInfo !== undefined;
+}
+
+function isArrayType(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
 }
 
 function isPromise(type: typescript.Type): boolean {
