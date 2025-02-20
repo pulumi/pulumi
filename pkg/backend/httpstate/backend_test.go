@@ -54,6 +54,10 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
+	defer func() {
+		_, err := b.RemoveStack(ctx, s, true)
+		require.NoError(t, err)
+	}()
 
 	previous := cmdutil.FullyQualifyStackNames
 	expected := s.Ref().FullyQualifiedName().String()
@@ -89,6 +93,10 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
+	defer func() {
+		_, err := b.RemoveStack(ctx, s, true)
+		require.NoError(t, err)
+	}()
 
 	previous := cmdutil.FullyQualifyStackNames
 	expected := s.Ref().Name().String()
@@ -245,6 +253,10 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
+	defer func() {
+		_, err := b.RemoveStack(ctx, s, true)
+		require.NoError(t, err)
+	}()
 
 	// make up a bad stack
 	deployment := apitype.UntypedDeployment{
