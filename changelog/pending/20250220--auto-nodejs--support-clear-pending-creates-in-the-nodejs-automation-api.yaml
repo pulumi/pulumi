@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Support `--clear-pending-creates` in the NodeJS automation API
