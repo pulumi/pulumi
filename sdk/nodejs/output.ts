@@ -984,22 +984,25 @@ type primitive = Function | string | number | boolean | undefined | null;
  */
 export type UnwrapSimple<T> =
     // 1. Any of the primitive types just unwrap to themselves.
-    // 2. An array of some types unwraps to an array of that type itself unwrapped. Note, due to a
+    // 2. A tuple of different types unwraps to a tuple of the unwrapped types.
+    // 3. An array of some types unwraps to an array of that type itself unwrapped. Note, due to a
     //    TS limitation we cannot express that as Array<Unwrap<U>> due to how it handles recursive
     //    types. We work around that by introducing an structurally equivalent interface that then
     //    helps make typescript defer type-evaluation instead of doing it eagerly.
-    // 3. An object unwraps to an object with properties of the same name, but where the property
+    // 4. An object unwraps to an object with properties of the same name, but where the property
     //    types have been unwrapped.
-    // 4. return 'never' at the end so that if we've missed something we'll discover it.
+    // 5. return 'never' at the end so that if we've missed something we'll discover it.
     T extends primitive
         ? T
         : T extends Resource
           ? T
-          : T extends Array<infer U>
-            ? UnwrappedArray<U>
-            : T extends object
-              ? UnwrappedObject<T>
-              : never;
+          : T extends [any, ...any[]]
+            ? UnwrappedObject<T> // We treat tuples like objects
+            : T extends Array<infer U>
+              ? UnwrappedArray<U>
+              : T extends object
+                ? UnwrappedObject<T>
+                : never;
 
 export type UnwrappedArray<T> = Array<Unwrap<T>>;
 
