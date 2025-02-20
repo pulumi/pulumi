@@ -62,9 +62,11 @@ describe("Analyzer", function () {
                 name: "MyComponent",
                 inputs: {
                     optionalNumber: { type: "number", optional: true, plain: true },
+                    optionalNumberType: { type: "number", optional: true, plain: true },
                 },
                 outputs: {
                     optionalOutputNumber: { type: "number", optional: true },
+                    optionalOutputType: { type: "number", optional: true },
                 },
             },
         });
@@ -209,6 +211,7 @@ describe("Analyzer", function () {
                     outMapOfStrings: { type: "object", additionalProperties: { type: "string" } },
                     outMapOfNumbers: { type: "object", additionalProperties: { type: "number" } },
                     outMapOfBooleans: { type: "object", additionalProperties: { type: "boolean" } },
+                    outMapOptionalStrings: { type: "object", additionalProperties: { type: "string", optional: true } },
                 },
             },
         });

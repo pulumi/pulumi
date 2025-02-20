@@ -64,6 +64,8 @@ export class Analyzer {
         const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
         this.path = dir;
         this.providerName = providerName;
+        const options = parsedConfig.options;
+        parsedConfig.options["strictNullChecks"] = true;
         this.program = ts.createProgram({
             rootNames: parsedConfig.fileNames,
             options: parsedConfig.options,
@@ -200,8 +202,8 @@ export class Analyzer {
     private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
         // defined on the symbol, not the type.
-        const optional = isOptional(symbol);
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        const optional = isOptional(symbol);
         return this.analyzeType(propType, location, optional, true);
     }
 
@@ -211,7 +213,16 @@ export class Analyzer {
         optional: boolean = false,
         plain: boolean = true,
     ): PropertyDefinition {
-        if (isSimpleType(type)) {
+        if (isOptionalType(type, this.checker)) {
+            const unionType = type as typescript.UnionType;
+            const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
+            if (!nonUndefinedType) {
+                throw new Error(
+                    `Expected exactly one type to not be undefined in '${this.checker.typeToString(type)}'`,
+                );
+            }
+            return this.analyzeType(nonUndefinedType, location, true, plain);
+        } else if (isSimpleType(type)) {
             const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
             if (optional) {
                 prop.optional = true;
@@ -312,6 +323,23 @@ export class Analyzer {
 
 function isOptional(symbol: typescript.Symbol): boolean {
     return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
+}
+
+function isOptionalType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    if (!(type.flags & ts.TypeFlags.Union)) {
+        return false;
+    }
+
+    const unionType = type as typescript.UnionType;
+    // We only support union types with two types, one of which must be undefined
+    if (!unionType.types || unionType.types.length !== 2) {
+        return false;
+    }
+
+    // Check if one of the types in the union is undefined
+    return unionType.types.some(
+        (t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void, // Also check for void in some cases
+    );
 }
 
 function isInterface(symbol: typescript.Symbol): boolean {
