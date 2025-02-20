@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Add the `--preview-only` flag to the `refresh` command in the NodeJS Automation API
