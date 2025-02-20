@@ -156,10 +156,7 @@ func getStackConfigurationFromProjectStack(
 		}, nil
 	}
 
-	crypter, err := sm.Decrypter()
-	if err != nil {
-		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
-	}
+	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
 		EnvironmentImports: workspaceStack.Environment.Imports(),

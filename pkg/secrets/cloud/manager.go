@@ -130,10 +130,10 @@ type Manager struct {
 	crypter config.Crypter
 }
 
-func (m *Manager) Type() string                         { return Type }
-func (m *Manager) State() json.RawMessage               { return m.state }
-func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
-func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
+func (m *Manager) Type() string                { return Type }
+func (m *Manager) State() json.RawMessage      { return m.state }
+func (m *Manager) Encrypter() config.Encrypter { return m.crypter }
+func (m *Manager) Decrypter() config.Decrypter { return m.crypter }
 
 func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
 	info.EncryptionSalt = ""

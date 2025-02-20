@@ -16,6 +16,9 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from pulumi.provider.server import ComponentInitError
+
+from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
@@ -65,8 +68,15 @@ class ComponentProvider(Provider):
         comp = self.analyzer.find_type(self.path, component_name)
         component_def = self._component_defs[component_name]
         mapped_args = self.map_inputs(inputs, component_def)
-        # ComponentResource's init signature is different from the derived class signature.
-        comp_instance = comp(name, mapped_args, options)  # type: ignore
+        # Wrap the call to the component constuctor in a try except block to
+        # catch any exceptions, so that we can re-raise a ComponentInitError.
+        # This allows us to detect and report errors that occur within the user
+        # code vs errors that occur in the SDK.
+        try:
+            # ComponentResource's init signature is different from the derived class signature.
+            comp_instance = comp(name, mapped_args, options)  # type: ignore
+        except Exception as e:  # noqa
+            raise ComponentInitError(e)
         state = self.get_state(comp_instance, component_def)
         return ConstructResult(comp_instance.urn, state)
 
@@ -78,25 +88,62 @@ class ComponentProvider(Provider):
         return self._type_defs[name]
 
     def map_inputs(self, inputs: Inputs, component_def: ComponentDefinition) -> Inputs:
-        """Maps the input's names from the schema into Python names."""
+        """
+        Maps the input's names from the schema into Python names and
+        validates that required inputs are present.
+        """
         mapped_input: dict[str, Input[Any]] = {}
         for schema_name, prop in component_def.inputs.items():
             input_val = inputs.get(schema_name, None)
             if input_val is None:
+                if not prop.optional:
+                    raise InputPropertyError(
+                        schema_name,
+                        f"Missing required input '{schema_name}' on '{component_def.name}'",
+                    )
                 continue
             py_name = component_def.inputs_mapping[schema_name]
             if prop.ref:
+                if prop.ref in ("pulumi.json#/Asset", "pulumi.json#/Archive"):
+                    mapped_input[py_name] = input_val
+                    continue
                 type_def = self.get_type_definition(prop)
-                mapped_input[py_name] = self.map_complex_input(input_val, type_def)  # type: ignore
+                mapped_input[py_name] = self.map_complex_input(
+                    input_val,  # type: ignore
+                    type_def,
+                    component_def,
+                    schema_name,
+                )
             else:
                 mapped_input[py_name] = input_val
         return mapped_input
 
-    def map_complex_input(self, inputs: Inputs, type_def: TypeDefinition) -> Inputs:
+    def map_complex_input(
+        self,
+        inputs: Inputs,
+        type_def: TypeDefinition,
+        component_def: ComponentDefinition,
+        property_name: str,
+    ) -> Inputs:
+        """
+        Recursively maps the names of a complex type from schema to Python names
+        and validates that required inputs are present.
+
+        :param inputs: The inputs for the complex type.
+        :param type_def: The type definition for the complex type.
+        :param component_def: The current component definition, which has a property of this complex type.
+        :param property_name: The name of the property in the component definition that has this complex type.
+        """
         mapped_value: dict[str, Input[Any]] = {}
         for schema_name, prop in type_def.properties.items():
             input_val = inputs.get(schema_name, None)
             if input_val is None:
+                if not prop.optional:
+                    property_path = f"{property_name}.{schema_name}"
+                    raise InputPropertyError(
+                        property_path,
+                        f"Missing required input '{property_path}' on '{component_def.name}'",
+                    )
                 continue
             py_name = type_def.properties_mapping[schema_name]
             if prop.ref:
@@ -105,6 +152,8 @@ class ComponentProvider(Provider):
                 mapped_value[py_name] = self.map_complex_input(
                     input_val,  # type: ignore
                     nested_type_def,
+                    component_def,
+                    property_name + "." + schema_name,
                 )
             else:
                 mapped_value[py_name] = input_val
@@ -120,6 +169,9 @@ class ComponentProvider(Provider):
             if instance_val is None:
                 continue
             if prop.ref:
+                if prop.ref in ("pulumi.json#/Asset", "pulumi.json#/Archive"):
+                    state[k] = instance_val
+                    continue
                 # It's a complex type, get the type definition and map it
                 type_def = self.get_type_definition(prop)
                 state[k] = self.map_complex_output(instance_val, type_def)  # type: ignore

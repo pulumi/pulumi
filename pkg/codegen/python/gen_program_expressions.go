@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -507,6 +507,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "os.getcwd()")
 	case "getOutput":
 		g.Fgenf(w, "%v.get_output(%v)", expr.Args[0], expr.Args[1])
+	case "try":
+		g.genTry(w, expr.Args)
+	case "can":
+		g.genCan(w, expr.Args)
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -514,6 +518,40 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.genNYI(w, "FunctionCallExpression: %v (%v)", expr.Name, rng)
 	}
+}
+
+// genTry generates code for a `try` expression. Each argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `try_` utility function chooses. This results in an expression of the form:
+//
+//	try_(
+//	    lambda: <arg1>,
+//	    lambda: <arg2>,
+//	    ...
+//	)
+func (g *generator) genTry(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+
+	g.Fprintf(w, "try_(")
+	for i, arg := range args {
+		g.Indented(func() {
+			g.Fgenf(w, "\n%slambda: %v", g.Indent, arg)
+		})
+		if i < len(args)-1 {
+			g.Fgen(w, ",")
+		} else {
+			g.Fgen(w, "\n")
+		}
+	}
+	g.Fprintf(w, "%s)", g.Indent)
+}
+
+// genCan generates code for a `can` expression. The argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
+//
+//	can_(lambda: <arg>)
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	g.Fgenf(w, "can_(lambda: %v)", args[0])
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

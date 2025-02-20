@@ -715,7 +715,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 
 	err = ps.Config.Set(key, v, c.Path)
 	if err != nil {
-		return fmt.Errorf("could not set config: %g", err)
+		return fmt.Errorf("could not set config: %w", err)
 	}
 
 	return cmdStack.SaveProjectStack(s, ps)

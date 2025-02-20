@@ -339,3 +339,51 @@ func TestLoadVersionMismatch(t *testing.T) {
 	require.Equal(t, ref.Name(), expectedErr.LoadedName)
 	require.Equal(t, ref.Version(), expectedErr.LoadedVersion)
 }
+
+// Simple test to ensure that the string representation of a PackageDescriptor is as expected. Both with and
+// without parameterisation.
+func TestPackageDescriptorString(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("3.0.0")
+
+	cases := []struct {
+		desc     PackageDescriptor
+		expected string
+	}{
+		{
+			PackageDescriptor{
+				Name: "aws",
+			}, "aws@nil",
+		},
+		{
+			PackageDescriptor{
+				Name:    "aws",
+				Version: &version,
+			}, "aws@3.0.0",
+		},
+		{
+			PackageDescriptor{
+				Name:    "base",
+				Version: &version,
+				Parameterization: &ParameterizationDescriptor{
+					Name:    "gcp",
+					Version: semver.MustParse("6.0.0"),
+				},
+			}, "gcp@6.0.0 (base@3.0.0)",
+		},
+		{
+			PackageDescriptor{
+				Name: "base",
+				Parameterization: &ParameterizationDescriptor{
+					Name:    "gcp",
+					Version: semver.MustParse("6.0.0"),
+				},
+			}, "gcp@6.0.0 (base@nil)",
+		},
+	}
+
+	for _, c := range cases {
+		assert.Equal(t, c.expected, c.desc.String())
+	}
+}

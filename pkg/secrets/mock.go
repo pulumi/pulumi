@@ -26,8 +26,8 @@ import (
 type MockSecretsManager struct {
 	TypeF      func() string
 	StateF     func() json.RawMessage
-	EncrypterF func() (config.Encrypter, error)
-	DecrypterF func() (config.Decrypter, error)
+	EncrypterF func() config.Encrypter
+	DecrypterF func() config.Decrypter
 }
 
 var _ Manager = &MockSecretsManager{}
@@ -48,7 +48,7 @@ func (msm *MockSecretsManager) State() json.RawMessage {
 	panic("not implemented")
 }
 
-func (msm *MockSecretsManager) Encrypter() (config.Encrypter, error) {
+func (msm *MockSecretsManager) Encrypter() config.Encrypter {
 	if msm.EncrypterF != nil {
 		return msm.EncrypterF()
 	}
@@ -56,7 +56,7 @@ func (msm *MockSecretsManager) Encrypter() (config.Encrypter, error) {
 	panic("not implemented")
 }
 
-func (msm *MockSecretsManager) Decrypter() (config.Decrypter, error) {
+func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 	if msm.DecrypterF != nil {
 		return msm.DecrypterF()
 	}
@@ -78,7 +78,7 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 
 type MockDecrypter struct {
 	DecryptValueF func() string
-	BulkDecryptF  func() map[string]string
+	BulkDecryptF  func() []string
 }
 
 func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
@@ -89,7 +89,7 @@ func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (s
 	return "", errors.New("mock value not provided")
 }
 
-func (md *MockDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (md *MockDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	if md.BulkDecryptF != nil {
 		return md.BulkDecryptF(), nil
 	}

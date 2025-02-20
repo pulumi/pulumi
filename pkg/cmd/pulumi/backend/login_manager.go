@@ -68,7 +68,7 @@ func (f *lm) Current(
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure)
 }
 
 func (f *lm) Login(
@@ -93,7 +93,7 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure)
 }
 
 type MockLoginManager struct {

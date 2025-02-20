@@ -293,23 +293,23 @@ func TestStackEnvConfig(t *testing.T) {
 	}
 
 	mockSecretsManager := &secrets.MockSecretsManager{
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
-			return encrypter, nil
+			return encrypter
 		},
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() map[string]string {
-					return map[string]string{
-						"idontknow": "whatiamdoing",
+				BulkDecryptF: func() []string {
+					return []string{
+						"whatiamdoing",
 					}
 				},
 			}
 
-			return decrypter, nil
+			return decrypter
 		},
 	}
 
@@ -378,23 +378,23 @@ func TestCopyConfig(t *testing.T) {
 	}
 
 	mockSecretsManager := &secrets.MockSecretsManager{
-		EncrypterF: func() (config.Encrypter, error) {
+		EncrypterF: func() config.Encrypter {
 			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
-			return encrypter, nil
+			return encrypter
 		},
-		DecrypterF: func() (config.Decrypter, error) {
+		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() map[string]string {
-					return map[string]string{
-						"idontknow": "whatiamdoing",
+				BulkDecryptF: func() []string {
+					return []string{
+						"whatiamdoing",
 					}
 				},
 			}
 
-			return decrypter, nil
+			return decrypter
 		},
 	}
 

@@ -341,8 +341,11 @@ func adjustObjectValue(v Value) (object, error) {
 	}
 
 	// If it's convertible to an int, return the int.
-	if i, err := strconv.Atoi(v.value); err == nil {
-		return newObject(int64(i)), nil
+	if i, err := strconv.ParseInt(v.value, 10, 64); err == nil {
+		return newObject(i), nil
+	}
+	if i, err := strconv.ParseUint(v.value, 10, 64); err == nil {
+		return newObject(i), nil
 	}
 
 	// Otherwise, just return the string value.

@@ -41,12 +41,12 @@ func (t *testSecretsManager) Type() string { return "test" }
 
 func (t *testSecretsManager) State() json.RawMessage { return nil }
 
-func (t *testSecretsManager) Encrypter() (config.Encrypter, error) {
-	return t, nil
+func (t *testSecretsManager) Encrypter() config.Encrypter {
+	return t
 }
 
-func (t *testSecretsManager) Decrypter() (config.Decrypter, error) {
-	return t, nil
+func (t *testSecretsManager) Decrypter() config.Decrypter {
+	return t
 }
 
 func (t *testSecretsManager) EncryptValue(
@@ -69,7 +69,7 @@ func (t *testSecretsManager) DecryptValue(
 
 func (t *testSecretsManager) BulkDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	return config.DefaultBulkDecrypt(ctx, t, ciphertexts)
 }
 
@@ -81,7 +81,7 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 	if err := json.Unmarshal(b, &v); err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return DeserializePropertyValue(v, dec, config.NewPanicCrypter())
+	return DeserializePropertyValue(v, dec)
 }
 
 func TestCachingCrypter(t *testing.T) {
@@ -95,8 +95,7 @@ func TestCachingCrypter(t *testing.T) {
 	foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	bar := resource.MakeSecret(resource.NewStringProperty("bar"))
 
-	enc, err := csm.Encrypter()
-	assert.NoError(t, err)
+	enc := csm.Encrypter()
 
 	// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
 	foo1Ser, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
@@ -135,8 +134,7 @@ func TestCachingCrypter(t *testing.T) {
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
 
-	dec, err := csm.Decrypter()
-	assert.NoError(t, err)
+	dec := csm.Decrypter()
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	foo1Dec, err := deserializeProperty(foo1Ser, dec)
@@ -160,8 +158,7 @@ func TestCachingCrypter(t *testing.T) {
 	// ciphertext into the cache with the associated secret.
 	csm = NewCachingSecretsManager(sm)
 
-	dec, err = csm.Decrypter()
-	assert.NoError(t, err)
+	dec = csm.Decrypter()
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	foo1Dec, err = deserializeProperty(foo1Ser, dec)
@@ -181,8 +178,7 @@ func TestCachingCrypter(t *testing.T) {
 	assert.True(t, bar.DeepEquals(barDec))
 	assert.Equal(t, 6, sm.decryptCalls)
 
-	enc, err = csm.Encrypter()
-	assert.NoError(t, err)
+	enc = csm.Encrypter()
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
@@ -204,6 +200,30 @@ func TestCachingCrypter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
+}
+
+func TestBulkDecrypt(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sm := &testSecretsManager{}
+	decrypter := sm.Decrypter()
+	csm := newMapDecrypter(decrypter, map[string]string{})
+
+	decrypted, err := csm.BulkDecrypt(ctx, []string{"1:foo", "2:bar", "3:baz"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"foo", "bar", "baz"}, decrypted)
+	assert.Equal(t, 3, sm.decryptCalls)
+
+	decryptedReordered, err := csm.BulkDecrypt(ctx, []string{"2:bar", "1:foo", "3:baz"}) // Re-ordered
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"bar", "foo", "baz"}, decryptedReordered)
+	assert.Equal(t, 3, sm.decryptCalls) // No additional calls made
+
+	decrypted2, err := csm.BulkDecrypt(ctx, []string{"2:bar", "1:foo", "4:qux", "3:baz"}) // Add a new value
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"bar", "foo", "qux", "baz"}, decrypted2)
+	assert.Equal(t, 4, sm.decryptCalls) // Only 1 additional call made
 }
 
 type mapTestSecretsProvider struct {
@@ -229,17 +249,14 @@ func (t *mapTestSecretsManager) Type() string { return t.sm.Type() }
 
 func (t *mapTestSecretsManager) State() json.RawMessage { return t.sm.State() }
 
-func (t *mapTestSecretsManager) Encrypter() (config.Encrypter, error) {
+func (t *mapTestSecretsManager) Encrypter() config.Encrypter {
 	return t.sm.Encrypter()
 }
 
-func (t *mapTestSecretsManager) Decrypter() (config.Decrypter, error) {
-	d, err := t.sm.Decrypter()
-	if err != nil {
-		return nil, err
-	}
+func (t *mapTestSecretsManager) Decrypter() config.Decrypter {
+	d := t.sm.Decrypter()
 	t.d = &mapTestDecrypter{d: d}
-	return t.d, nil
+	return t.d
 }
 
 type mapTestDecrypter struct {
@@ -258,7 +275,7 @@ func (t *mapTestDecrypter) DecryptValue(
 
 func (t *mapTestDecrypter) BulkDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
+) ([]string, error) {
 	t.bulkDecryptCalls++
 	return config.DefaultBulkDecrypt(ctx, t.d, ciphertexts)
 }

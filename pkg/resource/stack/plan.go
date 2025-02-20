@@ -55,14 +55,13 @@ func SerializePlanDiff(
 func DeserializePlanDiff(
 	diff apitype.PlanDiffV1,
 	dec config.Decrypter,
-	enc config.Encrypter,
 ) (deploy.PlanDiff, error) {
-	adds, err := DeserializeProperties(diff.Adds, dec, enc)
+	adds, err := DeserializeProperties(diff.Adds, dec)
 	if err != nil {
 		return deploy.PlanDiff{}, err
 	}
 
-	updates, err := DeserializeProperties(diff.Updates, dec, enc)
+	updates, err := DeserializeProperties(diff.Updates, dec)
 	if err != nil {
 		return deploy.PlanDiff{}, err
 	}
@@ -155,16 +154,15 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 func DeserializeResourcePlan(
 	plan apitype.ResourcePlanV1,
 	dec config.Decrypter,
-	enc config.Encrypter,
 ) (*deploy.ResourcePlan, error) {
 	var goal *deploy.GoalPlan
 	if plan.Goal != nil {
-		inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec, enc)
+		inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec)
 		if err != nil {
 			return nil, err
 		}
 
-		outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
+		outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +189,7 @@ func DeserializeResourcePlan(
 
 	var outputs resource.PropertyMap
 	if plan.Outputs != nil {
-		outs, err := DeserializeProperties(plan.Outputs, dec, enc)
+		outs, err := DeserializeProperties(plan.Outputs, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +209,7 @@ func DeserializeResourcePlan(
 	}, nil
 }
 
-func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter) (*deploy.Plan, error) {
 	manifest, err := deploy.DeserializeManifest(plan.Manifest)
 	if err != nil {
 		return nil, err
@@ -223,7 +221,7 @@ func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc co
 		ResourcePlans: make(map[resource.URN]*deploy.ResourcePlan),
 	}
 	for urn, resourcePlan := range plan.ResourcePlans {
-		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
+		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec)
 		if err != nil {
 			return nil, err
 		}

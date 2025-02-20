@@ -1,0 +1,11 @@
+name: python-component-provider-python
+description: Using a component provider written in Python from Python
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+plugins:
+  providers:
+    - name: nodejs-component-provider
+      path: ../provider

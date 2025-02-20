@@ -25,7 +25,7 @@ import (
 
 // PlaintextType describes the allowed types for a Plaintext.
 type PlaintextType interface {
-	bool | int64 | float64 | string | []Plaintext | map[string]Plaintext
+	bool | int64 | uint64 | float64 | string | []Plaintext | map[string]Plaintext
 }
 
 // Plaintext is a single plaintext config value.
@@ -112,6 +112,8 @@ func (c Plaintext) PropertyValue() resource.PropertyValue {
 		prop = resource.NewBoolProperty(v)
 	case int64:
 		prop = resource.NewNumberProperty(float64(v))
+	case uint64:
+		prop = resource.NewNumberProperty(float64(v))
 	case float64:
 		prop = resource.NewNumberProperty(v)
 	case string:
@@ -157,6 +159,8 @@ func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encr
 	case bool:
 		return newObject(v), nil
 	case int64:
+		return newObject(v), nil
+	case uint64:
 		return newObject(v), nil
 	case float64:
 		return newObject(v), nil

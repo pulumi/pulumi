@@ -167,6 +167,7 @@ func TestCreateStep(t *testing.T) {
 				var createCalled bool
 				s := &CreateStep{
 					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
 					deployment: &Deployment{
@@ -190,6 +191,7 @@ func TestCreateStep(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
 					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
 					deployment: &Deployment{
@@ -218,6 +220,7 @@ func TestCreateStep(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
 					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
 					deployment: &Deployment{
@@ -512,7 +515,7 @@ func TestReadStep(t *testing.T) {
 			s := &ReadStep{
 				old: &resource.State{},
 				new: &resource.State{
-					URN:    "some-urn",
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -538,7 +541,7 @@ func TestReadStep(t *testing.T) {
 			s := &ReadStep{
 				old: &resource.State{},
 				new: &resource.State{
-					URN:    "some-urn",
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -803,7 +806,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 	for _, tc := range tests {
 		s := &RefreshStep{
 			old: &resource.State{
-				URN:      "some-urn",
+				URN:      "urn:pulumi:stack::project::some-type::some-urn",
 				ID:       "some-id",
 				Type:     "some-type",
 				Custom:   true,
@@ -866,7 +869,7 @@ func TestRefreshStep(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			s := &RefreshStep{
 				old: &resource.State{
-					URN:    "some-urn",
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -891,7 +894,7 @@ func TestRefreshStep(t *testing.T) {
 			t.Parallel()
 			s := &RefreshStep{
 				old: &resource.State{
-					URN:    "some-urn",
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Type:   "some-type",
 					Custom: true,

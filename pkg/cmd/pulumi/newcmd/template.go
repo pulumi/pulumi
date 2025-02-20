@@ -46,7 +46,7 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
 	nopts := len(options)
 	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
 	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", nopts)
@@ -66,9 +66,7 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []workspace.Template,
-	showAll bool,
-) ([]string, map[string]workspace.Template) {
+func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
@@ -82,10 +80,6 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	var brokenOptions []string
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
-		// If showAll is false, then only include templates marked Important
-		if !showAll && !template.Important {
-			continue
-		}
 		// If template is broken, indicate it in the project description.
 		if template.Errored() {
 			template.ProjectDescription = BrokenTemplateDescription
@@ -105,12 +99,6 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	// After sorting the options, add the broken templates to the end
 	sort.Strings(options)
 	options = append(options, brokenOptions...)
-
-	if !showAll {
-		// If showAll is false, include an option to show all
-		option := "Show additional templates"
-		options = append(options, option)
-	}
 
 	return options, nameToTemplateMap
 }

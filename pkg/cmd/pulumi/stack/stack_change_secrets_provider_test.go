@@ -250,8 +250,7 @@ runtime: mock
 	require.NoError(t, err)
 
 	// Write a dummy config file with a secret in it
-	b64Encrypter, err := secretsManager.Encrypter()
-	require.NoError(t, err)
+	b64Encrypter := secretsManager.Encrypter()
 	secretBar, err := b64Encrypter.EncryptValue(ctx, "bar")
 	require.NoError(t, err)
 	cfgKey := config.MustMakeKey("testStack", "secret")
@@ -271,8 +270,7 @@ runtime: mock
 
 	// Check that the snapshot now has a passphrase secrets manager
 	assert.Equal(t, "passphrase", snapshot.SecretsManager.Type())
-	passphraseDecrypter, err := snapshot.SecretsManager.Decrypter()
-	require.NoError(t, err)
+	passphraseDecrypter := snapshot.SecretsManager.Decrypter()
 	// Check that the snapshot still records the secret value with the same value
 	foo := snapshot.Resources[0].Outputs["foo"]
 	assert.True(t, foo.IsSecret())

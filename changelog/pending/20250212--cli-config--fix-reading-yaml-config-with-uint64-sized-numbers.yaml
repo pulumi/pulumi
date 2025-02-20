@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Fix reading YAML config with uint64 sized numbers

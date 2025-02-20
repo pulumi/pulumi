@@ -81,6 +81,20 @@ func TestUniqueProviderVersions(t *testing.T) {
 	t.Parallel()
 
 	versions := map[string]string{}
+	highestVersion := semver.Version{Major: 0, Minor: 0, Patch: 0}
+	for _, test := range tests.LanguageTests {
+		for _, provider := range test.Providers {
+			version, _ := getProviderVersion(provider)
+			if version.GT(highestVersion) {
+				highestVersion = version
+			}
+		}
+	}
+	nextVersion := semver.Version{
+		Major: highestVersion.Major + 1,
+		Minor: highestVersion.Minor,
+		Patch: highestVersion.Patch,
+	}
 
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
@@ -91,7 +105,16 @@ func TestUniqueProviderVersions(t *testing.T) {
 			vstr := version.String()
 
 			if v, ok := versions[vstr]; ok {
-				assert.Equal(t, pkg, v, "provider version %s is used by both %s and %s", vstr, pkg, v)
+				assert.Equal(
+					t,
+					pkg,
+					v,
+					"provider version %s is used by both %s and %s, next provider version is %s",
+					vstr,
+					pkg,
+					v,
+					nextVersion.String(),
+				)
 			}
 			versions[vstr] = pkg
 		}

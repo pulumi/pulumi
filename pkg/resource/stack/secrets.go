@@ -23,8 +23,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/lazy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
@@ -93,18 +95,25 @@ type cacheEntry struct {
 }
 
 type cachingSecretsManager struct {
-	manager secrets.Manager
-	cache   map[*resource.Secret]cacheEntry
+	manager   secrets.Manager
+	encrypter lazy.Lazy[config.Encrypter]
+	decrypter lazy.Lazy[config.Decrypter]
+	cache     map[*resource.Secret]cacheEntry
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
 // secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
-	return &cachingSecretsManager{
+	sm := &cachingSecretsManager{
 		manager: manager,
 		cache:   make(map[*resource.Secret]cacheEntry),
 	}
+	if manager != nil {
+		sm.encrypter = lazy.New(manager.Encrypter)
+		sm.decrypter = lazy.New(manager.Decrypter)
+	}
+	return sm
 }
 
 func (csm *cachingSecretsManager) Type() string {
@@ -115,66 +124,50 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 	return csm.manager.State()
 }
 
-func (csm *cachingSecretsManager) Encrypter() (config.Encrypter, error) {
-	enc, err := csm.manager.Encrypter()
-	if err != nil {
-		return nil, err
-	}
-	return &cachingCrypter{
-		encrypter: enc,
-		cache:     csm.cache,
-	}, nil
+func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
+	csm.encrypter.Value() // Ensure the encrypter is initialized.
+	return csm            // The cachingSecretsManager is also an Encrypter itself.
 }
 
-func (csm *cachingSecretsManager) Decrypter() (config.Decrypter, error) {
-	dec, err := csm.manager.Decrypter()
-	if err != nil {
-		return nil, err
-	}
-	return &cachingCrypter{
-		decrypter: dec,
-		cache:     csm.cache,
-	}, nil
+func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
+	csm.decrypter.Value() // Ensure the decrypter is initialized.
+	return csm            // The cachingSecretsManager is also a Decrypter itself.
 }
 
-type cachingCrypter struct {
-	encrypter config.Encrypter
-	decrypter config.Decrypter
-	cache     map[*resource.Secret]cacheEntry
+func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	return csm.encrypter.Value().EncryptValue(ctx, plaintext)
 }
 
-func (c *cachingCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return c.encrypter.EncryptValue(ctx, plaintext)
+func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }
 
-func (c *cachingCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return c.decrypter.DecryptValue(ctx, ciphertext)
-}
-
-func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
-	return c.decrypter.BulkDecrypt(ctx, ciphertexts)
+func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return csm.decrypter.Value().BulkDecrypt(ctx, ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
-func (c *cachingCrypter) encryptSecret(ctx context.Context, secret *resource.Secret, plaintext string) (string, error) {
+func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
+	secret *resource.Secret, plaintext string,
+) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
 	//
 	// Otherwise, re-encrypt the plaintext and update the cache.
-	entry, ok := c.cache[secret]
+	entry, ok := csm.cache[secret]
 	if ok && entry.plaintext == plaintext {
 		return entry.ciphertext, nil
 	}
-	ciphertext, err := c.encrypter.EncryptValue(ctx, plaintext)
+	ciphertext, err := csm.manager.Encrypter().EncryptValue(ctx, plaintext)
 	if err != nil {
 		return "", err
 	}
-	c.insert(secret, plaintext, ciphertext)
+	csm.insert(secret, plaintext, ciphertext)
 	return ciphertext, nil
 }
 
 // insert associates the given secret with the given plain- and ciphertext in the cache.
-func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
-	c.cache[secret] = cacheEntry{plaintext, ciphertext}
+func (csm *cachingSecretsManager) insert(secret *resource.Secret, plaintext, ciphertext string) {
+	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
 }
 
 // mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,
@@ -215,22 +208,26 @@ func (c *mapDecrypter) DecryptValue(ctx context.Context, ciphertext string) (str
 	return plaintext, nil
 }
 
-func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	// Loop and find the entries that are already cached, then BulkDecrypt the rest
-	secretMap := map[string]string{}
+	decryptedResult := make([]string, len(ciphertexts))
 	var toDecrypt []string
 	if c.cache == nil {
 		// Don't bother searching for the cached subset if the cache is nil
 		toDecrypt = ciphertexts
 	} else {
-		toDecrypt = make([]string, 0)
-		for _, ct := range ciphertexts {
+		toDecrypt = make([]string, 0, len(ciphertexts))
+		for i, ct := range ciphertexts {
 			if plaintext, ok := c.cache[ct]; ok {
-				secretMap[ct] = plaintext
+				decryptedResult[i] = plaintext
 			} else {
 				toDecrypt = append(toDecrypt, ct)
 			}
 		}
+	}
+
+	if len(toDecrypt) == 0 {
+		return decryptedResult, nil
 	}
 
 	// try and bulk decrypt the rest
@@ -243,11 +240,17 @@ func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (m
 	if c.cache == nil {
 		c.cache = make(map[string]string)
 	}
-
-	for ct, pt := range decrypted {
-		secretMap[ct] = pt
+	for i, ct := range toDecrypt {
+		pt := decrypted[i]
 		c.cache[ct] = pt
 	}
 
-	return secretMap, nil
+	// Re-populate results
+	for i, ct := range ciphertexts {
+		plaintext, ok := c.cache[ct]
+		contract.Assertf(ok, "decrypted value not found in cache after bulk request")
+		decryptedResult[i] = plaintext
+	}
+
+	return decryptedResult, nil
 }

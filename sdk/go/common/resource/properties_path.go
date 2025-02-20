@@ -495,64 +495,63 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 				return true
 			}
 			return false
-		} else {
-			pkey := PropertyKey(key)
-
-			if len(p) == 1 {
-				// This is the leaf path entry, so we want to reset this property in new to it's value in old.
-
-				// Firstly if old doesn't have this key (either because it isn't an object or because it
-				// doesn't have the property) then we want to delete this from new.
-				var v PropertyValue
-				var has bool
-				if old.IsObject() {
-					v, has = old.ObjectValue()[pkey]
-				}
-
-				if has {
-					// If this path exists in old but new isn't an object than return a path error
-					if !new.IsObject() {
-						return false
-					}
-					// Else simply overwrite the value in new with the value from old, if this was a secret value in
-					// old, but new isn't currently a secret context then we need to mark this reset value as secret.
-					if oldIsSecret && !newIsSecret {
-						v = MakeSecret(v)
-					}
-					new.ObjectValue()[pkey] = v
-				} else {
-					// If the path doesn't exist in old then we want to delete it from new, but if new isn't
-					// an object then we can just do nothing we don't consider this a path error. e.g. given
-					// old:{} and new:1 and a path of "a" we can return true because ["a"] in both is the
-					// same (it doesn't exist).
-					if new.IsObject() {
-						delete(new.ObjectValue(), pkey)
-					}
-				}
-				return true
-			}
-
-			if !old.IsObject() || !new.IsObject() {
-				// At least one of old or new is not an object, so we can't keep searching along this path but
-				// we only return an error if both are not objects.
-				return !old.IsObject() && !new.IsObject()
-			}
-
-			new, hasNew := new.ObjectValue()[pkey]
-			old, hasOld := old.ObjectValue()[pkey]
-
-			if hasOld && !hasNew {
-				// Old has this key but new doesn't, but we still searching for the leaf item to set so this
-				// is a path error.
-				return false
-			}
-			if !hasOld && !hasNew {
-				// Neither value contain this path, so we're done.
-				return true
-			}
-
-			return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 		}
+		pkey := PropertyKey(key)
+
+		if len(p) == 1 {
+			// This is the leaf path entry, so we want to reset this property in new to it's value in old.
+
+			// Firstly if old doesn't have this key (either because it isn't an object or because it
+			// doesn't have the property) then we want to delete this from new.
+			var v PropertyValue
+			var has bool
+			if old.IsObject() {
+				v, has = old.ObjectValue()[pkey]
+			}
+
+			if has {
+				// If this path exists in old but new isn't an object than return a path error
+				if !new.IsObject() {
+					return false
+				}
+				// Else simply overwrite the value in new with the value from old, if this was a secret value in
+				// old, but new isn't currently a secret context then we need to mark this reset value as secret.
+				if oldIsSecret && !newIsSecret {
+					v = MakeSecret(v)
+				}
+				new.ObjectValue()[pkey] = v
+			} else {
+				// If the path doesn't exist in old then we want to delete it from new, but if new isn't
+				// an object then we can just do nothing we don't consider this a path error. e.g. given
+				// old:{} and new:1 and a path of "a" we can return true because ["a"] in both is the
+				// same (it doesn't exist).
+				if new.IsObject() {
+					delete(new.ObjectValue(), pkey)
+				}
+			}
+			return true
+		}
+
+		if !old.IsObject() || !new.IsObject() {
+			// At least one of old or new is not an object, so we can't keep searching along this path but
+			// we only return an error if both are not objects.
+			return !old.IsObject() && !new.IsObject()
+		}
+
+		new, hasNew := new.ObjectValue()[pkey]
+		old, hasOld := old.ObjectValue()[pkey]
+
+		if hasOld && !hasNew {
+			// Old has this key but new doesn't, but we still searching for the leaf item to set so this
+			// is a path error.
+			return false
+		}
+		if !hasOld && !hasNew {
+			// Neither value contain this path, so we're done.
+			return true
+		}
+
+		return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 	}
 
 	contract.Failf("Invalid property path component type: %T", key)
