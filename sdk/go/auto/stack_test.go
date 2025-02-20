@@ -258,7 +258,7 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 func TestPreviewImportResources(t *testing.T) {
 	t.Parallel()
 
-	// / Arrange
+	// Arrange
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on Windows")
 	}
