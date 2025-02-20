@@ -31,6 +31,7 @@ export type PropertyType = "string" | "integer" | "number" | "boolean" | "array"
 export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
     optional?: boolean;
     plain?: boolean;
+    additionalProperties?: PropertyDefinition;
 };
 
 export type ComponentDefinition = {
@@ -271,6 +272,23 @@ export class Analyzer {
                 prop.plain = true;
             }
             return prop;
+        } else if (isMapType(type, this.checker)) {
+            const prop: PropertyDefinition = { type: "object" };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+
+            // We got { [key: string]: <indexInfo.type> }
+            const indexInfo = this.checker.getIndexInfoOfType(type, ts.IndexKind.String);
+            if (!indexInfo) {
+                // We can't actually get here because isMapType checks for indexInfo
+                throw new Error(`Map type has no index info`);
+            }
+            prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, plain);
+            return prop;
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
         } else if (type.isIntersection()) {
@@ -318,6 +336,11 @@ function isBoolean(type: typescript.Type): boolean {
 
 function isSimpleType(type: typescript.Type): boolean {
     return isNumber(type) || isString(type) || isBoolean(type);
+}
+
+function isMapType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
+    return indexInfo !== undefined;
 }
 
 function isPromise(type: typescript.Type): boolean {
