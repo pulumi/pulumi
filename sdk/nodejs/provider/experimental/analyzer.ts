@@ -228,7 +228,7 @@ export class Analyzer {
             const base = (type as typescript.UnionType)?.types?.find(isPromise);
             if (!base) {
                 // unreachable due to the isInput check
-                throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}`);
+                throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}'`);
             }
             const innerType = this.unwrapTypeReference(base);
             return this.analyzeType(innerType, location, optional, false /* plain */);
@@ -272,9 +272,9 @@ export class Analyzer {
             }
             return prop;
         } else if (type.isUnion()) {
-            throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}`);
+            throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}'`);
         } else if (type.isIntersection()) {
-            throw new Error(`Intersection types are not supported, got '${this.checker.typeToString(type)}`);
+            throw new Error(`Intersection types are not supported, got '${this.checker.typeToString(type)}'`);
         }
 
         throw new Error(`Unsupported type '${this.checker.typeToString(type)}'`);
