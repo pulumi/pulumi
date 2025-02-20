@@ -19,5 +19,6 @@ node = "20"
 "npm:typescript-language-server" = "latest"
 "npm:yarn" = "latest"
 python = '3.11'
+uv = "latest"
 
 [plugins]

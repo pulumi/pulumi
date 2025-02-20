@@ -515,6 +515,7 @@ class Stack:
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
+        clear_pending_creates: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
@@ -536,6 +537,7 @@ class Stack:
         :param message: Message (optional) to associate with the refresh operation.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param clear_pending_creates: Clear all pending creates, dropping them from the state.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
@@ -1003,6 +1005,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
 
     message: Optional[str] = kwargs.get("message")
     expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
+    clear_pending_creates: Optional[bool] = kwargs.get("clear_pending_creates")
     diff: Optional[bool] = kwargs.get("diff")
     replace: Optional[List[str]] = kwargs.get("replace")
     target: Optional[List[str]] = kwargs.get("target")
@@ -1027,6 +1030,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--message", message])
     if expect_no_changes:
         extra_args.append("--expect-no-changes")
+    if clear_pending_creates:
+        extra_args.append("--clear-pending-creates")
     if diff:
         extra_args.append("--diff")
     if replace:
