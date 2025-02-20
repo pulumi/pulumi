@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -251,4 +252,43 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	)
 
 	assert.Contains(t, args, "--clear-pending-creates")
+}
+
+func TestPreviewImportResources(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		ctx.Export("exp_static", pulumi.String("foo"))
+		return nil
+	})
+	require.NoError(t, err, "failed to initialize stack")
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	tempDir := t.TempDir()
+	importFilePath := filepath.Join(tempDir, "import.json")
+	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
+	err = os.WriteFile(importFilePath, resources, 0o600)
+	assert.NoError(t, err, "error writing file")
+
+	// Act
+	result, err := s.ImportResources(ctx,
+		optimport.Protect(false),
+		optimport.GenerateCode(true),
+		optimport.PreviewOnly(true),
+		optimport.ImportFile(importFilePath),
+	)
+
+	// Assert
+	require.NoError(t, err, "import failed")
+	assert.Contains(t, result.StdOut, "Previewing")
+	assert.NotContains(t, result.StdOut, "Importing")
 }

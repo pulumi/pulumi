@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: "Add preview-only in import resource for sdk/go"

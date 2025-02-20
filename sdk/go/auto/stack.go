@@ -506,7 +506,17 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 	// clean-up the temp directory after we are done
 	defer os.RemoveAll(tempDir)
 
-	args := []string{"import", "--yes", "--skip-preview"}
+	args := []string{"import"}
+
+	if importOpts.PreviewOnly != nil && *importOpts.PreviewOnly {
+		args = append(args, "--preview-only")
+	} else {
+		args = append(args, "--yes", "--skip-preview")
+	}
+
+	if importOpts.Diff != nil && *importOpts.Diff {
+		args = append(args, "--diff")
+	}
 
 	if importOpts.Resources != nil {
 		importFilePath := filepath.Join(tempDir, "import.json")
@@ -528,6 +538,10 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		}
 
 		args = append(args, "--file", importFilePath)
+	}
+
+	if importOpts.Resources == nil && importOpts.ImportFile != nil {
+		args = append(args, "--file", *importOpts.ImportFile)
 	}
 
 	if importOpts.Protect != nil && !*importOpts.Protect {
