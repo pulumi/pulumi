@@ -177,9 +177,6 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
-            if (opts.clearPendingCreates) {
-                args.push("--clear-pending-creates");
-            }
             if (opts.refresh) {
                 args.push("--refresh");
             }
@@ -319,9 +316,6 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
-            if (opts.clearPendingCreates) {
-                args.push("--clear-pending-creates");
-            }
             if (opts.refresh) {
                 args.push("--refresh");
             }
@@ -456,6 +450,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
+            }
+            if (opts.clearPendingCreates) {
+                args.push("--clear-pending-creates");
             }
             if (opts.target) {
                 for (const tURN of opts.target) {
@@ -1272,11 +1269,6 @@ export interface UpOptions extends GlobalOpts {
     expectNoChanges?: boolean;
 
     /**
-     * Clear all pending creates, dropping them from the state
-     */
-    clearPendingCreates?: boolean;
-
-    /**
      * Refresh the state of the stack's resources before this update.
      */
     refresh?: boolean;
@@ -1377,11 +1369,6 @@ export interface PreviewOptions extends GlobalOpts {
     expectNoChanges?: boolean;
 
     /**
-     * Clear all pending creates, dropping them from the state
-     */
-    clearPendingCreates?: boolean;
-
-    /**
      * Refresh the state of the stack's resources against the cloud provider before running preview.
      */
     refresh?: boolean;
@@ -1470,6 +1457,11 @@ export interface RefreshOptions extends GlobalOpts {
      * Return an error if any changes occur during this operation.
      */
     expectNoChanges?: boolean;
+
+    /**
+     * Clear all pending creates, dropping them from the state
+     */
+    clearPendingCreates?: boolean;
 
     /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
