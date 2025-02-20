@@ -16,7 +16,6 @@ package auto
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -259,10 +258,6 @@ func TestPreviewImportResources(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on Windows")
-	}
-
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
