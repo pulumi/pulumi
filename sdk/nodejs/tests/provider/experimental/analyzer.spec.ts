@@ -201,6 +201,9 @@ describe("Analyzer", function () {
                     mapOfStringInputs: { type: "object", additionalProperties: { type: "string" }, plain: true },
                     mapOfNumberInputs: { type: "object", additionalProperties: { type: "number" }, plain: true },
                     mapOfBooleanInputs: { type: "object", additionalProperties: { type: "boolean" }, plain: true },
+                    inputMapOfStringInputs: { type: "object", additionalProperties: { type: "string" } },
+                    inputMapOfNumberInputs: { type: "object", additionalProperties: { type: "number" } },
+                    inputMapOfBooleanInputs: { type: "object", additionalProperties: { type: "boolean" } },
                 },
                 outputs: {
                     outMapOfStrings: { type: "object", additionalProperties: { type: "string" } },

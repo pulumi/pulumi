@@ -9,6 +9,9 @@ export interface MyComponentArgs {
     mapOfStringInputs: { [key: string]: pulumi.Input<string> };
     mapOfNumberInputs: { [key: string]: pulumi.Input<number> };
     mapOfBooleanInputs: { [key: string]: pulumi.Input<boolean> };
+    inputMapOfStringInputs: pulumi.Input<{ [key: string]: pulumi.Input<string> }>;
+    inputMapOfNumberInputs: pulumi.Input<{ [key: string]: pulumi.Input<number> }>;
+    inputMapOfBooleanInputs: pulumi.Input<{ [key: string]: pulumi.Input<boolean> }>;
 }
 
 export class MyComponent extends pulumi.ComponentResource {
