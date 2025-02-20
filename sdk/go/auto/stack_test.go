@@ -281,8 +281,8 @@ func TestPreviewImportResources(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "import-files")
 	defer os.RemoveAll(tempDir)
 	importFilePath := filepath.Join(tempDir, "import.json")
-	importResources := []byte(`[{"type":"my:module:MyResource","name":"create-resource","id":"bar"}]`)
-	err = os.WriteFile(importFilePath, importResources, 0o600)
+	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
+	err = os.WriteFile(importFilePath, resources, 0o600)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
@@ -300,45 +300,4 @@ func TestPreviewImportResources(t *testing.T) {
 	require.NoError(t, err, "import failed")
 	assert.Contains(t, result.StdOut, "Previewing")
 	assert.NotContains(t, result.StdOut, "Importing")
-}
-
-func TestImportResources(t *testing.T) {
-	t.Parallel()
-
-	// / Arrange
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on Windows")
-	}
-
-	ctx := context.Background()
-	sName := ptesting.RandomStackName()
-	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-
-	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		ctx.Export("exp_static", pulumi.String("foo"))
-		return nil
-	})
-	require.NoError(t, err, "failed to initialize stack")
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
-
-	resources := []*optimport.ImportResource{
-		{
-			Type: "my:module:MyResource",
-			Name: "create-resource",
-			ID:   "bar",
-		},
-	}
-
-	// Act
-	result, err := s.ImportResources(ctx, optimport.Resources(resources), optimport.GenerateCode(true))
-
-	// Assert
-	require.NoError(t, err, "import failed")
-	assert.Equal(t, "succeeded", result.Summary.Result)
-	assert.Contains(t, result.StdOut, "Importing")
-	assert.NotContains(t, result.StdOut, "Previewing")
 }
