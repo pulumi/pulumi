@@ -283,10 +283,7 @@ func TestPreviewImportResources(t *testing.T) {
 	importFilePath := filepath.Join(tempDir, "import.json")
 	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
 	err = os.WriteFile(importFilePath, resources, 0o600)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
-	}
+	assert.NoError(t, err, "error writing file")
 
 	// Act
 	result, err := s.ImportResources(ctx,
