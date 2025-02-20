@@ -447,9 +447,3 @@ function symbolTableToSymbols(table: typescript.SymbolTable): typescript.Symbol[
     });
     return symbols;
 }
-
-function debug(label: string, msg: any) {
-    const fs = require("fs");
-    const util = require("util");
-    fs.writeFileSync("/tmp/debug.log", label + ": " + util.inspect(msg) + "\n", { flag: "a" });
-}
