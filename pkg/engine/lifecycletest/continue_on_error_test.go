@@ -925,6 +925,10 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{}, errors.New("interrupt replace")
 				},
+				DiffConfigF: func(_ context.Context, _ plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					// Always report a replace diff to trigger a replacement
+					return plugin.DiffConfigResponse{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"version"}}, nil
+				},
 			}, nil
 		}),
 	}

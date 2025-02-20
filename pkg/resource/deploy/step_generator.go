@@ -1744,26 +1744,11 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return false, nil
 	}
 
-	// If one or both of these providers are not default providers, we will need to accept the diff and replace
-	// everything. This might not be strictly necessary, but it is conservatively correct.
-	if !providers.IsDefaultProvider(oldRef.URN()) || !providers.IsDefaultProvider(newRef.URN()) {
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): reporting provider diff due to change in default provider status", urn)
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): old provider %q is default: %v",
-			urn, oldRef.URN(), providers.IsDefaultProvider(oldRef.URN()))
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): new provider %q is default: %v",
-			urn, newRef.URN(), providers.IsDefaultProvider(newRef.URN()))
-		return true, err
-	}
-
-	// If both of these providers are default providers, use the *new provider* to diff the config and determine if
-	// this provider requires replacement.
+	// Use the *new provider* to diff the config and determine if this provider requires replacement.
 	//
-	// Note that, if we have many resources managed by the same provider that is getting replaced in this manner,
-	// this will call DiffConfig repeatedly with the same arguments for every resource. If this becomes a
-	// performance problem, this result can be cached.
+	// Note that, if we have many resources managed by the same provider that is getting replaced in this
+	// manner, this will call DiffConfig repeatedly with the same arguments for every resource. If this
+	// becomes a performance problem, this result can be cached.
 	newProv, ok := sg.deployment.providers.GetProvider(newRef)
 	if !ok {
 		return false, fmt.Errorf("failed to resolve provider reference: %q", oldRef.String())
