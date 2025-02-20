@@ -224,12 +224,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 							err := ex.refresh(callerCtx)
 							if err != nil {
 								if !result.IsBail(err) {
-									logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
+									logging.V(4).Infof("deploymentExecutor.Execute(...): error performing refreshes: %v", err)
 									ex.reportError("", err)
 									return false, result.BailError(err)
 								}
 							}
-							return false, nil
+							return false, err
 						}
 
 						if err := ex.handleSingleEvent(event.Event); err != nil {
