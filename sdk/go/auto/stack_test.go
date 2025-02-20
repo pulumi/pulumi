@@ -278,8 +278,7 @@ func TestPreviewImportResources(t *testing.T) {
 		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	tempDir, err := os.MkdirTemp("", "import-files")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 	importFilePath := filepath.Join(tempDir, "import.json")
 	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
 	err = os.WriteFile(importFilePath, resources, 0o600)
