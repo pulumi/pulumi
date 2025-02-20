@@ -1311,34 +1311,37 @@ describe("output", () => {
     });
 
     describe("output types", () => {
-      it("creates the right type for arrays", async () => {
-        const input: Array<Output<string>> = [output("hello"), output("world")]
-        const result: Array<string> = await all(input).promise()
-        assert.deepStrictEqual(result, ["hello", "world"]);
-      });
+        it("creates the right type for arrays", async () => {
+            const input: Array<Output<string>> = [output("hello"), output("world")];
+            const result: Array<string> = await all(input).promise();
+            assert.deepStrictEqual(result, ["hello", "world"]);
+        });
 
-      it("creates the right type for tuples", async () => {
-        const input: [Output<string>, Output<number>] = [output("hello"), output(123)]
-        const result: [string, number] = await all(input).promise()
-        assert.deepStrictEqual(result, ["hello", 123]);
-      });
+        it("creates the right type for tuples", async () => {
+            const input: [Output<string>, Output<number>] = [output("hello"), output(123)];
+            const result: [string, number] = await all(input).promise();
+            assert.deepStrictEqual(result, ["hello", 123]);
+        });
 
-      it("creates the right type for many tuples", async () => {
-        // https://github.com/pulumi/pulumi/issues/17704#issuecomment-2460209864
-        const input: Output<[string, number]>[] = [ output(["hello", 123]), output([ "world", 456 ]) ];
-        const result: Array<[string, number]> = await all(input).promise();
-        assert.deepStrictEqual(result, [["hello", 123], ["world", 456]]);
-      });
+        it("creates the right type for many tuples", async () => {
+            // https://github.com/pulumi/pulumi/issues/17704#issuecomment-2460209864
+            const input: Output<[string, number]>[] = [output(["hello", 123]), output(["world", 456])];
+            const result: Array<[string, number]> = await all(input).promise();
+            assert.deepStrictEqual(result, [
+                ["hello", 123],
+                ["world", 456],
+            ]);
+        });
 
-      it("creates the right type for objects", async () => {
-        const input = {
-          name: output("Tom"),
-          likes_dogs: output(true),
-        }
+        it("creates the right type for objects", async () => {
+            const input = {
+                name: output("Tom"),
+                likes_dogs: output(true),
+            };
 
-        const result: { name: string, likes_dogs: boolean } = await output(input).promise()
-        assert.deepStrictEqual(result, { name: "Tom", likes_dogs: true })
-      });
+            const result: { name: string; likes_dogs: boolean } = await output(input).promise();
+            assert.deepStrictEqual(result, { name: "Tom", likes_dogs: true });
+        });
     });
 
     describe("secret operations", () => {
