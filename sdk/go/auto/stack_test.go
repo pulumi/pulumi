@@ -275,7 +275,7 @@ func TestPreviewImportResources(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	tempDir, err := os.MkdirTemp("", "import-files")
