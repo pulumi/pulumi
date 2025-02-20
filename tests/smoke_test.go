@@ -746,7 +746,12 @@ func TestImportVersionSmoke(t *testing.T) {
 	e.CWD = projectDir
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "random-go", "--yes")
+
+	// Create a new go project based of the local random template
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	template := filepath.Join(cwd, "testdata", "random_go")
+	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Install the version of the random provider used by the template and another
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
@@ -777,7 +782,12 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 	e.CWD = projectDir
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "random-go", "--yes")
+
+	// Create a new go project based of the local random template
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	template := filepath.Join(cwd, "testdata", "random_go")
+	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Assert that the current go.mod is on the 4.13.0 version
 	goMod, err := os.ReadFile(filepath.Join(projectDir, "go.mod"))
@@ -813,7 +823,12 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 	e.CWD = projectDir
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// Create a new typescript project based of the local random template
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	template := filepath.Join(cwd, "testdata", "random_typescript")
+	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Use the 4.12 version of the provider
 	replaceStringInFile := func(file, pattern, replacement string) {
@@ -863,7 +878,12 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 	e.CWD = projectDir
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// Create a new typescript project based of the local random template
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	template := filepath.Join(cwd, "testdata", "random_typescript")
+	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Change to use the parameterised version of the provider
 	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.3.1")
@@ -903,7 +923,12 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	e.CWD = projectDir
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "random-python", "--yes")
+
+	// Create a new python project based of the local random template
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	template := filepath.Join(cwd, "testdata", "random_python")
+	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Change to use the parameterised version of the provider
 	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.3.1")
