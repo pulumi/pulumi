@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Add `--clear-pending-creates` to the `refresh` command in the Python Automation API
