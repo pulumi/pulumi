@@ -22,7 +22,7 @@ import (
 )
 
 func RandomStackName() string {
-	b := make([]byte, 4)
+	b := make([]byte, 8)
 	_, err := rand.Read(b)
 	contract.AssertNoErrorf(err, "failed to generate random stack name")
 	return "test" + hex.EncodeToString(b)
