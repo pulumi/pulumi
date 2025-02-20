@@ -213,4 +213,25 @@ describe("Analyzer", function () {
             },
         });
     });
+
+    it("infers asset/archive types", async function () {
+        const dir = path.join(__dirname, "testdata", "asset-archive-types");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    anAsset: { $ref: "pulumi.json#/Asset", plain: true },
+                    anArchive: { $ref: "pulumi.json#/Archive", plain: true },
+                    inputAsset: { $ref: "pulumi.json#/Asset" },
+                    inputArchive: { $ref: "pulumi.json#/Archive" },
+                },
+                outputs: {
+                    outAsset: { $ref: "pulumi.json#/Asset" },
+                    outArchive: { $ref: "pulumi.json#/Archive" },
+                },
+            },
+        });
+    });
 });

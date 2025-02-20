@@ -240,6 +240,26 @@ export class Analyzer {
             // be plain anymore, since it's wrapped in an output.
             const innerType = this.unwrapTypeReference(type);
             return this.analyzeType(innerType, location, optional, false /* plain */);
+        } else if (isAsset(type)) {
+            const $ref = "pulumi.json#/Asset";
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
+        } else if (isArchive(type)) {
+            const $ref = "pulumi.json#/Archive";
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (plain) {
+                prop.plain = true;
+            }
+            return prop;
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
@@ -375,6 +395,23 @@ function isOutput(type: typescript.Type): boolean {
     const sourceFile = symbol?.declarations?.[0].getSourceFile();
     const matchesSourceFile =
         sourceFile?.fileName.endsWith("output.ts") || sourceFile?.fileName.endsWith("output.d.ts");
+    return !!matchesName && !!matchesSourceFile;
+}
+
+function isAsset(type: typescript.Type): boolean {
+    const symbol = type.getSymbol();
+    const matchesName = symbol?.escapedName === "Asset";
+    const sourceFile = symbol?.declarations?.[0].getSourceFile();
+    const matchesSourceFile = sourceFile?.fileName.endsWith("asset.ts") || sourceFile?.fileName.endsWith("asset.d.ts");
+    return !!matchesName && !!matchesSourceFile;
+}
+
+function isArchive(type: typescript.Type): boolean {
+    const symbol = type.getSymbol();
+    const matchesName = symbol?.escapedName === "Archive";
+    const sourceFile = symbol?.declarations?.[0].getSourceFile();
+    const matchesSourceFile =
+        sourceFile?.fileName.endsWith("archive.ts") || sourceFile?.fileName.endsWith("archive.d.ts");
     return !!matchesName && !!matchesSourceFile;
 }
 
