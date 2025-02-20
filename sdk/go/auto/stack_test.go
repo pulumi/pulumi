@@ -281,7 +281,8 @@ func TestPreviewImportResources(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "import-files")
 	defer os.RemoveAll(tempDir)
 	importFilePath := filepath.Join(tempDir, "import.json")
-	err = os.WriteFile(importFilePath, []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`), 0o600)
+	importResources := []byte(`[{"type":"my:module:MyResource","name":"create-resource","id":"bar"}]`)
+	err = os.WriteFile(importFilePath, importResources, 0o600)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
