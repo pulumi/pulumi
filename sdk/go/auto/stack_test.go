@@ -16,6 +16,7 @@ package auto
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -280,7 +281,11 @@ func TestPreviewImportResources(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "import-files")
 	defer os.RemoveAll(tempDir)
 	importFilePath := filepath.Join(tempDir, "import.json")
-	os.WriteFile(importFilePath, []byte(`{"resoures": [{"type":"aws:s3/bucket:Bucket","name":"imported-bucket","id":"preview-bar"}]}`), 0o600)
+	err = os.WriteFile(importFilePath, []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`), 0o600)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
 
 	// Act
 	result, err := s.ImportResources(ctx,
@@ -321,8 +326,8 @@ func TestImportResources(t *testing.T) {
 
 	resources := []*optimport.ImportResource{
 		{
-			Type: "aws:s3/bucket:Bucket",
-			Name: "imported-bucket",
+			Type: "my:module:MyResource",
+			Name: "create-resource",
 			ID:   "bar",
 		},
 	}
