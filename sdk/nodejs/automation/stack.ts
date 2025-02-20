@@ -440,8 +440,9 @@ Event: ${line}\n${e.toString()}`);
      *  Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes", "--skip-preview"];
+        const args = ["refresh", "--yes"];
 
+        args.push(opts?.previewOnly ? "--preview-only" : "--skip-preview");
         args.push(...this.remoteArgs());
 
         if (opts) {
@@ -1449,6 +1450,11 @@ export interface RefreshOptions extends GlobalOpts {
      * Optional message to associate with the operation.
      */
     message?: string;
+
+    /**
+     * Only show a preview of the refresh, but don't perform the refresh itself.
+     */
+    previewOnly?: boolean;
 
     /**
      * Return an error if any changes occur during this operation.
