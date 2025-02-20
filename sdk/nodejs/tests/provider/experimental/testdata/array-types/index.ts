@@ -9,6 +9,9 @@ export interface MyComponentArgs {
     inputArrayOfStrings: pulumi.Input<Array<string>>;
     inputArrayOfNumbers?: pulumi.Input<Array<number>>;
     inputArrayOfBooleans: pulumi.Input<Array<boolean>>;
+    inputOfInputStrings: pulumi.Input<Array<pulumi.Input<string>>>;
+    inputOfInputNumbers?: pulumi.Input<Array<pulumi.Input<number>>>;
+    inputOfInputBooleans: pulumi.Input<pulumi.Input<boolean>[]>;
     anArrayOfInputStrings: Array<pulumi.Input<string>>;
     anArrayOfInputNumbers?: Array<pulumi.Input<number>>;
     anArrayOfInputBooleans: Array<pulumi.Input<boolean>>;
