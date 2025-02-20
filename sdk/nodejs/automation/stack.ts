@@ -451,6 +451,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.clearPendingCreates) {
+                args.push("--clear-pending-creates");
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -1454,6 +1457,11 @@ export interface RefreshOptions extends GlobalOpts {
      * Return an error if any changes occur during this operation.
      */
     expectNoChanges?: boolean;
+
+    /**
+     * Clear all pending creates, dropping them from the state
+     */
+    clearPendingCreates?: boolean;
 
     /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
