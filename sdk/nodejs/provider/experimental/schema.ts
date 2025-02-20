@@ -113,6 +113,7 @@ export function generateSchema(
             requiredInputs: required(component.inputs),
             properties: component.outputs,
             required: required(component.outputs),
+            description: component.description,
         };
     }
 

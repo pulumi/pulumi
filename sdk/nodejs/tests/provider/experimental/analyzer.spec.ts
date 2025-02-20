@@ -213,4 +213,18 @@ describe("Analyzer", function () {
             },
         });
     });
+
+    it("infers component description", async function () {
+        const dir = path.join(__dirname, "testdata", "component-description");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                description: "This is a description of MyComponent\nIt can span multiple lines",
+                inputs: {},
+                outputs: {},
+            },
+        });
+    });
 });
