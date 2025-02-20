@@ -625,14 +625,20 @@ func FromBase64(value Expr) *FromBase64Expr {
 }
 
 func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) {
+	var diags syntax.Diagnostics
 	if node.Len() != 1 {
-		return nil, nil, false
+		for i := 0; i < node.Len(); i++ {
+			if k := node.Index(i).Key.Value(); strings.HasPrefix(k, "fn::") {
+				diags = append(diags, syntax.NodeError(node, fmt.Sprintf("illegal call to builtin function: %q must be the only key within its containing object", k)))
+
+			}
+		}
+		return nil, diags, false
 	}
 
 	kvp := node.Index(0)
 
 	var parse func(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics)
-	var diags syntax.Diagnostics
 	switch kvp.Key.Value() {
 	case "fn::fromJSON":
 		parse = parseFromJSON
