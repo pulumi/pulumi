@@ -309,7 +309,7 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		var packageParameterization *workspace.Parameterization
 		if parameterization != nil {
 			packageParameterization = &workspace.Parameterization{
-				Name:    string(parameterization.Name),
+				Name:    parameterization.Name,
 				Version: parameterization.Version,
 				Value:   parameterization.Value,
 			}

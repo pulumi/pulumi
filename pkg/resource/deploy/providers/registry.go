@@ -213,7 +213,7 @@ func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.P
 }
 
 // Sets the provider parameterization in the given property map, this should be called _after_ SetVersion.
-func SetProviderParameterization(inputs resource.PropertyMap, value *ProviderParameterization) {
+func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
 	internalInputs := addOrGetInternal(inputs)
 
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
@@ -227,7 +227,9 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *ProviderPar
 
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
-func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMap) (*ProviderParameterization, error) {
+func GetProviderParameterization(
+	name tokens.Package, inputs resource.PropertyMap,
+) (*workspace.Parameterization, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return nil, err
@@ -258,8 +260,8 @@ func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMa
 		return nil, fmt.Errorf("could not parse provider version: %w", err)
 	}
 
-	return &ProviderParameterization{
-		Name:    name,
+	return &workspace.Parameterization{
+		Name:    string(name),
 		Version: sv,
 		Value:   bytes,
 	}, nil
@@ -344,7 +346,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 func loadParameterizedProvider(
 	ctx context.Context,
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	parameter *ProviderParameterization,
+	parameter *workspace.Parameterization,
 	host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
@@ -355,7 +357,7 @@ func loadParameterizedProvider(
 	if parameter != nil {
 		resp, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    string(parameter.Name),
+				Name:    parameter.Name,
 				Version: parameter.Version,
 				Value:   parameter.Value,
 			},
@@ -363,7 +365,7 @@ func loadParameterizedProvider(
 		if err != nil {
 			return nil, err
 		}
-		if resp.Name != string(parameter.Name) {
+		if resp.Name != parameter.Name {
 			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.Name)
 		}
 	}
