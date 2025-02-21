@@ -211,7 +211,7 @@ describe("Analyzer", function () {
                     outMapOfStrings: { type: "object", additionalProperties: { type: "string" } },
                     outMapOfNumbers: { type: "object", additionalProperties: { type: "number" } },
                     outMapOfBooleans: { type: "object", additionalProperties: { type: "boolean" } },
-                    outMapOptionalStrings: { type: "object", additionalProperties: { type: "string", optional: true } },
+                    outMapOptionalStrings: { type: "object", additionalProperties: { type: "string" }, optional: true },
                 },
             },
         });

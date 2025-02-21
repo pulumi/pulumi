@@ -213,16 +213,7 @@ export class Analyzer {
         optional: boolean = false,
         plain: boolean = true,
     ): PropertyDefinition {
-        if (isOptionalType(type, this.checker)) {
-            const unionType = type as typescript.UnionType;
-            const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
-            if (!nonUndefinedType) {
-                throw new Error(
-                    `Expected exactly one type to not be undefined in '${this.checker.typeToString(type)}'`,
-                );
-            }
-            return this.analyzeType(nonUndefinedType, location, true, plain);
-        } else if (isSimpleType(type)) {
+        if (isSimpleType(type)) {
             const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
             if (optional) {
                 prop.optional = true;
@@ -300,6 +291,15 @@ export class Analyzer {
             }
             prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, plain);
             return prop;
+        } else if (isOptionalType(type, this.checker)) {
+            const unionType = type as typescript.UnionType;
+            const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
+            if (!nonUndefinedType) {
+                throw new Error(
+                    `Expected exactly one type to not be undefined in '${this.checker.typeToString(type)}'`,
+                );
+            }
+            return this.analyzeType(nonUndefinedType, location, true, plain);
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}'`);
         } else if (type.isIntersection()) {
@@ -310,7 +310,10 @@ export class Analyzer {
     }
 
     unwrapTypeReference(type: typescript.Type): typescript.Type {
-        const typeArguments = (type as typescript.TypeReference).typeArguments;
+        let typeArguments = (type as typescript.TypeReference).typeArguments;
+        if (!typeArguments) {
+            typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+        }
         if (!typeArguments || typeArguments.length !== 1) {
             throw new Error(
                 `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
@@ -398,7 +401,10 @@ function isOutput(type: typescript.Type): boolean {
             }
         }
     }
-    const symbol = type.getSymbol();
+    let symbol = type.getSymbol();
+    if (!symbol) {
+        symbol = type.aliasSymbol;
+    }
     const matchesName = symbol?.escapedName === "OutputInstance" || symbol?.escapedName === "Output";
     const sourceFile = symbol?.declarations?.[0].getSourceFile();
     const matchesSourceFile =
