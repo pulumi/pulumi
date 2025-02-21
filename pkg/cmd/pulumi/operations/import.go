@@ -703,7 +703,7 @@ func NewImportCmd() *cobra.Command {
 				}
 				defer contract.IgnoreClose(converter)
 
-				installProvider := func(provider tokens.Package) *semver.Version {
+				installPlugin := func(pluginName string) *semver.Version {
 					// If auto plugin installs are disabled just return nil, the mapper will still carry on
 					if env.DisableAutomaticPluginAcquisition.Value() {
 						return nil
@@ -713,22 +713,27 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					pluginSpec, err := workspace.NewPluginSpec(string(provider), apitype.ResourcePlugin, nil, "", nil)
+					pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
 					if err != nil {
-						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), provider, err)
+						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
 					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
 					if err != nil {
-						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
+						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
 					}
 					return version
 				}
 
-				mapper, err := convert.NewPluginMapper(
-					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-					from, nil, installProvider)
+				baseMapper, err := convert.NewBasePluginMapper(
+					convert.DefaultWorkspace(),
+					from, /*conversionKey*/
+					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+					installPlugin,
+					nil, /*mappings*/
+				)
+				mapper := convert.NewCachingMapper(baseMapper)
 				if err != nil {
 					return err
 				}

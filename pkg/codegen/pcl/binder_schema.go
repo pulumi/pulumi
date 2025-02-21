@@ -181,12 +181,14 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
 	version := ""
-	if descriptor.Version != nil {
-		version = descriptor.Version.String()
+
+	descriptorVersion := descriptor.PackageVersion()
+	if descriptorVersion != nil {
+		version = descriptorVersion.String()
 	}
 
 	pkgInfo := PackageInfo{
-		name:    descriptor.Name,
+		name:    descriptor.PackageName(),
 		version: version,
 	}
 

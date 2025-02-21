@@ -183,6 +183,7 @@ def main():
             "Aliasing": "pulumi/alias.proto",
             "Analysis": "pulumi/analyzer.proto",
             "Callbacks": "pulumi/callback.proto",
+            "Conversion mappings": "pulumi/codegen/mapper.proto",
             "Engine services": "pulumi/engine.proto",
             "Errors": "pulumi/errors.proto",
             "Language hosts": "pulumi/language.proto",

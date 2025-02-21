@@ -12,6 +12,11 @@ export class GetMappingRequest extends jspb.Message {
     getPulumiProvider(): string;
     setPulumiProvider(value: string): GetMappingRequest;
 
+    hasParameterizationHint(): boolean;
+    clearParameterizationHint(): void;
+    getParameterizationHint(): MapperParameterizationHint | undefined;
+    setParameterizationHint(value?: MapperParameterizationHint): GetMappingRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetMappingRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GetMappingRequest): GetMappingRequest.AsObject;
@@ -26,6 +31,35 @@ export namespace GetMappingRequest {
     export type AsObject = {
         provider: string,
         pulumiProvider: string,
+        parameterizationHint?: MapperParameterizationHint.AsObject,
+    }
+}
+
+export class MapperParameterizationHint extends jspb.Message { 
+    getName(): string;
+    setName(value: string): MapperParameterizationHint;
+    getVersion(): string;
+    setVersion(value: string): MapperParameterizationHint;
+    getValue(): Uint8Array | string;
+    getValue_asU8(): Uint8Array;
+    getValue_asB64(): string;
+    setValue(value: Uint8Array | string): MapperParameterizationHint;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MapperParameterizationHint.AsObject;
+    static toObject(includeInstance: boolean, msg: MapperParameterizationHint): MapperParameterizationHint.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MapperParameterizationHint, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MapperParameterizationHint;
+    static deserializeBinaryFromReader(message: MapperParameterizationHint, reader: jspb.BinaryReader): MapperParameterizationHint;
+}
+
+export namespace MapperParameterizationHint {
+    export type AsObject = {
+        name: string,
+        version: string,
+        value: Uint8Array | string,
     }
 }
 

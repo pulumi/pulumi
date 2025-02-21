@@ -29,39 +29,78 @@ DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
 class GetMappingRequest(google.protobuf.message.Message):
-    """GetMappingRequest allows the engine to return ecosystem specific information to allow the converter to be
-    convert provider types from a source markup to Pulumi.
-    """
+    """`GetMappingRequest` is the type of requests sent as part of a [](codegen.Mapper.GetMapping) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROVIDER_FIELD_NUMBER: builtins.int
     PULUMI_PROVIDER_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_HINT_FIELD_NUMBER: builtins.int
     provider: builtins.str
-    """the provider name for the mapping being requested."""
+    """The name of the source provider (e.g. the Terraform provider name if a Terraform program is being converted) for
+    which a mapping into Pulumi should be returned.
+    """
     pulumi_provider: builtins.str
-    """the expected name of the pulumi provider that maps to the requested provider. Defaults to the same as 'provider'."""
+    """The name of the Pulumi plugin that is expected to provide the mapping. If left empty, will be defaulted to the
+    source provider name.
+    """
+    @property
+    def parameterization_hint(self) -> global___MapperParameterizationHint:
+        """An optional parameterization that should be used on the named plugin before asking it for mappings."""
     def __init__(
         self,
         *,
         provider: builtins.str = ...,
         pulumi_provider: builtins.str = ...,
+        parameterization_hint: global___MapperParameterizationHint | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameterization_hint", b"parameterization_hint"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["parameterization_hint", b"parameterization_hint", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
 
 global___GetMappingRequest = GetMappingRequest
 
 @typing_extensions.final
-class GetMappingResponse(google.protobuf.message.Message):
-    """GetMappingResponse returns converter plugin specific data for the requested provider. This will normally be human
-    readable JSON, but the engine doesn't mandate any form.
+class MapperParameterizationHint(google.protobuf.message.Message):
+    """`MapperPackageParameterizationHint` is the type of hints that may be passed to [](codegen.Mapper.GetMapping) when it
+    is expected that a parameterized provider plugin is the most likely source of a mapping. E.g. in the case of a
+    dynamically bridged Terraform provider, callers may wish to express that a mapping is most likely offered by the
+    "terraform-provider" plugin, but only when it is parameterized with the appropriate Terraform provider information.
     """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The package name expected once parameterization has been applied."""
+    version: builtins.str
+    """The package version expected once parameterization has been applied."""
+    value: builtins.bytes
+    """The parameter value to send to the provider plugin as part of parameterization."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        value: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+global___MapperParameterizationHint = MapperParameterizationHint
+
+@typing_extensions.final
+class GetMappingResponse(google.protobuf.message.Message):
+    """`GetMappingResponse` is the type of responses sent by [](codegen.Mapper.GetMapping) calls."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     DATA_FIELD_NUMBER: builtins.int
     data: builtins.bytes
-    """the conversion plugin specific data (if any)"""
+    """Conversion-plugin-specific mapping data. For a Terraform conversion, for instance, this is expected to be a piece
+    of data that maps Terraform names (e.g. resource types) to Pulumi names (e.g. Pulumi resource types). In many
+    cases this byte array will be a string of encoded JSON, but no specific format is required.
+    """
     def __init__(
         self,
         *,
