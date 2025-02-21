@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix source position information to point to user code, not provider SDKs

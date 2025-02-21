@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Do not cache schema if we never read it back

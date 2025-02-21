@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Support `--clear-pending-creates` for the `refresh` command in the NodeJS automation API
