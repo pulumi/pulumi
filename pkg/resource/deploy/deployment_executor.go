@@ -217,10 +217,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 						}
 
 						if event.Event == nil {
-							defer func() {
-								// We're done here - signal completion so that the step executor knows to terminate.
-								ex.stepExec.SignalCompletion()
-							}()
 							err := ex.refresh(callerCtx)
 							if err != nil {
 								if !result.IsBail(err) {
@@ -284,6 +280,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 			// Else carry on to the proper deployment
 		} else {
+			// Fire up a worker pool and issue each refresh in turn.
+			ctx, cancel := context.WithCancel(callerCtx)
+			ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, true)
+
 			if err := ex.refresh(callerCtx); err != nil {
 				return nil, err
 			}
@@ -673,11 +673,13 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	prev := ex.deployment.prev
 	if prev == nil || len(prev.Resources) == 0 {
+		ex.stepExec.SignalCompletion()
 		return nil
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
 	if err := ex.checkTargets(ex.deployment.opts.Targets); err != nil {
+		ex.stepExec.SignalCompletion()
 		return err
 	}
 
@@ -700,6 +702,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {
+				ex.stepExec.SignalCompletion()
 				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 			}
 
@@ -709,13 +712,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		}
 	}
 
-	// Fire up a worker pool and issue each refresh in turn.
-	ctx, cancel := context.WithCancel(callerCtx)
-
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
-	stepExec.ExecuteParallel(steps)
-	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
+	ex.stepExec.ExecuteParallel(steps)
+	ex.stepExec.SignalCompletion()
+	ex.stepExec.WaitForCompletion()
 
 	ex.rebuildBaseState(resourceToStep)
 
@@ -723,7 +722,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	stepExecutorError := stepExec.Errored()
+	stepExecutorError := ex.stepExec.Errored()
 	if stepExecutorError != nil {
 		ex.reportExecResult("failed")
 		return result.BailErrorf("step executor errored: %w", stepExecutorError)
