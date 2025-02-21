@@ -671,15 +671,22 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.
 func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
+	waitForStepExec := true
+	defer func() {
+		// If we exit early out of this function we still need to signal and wait for the step executor
+		if waitForStepExec {
+			ex.stepExec.SignalCompletion()
+			ex.stepExec.WaitForCompletion()
+		}
+	}()
+
 	prev := ex.deployment.prev
 	if prev == nil || len(prev.Resources) == 0 {
-		ex.stepExec.SignalCompletion()
 		return nil
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
 	if err := ex.checkTargets(ex.deployment.opts.Targets); err != nil {
-		ex.stepExec.SignalCompletion()
 		return err
 	}
 
@@ -699,11 +706,62 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		}
 
 		if ex.deployment.opts.Targets.Contains(res.URN) {
-			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				ex.stepExec.SignalCompletion()
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+			// For each resource we're going to refresh we need to ensure we have a provider for it. If this
+			// is a program refresh and this is a default provider we want to update it from the latest
+			// config. We do this by generating a step for the provider and executing it before the refresh
+			// step.
+			if res.Provider != "" {
+				providerRef, err := providers.ParseReference(res.Provider)
+				if err != nil {
+					return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+				}
+
+				if ex.deployment.opts.RefreshProgram && providers.IsDefaultProvider(providerRef.URN()) {
+					regChan := make(chan *registerResourceEvent)
+					go func() {
+						evt := <-regChan
+						err := ex.handleSingleEvent(evt)
+						if err != nil {
+							if !result.IsBail(err) {
+								logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+								ex.reportError(ex.deployment.generateEventURN(evt), err)
+							}
+							cancel()
+							return false, result.BailError(err)
+						}
+					}()
+
+					// Create a new default provider manager.
+					d := &defaultProviders{
+						defaultProviderInfo: src.defaultProviderInfo,
+						providers:           make(map[string]providers.Reference),
+						config:              src.runinfo.Target,
+						requests:            make(chan defaultProviderRequest),
+						providerRegChan:     regChan,
+						cancel:              cancel,
+					}
+
+					done := make(chan *RegisterResult)
+					steps, err := ex.stepGen.GenerateSteps(&registerResourceEvent{
+						done: done,
+					})
+					if err != nil {
+						return fmt.Errorf("could not generate provider registration step for resource %v: %w", res.URN, err)
+					}
+
+					// Execute the provider registration step.
+					token := ex.stepExec.ExecuteSerial(steps)
+					token.Wait(callerCtx)
+
+					result := <-done
+
+					res.Provider = string(result.State.URN) + "::" + string(result.State.ID)
+				} else {
+					err := ex.deployment.EnsureProvider(res.Provider)
+					if err != nil {
+						return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+					}
+				}
 			}
 
 			step := NewRefreshStep(ex.deployment, nil, res)
@@ -715,6 +773,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	ex.stepExec.ExecuteParallel(steps)
 	ex.stepExec.SignalCompletion()
 	ex.stepExec.WaitForCompletion()
+	waitForStepExec = false
 
 	ex.rebuildBaseState(resourceToStep)
 
