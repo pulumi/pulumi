@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Don't overwrite schema versions if they exist
