@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -706,9 +707,45 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		}
 
 		if ex.deployment.opts.Targets.Contains(res.URN) {
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+			// For each resource we're going to refresh we need to ensure we have a provider for it,
+			// for default provider we want to pull the latest config, which may trigger an update.
+			if res.Provider != "" {
+				providerRef, err := providers.ParseReference(res.Provider)
+				if err != nil {
+					return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+				}
+
+				_, has := ex.deployment.GetProvider(providerRef)
+				if !has {
+					// We need to create the provider in the registry, find its old state and just "Same" it.
+					var providerResource *resource.State
+					for _, r := range ex.deployment.prev.Resources {
+						if r.URN == providerRef.URN() && r.ID == providerRef.ID() {
+							providerResource = r
+							break
+						}
+					}
+					if providerResource == nil {
+						return fmt.Errorf("could not find provider %v", providerRef)
+					}
+					// Unless its a default provider, in which case we want to update it's config
+					if providers.IsDefaultProvider(providerResource.URN) {
+						pkg := tokens.Package(providerResource.Type.Name())
+						inputs, err := ex.deployment.target.GetPackageConfig(pkg)
+						if err != nil {
+							return err
+						}
+
+						for k := range inputs {
+							providerResource.Inputs[k] = inputs[k]
+						}
+					}
+					// TODO: THIS IS WRONG WE NEED TO SEND TO STEPGEN
+					err := ex.deployment.SameProvider(providerResource)
+					if err != nil {
+						return fmt.Errorf("could not create provider %v: %w", providerRef, err)
+					}
+				}
 			}
 
 			step := NewRefreshStep(ex.deployment, nil, res)
