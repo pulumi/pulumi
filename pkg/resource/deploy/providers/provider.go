@@ -22,26 +22,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-type ProviderParameterization struct {
-	// The name of the parametrized package.
-	Name tokens.Package
-	// The version of the parametrized package.
-	Version semver.Version
-	// The value of the parameter.
-	Value []byte
-}
-
-// NewProviderParameterization constructs a new provider parameterization.
-func NewProviderParameterization(name tokens.Package, version semver.Version, value []byte,
-) *ProviderParameterization {
-	return &ProviderParameterization{
-		Name:    name,
-		Version: version,
-		Value:   value,
-	}
-}
 
 // A ProviderRequest is a tuple of an optional semantic version, download server url, parameter, and a package name.
 // Whenever the engine receives a registration for a resource that doesn't explicitly specify a provider, the engine
@@ -62,7 +44,7 @@ type ProviderRequest struct {
 	name              tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
-	parameterization  *ProviderParameterization
+	parameterization  *workspace.Parameterization
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -70,7 +52,7 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	name tokens.Package, version *semver.Version,
 	pluginDownloadURL string, checksums map[string][]byte,
-	parameterization *ProviderParameterization,
+	parameterization *workspace.Parameterization,
 ) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
@@ -83,7 +65,7 @@ func NewProviderRequest(
 
 // Parameterization returns the parameterization of this provider request. May be nil if no parameterization was
 // provided.
-func (p ProviderRequest) Parameterization() *ProviderParameterization {
+func (p ProviderRequest) Parameterization() *workspace.Parameterization {
 	return p.parameterization
 }
 
@@ -100,7 +82,7 @@ func (p ProviderRequest) Version() *semver.Version {
 // Package returns this provider request's package.
 func (p ProviderRequest) Package() tokens.Package {
 	if p.parameterization != nil {
-		return p.parameterization.Name
+		return tokens.Package(p.parameterization.Name)
 	}
 	return p.name
 }

@@ -397,21 +397,19 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 	}
 
 	if req.Parameterization() != nil {
-		logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization miss, sending nil to engine", req)
-	} else {
 		logging.V(5).Infof("normalizeProviderRequest(%s): using parameterization %v from request",
 			req, req.Parameterization())
+	} else {
+		if parameterization := d.defaultProviderInfo[req.Package()].Parameterization; parameterization != nil {
+			logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization hit on %v",
+				req, parameterization)
 
-		// TODO: Should Parameterization be in defaultProviderInfo
-		//if parameterization := d.defaultProviderInfo[req.Package()].Parameterization; parameterization != nil {
-		//	logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization hit on %v",
-		//		req, parameterization)
-		//	req = providers.NewProviderRequest(
-		//  	req.Version(), req.Package(), req.PluginDownloadURL(), req.PluginChecksums(), parameterization)
-		//} else {
-		//	logging.V(5).Infof(
-		//		"normalizeProviderRequest(%s): default parameterization miss, sending nil to engine", req)
-		//}
+			req = providers.NewProviderRequest(
+				req.Package(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(), parameterization)
+		} else {
+			logging.V(5).Infof(
+				"normalizeProviderRequest(%s): default parameterization miss, sending nil to engine", req)
+		}
 	}
 
 	return req
@@ -859,7 +857,7 @@ func (rm *resmon) getProviderFromSource(
 func parseProviderRequest(
 	pkg tokens.Package, version,
 	pluginDownloadURL string, pluginChecksums map[string][]byte,
-	parameterization *providers.ProviderParameterization,
+	parameterization *workspace.Parameterization,
 ) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
@@ -897,7 +895,7 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		version = &v
 	}
 	// Parse the parameterization
-	var parameterization *providers.ProviderParameterization
+	var parameterization *workspace.Parameterization
 	if req.Parameterization != nil {
 		parameterizationVersion, err := semver.Parse(req.Parameterization.Version)
 		if err != nil {
@@ -907,11 +905,11 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the
 		// information about the parameterized package is in the "parameterization" field. Internally in the engine, and
 		// for resource state we need to flip that around a bit.
-		parameterization = providers.NewProviderParameterization(
-			tokens.Package(req.Parameterization.Name),
-			parameterizationVersion,
-			req.Parameterization.Value,
-		)
+		parameterization = &workspace.Parameterization{
+			Name:    req.Parameterization.Name,
+			Version: parameterizationVersion,
+			Value:   req.Parameterization.Value,
+		}
 	}
 
 	pi := providers.NewProviderRequest(

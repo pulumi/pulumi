@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Parameterization struct {
@@ -44,7 +45,7 @@ type Parameterization struct {
 // ToProviderParameterization converts a workspace parameterization to a provider parameterization.
 func (p *Parameterization) ToProviderParameterization(
 	typ tokens.Type, version *semver.Version,
-) (tokens.Package, *semver.Version, *providers.ProviderParameterization, error) {
+) (tokens.Package, *semver.Version, *workspace.Parameterization, error) {
 	if p == nil {
 		return typ.Package(), version, nil, nil
 	}
@@ -53,7 +54,11 @@ func (p *Parameterization) ToProviderParameterization(
 		return "", nil, nil, errors.New("version must be provided")
 	}
 
-	return p.PluginName, &p.PluginVersion, providers.NewProviderParameterization(typ.Package(), *version, p.Value), nil
+	return p.PluginName, &p.PluginVersion, &workspace.Parameterization{
+		Name:    string(typ.Package()),
+		Version: *version,
+		Value:   p.Value,
+	}, nil
 }
 
 // An Import specifies a resource to import.

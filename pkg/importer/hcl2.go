@@ -120,7 +120,7 @@ func GenerateHCL2Definition(
 	}
 	if parameters != nil {
 		parameterization = &schema.ParameterizationDescriptor{
-			Name:    string(parameters.Name),
+			Name:    parameters.Name,
 			Version: parameters.Version,
 			Value:   parameters.Value,
 		}
