@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Improve type inference for `output` and `Unwrap` when used on tuples

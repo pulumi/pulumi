@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Don't send "gitHub:owner" and "gitHub:repo" tags to the service.

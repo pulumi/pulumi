@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix nesting directories when generating multiple sdks

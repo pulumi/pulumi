@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Implement a version of can in PCL

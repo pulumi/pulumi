@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Add bulk encrypte service types

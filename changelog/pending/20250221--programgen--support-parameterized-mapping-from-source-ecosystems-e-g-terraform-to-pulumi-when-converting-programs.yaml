@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Support parameterized mapping from source ecosystems (e.g. Terraform) to Pulumi when converting programs

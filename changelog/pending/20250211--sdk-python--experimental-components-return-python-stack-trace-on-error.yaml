@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: "[Experimental/Components] Return Python stack trace on error"

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: The engine will now call DiffConfig on explict providers to decide replace semantics, this matches the behaviour for default providers

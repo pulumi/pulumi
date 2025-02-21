@@ -1,5 +1,116 @@
 # Changelog
 
+## 3.151.0 (2025-02-21)
+
+
+### Features
+
+- [engine] Changes to source position metadata will be batched in the snapshot system
+  [#18579](https://github.com/pulumi/pulumi/pull/18579)
+
+- [cli/display] Add --show-secrets args to pulumi up and pulumi preview, showing secrets in the CLI output. Fixing #9830
+  [#18503](https://github.com/pulumi/pulumi/pull/18503)
+
+- [auto/go] Include stderr when InstallPulumiCommand fails
+  [#18549](https://github.com/pulumi/pulumi/pull/18549)
+
+- [auto/nodejs] Add the `--preview-only` flag to the `refresh` command in the NodeJS Automation API
+  [#18662](https://github.com/pulumi/pulumi/pull/18662)
+
+- [auto/nodejs] Support `--clear-pending-creates` for the `refresh` command in the NodeJS automation API
+  [#18653](https://github.com/pulumi/pulumi/pull/18653)
+
+- [cli/package] Support parameterizing providers when calling `get-mapping`
+
+- [auto/python] Add `--clear-pending-creates` to the `refresh` command in the Python Automation API
+  [#18658](https://github.com/pulumi/pulumi/pull/18658)
+
+- [backend/service] Don't send "gitHub:owner" and "gitHub:repo" tags to the service.
+  [#18489](https://github.com/pulumi/pulumi/pull/18489)
+
+- [backend/service] Add bulk encrypte service types
+  [#18588](https://github.com/pulumi/pulumi/pull/18588)
+
+- [programgen] Add conformance test for dynamic lists and returns
+  [#18424](https://github.com/pulumi/pulumi/pull/18424)
+
+- [programgen] Implement a first version of `try` in PCL
+  [#18454](https://github.com/pulumi/pulumi/pull/18454)
+
+- [programgen] Implement a version of can in PCL
+  [#18571](https://github.com/pulumi/pulumi/pull/18571)
+
+- [programgen] Support parameterized mapping from source ecosystems (e.g. Terraform) to Pulumi when converting programs
+
+- [sdk/nodejs] [Experimental/Components] Add infrastructure for component discovery and schema inference
+  [#18580](https://github.com/pulumi/pulumi/pull/18580)
+
+- [sdk/nodejs] [Experimental/Components] Infer simple inputs/outputs and optionality
+  [#18590](https://github.com/pulumi/pulumi/pull/18590)
+
+- [sdk/nodejs] [Experimental/Components] Instantiate components
+  [#18583](https://github.com/pulumi/pulumi/pull/18583)
+
+- [sdk/nodejs] [Experimental/Components]: Handle ComplexType
+  [#18602](https://github.com/pulumi/pulumi/pull/18602)
+
+- [sdk/nodejs] [Experimental/Components] Hook up inputs & outputs in the provider
+  [#18600](https://github.com/pulumi/pulumi/pull/18600)
+
+- [sdk/nodejs] [Experimental/Components] Infer input types
+  [#18597](https://github.com/pulumi/pulumi/pull/18597)
+
+- [sdk/python] [Experimental/Components] Handle Assets and Archives
+  [#18513](https://github.com/pulumi/pulumi/pull/18513)
+
+- [sdk/python] [Experimental/Components]: Infer type and property descriptions
+  [#18540](https://github.com/pulumi/pulumi/pull/18540)
+
+
+### Bug Fixes
+
+- [cli] Fix nesting directories when generating multiple sdks
+  [#18332](https://github.com/pulumi/pulumi/pull/18332)
+
+- [cli] Fix a panic in `help new` when local templates weren't present
+  [#18661](https://github.com/pulumi/pulumi/pull/18661)
+
+- [engine] Send parent URN to resource transforms
+  [#18642](https://github.com/pulumi/pulumi/pull/18642)
+
+- [engine] The engine will now call DiffConfig on explict providers to decide replace semantics, this matches the behaviour for default providers
+  [#18509](https://github.com/pulumi/pulumi/pull/18509)
+
+- [engine] Don't overwrite schema versions if they exist
+  [#18672](https://github.com/pulumi/pulumi/pull/18672)
+
+- [pkg] Do not cache schema if we never read it back
+  [#18618](https://github.com/pulumi/pulumi/pull/18618)
+
+- [cli/config] Fix reading YAML config with uint64 sized numbers
+  [#18582](https://github.com/pulumi/pulumi/pull/18582)
+
+- [sdk/nodejs] Improve type inference for `output` and `Unwrap` when used on tuples
+  [#18652](https://github.com/pulumi/pulumi/pull/18652)
+
+- [cli/package] Avoid panic'ing when the project file is invalid
+  [#18537](https://github.com/pulumi/pulumi/pull/18537)
+
+- [sdk/python] [Experimental/Components] Detect more map and array types
+  [#18546](https://github.com/pulumi/pulumi/pull/18546)
+
+- [sdk/python] [Experimental/Components] Return Python stack trace on error
+  [#18558](https://github.com/pulumi/pulumi/pull/18558)
+
+- [sdk/python] Fix source position information to point to user code, not provider SDKs
+  [#18575](https://github.com/pulumi/pulumi/pull/18575)
+
+
+### Miscellaneous
+
+- [sdk/dotnet] Update dotnet to 8.0 LTS
+  [#18619](https://github.com/pulumi/pulumi/pull/18619)
+
 ## 3.150.0 (2025-02-11)
 
 
