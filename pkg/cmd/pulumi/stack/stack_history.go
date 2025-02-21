@@ -152,7 +152,7 @@ type configValueJSON struct {
 	Secret      bool        `json:"secret"`
 }
 
-func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
 	makeStringRef := func(s string) *string {
 		return &s
 	}
@@ -180,14 +180,14 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 					configValue.Value = makeStringRef(errorDecryptingValue)
 				} else {
 					configValue.Value = makeStringRef(value)
-				}
 
-				if v.Object() {
-					var obj interface{}
-					if err := json.Unmarshal([]byte(value), &obj); err != nil {
-						return err
+					if value != "" && v.Object() {
+						var obj interface{}
+						if err := json.Unmarshal([]byte(value), &obj); err != nil {
+							return nil, err
+						}
+						configValue.ObjectValue = obj
 					}
-					configValue.ObjectValue = obj
 				}
 			}
 			info.Config[k.String()] = configValue
@@ -204,6 +204,14 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		updatesJSON[idx] = info
 	}
 
+	return updatesJSON, nil
+}
+
+func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+	updatesJSON, err := buildUpdatesJSON(updates, decrypter)
+	if err != nil {
+		return err
+	}
 	return ui.PrintJSON(updatesJSON)
 }
 
