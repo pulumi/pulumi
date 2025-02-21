@@ -46,8 +46,6 @@ type Source interface {
 
 	// Project returns the package name of the Pulumi project we are obtaining resources from.
 	Project() tokens.PackageName
-	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
-	Info() interface{}
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
 	Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error)
