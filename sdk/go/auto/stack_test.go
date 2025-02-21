@@ -27,8 +27,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,6 +183,71 @@ func TestAlwaysReadsCompleteLine(t *testing.T) {
 	require.NoError(t, event2.Error)
 	assert.Equal(t, "world", event2.StdoutEvent.Message)
 	assert.Equal(t, "red", event2.StdoutEvent.Color)
+}
+
+func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
+	t.Parallel()
+
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName("organization", pName, sName)
+
+	// Config with a nested secret.
+	cfg := ConfigMap{
+		"foo.bar": ConfigValue{
+			Value:  "triggers-failure",
+			Secret: true,
+		},
+	}
+
+	// Use the DYI local backend at a temp directory.
+	opts := []LocalWorkspaceOption{
+		SecretsProvider("passphrase"),
+		EnvVars(map[string]string{
+			"PULUMI_CONFIG_PASSPHRASE": "password",
+			"PULUMI_BACKEND_URL":       "file://" + filepath.ToSlash(t.TempDir()),
+		}),
+	}
+
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir, opts...)
+	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		assert.NoError(t, err, "failed to remove stack.")
+	}()
+
+	configFile := filepath.Join(stack.Workspace().WorkDir(), "test.yaml")
+
+	err = stack.SetAllConfigWithOptions(ctx, cfg, &ConfigOptions{
+		ConfigFile: configFile,
+		Path:       true,
+	})
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	res, err := stack.Up(ctx, optup.ConfigFile(configFile), optup.Diff())
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	dRes, err := stack.Destroy(ctx, optdestroy.ConfigFile(configFile))
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
 func TestDestroyOptsConfigFile(t *testing.T) {
