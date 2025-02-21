@@ -128,8 +128,6 @@ func (src *evalSource) Stack() tokens.StackName {
 	return src.runinfo.Target.Name
 }
 
-func (src *evalSource) Info() interface{} { return src.runinfo }
-
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)

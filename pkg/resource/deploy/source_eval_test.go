@@ -1810,18 +1810,6 @@ func TestEvalSource(t *testing.T) {
 		}
 		assert.Equal(t, tokens.MustParseStackName("target-name"), src.Stack())
 	})
-	t.Run("Info", func(t *testing.T) {
-		t.Parallel()
-		runinfo := &EvalRunInfo{
-			Target: &Target{
-				Name: tokens.MustParseStackName("target-name"),
-			},
-		}
-		src := &evalSource{
-			runinfo: runinfo,
-		}
-		assert.Equal(t, runinfo, src.Info())
-	})
 	t.Run("Iterate", func(t *testing.T) {
 		t.Parallel()
 		t.Run("config decrypt value error", func(t *testing.T) {

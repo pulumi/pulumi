@@ -31,11 +31,6 @@ func TestErrorSource(t *testing.T) {
 		// Ensure idempotent.
 		assert.NoError(t, s.Close())
 	})
-	t.Run("Info is nil", func(t *testing.T) {
-		t.Parallel()
-		s := &errorSource{}
-		assert.Nil(t, s.Info())
-	})
 	t.Run("Iterate panics", func(t *testing.T) {
 		t.Parallel()
 		s := &errorSource{}
