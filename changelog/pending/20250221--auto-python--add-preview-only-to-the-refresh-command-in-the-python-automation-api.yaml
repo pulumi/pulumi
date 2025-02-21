@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Add `--preview-only` to the `refresh` command in the Python Automation API
