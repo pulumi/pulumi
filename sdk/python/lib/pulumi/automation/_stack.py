@@ -513,6 +513,7 @@ class Stack:
         self,
         parallel: Optional[int] = None,
         message: Optional[str] = None,
+        preview_only: Optional[bool] = None,
         target: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         clear_pending_creates: Optional[bool] = None,
@@ -535,6 +536,7 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
+        :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
@@ -552,7 +554,7 @@ class Stack:
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes", "--skip-preview"]
+        args = ["refresh", "--yes"]
         args.extend(extra_args)
 
         args.extend(self._remote_args())
@@ -1004,6 +1006,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
     message: Optional[str] = kwargs.get("message")
+    preview_only: Optional[bool] = kwargs.get("preview_only")
     expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
     clear_pending_creates: Optional[bool] = kwargs.get("clear_pending_creates")
     diff: Optional[bool] = kwargs.get("diff")
@@ -1026,6 +1029,10 @@ def _parse_extra_args(**kwargs) -> List[str]:
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
     refresh: Optional[bool] = kwargs.get("refresh")
 
+    if preview_only:
+        extra_args.extend("--preview-only")
+    else:
+        extra_args.extend("--skip-preview")
     if message:
         extra_args.extend(["--message", message])
     if expect_no_changes:
