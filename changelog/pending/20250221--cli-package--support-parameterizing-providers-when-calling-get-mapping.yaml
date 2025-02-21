@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Support parameterizing providers when calling `get-mapping`

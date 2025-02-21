@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,12 +29,16 @@ func newExtractMappingCommand() *cobra.Command {
 	var out string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source> [<provider key>]",
-		Args:  cobra.RangeArgs(2, 3),
+		Use:   "get-mapping <key> <schema_source> [provider key] [provider parameters]",
+		Args:  cobra.MinimumNArgs(2),
 		Short: "Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
-<schema_source> can be a package name or the path to a plugin binary.`,
+<schema_source> can be a package name or the path to a plugin binary. [provider key]
+is the name of the source provider (e.g. "terraform", if a mapping was being requested
+from Terraform to Pulumi). If you need to pass parameters, you must provide a provider
+key. In the event that you wish to pass none, you must therefore explicitly pass an
+empty string.`,
 		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
@@ -61,6 +65,17 @@ func newExtractMappingCommand() *cobra.Command {
 				return fmt.Errorf("load provider: %w", err)
 			}
 			defer p.Close()
+
+			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
+			if len(args) > 3 {
+				parameters := args[3:]
+				_, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+					Parameters: &plugin.ParameterizeArgs{Args: parameters},
+				})
+				if err != nil {
+					return fmt.Errorf("parameterize: %w", err)
+				}
+			}
 
 			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
 				Key:      key,
