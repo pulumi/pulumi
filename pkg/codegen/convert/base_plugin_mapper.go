@@ -46,6 +46,10 @@ type basePluginMapper struct {
 
 	// A list of plugins that the mapper has enumerated as being available to serve mapping requests.
 	pluginSpecs []basePluginMapperSpec
+
+	// A list of hardcoded mappings read from files supplied to the mapper at construction time that will take priority
+	// over any mappings returned by plugins.
+	entries map[string][]byte
 }
 
 type basePluginMapperSpec struct {
@@ -81,8 +85,6 @@ func NewBasePluginMapper(
 ) (Mapper, error) {
 	contract.Requiref(ws != nil, "ws", "must not be nil")
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
-
-	entries := map[string][]byte{}
 
 	// Enumerate _all_ our installed plugins to ask for any mappings they provide. This allows users to convert aws
 	// terraform code for example by just having 'pulumi-aws' plugin locally, without needing to specify it anywhere on
@@ -131,6 +133,7 @@ func NewBasePluginMapper(
 
 	// Explicitly supplied mappings take precedence over any plugin returned mappings, but we want to error early if we
 	// can't read any of these.
+	entries := map[string][]byte{}
 	for _, path := range mappings {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -154,6 +157,7 @@ func NewBasePluginMapper(
 		providerFactory: providerFactory,
 		installPlugin:   installPlugin,
 		pluginSpecs:     plugins,
+		entries:         entries,
 	}, nil
 }
 
@@ -191,6 +195,11 @@ func (m *basePluginMapper) GetMapping(
 	// regress #14718.
 	m.lock.Lock()
 	defer m.lock.Unlock()
+
+	// If we have a perfect match in our hardcoded mappings, return that.
+	if entry, has := m.entries[provider]; has {
+		return entry, nil
+	}
 
 	// If a hint is provided, we will search for a plugin whose name matches that in the hint. If none is supplied, the
 	// source provider name will be used as the plugin name to search for.

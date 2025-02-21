@@ -17,6 +17,7 @@ package convert
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,46 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// Tests that the base plugin mapper will return data from passed mapping entries if available.
+func TestBasePluginMapper_UsesEntries(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ws := &testWorkspace{}
+	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		t.Fatal("should not be called")
+		return nil, nil
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	tempDir := t.TempDir()
+	mappingFile := tempDir + "/provider.json"
+
+	err := os.WriteFile(mappingFile, []byte("entrydata"), 0o600)
+	assert.NoError(t, err)
+
+	mapper, err := NewBasePluginMapper(
+		ws,
+		"key", /*conversionKey*/
+		providerFactory,
+		installPlugin,
+		[]string{mappingFile},
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	// Act.
+	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("entrydata"), data)
+}
 
 // Tests that the base plugin mapper will find and use an already installed plugin.
 func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
