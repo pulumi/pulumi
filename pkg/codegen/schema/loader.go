@@ -167,7 +167,7 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		return DefaultPulumiPackage.Reference(), nil
 	}
 
-	schemaBytes, version, err := l.loadSchemaBytes(ctx, descriptor)
+	schemaBytes, pluginVersion, err := l.loadSchemaBytes(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -180,21 +180,15 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		return nil, err
 	}
 
-	// Insert a version into the spec if the package does not provide one or if the
-	// existing version is less than the provided one
-	if version != nil {
-		setVersion := true
-		if spec.PackageInfoSpec.Version != "" {
-			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
-			if err == nil {
-				if vSemver.Compare(*version) == 1 {
-					setVersion = false
-				}
-			}
-		}
-		if setVersion {
-			spec.PackageInfoSpec.Version = version.String()
-		}
+	// If the spec we've loaded doesn't specify a version, and we've got a plugin version to hand, we'll add that plugin
+	// version to the loaded schema. Note that in the case of parameterized providers and their schema, plugin and package
+	// version need not (and in general, won't) match -- if we were using version 0.8.0 of the Terraform provider to
+	// bridge some package foo/bar@v0.1.0, for instance, we'd have a plugin version of 0.8.0 and a package version of
+	// 0.1.0. We thus guard against this case, though in theory this is unnecessary -- schema versions are required for
+	// parameterized providers, so we should expect not to hit this case and overwrite a (parameterized) package version
+	// with an almost certainly different plugin version.
+	if pluginVersion != nil && descriptor.Parameterization == nil && spec.PackageInfoSpec.Version == "" {
+		spec.PackageInfoSpec.Version = pluginVersion.String()
 	}
 
 	p, err := ImportPartialSpec(spec, nil, l)
@@ -339,6 +333,9 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
+// loadSchemaBytes loads the byte representation of the schema for the given package descriptor. Additionally, when
+// successful, it returns the version of the underlying *plugin* that provided that schema (not to be confused with the
+// version of the package included in the schema itself).
 func (l *pluginLoader) loadSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, *semver.Version, error) {
@@ -346,7 +343,7 @@ func (l *pluginLoader) loadSchemaBytes(
 	if err != nil {
 		return nil, nil, err
 	}
-	version := descriptor.Version
+	pluginVersion := descriptor.Version
 
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
@@ -356,15 +353,15 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
-		if version == nil {
+		if pluginVersion == nil {
 			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
-			version = info.Version
+			pluginVersion = info.Version
 		}
-		return schemaBytes, version, nil
+		return schemaBytes, pluginVersion, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, version)
+	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, pluginVersion)
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
@@ -375,7 +372,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		spec := workspace.PluginSpec{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
-			Version:           version,
+			Version:           pluginVersion,
 			PluginDownloadURL: descriptor.DownloadURL,
 		}
 
@@ -388,18 +385,18 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, version)
+		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, pluginVersion)
 		if err != nil {
-			return nil, version, err
+			return nil, pluginVersion, err
 		}
 	}
 	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", descriptor.Name)
 
-	if version == nil {
-		version = pluginInfo.Version
+	if pluginVersion == nil {
+		pluginVersion = pluginInfo.Version
 	}
 
-	canCache := pluginInfo.SchemaPath != "" && version != nil && descriptor.Parameterization == nil
+	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Parameterization == nil
 
 	if canCache {
 		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
@@ -420,12 +417,12 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 	}
 
-	if version == nil {
+	if pluginVersion == nil {
 		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
-		version = info.Version
+		pluginVersion = info.Version
 	}
 
-	return schemaBytes, version, nil
+	return schemaBytes, pluginVersion, nil
 }
 
 func (l *pluginLoader) loadPluginSchemaBytes(
