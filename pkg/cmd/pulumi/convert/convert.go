@@ -319,31 +319,38 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
-	installProvider := func(provider tokens.Package) *semver.Version {
+	installPlugin := func(pluginName string) *semver.Version {
 		// If auto plugin installs are disabled just return nil, the mapper will still carry on
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			return nil
 		}
 
 		pluginSpec := workspace.PluginSpec{
-			Name: string(provider),
+			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}
 		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log)
 		if err != nil {
-			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
+			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
 		}
 		return version
 	}
 
 	loader := schema.NewPluginLoader(pCtx.Host)
-	mapper, err := convert.NewPluginMapper(
-		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-		from, mappings, installProvider)
+
+	baseMapper, err := convert.NewBasePluginMapper(
+		convert.DefaultWorkspace(),
+		from, /*conversionKey*/
+		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+		installPlugin,
+		mappings,
+	)
 	if err != nil {
 		return fmt.Errorf("create provider mapper: %w", err)
 	}
+
+	mapper := convert.NewCachingMapper(baseMapper)
 
 	pclDirectory, err := os.MkdirTemp("", "pulumi-convert")
 	if err != nil {

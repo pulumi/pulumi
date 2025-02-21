@@ -43,6 +43,7 @@ index links to files in this folder.
 /docs/_generated/proto/callback
 /docs/_generated/proto/loader
 /docs/_generated/proto/converter
+/docs/_generated/proto/mapper
 /docs/_generated/proto/analyzer
 /docs/_generated/proto/alias
 /docs/_generated/proto/engine

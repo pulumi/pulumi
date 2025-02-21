@@ -50,6 +50,22 @@ type PackageDescriptor struct {
 	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
 }
 
+// PackageName returns the name of the package.
+func (pd PackageDescriptor) PackageName() string {
+	if pd.Parameterization != nil {
+		return pd.Parameterization.Name
+	}
+	return pd.Name
+}
+
+// PackageVersion returns the version of the package.
+func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Parameterization != nil {
+		return &pd.Parameterization.Version
+	}
+	return pd.Version
+}
+
 func (pd *PackageDescriptor) String() string {
 	version := "nil"
 	if pd.Version != nil {
