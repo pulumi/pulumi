@@ -901,12 +901,7 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1747,12 +1742,7 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1839,12 +1829,7 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "explicitX", true, deploytest.ResourceOptions{
@@ -3797,12 +3782,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 			resp, err := monitor.RegisterResource("pulumi:providers:pkgB", "explicit", true)
 			assert.NoError(t, err)
 
-			provID := resp.ID
-
-			if provID == "" {
-				provID = providers.UnknownID
-			}
-			provider, err = providers.NewReference(resp.URN, provID)
+			provider, err = providers.NewReference(resp.URN, resp.ID)
 			assert.NoError(t, err)
 		}
 

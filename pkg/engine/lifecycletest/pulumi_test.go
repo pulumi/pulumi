@@ -2344,12 +2344,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		provID := resp.ID
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-
-		provRef, err := providers.NewReference(resp.URN, provID)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
 		assert.NoError(t, err)
 
 		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
