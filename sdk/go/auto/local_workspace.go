@@ -1088,6 +1088,11 @@ type GitRepo struct {
 	Auth *GitAuth
 	// Shallow disables fetching the repo's entire history.
 	Shallow bool
+	// RecurseSubmodules controls whether to initialize all submodules after cloning the
+	// repository.
+	RecurseSubmodules bool
+	// ShallowSubmodules disables fetching submodules' entire history.
+	ShallowSubmodules bool
 }
 
 // GitAuth is the authentication details that can be specified for a private Git repo.

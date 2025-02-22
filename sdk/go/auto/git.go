@@ -44,6 +44,11 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		cloneOptions.SingleBranch = true
 	}
 
+	if repoArgs.RecurseSubmodules {
+		cloneOptions.RecurseSubmodules = git.DefaultSubmoduleRecursionDepth
+		cloneOptions.ShallowSubmodules = repoArgs.ShallowSubmodules
+	}
+
 	if repoArgs.Auth != nil {
 		authDetails := repoArgs.Auth
 		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
