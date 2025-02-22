@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -54,8 +53,6 @@ import (
 	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
-
-type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
 func NewConvertCmd() *cobra.Command {
 	var outDir string
@@ -169,28 +166,6 @@ type projectGeneratorFunction func(
 	string, string, *workspace.Project, schema.ReferenceLoader, bool,
 ) (hcl.Diagnostics, error)
 
-func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) projectGeneratorFunction {
-	return func(
-		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
-	) (hcl.Diagnostics, error) {
-		contract.Requiref(proj != nil, "proj", "must not be nil")
-
-		extraOptions := make([]pcl.BindOption, 0)
-		if !strict {
-			extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
-		}
-
-		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-		if err != nil {
-			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
-		} else if program == nil {
-			// We've already printed the diagnostics above
-			return diagnostics, errors.New("failed to bind program")
-		}
-		return diagnostics, generator(targetDirectory, *proj, program)
-	}
-}
-
 func runConvert(
 	ctx context.Context,
 	ws pkgWorkspace.Context,
@@ -240,11 +215,6 @@ func runConvert(
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
-	case "dotnet":
-		projectGenerator = generatorWrapper(
-			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
-			}, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
