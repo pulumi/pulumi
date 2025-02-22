@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix mapping in the presence of hardcoded entries
