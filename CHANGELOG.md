@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.152.0 (2025-02-21)
+
+
+### Bug Fixes
+
+- [auto] Fix `up` with nested secret in config file
+  [#18676](https://github.com/pulumi/pulumi/pull/18676)
+
+- [cli] Fix mapping in the presence of hardcoded entries
+  [#18680](https://github.com/pulumi/pulumi/pull/18680)
+
 ## 3.151.0 (2025-02-21)
 
 
