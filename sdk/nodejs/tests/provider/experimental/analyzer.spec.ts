@@ -284,13 +284,64 @@ describe("Analyzer", function () {
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
         const analyzer = new Analyzer(dir, "provider");
-        const { components } = analyzer.analyze();
+        const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
                 name: "MyComponent",
                 description: "This is a description of MyComponent\nIt can span multiple lines",
-                inputs: {},
-                outputs: {},
+                inputs: {
+                    anInterfaceType: {
+                        $ref: "#/types/provider:index:MyInterfaceType",
+                        plain: true,
+                        description: "anInterfaceType doc comment",
+                    },
+                    aClassType: {
+                        $ref: "#/types/provider:index:MyClassType",
+                        plain: true,
+                        description: "aClassType comment",
+                    },
+                    inputMapOfInterfaceTypes: {
+                        type: "object",
+                        additionalProperties: { $ref: "#/types/provider:index:MyInterfaceType" },
+                        description: "inputMap comment",
+                    },
+		    anArchive: {
+			$ref: "pulumi.json#/Archive",
+			plain: true,
+			description: "anArchive comment",
+		    },
+		    anAsset: {
+			$ref: "pulumi.json#/Asset",
+			plain: true,
+			description: "anAsset comment",
+		    },
+		    anArray: {
+			description: "anArray comment",
+			items: {
+			    plain: true,
+			    type: "string",
+			},
+			plain: true,
+			type:"array",
+		    },
+		},
+                outputs: {
+                    outStringMap: {
+                        type: "object",
+                        additionalProperties: { type: "number" },
+                        description: "out_string_map comment",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            MyInterfaceType: {
+                name: "MyInterfaceType",
+                properties: { aNumber: { type: "number", plain: true, description: "aNumber comment" } },
+            },
+            MyClassType: {
+                name: "MyClassType",
+                properties: { aString: { type: "string", plain: true, description: "aString comment" } },
             },
         });
     });
