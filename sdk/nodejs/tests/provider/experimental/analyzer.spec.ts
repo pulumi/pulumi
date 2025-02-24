@@ -211,9 +211,9 @@ describe("Analyzer", function () {
                     },
                 },
                 outputs: {
-                    outArrayOfStrings: { type: "array", items: { type: "string", plain: true } },
-                    outArrayOfNumbers: { type: "array", items: { type: "number", plain: true } },
-                    outArrayOfBooleans: { type: "array", items: { type: "boolean", plain: true } },
+                    outArrayOfStrings: { type: "array", items: { type: "string" } },
+                    outArrayOfNumbers: { type: "array", items: { type: "number" } },
+                    outArrayOfBooleans: { type: "array", items: { type: "boolean" } },
                 },
             },
         });

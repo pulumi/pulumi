@@ -56,6 +56,12 @@ interface docNode extends typescript.Node {
     jsDoc?: typescript.JSDoc[];
 }
 
+enum PulumiType {
+    None = 0,
+    Input = 1,
+    Output = 2,
+}
+
 export class Analyzer {
     private path: string;
     private providerName: string;
@@ -217,21 +223,21 @@ export class Analyzer {
         // defined on the symbol, not the type.
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
         const optional = isOptional(symbol);
-        return this.analyzeType(propType, location, optional, true);
+        return this.analyzeType(propType, location, optional);
     }
 
     private analyzeType(
         type: typescript.Type,
         location: typescript.Node,
         optional: boolean = false,
-        plain: boolean = true,
+        pulumiType: PulumiType = PulumiType.None,
     ): PropertyDefinition {
         if (isSimpleType(type)) {
             const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
             return prop;
@@ -247,21 +253,21 @@ export class Analyzer {
                 throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}'`);
             }
             const innerType = this.unwrapTypeReference(base);
-            return this.analyzeType(innerType, location, optional, false /* plain */);
+            return this.analyzeType(innerType, location, optional, PulumiType.Input);
         } else if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
             const innerType = this.unwrapTypeReference(type);
-            return this.analyzeType(innerType, location, optional, false /* plain */);
+            return this.analyzeType(innerType, location, optional, PulumiType.Output);
         } else if (isAsset(type)) {
             const $ref = "pulumi.json#/Asset";
             const prop: PropertyDefinition = { $ref };
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
             return prop;
@@ -271,7 +277,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
             return prop;
@@ -288,7 +294,7 @@ export class Analyzer {
                 if (optional) {
                     refProp.optional = true;
                 }
-                if (plain) {
+                if (pulumiType === PulumiType.None) {
                     refProp.plain = true;
                 }
                 return refProp;
@@ -303,7 +309,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
             return prop;
@@ -312,7 +318,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
 
@@ -324,14 +330,14 @@ export class Analyzer {
             }
 
             const innerType = typeArguments[0];
-            prop.items = this.analyzeType(innerType, location, false /* optional */, true /* plain */);
+            prop.items = this.analyzeType(innerType, location, false /* optional */, PulumiType.None);
             return prop;
         } else if (isMapType(type, this.checker)) {
             const prop: PropertyDefinition = { type: "object" };
             if (optional) {
                 prop.optional = true;
             }
-            if (plain) {
+            if (pulumiType === PulumiType.None) {
                 prop.plain = true;
             }
 
@@ -341,7 +347,7 @@ export class Analyzer {
                 // We can't actually get here because isMapType checks for indexInfo
                 throw new Error(`Map type has no index info`);
             }
-            prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, plain);
+            prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, pulumiType);
             return prop;
         } else if (isOptionalType(type, this.checker)) {
             const unionType = type as typescript.UnionType;
@@ -351,7 +357,7 @@ export class Analyzer {
                     `Expected exactly one type to not be undefined in '${this.checker.typeToString(type)}'`,
                 );
             }
-            return this.analyzeType(nonUndefinedType, location, true, plain);
+            return this.analyzeType(nonUndefinedType, location, true, pulumiType);
         } else if (type.isUnion()) {
             throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}'`);
         } else if (type.isIntersection()) {
