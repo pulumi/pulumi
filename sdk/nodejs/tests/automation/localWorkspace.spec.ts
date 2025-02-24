@@ -799,7 +799,6 @@ describe("LocalWorkspace", () => {
         await stack.workspace.selectStack(renamed);
 
         // pulumi destroy
-        await stack.workspace.selectStack(renamed);
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
