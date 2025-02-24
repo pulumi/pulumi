@@ -484,6 +484,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if rst, err := prov.Delete(context.TODO(), plugin.DeleteRequest{
 			URN:     s.URN(),
+			Name:    s.URN().Name(),
+			Type:    s.URN().Type(),
 			ID:      s.old.ID,
 			Inputs:  s.old.Inputs,
 			Outputs: s.old.Outputs,

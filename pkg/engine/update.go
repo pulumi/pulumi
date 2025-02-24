@@ -135,6 +135,9 @@ type UpdateOptions struct {
 	// true if the plan should use program based refresh.
 	RefreshProgram bool
 
+	// true if hte plan should use program based destroy.
+	DestroyProgram bool
+
 	// Specific resources to replace during an update operation.
 	ReplaceTargets deploy.UrnTargets
 

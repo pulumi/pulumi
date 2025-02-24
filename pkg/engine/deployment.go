@@ -224,6 +224,7 @@ func newDeployment(
 		Refresh:                   opts.Refresh,
 		RefreshOnly:               opts.isRefresh,
 		RefreshProgram:            opts.RefreshProgram,
+		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
 		TargetDependents:          opts.TargetDependents,

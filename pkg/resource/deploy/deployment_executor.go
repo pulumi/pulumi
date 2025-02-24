@@ -160,7 +160,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 			}
 
 			// Set up a step generator for this deployment.
-			ex.stepGen = newStepGenerator(ex.deployment, true)
+			ex.stepGen = newStepGenerator(ex.deployment, true, false)
 
 			// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 			// deployment's execution fails.
@@ -310,7 +310,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment, false)
+	ex.stepGen = newStepGenerator(ex.deployment, false, ex.deployment.opts.DestroyProgram)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.

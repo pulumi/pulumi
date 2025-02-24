@@ -66,6 +66,8 @@ type Options struct {
 	RefreshOnly bool
 	// whether or not to use program based refresh.
 	RefreshProgram bool
+	// whether or not to use program based destroy.
+	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets
 	// if specified, mark the specified resources for replacement.
