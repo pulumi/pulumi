@@ -418,19 +418,22 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 			refAttempts = []plumbing.ReferenceName{ref}
 		}
 
-		var cloneErr error
+		var cloneErrs []error
 		for _, ref := range refAttempts {
 			// Attempt the clone. If it succeeds, break
-			cloneErr = gitutil.GitCloneOrPull(ctx, url, ref, path, true /*shallow*/)
-			if cloneErr == nil {
+			err := gitutil.GitCloneOrPull(ctx, url, ref, path, true /*shallow*/)
+			if err == nil {
 				break
 			}
+			logging.V(10).Infof("Failed to clone %s@%s: %v", url, ref, err)
+			cloneErrs = append(cloneErrs, fmt.Errorf("ref '%s': %w", ref, err))
 		}
-		if cloneErr != nil {
-			return "", fmt.Errorf("failed to clone ref '%s': %w", refAttempts[len(refAttempts)-1], cloneErr)
+		if len(cloneErrs) == len(refAttempts) {
+			return "", fmt.Errorf("failed to clone %s: %w", rawurl, errors.Join(cloneErrs...))
 		}
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(ctx, url, commit, path); cloneErr != nil {
+			logging.V(10).Infof("Failed to clone %s@%s: %v", url, commit, err)
 			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
@@ -440,9 +443,11 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 	logging.V(10).Infof("Cloned %s at commit %s@%s to %s", url, ref, commit, fullPath)
 	info, err := os.Stat(fullPath)
 	if err != nil {
+		logging.V(10).Infof("Failed to stat %s after cloning %s: %v", fullPath, url, err)
 		return "", err
 	}
 	if !info.IsDir() {
+		logging.V(10).Infof("%s was not a directory after cloning %s: %v", fullPath, url, err)
 		return "", fmt.Errorf("%s is not a directory", fullPath)
 	}
 
