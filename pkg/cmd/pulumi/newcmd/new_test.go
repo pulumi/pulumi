@@ -253,6 +253,9 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
+		},
 	})
 
 	args := newArgs{
@@ -276,6 +279,9 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
@@ -307,6 +313,9 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
@@ -403,6 +412,9 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
