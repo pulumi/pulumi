@@ -330,7 +330,12 @@ export class Analyzer {
             }
 
             const innerType = typeArguments[0];
-            prop.items = this.analyzeType(innerType, location, false /* optional */, InputOutput.Neither);
+            prop.items = this.analyzeType(
+                innerType,
+                location,
+                false /* optional */,
+                inputOutput === InputOutput.Output ? inputOutput : InputOutput.Neither,
+            );
             return prop;
         } else if (isMapType(type, this.checker)) {
             const prop: PropertyDefinition = { type: "object" };
