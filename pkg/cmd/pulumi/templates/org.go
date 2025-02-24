@@ -39,8 +39,8 @@ import (
 )
 
 func (s *Source) getOrgTemplates(
-	ctx context.Context, interactive bool,
-	wg *sync.WaitGroup,
+	ctx context.Context, templateName string,
+	interactive bool, wg *sync.WaitGroup,
 ) {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
@@ -59,10 +59,12 @@ func (s *Source) getOrgTemplates(
 	}
 
 	logging.Infof("Listing Org Templates from the cloud")
-	_, orgs, _, err := b.CurrentUser()
+	user, orgs, _, err := b.CurrentUser()
 	if err != nil {
 		s.addError(err)
 		return
+	} else if user == "" {
+		return // No current user - so don't proceed.
 	}
 
 	creds, err := workspace.GetStoredCredentials()
@@ -122,6 +124,14 @@ func (s *Source) getOrgTemplates(
 					continue
 				}
 				alreadySeenSourceURLs[template.SourceURL] = struct{}{}
+
+				// If we are searching for a template of a specific name,
+				// only match templates of that name.
+				if templateName != "" && templateName != template.Name {
+					logging.V(10).Infof("skipping template %q", template.Name)
+					continue
+				}
+
 				logging.V(10).Infof("adding template %q", template.Name)
 				s.addTemplate(Template{
 					name:               template.Name,

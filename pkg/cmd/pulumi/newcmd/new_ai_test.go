@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,6 +30,9 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
