@@ -279,6 +279,16 @@ export class Analyzer {
             // be plain anymore, since it's wrapped in an output.
             const innerType = this.unwrapTypeReference(type);
             return this.analyzeType(innerType, location, optional, InputOutput.Output, docString);
+        } else if (isAny(type)) {
+            const $ref = "pulumi.json#/Any";
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (docString) {
+                prop.description = docString;
+            }
+            return prop;
         } else if (isAsset(type)) {
             const $ref = "pulumi.json#/Asset";
             const prop: PropertyDefinition = { $ref };
@@ -462,6 +472,10 @@ function isString(type: typescript.Type): boolean {
 
 function isBoolean(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
+}
+
+function isAny(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Any) === ts.TypeFlags.Any;
 }
 
 function isSimpleType(type: typescript.Type): boolean {
