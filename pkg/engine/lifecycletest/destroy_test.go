@@ -38,11 +38,13 @@ func TestDestroyWithProgram(t *testing.T) {
 	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
 
+	deleteCalled := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" {
+						deleteCalled = true
 						assert.Equal(t, createInputs, req.Inputs)
 						assert.Equal(t, createOutputs, req.Outputs)
 
@@ -121,6 +123,8 @@ func TestDestroyWithProgram(t *testing.T) {
 	require.NoError(t, err)
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
-	// Resources should be deleted
+	// Should have deleted resA
+	assert.True(t, deleteCalled)
+	// Resources should be deleted from state
 	assert.Len(t, snap.Resources, 0)
 }
