@@ -484,6 +484,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if rst, err := prov.Delete(context.TODO(), plugin.DeleteRequest{
 			URN:     s.URN(),
+			Name:    s.URN().Name(),
+			Type:    s.URN().Type(),
 			ID:      s.old.ID,
 			Inputs:  s.old.Inputs,
 			Outputs: s.old.Outputs,
@@ -647,6 +649,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		resp, upderr := prov.Update(context.TODO(), plugin.UpdateRequest{
 			URN:           s.URN(),
+			Name:          s.URN().Name(),
+			Type:          s.URN().Type(),
 			ID:            s.old.ID,
 			OldInputs:     s.old.Inputs,
 			OldOutputs:    s.old.Outputs,
@@ -1370,6 +1374,8 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// definitely a provider bug.
 		resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 			URN:           s.new.URN,
+			Name:          s.URN().Name(),
+			Type:          s.URN().Type(),
 			Olds:          s.old.Inputs,
 			News:          s.new.Inputs,
 			AllowUnknowns: s.deployment.opts.DryRun,
@@ -1416,6 +1422,8 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Check the inputs using the provider inputs for defaults.
 	resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 		URN:           s.new.URN,
+		Name:          s.new.URN.Name(),
+		Type:          s.new.URN.Type(),
 		Olds:          s.old.Inputs,
 		News:          s.new.Inputs,
 		AllowUnknowns: s.deployment.opts.DryRun,
