@@ -319,7 +319,7 @@ class Stack:
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
-        args = ["up", "--yes", "--skip-preview"]
+        args = ["up", "--yes"]
         args.extend(extra_args)
 
         if plan is not None:
@@ -633,7 +633,7 @@ class Stack:
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["destroy", "--yes", "--skip-preview"]
+        args = ["destroy", "--yes"]
         args.extend(extra_args)
 
         args.extend(self._remote_args())
@@ -702,7 +702,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param show_secrets: Include config secrets in the ImportResult summary.
         """
-        args = ["import", "--yes", "--skip-preview"]
+        args = ["import", "--yes"]
         if message is not None:
             args.extend(["--message", message])
 
