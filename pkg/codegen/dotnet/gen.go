@@ -984,7 +984,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
 	if r.IsComponent {
-		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true, %s)\n",
+				tok,
+				argsOverride,
+				"Utilities.PackageParameterization()")
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+		}
 	} else {
 		if mod.parameterization != nil {
 			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), %s)\n",
