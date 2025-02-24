@@ -51,25 +51,6 @@ type Decrypter interface {
 	BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
-// DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted sequentially. The returned
-// list of ciphertexts is in the same order as the input list. This should only be used by implementers of Decrypter
-// to implement their BulkDecrypt method in cases where they can't do more efficient than just individual operations.
-func DefaultBulkEncrypt(ctx context.Context, encrypter Encrypter, secrets []string) ([]string, error) {
-	if len(secrets) == 0 {
-		return nil, nil
-	}
-
-	encrypted := make([]string, len(secrets))
-	for i, secret := range secrets {
-		enc, err := encrypter.EncryptValue(ctx, secret)
-		if err != nil {
-			return nil, err
-		}
-		encrypted[i] = enc
-	}
-	return encrypted, nil
-}
-
 // Crypter can both encrypt and decrypt values.
 type Crypter interface {
 	Encrypter

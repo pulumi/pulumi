@@ -37,6 +37,7 @@ type testSecretsManager struct {
 	encryptCalls         int
 	decryptCalls         int
 	enableBulkEncryption bool
+	bulkEncryptCalls     int
 }
 
 func (t *testSecretsManager) Type() string { return "test" }
@@ -63,9 +64,21 @@ func (t *testSecretsManager) SupportsBulkEncryption(ctx context.Context) bool {
 }
 
 func (t *testSecretsManager) BulkEncrypt(
-	ctx context.Context, secrets []string,
+	ctx context.Context, plaintexts []string,
 ) ([]string, error) {
-	return config.DefaultBulkEncrypt(ctx, t, secrets)
+	if !t.enableBulkEncryption {
+		return nil, errors.New("bulk encryption not supported")
+	}
+	t.bulkEncryptCalls++
+	if len(plaintexts) == 0 {
+		return nil, nil
+	}
+
+	encrypted := make([]string, len(plaintexts))
+	for i, plaintext := range plaintexts {
+		encrypted[i] = fmt.Sprintf("%v-%v:%v", t.bulkEncryptCalls, i+1, plaintext)
+	}
+	return encrypted, nil
 }
 
 func (t *testSecretsManager) DecryptValue(
@@ -256,9 +269,10 @@ func TestBulkEncrypt(t *testing.T) {
 
 		err = completeBulkOperation() // Complete the operation
 		assert.NoError(t, err)
-		assert.Equal(t, 2, sm.encryptCalls) // Called once for each secret (as we're faking the bulk by calling Encrypt)
-		assert.Equal(t, "1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext)
-		assert.Equal(t, "2:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext)
+		assert.Equal(t, 0, sm.encryptCalls)
+		assert.Equal(t, 1, sm.bulkEncryptCalls)
+		assert.Equal(t, "1-1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext)
+		assert.Equal(t, "1-2:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext)
 	})
 
 	t.Run("partially cached bulk", func(t *testing.T) {
@@ -275,30 +289,30 @@ func TestBulkEncrypt(t *testing.T) {
 		serialized, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, sm.encryptCalls)
-		// Cyphertext not yet populated
-		asSecret := serialized.(*apitype.SecretV1)
-		assert.Equal(t, "", asSecret.Ciphertext)
+		assert.Equal(t, "", serialized.(*apitype.SecretV1).Ciphertext, "not yet be populated")
 
 		err = completeBulkOperation()
 		assert.NoError(t, err)
-		assert.Equal(t, 1, sm.encryptCalls)
-		assert.Equal(t, "1:\"foo\"", asSecret.Ciphertext)
+		assert.Equal(t, 1, sm.bulkEncryptCalls)
+		assert.Equal(t, "1-1:\"foo\"", serialized.(*apitype.SecretV1).Ciphertext, "now populated in bulk")
 
 		completeBulkOperation = csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 		serializedFoo1, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, sm.encryptCalls)                                         // Not called again
-		assert.Equal(t, "1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext) // Cached result
+		assert.Equal(t, 1, sm.bulkEncryptCalls, "new bulk not sent")
+		assert.Equal(t, "1-1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext, "populated immediately from cache")
 
 		serializedFoo2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, sm.encryptCalls)                                // Not called yet
-		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext) // Delayed result
+		assert.Equal(t, 1, sm.bulkEncryptCalls, "second bulk not yet sent")
+		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext, "not yet be populated")
 
 		err = completeBulkOperation()
 		assert.NoError(t, err)
-		assert.Equal(t, 2, sm.encryptCalls)
-		assert.Equal(t, "2:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext)
+		assert.Equal(t, 2, sm.bulkEncryptCalls, "second batch completed")
+		assert.Equal(t, "2-1:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext, "second ciphertext now populated")
+
+		assert.Equal(t, 0, sm.encryptCalls, "only used bulk endpoint")
 	})
 }
 
