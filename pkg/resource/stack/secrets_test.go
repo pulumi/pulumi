@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -212,6 +213,93 @@ func TestCachingCrypter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
+}
+
+func TestBulkEncrypt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("without beginning bulk", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{enableBulkEncryption: true}
+		csm := NewCachingSecretsManager(sm)
+		enc := csm.Encrypter()
+
+		source := resource.MakeSecret(resource.NewStringProperty("foo"))
+
+		// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
+		_, err := SerializePropertyValue(ctx, source, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, sm.encryptCalls)
+	})
+
+	t.Run("delay via bulk", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{enableBulkEncryption: true}
+		csm := NewCachingSecretsManager(sm)
+		completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
+		enc := csm.Encrypter()
+
+		foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
+		foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
+
+		// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
+		serializedFoo1, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		serializedFoo2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, sm.encryptCalls) // Not yet completed bulk operation
+		// Cyphertext not yet populated
+		assert.Equal(t, "", serializedFoo1.(*apitype.SecretV1).Ciphertext)
+		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext)
+
+		err = completeBulkOperation() // Complete the operation
+		assert.NoError(t, err)
+		assert.Equal(t, 2, sm.encryptCalls) // Called once for each secret (as we're faking the bulk by calling Encrypt)
+		assert.Equal(t, "1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext)
+		assert.Equal(t, "2:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext)
+	})
+
+	t.Run("partially cached bulk", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{enableBulkEncryption: true}
+		csm := NewCachingSecretsManager(sm)
+		completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
+		enc := csm.Encrypter()
+
+		foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
+		foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
+
+		serialized, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, sm.encryptCalls)
+		// Cyphertext not yet populated
+		asSecret := serialized.(*apitype.SecretV1)
+		assert.Equal(t, "", asSecret.Ciphertext)
+
+		err = completeBulkOperation()
+		assert.NoError(t, err)
+		assert.Equal(t, 1, sm.encryptCalls)
+		assert.Equal(t, "1:\"foo\"", asSecret.Ciphertext)
+
+		completeBulkOperation = csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
+		serializedFoo1, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, sm.encryptCalls)                                         // Not called again
+		assert.Equal(t, "1:\"foo\"", serializedFoo1.(*apitype.SecretV1).Ciphertext) // Cached result
+
+		serializedFoo2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, sm.encryptCalls)                                // Not called yet
+		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext) // Delayed result
+
+		err = completeBulkOperation()
+		assert.NoError(t, err)
+		assert.Equal(t, 2, sm.encryptCalls)
+		assert.Equal(t, "2:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext)
+	})
 }
 
 func TestBulkDecrypt(t *testing.T) {
