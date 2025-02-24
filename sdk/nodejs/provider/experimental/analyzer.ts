@@ -277,9 +277,9 @@ export class Analyzer {
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
-	    if (docString) {
-		prop.description = docString;
-	    }
+            if (docString) {
+                prop.description = docString;
+            }
             return prop;
         } else if (isArchive(type)) {
             const $ref = "pulumi.json#/Archive";
@@ -290,9 +290,9 @@ export class Analyzer {
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
-	    if (docString) {
-		prop.description = docString;
-	    }
+            if (docString) {
+                prop.description = docString;
+            }
             return prop;
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
@@ -352,9 +352,9 @@ export class Analyzer {
                 false /* optional */,
                 inputOutput === InputOutput.Output ? inputOutput : InputOutput.Neither,
             );
-	    if (docString) {
-		prop.description = docString;
-	    }
+            if (docString) {
+                prop.description = docString;
+            }
             return prop;
         } else if (isMapType(type, this.checker)) {
             const prop: PropertyDefinition = { type: "object" };

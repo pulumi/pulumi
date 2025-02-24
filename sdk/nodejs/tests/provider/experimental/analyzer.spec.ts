@@ -305,26 +305,26 @@ describe("Analyzer", function () {
                         additionalProperties: { $ref: "#/types/provider:index:MyInterfaceType" },
                         description: "inputMap comment",
                     },
-		    anArchive: {
-			$ref: "pulumi.json#/Archive",
-			plain: true,
-			description: "anArchive comment",
-		    },
-		    anAsset: {
-			$ref: "pulumi.json#/Asset",
-			plain: true,
-			description: "anAsset comment",
-		    },
-		    anArray: {
-			description: "anArray comment",
-			items: {
-			    plain: true,
-			    type: "string",
-			},
-			plain: true,
-			type:"array",
-		    },
-		},
+                    anArchive: {
+                        $ref: "pulumi.json#/Archive",
+                        plain: true,
+                        description: "anArchive comment",
+                    },
+                    anAsset: {
+                        $ref: "pulumi.json#/Asset",
+                        plain: true,
+                        description: "anAsset comment",
+                    },
+                    anArray: {
+                        description: "anArray comment",
+                        items: {
+                            plain: true,
+                            type: "string",
+                        },
+                        plain: true,
+                        type: "array",
+                    },
+                },
                 outputs: {
                     outStringMap: {
                         type: "object",
