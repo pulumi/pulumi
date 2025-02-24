@@ -770,6 +770,40 @@ describe("LocalWorkspace", () => {
 
         await stack.destroy();
     });
+    it("renames a stack", async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up({ userAgent });
+        const renamed = stackName + '_renamed'
+
+        const renameRes = await stack.rename({ stackName: renamed });
+        assert.strictEqual(renameRes.summary.kind, "rename");
+        assert.strictEqual(renameRes.summary.result, "succeeded");
+
+        // This stack shouldn't exist anymore.
+        await assert.rejects(stack.workspace.selectStack(stackName));
+        await stack.workspace.selectStack(renamed);
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+    });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
