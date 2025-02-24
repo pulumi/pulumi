@@ -36,6 +36,7 @@ export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
 
 export type ComponentDefinition = {
     name: string;
+    description?: string;
     inputs: Record<string, PropertyDefinition>;
     outputs: Record<string, PropertyDefinition>;
 };
@@ -49,6 +50,10 @@ export type AnalyzeResult = {
     components: Record<string, ComponentDefinition>;
     typeDefinitions: Record<string, TypeDefinition>;
 };
+
+interface docNode extends typescript.Node {
+    jsDoc?: typescript.JSDoc[];
+}
 
 export class Analyzer {
     private path: string;
@@ -159,11 +164,18 @@ export class Analyzer {
             outputs = this.analyzeSymbols(symbolTableToSymbols(classSymbol.members), node);
         }
 
-        return {
+        const definition: ComponentDefinition = {
             name: componentName!,
-            inputs,
-            outputs,
+            inputs: inputs,
+            outputs: outputs,
         };
+
+        const dNode = node as docNode;
+        if (dNode.jsDoc && dNode.jsDoc.length > 0) {
+            definition.description = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+        }
+
+        return definition;
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
