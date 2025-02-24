@@ -16,6 +16,7 @@ import ast
 import collections
 import importlib.util
 import inspect
+import re
 import sys
 import typing
 from collections import abc
@@ -147,6 +148,11 @@ class Analyzer:
         self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
         self.docstrings: dict[str, dict[str, str]] = {}
         """A map of component/type names to a map of property -> docstring."""
+        self.excluded_patterns = {
+            r"(^|/)\.",  # matches files/dirs starting with dot, either at root or in subfolders
+            r"(^|/)tests/",  # matches tests directory at root or in subfolders
+            r"(^|/)__pycache__/",  # matches pycache at root or in subfolders
+        }
 
     def analyze(
         self, module_path: Path
@@ -187,6 +193,11 @@ class Analyzer:
     def iter(self, path: Path):
         for file_path in sorted(path.glob("**/*.py")):
             if is_in_venv(file_path):
+                continue
+            # Get path relative to the base directory and check if it matches any of the exclusion patterns
+            rel_path = file_path.relative_to(path)
+            path_str = str(rel_path).replace("\\", "/")
+            if any(re.search(pattern, path_str) for pattern in self.excluded_patterns):
                 continue
             yield file_path
 

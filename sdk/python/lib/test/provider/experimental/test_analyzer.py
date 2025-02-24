@@ -949,6 +949,28 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     }
 
 
+def test_analyze_component_excluded_files():
+    analyzer = Analyzer(metadata)
+
+    (components, type_definitions) = analyzer.analyze(
+        Path(Path(__file__).parent, "testdata", "excluded-files")
+    )
+    assert components == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="component.py",
+            inputs={
+                "foo": PropertyDefinition(
+                    type=PropertyType.STRING,
+                )
+            },
+            inputs_mapping={"foo": "foo"},
+            outputs={},
+            outputs_mapping={},
+        )
+    }
+
+
 def test_unwrap_output():
     str_output = pulumi.Output[str]
     unwrapped = unwrap_output(str_output)
