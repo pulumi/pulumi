@@ -588,6 +588,47 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Rename an existing stack
+     */
+    async rename(options: RenameOptions): Promise<RenameResult> {
+        const args = ["stack", "rename", options.stackName];
+        args.push(...this.remoteArgs());
+
+        applyGlobalOpts(options, args);
+
+        let logPromise: Promise<ReadlineResult> | undefined;
+        let logFile: string | undefined;
+
+        // Set up event log tailing
+        if (options?.onEvent) {
+            const onEvent = options.onEvent;
+            logFile = createLogFile("rename");
+            args.push("--event-log", logFile);
+
+            logPromise = this.readLines(logFile, (event) => {
+                onEvent(event);
+            });
+        }
+
+        let renameResult: CommandResult;
+        try {
+            renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
+
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && options?.showSecrets);
+
+        return {
+            stdout: renameResult.stdout,
+            stderr: renameResult.stderr,
+            summary: summary!,
+        };
+    }
+
+    /**
      * Import resources into the stack
      *
      * @param options Options to specify resources and customize the behavior of the import.
@@ -1194,6 +1235,26 @@ export interface DestroyResult {
 }
 
 /**
+ * Output from renaming the Stack.
+ */
+export interface RenameResult {
+    /**
+     * The standard output from the rename.
+     */
+    stdout: string;
+
+    /**
+     * The standard error output from the rename.
+     */
+    stderr: string;
+
+    /**
+     * A summary of the rename.
+     */
+    summary: UpdateSummary;
+}
+
+/**
  * The output from performing an import operation.
  */
 export interface ImportResult {
@@ -1562,6 +1623,36 @@ export interface DestroyOptions extends GlobalOpts {
      * Remove the stack and its configuration after all resources in the stack have been deleted.
      */
     remove?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
+}
+
+/**
+ * Options controlling the behavior of a Stack.rename() operation.
+ */
+export interface RenameOptions extends GlobalOpts {
+    /**
+     * The new name for the stack.
+     */
+    stackName: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
+    onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation yields an event.
+     */
+    onEvent?: (event: EngineEvent) => void;
+
+    /**
+     * Include secrets in the UpSummary.
+     */
+    showSecrets?: boolean;
+
     /**
      * A signal to abort an ongoing operation.
      */
