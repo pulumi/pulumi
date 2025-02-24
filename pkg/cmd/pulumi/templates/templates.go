@@ -47,6 +47,8 @@ type Source struct {
 
 // Templates lists the templates available to the [Source].
 func (s *Source) Templates() ([]Template, error) {
+	s.wg.Wait() // Wait to ensure that all templates have been fetched before returning the template list.
+
 	s.lockOpen("read templates")
 	defer s.m.Unlock()
 	return s.templates, errors.Join(s.errors...)
@@ -81,6 +83,8 @@ func (s *Source) lockOpen(action string) {
 //
 // Close should always be called when [Source] is dropped.
 func (s *Source) Close() error {
+	s.wg.Wait() // Wait to ensure that all templates have been fetched so all closers are visible.
+
 	s.lockOpen("close")
 	defer s.m.Unlock()
 	s.closed = true
