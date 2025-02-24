@@ -793,11 +793,10 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(renameRes.summary.kind, "rename");
         assert.strictEqual(renameRes.summary.result, "succeeded");
 
+        // The stack selection should be a no-op as it's the already-selected
+        // stack.
         await stack.up({ userAgent });
-
-        // This stack shouldn't exist anymore.
-        await assert.rejects(stack.workspace.selectStack(stackName));
-        await stack.workspace.selectStack(stackName);
+        await stack.workspace.selectStack(renamed);
 
         // pulumi destroy
         await stack.workspace.selectStack(renamed);
