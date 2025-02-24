@@ -791,6 +791,7 @@ describe("LocalWorkspace", () => {
         const renamed = stackName + '_renamed'
 
         const renameRes = await stack.rename({ stackName: renamed });
+        assert.strictEqual(renameRes.stdout, "");
         assert.strictEqual(renameRes.summary.kind, "rename");
         assert.strictEqual(renameRes.summary.result, "succeeded");
 
