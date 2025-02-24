@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -157,6 +158,15 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Retrieve the template repo.
+	scope := cmdTemplates.ScopeAll
+	if args.offline {
+		scope = cmdTemplates.ScopeLocal
+	}
+	templateSource := cmdTemplates.New(ctx,
+		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, args.interactive)
+	defer func() { contract.IgnoreError(templateSource.Close()) }()
+
 	if args.templateNameOrURL == "" {
 		// Try to read the current project
 		project, _, err := ws.ReadProject()
@@ -197,20 +207,12 @@ func runNew(ctx context.Context, args newArgs) error {
 			args.templateNameOrURL = conversationURL
 		}
 	}
-	// Retrieve the template repo.
-	scope := cmdTemplates.ScopeAll
-	if args.offline {
-		scope = cmdTemplates.ScopeLocal
-	}
-	templateSource, err := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, args.interactive)
+
+	// List the templates from the repo.
+	templates, err := templateSource.Templates()
 	if err != nil {
 		return err
 	}
-	defer func() { contract.IgnoreError(templateSource.Close()) }()
-
-	// List the templates from the repo.
-	templates := templateSource.Templates()
 
 	var cmdTemplate cmdTemplates.Template
 	if len(templates) == 0 {
@@ -501,9 +503,11 @@ func NewNewCmd() *cobra.Command {
 		promptRuntimeOptions: promptRuntimeOptions,
 	}
 
-	getTemplates := func(ctx context.Context) (*cmdTemplates.Source, error) {
+	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
 		// Attempt to retrieve available templates.
-		return cmdTemplates.New(ctx, "", cmdTemplates.ScopeAll, workspace.TemplateKindPulumiProject, args.interactive)
+		s := cmdTemplates.New(ctx, "", cmdTemplates.ScopeAll, workspace.TemplateKindPulumiProject, args.interactive)
+		t, err := s.Templates()
+		return t, s, err
 	}
 
 	cmd := &cobra.Command{
@@ -565,13 +569,13 @@ func NewNewCmd() *cobra.Command {
 				args.templateNameOrURL = cliArgs[0]
 			}
 			if args.listTemplates {
-				templates, err := getTemplates(ctx)
+				templates, closer, err := getTemplates(ctx)
+				defer contract.IgnoreClose(closer)
 				if err != nil {
 					logging.Warningf("could not list templates: %v", err)
 					return err
 				}
-				defer templates.Close()
-				available, _ := templatesToOptionArrayAndMap(templates.Templates())
+				available, _ := templatesToOptionArrayAndMap(templates)
 				fmt.Println("")
 				fmt.Println("Available Templates:")
 				for _, t := range available {
@@ -595,16 +599,17 @@ func NewNewCmd() *cobra.Command {
 		// You'd think you could use cmd.Context() here but cobra doesn't set context on the cmd even though
 		// the parent help command has it. If https://github.com/spf13/cobra/issues/2240 gets fixed we can
 		// change back to cmd.Context() here.
-		templates, err := getTemplates(context.Background())
+		templates, closer, err := getTemplates(context.Background())
+		contract.IgnoreClose(closer)
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)
 			return
 		}
 
 		// If we have any templates, show them.
-		if l := len(templates.Templates()); l > 0 {
+		if len(templates) > 0 {
 			fmt.Println()
-			fmt.Printf("There are %d available templates.\n", l)
+			fmt.Printf("There are %d available templates.\n", len(templates))
 		}
 	})
 

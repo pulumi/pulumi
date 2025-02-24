@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -35,24 +36,58 @@ import (
 // created.
 type Source struct {
 	templates []Template
+	errors    []error
 	closers   []func() error
 	closed    bool
+
+	// m should be held whenever Source is mutated.
+	m  sync.Mutex
+	wg sync.WaitGroup
 }
 
 // Templates lists the templates available to the [Source].
-func (s Source) Templates() []Template {
-	return s.templates
+func (s *Source) Templates() ([]Template, error) {
+	s.lockOpen("read templates")
+	defer s.m.Unlock()
+	return s.templates, errors.Join(s.errors...)
+}
+
+func (s *Source) addTemplate(t Template) {
+	s.lockOpen("add template")
+	s.templates = append(s.templates, t)
+	s.m.Unlock()
+}
+
+func (s *Source) addCloser(f func() error) {
+	s.lockOpen("add closer")
+	s.closers = append(s.closers, f)
+	s.m.Unlock()
+}
+
+func (s *Source) addError(err error) {
+	s.lockOpen("add error")
+	s.errors = append(s.errors, err)
+	s.m.Unlock()
+}
+
+func (s *Source) lockOpen(action string) {
+	s.m.Lock()
+	if s.closed {
+		panic("Attempted to act on closed source: " + action)
+	}
 }
 
 // Close cleans up the [Source] and any associated templates.
 //
 // Close should always be called when [Source] is dropped.
 func (s *Source) Close() error {
+	s.lockOpen("close")
+	defer s.m.Unlock()
+	s.closed = true
 	errs := make([]error, len(s.closers))
 	for i, f := range s.closers {
 		errs[i] = f()
 	}
-	s.closed = true
 	return errors.Join(errs...)
 }
 
@@ -98,56 +133,63 @@ var (
 func New(
 	ctx context.Context, templateNamePathOrURL string, scope Scope,
 	templateKind workspace.TemplateKind, interactive bool,
-) (*Source, error) {
+) *Source {
 	// apply the default scope, if necessary
 	if scope == ScopeDefault {
 		scope = scopeDefault
 	}
 
 	var source Source
-	var errs []error
+	ctx, cancel := context.WithCancel(ctx)
+	source.closers = append(source.closers, func() error { cancel(); return nil })
 
 	if scope == ScopeAll || scope == ScopeTraditional || scope == ScopeLocal {
-		errs = append(errs, source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind))
+		source.wg.Add(1)
+		go func() {
+			source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind, &source.wg)
+			source.wg.Done()
+		}()
 	}
 
 	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject {
-		errs = append(errs, source.getOrgTemplates(ctx, interactive))
+		source.wg.Add(1)
+		go func() {
+			source.getOrgTemplates(ctx, interactive, &source.wg)
+			source.wg.Done()
+		}()
 	}
 
-	// If we have failed to create a template [Source], then we should clean up and exit.
-	if err := errors.Join(errs...); err != nil {
-		return nil, errors.Join(source.Close(), err)
-	}
-
-	return &source, nil
+	return &source
 }
 
 func (s *Source) getWorkspaceTemplates(
 	ctx context.Context, templateNamePathOrURL string, scope Scope, templateKind workspace.TemplateKind,
-) error {
+	_ *sync.WaitGroup,
+) {
 	repo, err := workspace.RetrieveTemplates(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
 	if err != nil {
 		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
 		if !errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
-			return err
+			s.addError(err)
+			return
 		}
 
 		// ...If the request has 401'd AND we've identified the backend as being a Pulumi Cloud instance, we can
 		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
 		repo, err = retrievePrivatePulumiCloudTemplate(templateNamePathOrURL)
 		if err != nil {
-			return fmt.Errorf("retrieving private pulumi cloud template: %w", err)
+			s.addError(err)
+			return
 		}
 	}
-	s.closers = append(s.closers, repo.Delete)
+	s.addCloser(repo.Delete)
 	workspaceTemplates, err := repo.Templates()
 	if err != nil {
-		return err
+		s.addError(err)
+		return
 	}
 
 	s.addDownloadedTemplates(workspaceTemplates)
-	return nil
 }
 
 // Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
@@ -195,7 +237,7 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 
 func (s *Source) addDownloadedTemplates(src []workspace.Template) {
 	for _, t := range src {
-		s.templates = append(s.templates, Template{
+		s.addTemplate(Template{
 			name:               t.Name,
 			description:        t.Description,
 			projectDescription: t.ProjectDescription,

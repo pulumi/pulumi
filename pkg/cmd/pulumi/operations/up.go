@@ -242,18 +242,18 @@ func NewUpCmd() *cobra.Command {
 		cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
-		templateSource, err := cmdTemplates.New(ctx,
+		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeDefault,
 			workspace.TemplateKindPulumiProject, cmdutil.Interactive())
-		if err != nil {
-			return err
-		}
 		defer func() {
 			contract.IgnoreError(templateSource.Close())
 		}()
 
 		// List the templates from the repo.
-		templates := templateSource.Templates()
+		templates, err := templateSource.Templates()
+		if err != nil {
+			return err
+		}
 
 		var template workspace.Template
 		if len(templates) == 0 {

@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -37,11 +38,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
+func (s *Source) getOrgTemplates(
+	ctx context.Context, interactive bool,
+	wg *sync.WaitGroup,
+) {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return err
+		s.addError(err)
+		return
 	}
 
 	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, display.Options{
@@ -49,23 +54,27 @@ func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
 		IsInteractive: interactive,
 	})
 	if err != nil {
-		return err
+		s.addError(err)
+		return
 	}
 
 	logging.Infof("Listing Org Templates from the cloud")
 	_, orgs, _, err := b.CurrentUser()
 	if err != nil {
-		return err
+		s.addError(err)
+		return
 	}
 
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
-		return err
+		s.addError(err)
+		return
 	}
 
 	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
-		return fmt.Errorf("could not get cloud url: %w", err)
+		s.addError(fmt.Errorf("could not get cloud url: %w", err))
+		return
 	}
 
 	logging.Infof("Org Templates URL: %q", cloudURL)
@@ -74,26 +83,26 @@ func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
 
 	alreadySeenSourceURLs := map[string]struct{}{}
 
-	var errs []error
-	for _, org := range orgs {
+	handleOrg := func(org string) {
+		defer wg.Done()
 		logging.Infof("Checking for templates from %q", org)
 		orgTemplates, err := api.ListOrgTemplates(ctx, org)
 		if apiError := new(apitype.ErrorResponse); errors.As(err, &apiError) {
 			// This is what happens when we try to access org templates for an org that hasn't enabled org templates.
 			if apiError.Code == 402 {
 				logging.Infof("%q does not have access to org templates (code=%d)", org, apiError.Code)
-				continue
+				return
 			}
 		} else if err != nil {
-			errs = append(errs, err)
+			s.addError(err)
 			logging.Warningf("Failed to get templates from %q: %s", org, err.Error())
-			continue
+			return
 		} else if orgTemplates.HasAccessError {
 			logging.Warningf("Failed to get templates from %q: Access Denied", org)
-			continue
+			return
 		} else if orgTemplates.HasUpstreamError {
 			logging.Warningf("Failed to get templates from %q: Upstream Error", org)
-			continue
+			return
 		}
 
 		for source, sourceTemplates := range orgTemplates.Templates {
@@ -114,7 +123,7 @@ func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
 				}
 				alreadySeenSourceURLs[template.SourceURL] = struct{}{}
 				logging.V(10).Infof("adding template %q", template.Name)
-				s.templates = append(s.templates, Template{
+				s.addTemplate(Template{
 					name:               template.Name,
 					description:        "", // No description present.
 					projectDescription: template.Description,
@@ -125,18 +134,19 @@ func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
 							return workspace.Template{}, err
 						}
 						// Having created a template directory, we now add it to the list of directories to close.
-						s.closers = append(s.closers, func() error { return os.RemoveAll(templateDir) })
+						s.addCloser(func() error { return os.RemoveAll(templateDir) })
 
 						tarReader, err := api.DownloadOrgTemplate(ctx, org, template.SourceURL)
 						if err != nil {
 							return workspace.Template{}, err
 						}
 						if err := errors.Join(
-							writeTar(&tarReader.Reader, templateDir),
+							writeTar(ctx, &tarReader.Reader, templateDir),
 							tarReader.Close(),
 						); err != nil {
 							return workspace.Template{}, err
 						}
+						logging.Infof("downloaded %q into %q", template.Name, templateDir)
 
 						return workspace.LoadTemplate(templateDir)
 					},
@@ -145,10 +155,13 @@ func (s *Source) getOrgTemplates(ctx context.Context, interactive bool) error {
 		}
 	}
 
-	return errors.Join(errs...)
+	for _, org := range orgs {
+		wg.Add(1)
+		go handleOrg(org)
+	}
 }
 
-func writeTar(reader *tar.Reader, dst string) error {
+func writeTar(_ context.Context, reader *tar.Reader, dst string) error {
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -166,9 +179,18 @@ func writeTar(reader *tar.Reader, dst string) error {
 
 		target := filepath.Join(dst, path)
 
+		// Ensure that we can write the directory
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+
 		switch header.Typeflag {
 		case tar.TypeDir:
-			err := os.MkdirAll(target, 0o755)
+			if header.Mode > math.MaxUint32 {
+				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
+			}
+
+			err := os.Mkdir(target, os.FileMode(header.Mode))
 			if err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
 			}
@@ -177,6 +199,7 @@ func writeTar(reader *tar.Reader, dst string) error {
 			if header.Mode > math.MaxUint32 {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
+
 			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, fileMode)
 			if err != nil {
