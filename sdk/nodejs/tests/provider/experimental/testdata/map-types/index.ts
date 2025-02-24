@@ -18,6 +18,7 @@ export class MyComponent extends pulumi.ComponentResource {
     outMapOfStrings: pulumi.Output<{ [key: string]: string }>;
     outMapOfNumbers: pulumi.Output<{ [key: string]: number }>;
     outMapOfBooleans: pulumi.Output<{ [key: string]: boolean }>;
+    outMapOptionalStrings: pulumi.Output<{ [key: string]: string } | undefined>;
 
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("provider:index:MyComponent", name, args, opts);
