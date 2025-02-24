@@ -12,11 +12,11 @@ First we need to let Pulumi's plugin system know which language runtime should b
 runtime: nodejs
 ```
 
-We also need to create a `package.json` file to define the project and list the dependencies of the provider.  `@pulumi/pulumi` needs to be at least version 3.153.0.
+We also need to create a `package.json` file to define the project and list the dependencies of the provider.
 
 ```txt
 {
-    "name": "main",
+    "name": "my-provider",
     "main": "index.ts",
     "devDependencies": {
         "@types/node": "^18",
@@ -29,7 +29,7 @@ We also need to create a `package.json` file to define the project and list the 
 }
 ```
 
-This uses a prerelease version of the NodeJS Pulumi SDK that includes the experimental component provider feature. We'll use the `@pulumi/random` package to generate a random greeting.
+This uses version 3.153.0 of the NodeJS Pulumi SDK that includes the experimental component provider feature. We'll use the `@pulumi/random` package to generate a random greeting.
 
 The resources provided by the provider are are defined as TypeScript classes that subclass `pulumi.ComponentResource`. Create a new file `myComponent.ts` to hold the component implementation:
 
@@ -41,7 +41,7 @@ export interface MyComponentArgs {
 
 export class MyComponent extends pulumi.ComponentResource {
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
-	super("provider:index:MyComponent", name, args, opts);
+	super("my-provider:index:MyComponent", name, args, opts);
     }
 }
 ```
@@ -148,14 +148,14 @@ As a last step, we need to publish the provider so that we can use it. Create a 
 git init
 git add .
 git commit -m "Initial commit"
-git tag v1.0.0
+git tag v0.1.0
 git remote add origin $MY_GIT_REPO
 git push --tags origin main
 ```
 
 ## Using the Component Provider
 
-Now that our component provider has been published, we can use it in a separate project. We'll use TypeScript in this example, but the provider can be used from any language supported by Pulumi. Create a new directory for the project and then initialize a new Pulumi project:
+Now that our component provider has been published, we can use it in a separate project. We'll use Python in this example, but the provider can be used from any language supported by Pulumi. Create a new directory for the project and then initialize a new Pulumi project:
 
 ```bash
 cd $MY_PULUMI_RPOJECT
