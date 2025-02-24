@@ -45,6 +45,7 @@ type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
+	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
@@ -99,6 +100,15 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				}
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
+					op := e.Step.Op()
+					contract.Assertf(
+						op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||
+							op == deploy.OpDeleteReplaced || op == deploy.OpDelete,
+						"unexpected step.Op(): %q", op)
+
+					if op == deploy.OpDelete || op == deploy.OpReadDiscard {
+						deletes[old] = true
+					}
 					dones[old] = true
 				}
 			case deploy.OpReplace:
@@ -117,12 +127,20 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
+	// Filter any resources that had an operation (like same or update) but then were deleted by a later operations
+	filteredResources := []*resource.State{}
+	for _, res := range resources {
+		if !deletes[res] {
+			filteredResources = append(filteredResources, res)
+		}
+	}
+
 	// Append any resources from the base snapshot that were not produced by the current snapshot.
 	// See backend.SnapshotManager.snap for why this works.
 	if base != nil {
 		for _, res := range base.Resources {
 			if !dones[res] {
-				resources = append(resources, res)
+				filteredResources = append(filteredResources, res)
 			}
 		}
 	}
@@ -157,7 +175,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err

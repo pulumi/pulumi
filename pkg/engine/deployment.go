@@ -223,6 +223,7 @@ func newDeployment(
 		Parallel:                  opts.Parallel,
 		Refresh:                   opts.Refresh,
 		RefreshOnly:               opts.isRefresh,
+		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
 		TargetDependents:          opts.TargetDependents,

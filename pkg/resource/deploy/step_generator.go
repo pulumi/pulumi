@@ -38,11 +38,23 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// The mode in which the step generator is running.
+// Either a normal update, or a destroy operation.
+type stepGeneratorMode int
+
+const (
+	updateMode stepGeneratorMode = iota
+	destroyMode
+)
+
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
 // It does this by consulting the deployment and calculating the appropriate step action based on the requested goal
 // state and the existing state of the world.
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
+
+	// what mode to run the step generator in
+	mode stepGeneratorMode
 
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
@@ -60,6 +72,9 @@ type stepGenerator struct {
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
 	skippedCreates map[resource.URN]bool
+
+	// the set of resources that need to be destroyed in this deployment after running other steps on them.
+	toDelete []*resource.State
 
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
@@ -590,6 +605,26 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		for _, aliasURN := range aliasUrns {
 			sg.providers[aliasURN] = new
 		}
+	}
+
+	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for
+	// custom non-provider resources.
+	if sg.mode == destroyMode {
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			sg.sames[urn] = true
+			// Custom resources that aren't in state just have to be skipped creates.
+			if !hasOld {
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+			// Others are just sames that need to be deleted.
+			sg.toDelete = append(sg.toDelete, new)
+			// For deletes we want to maintain the old inputs
+			new.Inputs = old.Inputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+		}
+		// All other resources need to be tagged as 'toDestroy' for after we create/update them.
+		sg.toDelete = append(sg.toDelete, new)
 	}
 
 	// Fetch the provider for this resource.
@@ -1451,6 +1486,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 		}
 	}
 
+	// We also need to delete all the new resources that we created/updated/samed if this is a destroy operation.
+	for i := len(sg.toDelete) - 1; i >= 0; i-- {
+		res := sg.toDelete[i]
+		sg.deletes[res.URN] = true
+		dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
+	}
+
 	// Check each proposed delete against the relevant resource plan
 	for _, s := range dels {
 		if sg.deployment.plan != nil {
@@ -1548,8 +1590,10 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 		}
 	}
 
-	// Produce a dependency graph of resources.
-	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
+	// Produce a dependency graph of resources, we need to graph over the new "toDelete" resources and the old
+	// resources.
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)
 
 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
 	targets := make(map[resource.URN]bool)
@@ -1653,8 +1697,10 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
-	var antichains []antichain                    // the list of parallelizable steps we intend to return.
-	dg := sg.deployment.depGraph                  // the current deployment's dependency graph.
+	var antichains []antichain // the list of parallelizable steps we intend to return.
+
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)  // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
@@ -2273,9 +2319,10 @@ func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(deployment *Deployment) *stepGenerator {
+func newStepGenerator(deployment *Deployment, mode stepGeneratorMode) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
+		mode:                 mode,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
