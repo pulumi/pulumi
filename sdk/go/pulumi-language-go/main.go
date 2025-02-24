@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1014,7 +1015,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger())
 	if err != nil {
-		return nil, fmt.Errorf("error in compiling Go: %w", err)
+		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
 	if opts.buildTarget == "" {
 		// If there is no specified buildTarget, delete the temporary program after running it.
@@ -1209,7 +1210,7 @@ func (host *goLanguageHost) RunPlugin(
 
 	program, err := compileProgram(req.Info.ProgramDirectory, "", false)
 	if err != nil {
-		return fmt.Errorf("error in compiling Go: %w", err)
+		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
 	defer os.Remove(program)
 
