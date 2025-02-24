@@ -56,7 +56,6 @@ interface docNode extends typescript.Node {
 }
 
 export class Analyzer {
-    private path: string;
     private providerName: string;
     private checker: typescript.TypeChecker;
     private program: typescript.Program;
@@ -67,9 +66,7 @@ export class Analyzer {
         const configPath = `${dir}/tsconfig.json`;
         const config = ts.readConfigFile(configPath, ts.sys.readFile);
         const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
-        this.path = dir;
         this.providerName = providerName;
-        const options = parsedConfig.options;
         parsedConfig.options["strictNullChecks"] = true;
         this.program = ts.createProgram({
             rootNames: parsedConfig.fileNames,
@@ -84,7 +81,7 @@ export class Analyzer {
             if (sourceFile.fileName.includes("node_modules") || sourceFile.fileName.endsWith(".d.ts")) {
                 continue;
             }
-            this.analyseFile(sourceFile);
+            this.analyzeFile(sourceFile);
         }
         return {
             components: this.components,
@@ -114,7 +111,7 @@ export class Analyzer {
         throw new Error(`Component '${name}' not found`);
     }
 
-    private analyseFile(sourceFile: typescript.SourceFile) {
+    private analyzeFile(sourceFile: typescript.SourceFile) {
         // We intentionally visit only the top-level nodes, because we only
         // support components defined at the top-level. We have no way to
         // instantiate components defined inside functions or methods.
