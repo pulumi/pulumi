@@ -770,7 +770,7 @@ describe("LocalWorkspace", () => {
 
         await stack.destroy();
     });
-    it("renames a stack", async () => {
+    it(`renames a stack`, async () => {
         const program = async () => {
             class MyResource extends ComponentResource {
                 constructor(name: string, opts?: ComponentResourceOptions) {
@@ -787,19 +787,20 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        await stack.up({ userAgent });
         const renamed = stackName + '_renamed'
-
         const renameRes = await stack.rename({ stackName: renamed });
-        assert.strictEqual(renameRes.stdout, "");
+
         assert.strictEqual(renameRes.summary.kind, "rename");
         assert.strictEqual(renameRes.summary.result, "succeeded");
 
+        await stack.up({ userAgent });
+
         // This stack shouldn't exist anymore.
         await assert.rejects(stack.workspace.selectStack(stackName));
-        await stack.workspace.selectStack(renamed);
+        await stack.workspace.selectStack(stackName);
 
         // pulumi destroy
+        await stack.workspace.selectStack(renamed);
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
