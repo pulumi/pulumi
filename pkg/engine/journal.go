@@ -45,10 +45,15 @@ type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
+	oldMapping, deletes := make(map[*resource.State]*resource.State), make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
+
+		if e.Step.Old() != nil && e.Step.New() != nil {
+			oldMapping[e.Step.New()] = e.Step.Old()
+		}
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
@@ -99,6 +104,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				}
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
+					deletes[old] = true
 					dones[old] = true
 				}
 			case deploy.OpReplace:
@@ -117,12 +123,21 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
+	// Filter any resources that had an operation (like same or update) but then were deleted by a later operations
+	filteredResources := []*resource.State{}
+	for _, res := range resources {
+		old := oldMapping[res]
+		if old == nil || !deletes[old] {
+			filteredResources = append(filteredResources, res)
+		}
+	}
+
 	// Append any resources from the base snapshot that were not produced by the current snapshot.
 	// See backend.SnapshotManager.snap for why this works.
 	if base != nil {
 		for _, res := range base.Resources {
-			if !dones[res] {
-				resources = append(resources, res)
+			if !dones[res] && !deletes[res] {
+				filteredResources = append(filteredResources, res)
 			}
 		}
 	}
@@ -157,7 +172,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err
