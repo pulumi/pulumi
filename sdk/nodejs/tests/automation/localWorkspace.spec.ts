@@ -787,7 +787,7 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        const renamed = stackName + '_renamed'
+        const renamed = stackName + "_renamed";
         const renameRes = await stack.rename({ stackName: renamed });
 
         assert.strictEqual(renameRes.summary.kind, "rename");
@@ -802,7 +802,6 @@ describe("LocalWorkspace", () => {
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
-
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
