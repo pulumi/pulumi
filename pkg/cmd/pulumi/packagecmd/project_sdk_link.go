@@ -780,7 +780,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
 	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
-		workspace.PluginRegexp.MatchString(descriptor.Name) {
+		workspace.PluginNameRegexp.MatchString(descriptor.Name) {
 		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err

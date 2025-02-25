@@ -2508,8 +2508,10 @@ func getCandidateExtensions() []string {
 	return []string{""}
 }
 
-// PluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
-var PluginRegexp = regexp.MustCompile(
+var PluginNameRegexp = regexp.MustCompile(`(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])`)
+
+// pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
+var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
@@ -2534,16 +2536,16 @@ func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bo
 	}
 
 	// Filenames must match the plugin regexp.
-	match := PluginRegexp.FindStringSubmatch(file.Name())
-	if len(match) != len(PluginRegexp.SubexpNames()) {
+	match := pluginRegexp.FindStringSubmatch(file.Name())
+	if len(match) != len(pluginRegexp.SubexpNames()) {
 		logging.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
-			file.Name(), len(PluginRegexp.SubexpNames()), len(match))
+			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
 		return "", "", semver.Version{}, false
 	}
 	var kind apitype.PluginKind
 	var name string
 	var version *semver.Version
-	for i, group := range PluginRegexp.SubexpNames() {
+	for i, group := range pluginRegexp.SubexpNames() {
 		v := match[i]
 		switch group {
 		case "Kind":
