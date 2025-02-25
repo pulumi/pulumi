@@ -98,6 +98,7 @@
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
+        "tests/runtime/dependsOn.spec.ts",
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/registrations.spec.ts",
         "tests/runtime/pack.ts",
