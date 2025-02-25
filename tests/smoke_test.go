@@ -299,6 +299,13 @@ func TestPackageGetSchema(t *testing.T) {
 	schema := bindSchema("testprovider", schemaJSON)
 	// Sub-schema is a very simple empty schema with the name set from the argument given
 	assert.Equal(t, "parameter", schema.Name)
+
+	// get-schema '.' works
+	e.CWD = providerDir
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", ".", "parameter")
+	schema = bindSchema("testprovider", schemaJSON)
+	// Sub-schema is a very simple empty schema with the name set from the argument given
+	assert.Equal(t, "parameter", schema.Name)
 }
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache

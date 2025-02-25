@@ -2508,6 +2508,8 @@ func getCandidateExtensions() []string {
 	return []string{""}
 }
 
+var PluginNameRegexp = regexp.MustCompile(`^(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])$`)
+
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
