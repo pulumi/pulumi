@@ -1030,9 +1030,9 @@ def _parse_extra_args(**kwargs) -> List[str]:
     refresh: Optional[bool] = kwargs.get("refresh")
 
     if preview_only:
-        extra_args.extend("--preview-only")
+        extra_args.append("--preview-only")
     else:
-        extra_args.extend("--skip-preview")
+        extra_args.append("--skip-preview")
     if message:
         extra_args.extend(["--message", message])
     if expect_no_changes:
