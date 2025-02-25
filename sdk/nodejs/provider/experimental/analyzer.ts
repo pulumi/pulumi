@@ -46,6 +46,7 @@ export type ComponentDefinition = {
 export type TypeDefinition = {
     name: string;
     properties: Record<string, PropertyDefinition>;
+    description?: string;
 };
 
 export type AnalyzeResult = {
@@ -69,6 +70,7 @@ export class Analyzer {
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
     private typeDefinitions: Record<string, TypeDefinition> = {};
+    private docStrings: Record<string, string> = {};
 
     constructor(dir: string, providerName: string) {
         const configPath = `${dir}/tsconfig.json`;
@@ -127,6 +129,15 @@ export class Analyzer {
             if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
                 const component = this.analyzeComponent(node);
                 this.components[component.name] = component;
+            } else if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
+                const dNode = node as docNode;
+                let typeDocString: string | undefined = undefined;
+                if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
+                    typeDocString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+                }
+                if (typeDocString) {
+                    this.docStrings[node.name?.text] = typeDocString;
+                }
             }
         });
     }
@@ -315,6 +326,9 @@ export class Analyzer {
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
             this.typeDefinitions[name] = { name, properties: {} };
+            if (this.docStrings[name]) {
+                this.typeDefinitions[name].description = this.docStrings[name];
+            }
             const properties = this.analyzeSymbols(type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
             const $ref = `#/types/${this.providerName}:index:${name}`;

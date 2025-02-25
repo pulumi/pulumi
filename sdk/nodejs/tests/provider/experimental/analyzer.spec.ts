@@ -338,10 +338,12 @@ describe("Analyzer", function () {
             MyInterfaceType: {
                 name: "MyInterfaceType",
                 properties: { aNumber: { type: "number", plain: true, description: "aNumber comment" } },
+                description: "myInterfaceType comment",
             },
             MyClassType: {
                 name: "MyClassType",
                 properties: { aString: { type: "string", plain: true, description: "aString comment" } },
+                description: "myClassType comment",
             },
         });
     });

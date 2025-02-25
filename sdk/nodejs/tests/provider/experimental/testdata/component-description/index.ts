@@ -2,6 +2,9 @@
 
 import * as pulumi from "@pulumi/pulumi";
 
+/**
+ * myClassType comment
+ */
 export class MyClassType {
     /**
      * aString comment
@@ -9,6 +12,9 @@ export class MyClassType {
     aString: string;
 }
 
+/**
+ * myInterfaceType comment
+ */
 export interface MyInterfaceType {
     /**
      * aNumber comment
