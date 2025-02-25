@@ -296,6 +296,15 @@ class MergeResourceOptions(unittest.TestCase):
         assert opts2.protect is True
         opts3 = ResourceOptions.merge(opts2, ResourceOptions())
         assert opts3.protect is True
+        opts4 = opts3.merge(ResourceOptions(retain_on_delete=True))
+        assert opts4.protect is True
+        assert opts4.retain_on_delete is True
+        opts5 = ResourceOptions.merge(None, opts4)
+        assert opts5.protect is True
+        assert opts5.retain_on_delete is True
+        opts6 = ResourceOptions.merge(opts5, None)
+        assert opts6.protect is True
+        assert opts6.retain_on_delete is True
 
 
 # Regression test for https://github.com/pulumi/pulumi/issues/12032
