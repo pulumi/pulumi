@@ -1347,3 +1347,30 @@ func TestImportDefaultProvider(t *testing.T) {
 		assert.NotNil(t, r.Modified)
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/18594. Check that stack references give a
+// sensible error if attempted to import.
+func TestImportStackReference(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return errors.New("unexpected program execution")
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	// Run an import.
+	project := p.GetProject()
+	_, err := lt.ImportOp([]deploy.Import{{
+		Type: "pulumi:pulumi:StackReference",
+		Name: "Stack",
+		ID:   "org/proj/stk",
+	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	assert.ErrorContains(t, err, "stack reference can not be imported")
+}
