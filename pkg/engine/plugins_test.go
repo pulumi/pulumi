@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -619,4 +621,24 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
 		"foo": p2,
 	}, result)
+}
+
+func TestGatherPackagesFromProgram(t *testing.T) {
+	t.Parallel()
+
+	plugctx := &plugin.Context{
+		Host: &plugin.MockHost{
+			LanguageRuntimeF: func(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+				return &plugin.MockLanguageRuntime{
+					GetRequiredPackagesF: func(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error) {
+						return []workspace.PackageDescriptor{}, errors.New("error")
+					},
+				}, nil
+			},
+		},
+	}
+
+	pkgs, err := gatherPackagesFromProgram(plugctx, "testRuntime", plugin.ProgramInfo{})
+	assert.Error(t, err)
+	assert.Empty(t, pkgs)
 }
