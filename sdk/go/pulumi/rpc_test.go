@@ -851,7 +851,7 @@ func TestInvalidAsset(t *testing.T) {
 	require.NotNil(t, d)
 	require.True(t, d.(*asset).invalid)
 
-	_, _, err = marshalInput(d, assetType, true)
+	_, _, err = marshalInput(d, assetType)
 	assert.EqualError(t, err, "invalid asset")
 }
 
@@ -867,7 +867,7 @@ func TestInvalidArchive(t *testing.T) {
 	require.NotNil(t, d)
 	require.True(t, d.(*archive).invalid)
 
-	_, _, err = marshalInput(d, archiveType, true)
+	_, _, err = marshalInput(d, archiveType)
 	assert.EqualError(t, err, "invalid archive")
 }
 
@@ -2039,4 +2039,59 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		assert.True(t, known)
 		assert.False(t, secret)
 	})
+}
+
+type componentArgs struct {
+	Resources []*simpleCustomResource `pulumi:"resources"`
+}
+
+type ComponentArgs struct {
+	Resources []*simpleCustomResource
+}
+
+func (ComponentArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*componentArgs)(nil)).Elem()
+}
+
+func TestResourceReferenceDependencies(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.NoError(t, err)
+
+	custom1URN := URN(resource.NewURN("stack", "project", "", "test:index:custom", "custom1"))
+	custom2URN := URN(resource.NewURN("stack", "project", "", "test:index:custom", "custom2"))
+
+	props := &ComponentArgs{
+		Resources: []*simpleCustomResource{
+			newSimpleCustomResource(ctx, custom1URN, "id1").(*simpleCustomResource),
+			newSimpleCustomResource(ctx, custom2URN, "id2").(*simpleCustomResource),
+		},
+	}
+
+	tests := []struct {
+		exclude  bool
+		expected []URN
+	}{
+		{
+			exclude:  true,
+			expected: nil,
+		},
+		{
+			exclude:  false,
+			expected: []URN{custom1URN, custom2URN},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprintf("exclude=%v", tt.exclude), func(t *testing.T) {
+			t.Parallel()
+			_, pdeps, deps, err := marshalInputsOptions(props, &marshalOptions{
+				ExcludeResourceRefsFromDeps: tt.exclude,
+			})
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tt.expected, pdeps["resources"])
+			assert.ElementsMatch(t, tt.expected, deps)
+		})
+	}
 }

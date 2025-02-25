@@ -1,0 +1,6 @@
+name: l2-component-property-deps
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv
