@@ -215,8 +215,8 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = stack_namer(project_name)
 
         Stack.create(stack_name, ws)
-        Stack.rename(stack_name + '_renamed', ws)
-        ws.remove_stack(stack_name + '_renamed')
+        Stack.rename(stack_name + "_renamed", ws)
+        ws.remove_stack(stack_name + "_renamed")
 
     def test_config_env_functions(self):
         if get_test_org() != "moolumi":
