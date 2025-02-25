@@ -80,6 +80,10 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
+			if !cmdutil.Interactive() && !yes {
+				return errors.New("non-interactive mode requires --yes flag")
+			}
+
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
 			if !yes && !ui.ConfirmPrompt(prompt, s.Ref().String(), opts) {

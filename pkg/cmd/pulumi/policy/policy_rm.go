@@ -15,6 +15,7 @@
 package policy
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -55,6 +56,10 @@ func newPolicyRmCmd() *cobra.Command {
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			if !cmdutil.Interactive() && !yes {
+				return errors.New("non-interactive mode requires --yes flag")
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])

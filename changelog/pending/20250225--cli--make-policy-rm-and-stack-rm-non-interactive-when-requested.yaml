@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Make policy rm and stack rm non-interactive when requested
