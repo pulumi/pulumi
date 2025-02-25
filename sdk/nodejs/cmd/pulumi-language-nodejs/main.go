@@ -892,7 +892,7 @@ func (host *nodeLanguageHost) constructArguments(
 	maybeAppendArg("sync", pipesDirectory)
 	maybeAppendArg("organization", req.GetOrganization())
 	maybeAppendArg("project", req.GetProject())
-	maybeAppendArg("root_directory", req.GetInfo().RootDirectory)
+	maybeAppendArg("root-directory", req.GetInfo().RootDirectory)
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.Info.ProgramDirectory)
 	if req.GetDryRun() {

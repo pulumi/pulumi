@@ -94,7 +94,7 @@ function usage(): void {
     console.error(`    where [flags] may include`);
     console.error(`        --organization=o    set the organization name to o`);
     console.error(`        --project=p         set the project name to p`);
-    console.error(`        --root_directory=p  set the project root directory (location of Pulumi.yaml) to p`);
+    console.error(`        --root-directory=p  set the project root directory (location of Pulumi.yaml) to p`);
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
@@ -124,7 +124,7 @@ function main(args: string[]): void {
         string: [
             "organization",
             "project",
-            "root_directory",
+            "root-directory",
             "stack",
             "parallel",
             "pwd",
@@ -164,7 +164,7 @@ function main(args: string[]): void {
     // Config is already an environment variaible set by the language plugin.
     addToEnvIfDefined("PULUMI_NODEJS_ORGANIZATION", argv["organization"]);
     addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
-    addToEnvIfDefined("PULUMI_NODEJS_ROOT_DIRECTORY", argv["root_directory"]);
+    addToEnvIfDefined("PULUMI_NODEJS_ROOT_DIRECTORY", argv["root-directory"]);
     addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
     addToEnvIfDefined("PULUMI_NODEJS_QUERY_MODE", argv["query-mode"]);
