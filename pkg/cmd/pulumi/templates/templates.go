@@ -21,8 +21,12 @@ package templates
 import (
 	"context"
 	"errors"
+	"io/fs"
+	"os"
+	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -144,6 +148,8 @@ func New(
 	ctx, cancel := context.WithCancel(ctx)
 	source.closers = append(source.closers, func() error { cancel(); return nil })
 
+	queryKind := getTemplateQuery(templateNamePathOrURL)
+
 	if scope == ScopeAll || scope == ScopeTraditional || scope == ScopeLocal {
 		source.wg.Add(1)
 		go func() {
@@ -152,7 +158,7 @@ func New(
 		}()
 	}
 
-	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject {
+	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && queryKind == queryName {
 		source.wg.Add(1)
 		go func() {
 			source.getOrgTemplates(ctx, templateNamePathOrURL, interactive, &source.wg)
@@ -161,4 +167,48 @@ func New(
 	}
 
 	return &source
+}
+
+type queryKind string
+
+const (
+	queryName queryKind = "query-name"
+	queryURL  queryKind = "query-url"
+	queryPath queryKind = "query-path"
+)
+
+func getTemplateQuery(query string) queryKind {
+	if workspace.IsTemplateURL(query) {
+		return queryURL
+	}
+	if isTemplatePath(query) {
+		return queryPath
+	}
+	return queryName
+}
+
+func isTemplatePath(query string) bool {
+	_, err := os.Stat(query)
+	if errors.Is(err, fs.ErrNotExist) {
+		if looksLikePath(query) {
+			const msg = "%q looks like a file path, but no file exists. Assuming to be a template name"
+			logging.Warningf(msg, query)
+		}
+		return false
+	} else if err != nil {
+		logging.Warningf("unable to stat %q: %s", query, err.Error())
+		return false
+	}
+
+	// query does point to a local file.
+
+	if !looksLikePath(query) {
+		const msg = `Assuming %[1]q is a file path, use "./%[1]s" to be unambiguous`
+		logging.Warningf(msg, query)
+	}
+	return err == nil
+}
+
+func looksLikePath(query string) bool {
+	return strings.HasPrefix(query, "./") || strings.HasPrefix(query, "/")
 }
