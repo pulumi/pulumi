@@ -29,7 +29,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -302,9 +301,7 @@ func TestPackageGetSchema(t *testing.T) {
 	assert.Equal(t, "parameter", schema.Name)
 
 	// get-schema '.' works
-	cleanup, err := fsutil.Chdir(providerDir)
-	require.NoError(t, err)
-	defer cleanup()
+	e.CWD = providerDir
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", ".", "parameter")
 	schema = bindSchema("testprovider", schemaJSON)
 	// Sub-schema is a very simple empty schema with the name set from the argument given
