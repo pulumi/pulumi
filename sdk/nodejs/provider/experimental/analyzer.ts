@@ -223,7 +223,7 @@ export class Analyzer {
         const optional = isOptional(symbol);
         const dNode = symbol.valueDeclaration as docNode;
         let docString: string | undefined = undefined;
-        if (dNode && dNode.jsDoc && dNode.jsDoc.length > 0) {
+        if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
         return this.analyzeType(propType, location, optional, InputOutput.Neither, docString);
