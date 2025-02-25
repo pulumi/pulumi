@@ -260,6 +260,24 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers any type", async function () {
+        const dir = path.join(__dirname, "testdata", "any-type");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    anAny: { $ref: "pulumi.json#/Any" },
+                    anyInput: { $ref: "pulumi.json#/Any" },
+                },
+                outputs: {
+                    outAny: { $ref: "pulumi.json#/Any" },
+                },
+            },
+        });
+    });
+
     it("infers asset/archive types", async function () {
         const dir = path.join(__dirname, "testdata", "asset-archive-types");
         const analyzer = new Analyzer(dir, "provider");
