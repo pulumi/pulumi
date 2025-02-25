@@ -513,6 +513,7 @@ class Stack:
         self,
         parallel: Optional[int] = None,
         message: Optional[str] = None,
+        preview_only: Optional[bool] = None,
         target: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         clear_pending_creates: Optional[bool] = None,
@@ -535,6 +536,7 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
+        :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
@@ -552,9 +554,14 @@ class Stack:
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes", "--skip-preview"]
-        args.extend(extra_args)
+        args = ["refresh", "--yes"]
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.append("--skip-preview")
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
