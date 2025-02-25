@@ -178,6 +178,10 @@ class RefreshResult(BaseResult):
         super().__init__(stdout, stderr)
         self.summary = summary
 
+class RenameResult(BaseResult):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
 
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
@@ -587,6 +591,55 @@ class Stack:
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
         return RefreshResult(
+            stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
+        )
+
+    def rename(
+        self,
+        stack_name: str,
+        on_output: Optional[OnOutput] = None,
+        on_event: Optional[OnEvent] = None,
+        show_secrets: bool = True,
+    ) -> RefreshResult:
+        """
+        Compares the current stack’s resource state with the state known to exist in the actual
+        cloud provider. Any such changes are adopted into the current stack.
+
+        :param stack_name: The new name for the stack.
+        :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :returns: RefreshResult
+        """
+        extra_args = _parse_extra_args(**locals())
+        args = ["stack", "rename"]
+        args.extend(extra_args)
+
+        args.extend(self._remote_args())
+
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
+
+        log_watcher_thread = None
+        temp_dir = None
+        if on_event:
+            log_file, temp_dir = _create_log_file("refresh")
+            args.extend(["--event-log", log_file])
+            log_watcher_thread = threading.Thread(
+                target=_watch_logs, args=(log_file, on_event)
+            )
+            log_watcher_thread.start()
+
+        try:
+            refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+        finally:
+            _cleanup(temp_dir, log_watcher_thread)
+
+        # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
+        # load the project file.
+        summary = self.info(show_secrets and not self._remote)
+        assert summary is not None
+        return RenameResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
         )
 
