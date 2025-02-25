@@ -178,10 +178,12 @@ class RefreshResult(BaseResult):
         super().__init__(stdout, stderr)
         self.summary = summary
 
+
 class RenameResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
         self.summary = summary
+
 
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
@@ -600,7 +602,7 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
-    ) -> RefreshResult:
+    ) -> RenameResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
