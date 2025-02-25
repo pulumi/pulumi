@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix a panic when importing a stack reference.
+  description: Fix a panic when importing a stack reference
