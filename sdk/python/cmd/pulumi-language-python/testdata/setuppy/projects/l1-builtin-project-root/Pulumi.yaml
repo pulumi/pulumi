@@ -1,0 +1,6 @@
+name: l1-builtin-project-root
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv

@@ -301,6 +301,7 @@ var functionImports = map[string][]string{
 	"fileAsset":          {"@pulumi/pulumi"},
 	"stringAsset":        {"@pulumi/pulumi"},
 	"remoteAsset":        {"@pulumi/pulumi"},
+	"rootDirectory":      {"@pulumi/pulumi"},
 	"filebase64":         {"fs"},
 	"filebase64sha256":   {"fs", "crypto"},
 	"readFile":           {"fs"},
@@ -560,6 +561,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genTry(w, expr.Args)
 	case "can":
 		g.genCan(w, expr.Args)
+	case "rootDirectory":
+		g.genRootDirectory(w)
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -616,6 +619,10 @@ func (g *generator) genCan(w io.Writer, args []model.Expression) {
 	arg := args[0]
 	g.Fprintf(w, "// @ts-ignore")
 	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
+}
+
+func (g *generator) genRootDirectory(w io.Writer) {
+	g.Fgen(w, "pulumi.runtime.getRootDirectory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

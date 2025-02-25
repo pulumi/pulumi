@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet,go,java,nodejs,python,yaml
+  description: Add the ability to lookup project root from sdks, equivalent to path.root in Terraform

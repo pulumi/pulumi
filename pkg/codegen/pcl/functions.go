@@ -488,5 +488,8 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				return sig, diagnostics
 			},
 		)),
+		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
 	}
 }
