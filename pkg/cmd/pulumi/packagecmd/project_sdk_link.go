@@ -782,8 +782,8 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		// We assume this was a plugin and not a path, so load the plugin.
 		provider, err := host.Provider(descriptor)
 		if err != nil {
-			// There is an executable with the same name, so suggest that
-			if info, statErr := os.Stat(descriptor.Name); statErr == nil && isExecutable(info) {
+			// There is an executable or directory with the same name, so suggest that
+			if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 			}
 
