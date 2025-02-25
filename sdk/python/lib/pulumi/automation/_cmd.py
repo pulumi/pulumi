@@ -17,7 +17,6 @@ import os
 import subprocess
 import tempfile
 import urllib.request
-import sys
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from semver import VersionInfo
@@ -207,7 +206,6 @@ class PulumiCommand:
             env = _fixup_path(env, os.path.dirname(self.command))
         cmd = [self.command]
         cmd.extend(args)
-        sys.stderr.write(str(args))
 
         stdout_chunks: List[str] = []
 

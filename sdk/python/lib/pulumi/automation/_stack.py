@@ -319,7 +319,7 @@ class Stack:
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
-        args = ["up", "--yes"]
+        args = ["up", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
         if plan is not None:
@@ -555,8 +555,13 @@ class Stack:
         """
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes"]
-        args.extend(extra_args)
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.append("--skip-preview")
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
@@ -633,7 +638,7 @@ class Stack:
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["destroy", "--yes"]
+        args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
         args.extend(self._remote_args())
@@ -702,7 +707,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param show_secrets: Include config secrets in the ImportResult summary.
         """
-        args = ["import", "--yes"]
+        args = ["import", "--yes", "--skip-preview"]
         if message is not None:
             args.extend(["--message", message])
 
@@ -1006,7 +1011,6 @@ def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
     message: Optional[str] = kwargs.get("message")
-    preview_only: Optional[bool] = kwargs.get("preview_only")
     expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
     clear_pending_creates: Optional[bool] = kwargs.get("clear_pending_creates")
     diff: Optional[bool] = kwargs.get("diff")
@@ -1029,10 +1033,6 @@ def _parse_extra_args(**kwargs) -> List[str]:
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
     refresh: Optional[bool] = kwargs.get("refresh")
 
-    if preview_only:
-        extra_args.append("--preview-only")
-    else:
-        extra_args.append("--skip-preview")
     if message:
         extra_args.extend(["--message", message])
     if expect_no_changes:
