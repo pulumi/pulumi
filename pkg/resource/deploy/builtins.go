@@ -212,6 +212,11 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
 		}
 	}
+	// If the name is not provided, we should return an error. This is probably due to a user trying to import
+	// this stack reference.
+	if _, ok := req.Inputs["name"]; !ok {
+		return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
+	}
 
 	outputs, err := p.readStackReference(req.State)
 	if err != nil {
@@ -278,12 +283,7 @@ func (p *builtinProvider) SignalCancellation(context.Context) error {
 
 func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	name, ok := inputs["name"]
-	// If the name is not provided, we should return an error. This is probably due to a user trying to import
-	// this stack reference.
-	if !ok {
-		return nil, errors.New("stack reference can not be imported")
-	}
-
+	contract.Assertf(ok, "missing required property 'name'")
 	contract.Assertf(name.IsString(), "expected 'name' to be a string")
 
 	if p.backendClient == nil {
