@@ -246,18 +246,18 @@ func GetRequiredPlugins(
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
+	set := NewPackageSet()
 
 	lang, err := plugctx.Host.LanguageRuntime(runtime, info)
 	if lang == nil || err != nil {
-		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
+		return set, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
 	pkgs, err := lang.GetRequiredPackages(info)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+		return set, fmt.Errorf("failed to discover package requirements: %w", err)
 	}
 
-	set := NewPackageSet()
 	for _, pkg := range pkgs {
 		logging.V(preparePluginLog).Infof(
 			"gatherPackagesFromProgram(): package %s (%s) is required by language host",
