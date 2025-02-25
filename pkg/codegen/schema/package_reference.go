@@ -41,6 +41,8 @@ type PackageReference interface {
 
 	// Publisher returns the package publisher.
 	Publisher() string
+	// Namespace returns the package namespace.
+	Namespace() string
 	// Repository returns the package repository.
 	Repository() string
 
@@ -172,6 +174,10 @@ func (p packageDefRef) Description() string {
 
 func (p packageDefRef) Publisher() string {
 	return p.pkg.Publisher
+}
+
+func (p packageDefRef) Namespace() string {
+	return p.pkg.Namespace
 }
 
 func (p packageDefRef) Repository() string {
@@ -380,6 +386,16 @@ func (p *PartialPackage) Publisher() string {
 		return p.def.Publisher
 	}
 	return p.types.pkg.Publisher
+}
+
+func (p *PartialPackage) Namespace() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Namespace
+	}
+	return p.types.pkg.Namespace
 }
 
 func (p *PartialPackage) Repository() string {
