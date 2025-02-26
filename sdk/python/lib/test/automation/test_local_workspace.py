@@ -214,8 +214,8 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
 
-        Stack.create(stack_name, ws)
-        ws.stack().rename(stack_name + "_renamed", ws)
+        stack = Stack.create(stack_name, ws)
+        stack.rename(stack_name + "_renamed", ws)
         ws.remove_stack(stack_name + "_renamed")
 
     def test_config_env_functions(self):
