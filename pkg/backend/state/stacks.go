@@ -16,6 +16,7 @@ package state
 
 import (
 	"context"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,6 +40,11 @@ func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, 
 }
 
 func getCurrentStackName() (string, error) {
+	// PULUMI_STACK environment variable overrides any stack name in the pulumi settings
+	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
+		return stackName, nil
+	}
+
 	w, err := workspace.New()
 	if err != nil {
 		return "", err
