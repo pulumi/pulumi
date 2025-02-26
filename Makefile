@@ -70,8 +70,16 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: build_proto build_display_wasm .make/ensure/go
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+.PHONY: bin/pulumi
+bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
+	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+
+build:: bin/pulumi build_display_wasm
+ifneq (${GOBIN},)
+	cp $< ${GOBIN}/pulumi
+else
+	cp $< $(shell go env GOPATH)/pulumi
+endif
 
 build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
@@ -79,8 +87,8 @@ build_display_wasm:: .make/ensure/go
 build_local:: build_proto .make/ensure/go
 	export GOBIN=$(shell realpath ./bin) && make dist
 
-install:: .make/ensure/phony .make/ensure/go
-	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+install:: bin/pulumi
+	cp $< $(PULUMI_BIN)/pulumi
 
 build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
