@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/gofrs/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/assert"
@@ -4374,4 +4375,124 @@ func TestStackOutputsResourceError(t *testing.T) {
 		"first":  resource.NewProperty("step 3"),
 		"second": resource.NewProperty("step 3"),
 	})
+}
+
+// Test that if a resource to be deleted has a default provider we update the config.
+func TestDefaultProvidersGetUpdatedConfig(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("BAR")}
+
+	expectedAuth := resource.NewStringProperty("upauth")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var currentAuth resource.PropertyValue
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					currentAuth = req.Inputs["auth"]
+
+					return plugin.ConfigureResponse{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if !currentAuth.DeepEquals(expectedAuth) {
+						return plugin.DeleteResponse{}, errors.New("unexpected auth")
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.Outputs)
+
+						return plugin.DeleteResponse{
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.DeleteResponse{
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if !currentAuth.DeepEquals(expectedAuth) {
+						return plugin.CreateResponse{}, errors.New("unexpected auth")
+					}
+
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		if programExecutions == 1 {
+			// First time we should register the resource and see the create outputs, second time we don't
+			// send a registration.
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: programInputs,
+			})
+			assert.NoError(t, err)
+
+			assert.Equal(t, createOutputs, resp.Outputs)
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+		Config: config.Map{
+			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+
+	// Update the expected auth required for the provider, if we loaded the provider just from state we
+	// wouldn't pick this up.
+	expectedAuth = resource.NewStringProperty("refreshauth")
+	p.Config = config.Map{
+		config.MustParseKey("pkgA:config:auth"): config.NewValue("refreshauth"),
+	}
+	// Run another update, that won't register the resource and so delete it.
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Provider and resource should be deleted
+	assert.Len(t, snap.Resources, 0)
 }
