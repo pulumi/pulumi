@@ -503,8 +503,12 @@ func NewNewCmd() *cobra.Command {
 	}
 
 	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
+		scope := cmdTemplates.ScopeAll
+		if args.offline {
+			scope = cmdTemplates.ScopeLocal
+		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", cmdTemplates.ScopeAll, workspace.TemplateKindPulumiProject, args.interactive)
+		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, args.interactive)
 		t, err := s.Templates()
 		return t, s, err
 	}
