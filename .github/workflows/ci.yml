@@ -487,6 +487,9 @@ jobs:
           files: "*,!.gitkeep"
           fail_ci_if_error: false
           verbose: true
+          # TODO: stop pinning to v10.0.1 when https://github.com/codecov/codecov-cli/issues/651 is fixed.
+          # At that point, we should consider switching to codecov/codecov-action@v5
+          version: v10.0.1
           token: ${{ secrets.CODECOV_TOKEN }}
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
