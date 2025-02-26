@@ -299,13 +299,10 @@ describe("Analyzer", function () {
         });
     });
 
-    it("errors nicely for resource references", async function() {
-	const dir = path.join(__dirname, "testdata", "resource-reference");
-	const analyzer = new Analyzer(dir, "provider");
-	assert.throws(
-	    () => analyzer.analyze(),
-	    /Resource references are not supported yet: found type 'MyResource'/,
-	);
+    it("errors nicely for resource references", async function () {
+        const dir = path.join(__dirname, "testdata", "resource-reference");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(() => analyzer.analyze(), /Resource references are not supported yet: found type 'MyResource'/);
     });
 
     it("infers component description", async function () {
