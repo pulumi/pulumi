@@ -870,9 +870,6 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Very flakey on Windows https://github.com/pulumi/pulumi/issues/18414")
-	}
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 

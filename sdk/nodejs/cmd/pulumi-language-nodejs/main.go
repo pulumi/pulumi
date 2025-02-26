@@ -41,6 +41,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -423,10 +424,17 @@ func getPackagesFromDir(
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
+		typ := file.Type()
 		isDir := file.IsDir()
 
+		// If this is an irregular file on windows it's a junction point which os.ReadDir can follow but
+		// "IsDir" will return false.
+		if (typ&fs.ModeIrregular) != 0 && runtime.GOOS == "windows" {
+			isDir = true
+		}
+
 		// if this is a symlink resolve it so our visitedPaths can track recursion
-		if (file.Type() & fs.ModeSymlink) != 0 {
+		if (typ & fs.ModeSymlink) != 0 {
 			symlink, err := filepath.EvalSymlinks(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("resolving link in plugin dir %s: %w", curr, err))
