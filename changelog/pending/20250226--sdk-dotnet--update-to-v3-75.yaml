@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet
+  description: Update to v3.75
